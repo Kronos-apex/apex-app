@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v658: el salto a app.avientrena.com (construido, todavía DORMIDO)
+
+- **Decisión del PO:** mudar la app entera ahora, con pocos asesorados, **llevando la sesión** («nadie vuelve a
+  escribir su contraseña»). El clasificador de permisos bloqueó el cambio dos veces; lo aprobó él en la terminal.
+- **`_aviMudanza` (app-1):** una app abierta en `kronos-apex.github.io` pregunta por `https://app.avientrena.com/mudanza.json`
+  y solo entonces se arma. Salta cuando NO hay entreno vivo ni modal abierto (`_aviUpdateBusy`) y NO queda nada sin
+  confirmar en la nube (`_authDirty`, `_udInflight`, `_udPending`, `_udFailedKeys`, `_pendingPush`, `ax_udirty_*`);
+  ante una excepción, no salta. Lleva `avi_auth` y los `ax_*` pequeños por el `#` (no viaja al servidor); NO lleva
+  `ax_udcache_*`. **`_aviLlegada`** escribe antes de que nazca el cliente de auth, borra el `#` y la marca `?mudanza`
+  de la barra en el acto, y no pisa lo que el hogar nuevo ya tenga.
+- 🔴 **El defecto que solo se ve con la app YA INSTALADA:** con el service worker de v657, el día que el origen viejo
+  redirija el teléfono muestra **PANTALLA DE ERROR** (`_verify-mudanza-instalada` con `HEAD`: 3 aperturas, las 3 a
+  `chrome-error://`). Una navegación no puede resolverse con una respuesta ya seguida a otro origen. Arreglado en el
+  SW: `net.redirected` de otro origen → `Response.redirect`, y no se guarda en la caché de este origen. Con el
+  arreglo instalado, el teléfono llega al hogar nuevo **a la primera**.
+- **QA:** suite **1316** · `_verify-mudanza` **10/10** (sin hogar nuevo no salta · con algo sin confirmar tampoco ·
+  con todo confirmado salta con la sesión y sin el respaldo grande · sin bucle) · `_verify-mudanza-instalada` 3/3 ·
+  `_sabotaje-v658` **13/13**. La CORS de Pages (`Access-Control-Allow-Origin: *`) se midió contra producción.
+- ⏭️ **Fase 2, sin hacer:** `app.avientrena.com` todavía no existe, así que **este código no hace nada**. Y hay una
+  decisión técnica NUEVA que sale de la medición: **el hogar nuevo NO debería ser una redirección del viejo**
+  (Pages con dominio propio obliga a redirigir github.io), porque cualquier teléfono que no haya actualizado a v658
+  vería la pantalla de error. Sirviendo el hogar nuevo APARTE y dejando el viejo vivo, ningún teléfono se rompe: los
+  actualizados saltan solos y los rezagados siguen funcionando hasta que abran la app.
+
 ## ⏮️ 2026-09-22 — v657: la app se prepara para mudarse a app.avientrena.com
 
 - **Decisión del PO:** mudar la app ENTERA ahora, con pocos asesorados (*«es mejor hacerlo ahora con pocos asesorados
