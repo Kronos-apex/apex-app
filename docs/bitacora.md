@@ -4,6 +4,20 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v657: la app se prepara para mudarse a app.avientrena.com
+
+- **Decisión del PO:** mudar la app ENTERA ahora, con pocos asesorados (*«es mejor hacerlo ahora con pocos asesorados
+  que más adelante»*), llevando la sesión para que nadie vuelva a escribir su contraseña.
+- **Medido antes (`_exp-mudanza-congelada`):** si hoy el origen viejo redirigiera, la app instalada NO muestra error:
+  sirve su caché y se queda CONGELADA para siempre, sin avisar. La mudanza no puede ser solo apuntar el dominio.
+- **Esta versión (sin mover a nadie):** rutas relativas en SW (`BASE` = alcance del registro), registro, manifest (id
+  relativo → en github.io sigue resolviendo a `/apex-app/`: misma app instalada) e íconos; las 6 edge functions
+  contestan a los dos orígenes por petición (`conCors`, sin mutar el `cors` compartido). `_verify-rutas-relativas`
+  2/2 (instala y abre sin red en `/apex-app/` y en la raíz). Suite 1313. Los errores de `deno check` de daily-notifs y
+  send-push son PREEXISTENTES (idénticos en HEAD).
+- ⏭️ **Pendiente:** el salto de la página con la sesión (bloqueado por el clasificador de permisos de la sesión; el PO
+  debe aprobarlo), desplegar las edge functions, y la fase 2 (CNAME + DNS + constantes).
+
 ## ⏮️ 2026-09-22 — v656: la web de venta estrena dominio propio, avientrena.com
 
 - **El PO compró `avientrena.com` en Vercel** (USD 11,25/año, renovación automática, vence 22-sep-2027). Pidió un enlace

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v656';
+const CACHE_NAME = 'avi-v657';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -6,12 +6,14 @@ const V = CACHE_NAME.replace('avi-v', '');
 
 // Shell mínimo precacheado al instalar → la app abre offline desde el primer momento
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
-const SHELL = ['/apex-app/', '/apex-app/index.html', '/apex-app/manifest.json', '/apex-app/icons/icon-192.png', '/apex-app/icons/icon-512.png', '/apex-app/icons/badge-96.png']
+// v657 · la BASE sale del alcance del registro: '/apex-app/' en github.io, '/' en app.avientrena.com.
+const BASE = new URL(self.registration.scope).pathname;
+const SHELL = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icons/icon-192.png', BASE + 'icons/icon-512.png', BASE + 'icons/badge-96.png']
   // `foods.json` = catálogo de búsqueda del registro de alimentos (E8). Va precacheado con
   // ?v= como los módulos: sin él, la primera visita sin red se quedaría sin buscador. Si aun
   // así falta, `foodCatalog(null)` cae a los 50 que viajan dentro de avi-core (E9).
   .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js', 'foods.json']
-    .map(f => '/apex-app/' + f + '?v=' + V));
+    .map(f => BASE + f + '?v=' + V));
 self.addEventListener('install', e => {
   // SIN skipWaiting automático (v325): el SW nuevo ESPERA en 'waiting' hasta que la página
   // pida activarlo en un momento SEGURO — nunca encima de un timer de entreno corriendo. La
@@ -97,7 +99,7 @@ self.addEventListener('fetch', e => {
         _guardar(e.request, net);
         return net;
       } catch (_e) {
-        return (await caches.match(e.request)) || (await caches.match('/apex-app/index.html')) || fetch(e.request);
+        return (await caches.match(e.request)) || (await caches.match(BASE + 'index.html')) || fetch(e.request);
       }
     })()); return;
   }
@@ -136,13 +138,13 @@ self.addEventListener('push', e => {
   const isMsg = d.type === 'message';
   e.waitUntil(self.registration.showNotification(d.title || 'AVI', {
     body: d.body || '',
-    icon: '/apex-app/icons/icon-192.png',
+    icon: BASE + 'icons/icon-192.png',
     // 🔴 El BADGE es el iconito de la barra de estado, y Android lo dibuja recortando el
     // CANAL ALFA: pinta la silueta, no la imagen. Aqui iba `icon-192.png`, que es un cuadrado
     // 100% OPACO (medido: 0 pixeles transparentes de 36.864), asi que la silueta era el cuadrado
     // entero — una mancha solida, la marca mas generica posible. `badge-96.png` lleva la marca
     // de AVI con fondo TRANSPARENTE de verdad (7.749 pixeles transparentes de 9.216).
-    badge: '/apex-app/icons/badge-96.png',
+    badge: BASE + 'icons/badge-96.png',
     vibrate: isMsg ? [200,100,200,100,200] : [200,100,200],
     tag: d.tag || (isMsg ? 'avi-chat-' + (d.chatId || 'x') : 'avi-notif'),
     renotify: true,

@@ -18023,7 +18023,8 @@ test('🔴 v596 · el badge de las notificaciones tiene transparencia REAL, no e
 test('🔒 CABLEADO v596: el service worker usa el badge propio y lo precachea', () => {
   const fs = require('fs'), path = require('path');
   const sw = sinComentarios(fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8'));
-  assert.match(sw, /badge:\s*'\/apex-app\/icons\/badge-96\.png'/,
+  // 🔁 v657: la ruta sale de BASE (alcance del registro) para valer también en el dominio propio.
+  assert.match(sw, /badge:\s*BASE \+ 'icons\/badge-96\.png'/,
     '🔴 el badge volvió a apuntar a un ícono a color: sería una mancha otra vez');
   // Si no está en el precache, sin conexión el archivo no está y Android cae a su genérico —
   // que es exactamente el aspecto del que se quejó el PO.
@@ -20956,6 +20957,33 @@ test('🔒 CABLEADO v654 · las tres tarjetas comparten por la puerta única, en
   assert.ok(/shareCanvasImage\(cv,'avi-progreso'/.test(sinComentarios(_srcApp3())), 'la tarjeta de progreso del coach no usa la puerta única');
   const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
   assert.ok(/shareCanvasImage\(cv,'avi-entreno'/.test(a4) && /shareCanvasImage\(cv,file,'Mi logro en AVI'\)/.test(a4), 'el cierre o los logros no usan la puerta única');
+});
+
+// ══════════════════════════════════════════════════════
+// v657 · PREPARAR LA MUDANZA A app.avientrena.com (rutas relativas + dos orígenes)
+// ══════════════════════════════════════════════════════
+test('🔒 v657 · la app no ata sus rutas a /apex-app/: vale en github.io y en la raíz del dominio propio', () => {
+  const fs = require('fs'), path = require('path');
+  const rd = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const sw = sinComentarios(rd('sw.js')), html = rd('index.html'), man = JSON.parse(rd('manifest.json'));
+  assert.ok(/const BASE = new URL\(self\.registration\.scope\)\.pathname;/.test(sw), 'el SW volvió a fijar su base a mano');
+  assert.ok(!/'\/apex-app\//.test(sw), '🔴 el SW volvió a una ruta /apex-app/ fija: en el dominio propio el precache daría 404');
+  assert.ok(/serviceWorker\.register\('sw\.js',\{scope:'\.\/'\}\)/.test(rd('app-6-extra.js')), 'el registro del SW volvió a ser absoluto');
+  assert.ok(/<link rel="manifest" href="manifest\.json"/.test(html), 'el manifest volvió a ser absoluto');
+  // 🔒 id relativo: resuelto en github.io da /apex-app/, el MISMO de antes → la app instalada no cambia de identidad.
+  assert.strictEqual(man.id, './'); assert.strictEqual(man.start_url, './'); assert.strictEqual(man.scope, './');
+  assert.ok(!/"\/apex-app\//.test(rd('manifest.json')), 'queda una ruta /apex-app/ fija en el manifest');
+  ['app-1-infra.js', 'app-6-extra.js'].forEach(f => assert.ok(!/'\/apex-app\//.test(sinComentarios(rd(f))), `${f} volvió a una ruta /apex-app/ fija`));
+});
+test('🔒 v657 · las edge functions contestan a los DOS orígenes, por petición', () => {
+  const fs = require('fs'), path = require('path');
+  ['activate_public_profile', 'coach-create-client', 'daily-notifs', 'delete-account', 'refresh_snapshot', 'send-push'].forEach(fn => {
+    const t = fs.readFileSync(path.join(__dirname, 'supabase/functions', fn, 'index.ts'), 'utf8');
+    assert.ok(/const ORIGENES = \["https:\/\/app\.avientrena\.com", "https:\/\/kronos-apex\.github\.io"\];/.test(t), `${fn}: falta un origen`);
+    assert.ok(/serve\(conCors\(async \(req\) => \{/.test(t) && /\}\)\);\s*$/.test(t), `${fn}: el handler no pasa por conCors`);
+    // Por petición: mutar el `cors` compartido haría que dos peticiones simultáneas se pisaran.
+    assert.ok(!/cors\["Access-Control-Allow-Origin"\]\s*=/.test(t), `${fn}: muta el cors compartido`);
+  });
 });
 
 // ══════════════════════════════════════════════════════

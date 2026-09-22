@@ -25,9 +25,9 @@ function initPWA(){
   // el manifest en Android. Antes se generaba en canvas con el logo viejo AVI (la
   // "A" con barra) → en iPhone salía el ícono antiguo. Ahora apunta al PNG de marca.
   const appleLink=document.getElementById('pwa-icon-apple');
-  if(appleLink)appleLink.href='/apex-app/icons/icon-192.png?v=avi2';
+  if(appleLink)appleLink.href='icons/icon-192.png?v=avi2';
 
-  // Manifest: ya apunta a /apex-app/manifest.json estático (no se sobreescribe)
+  // Manifest: ya apunta a manifest.json (relativo, v657) estático (no se sobreescribe)
 
   // ¿Es un momento SEGURO para recargar y aplicar una versión nueva? Diferir si recargar
   // perdería trabajo o borraría un momento importante: timer de entreno vivo, modal/overlay
@@ -56,7 +56,7 @@ function initPWA(){
 
   const isSecure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   if('serviceWorker' in navigator && isSecure){
-    navigator.serviceWorker.register('/apex-app/sw.js',{scope:'/apex-app/'})
+    navigator.serviceWorker.register('sw.js',{scope:'./'})   // v657 · relativo: vale en /apex-app/ y en la raíz del dominio propio
       .then(reg=>{
         log('AVI SW ✅');
         window._swReg=reg;

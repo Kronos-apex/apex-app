@@ -226,7 +226,21 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+// v657 · DOS orígenes durante la mudanza a app.avientrena.com: el navegador solo acepta UN origen
+// por respuesta, así que se contesta con el del que pregunta si es uno de los nuestros. Por
+// PETICIÓN (envolviendo el handler), nunca mutando `cors`: dos peticiones simultáneas se pisarían.
+const ORIGENES = ["https://app.avientrena.com", "https://kronos-apex.github.io"];
+const conCors = (h: (req: Request) => Promise<Response>) => async (req: Request): Promise<Response> => {
+  const res = await h(req);
+  const o = req.headers.get("origin") || "";
+  if (ORIGENES.includes(o)) {
+    try { res.headers.set("Access-Control-Allow-Origin", o); res.headers.append("Vary", "Origin"); } catch (_e) { /* cabeceras inmutables */ }
+  }
+  return res;
+};
+
+
+serve(conCors(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   // ── Autorización ──────────────────────────────────────────────────────────
@@ -471,4 +485,4 @@ serve(async (req) => {
       status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
-});
+}));

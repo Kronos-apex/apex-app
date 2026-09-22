@@ -18,6 +18,20 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// v657 · DOS orígenes durante la mudanza a app.avientrena.com: el navegador solo acepta UN origen
+// por respuesta, así que se contesta con el del que pregunta si es uno de los nuestros. Por
+// PETICIÓN (envolviendo el handler), nunca mutando `cors`: dos peticiones simultáneas se pisarían.
+const ORIGENES = ["https://app.avientrena.com", "https://kronos-apex.github.io"];
+const conCors = (h: (req: Request) => Promise<Response>) => async (req: Request): Promise<Response> => {
+  const res = await h(req);
+  const o = req.headers.get("origin") || "";
+  if (ORIGENES.includes(o)) {
+    try { res.headers.set("Access-Control-Allow-Origin", o); res.headers.append("Vary", "Origin"); } catch (_e) { /* cabeceras inmutables */ }
+  }
+  return res;
+};
+
 const COACH_UID = "0a6484ed-42af-449d-9903-e440ac683ecf";
 
 function json(obj: unknown, status = 200) {
@@ -27,7 +41,7 @@ function json(obj: unknown, status = 200) {
   });
 }
 
-Deno.serve(async (req) => {
+Deno.serve(conCors(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -125,4 +139,4 @@ Deno.serve(async (req) => {
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
   }
-});
+}));

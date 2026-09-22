@@ -771,7 +771,7 @@ async function pushToClient(clientId,title,body,extras={}){
 // Mostrar notificación usando SW si disponible, fallback a new Notification
 function showAviNotif(title,body,tag){
   if(Notification.permission!=='granted')return;
-  const icon='/apex-app/icons/icon-192.png';
+  const icon='icons/icon-192.png';
   const opts={body,tag:tag||'avi-'+Date.now(),icon,badge:icon,vibrate:[200,100,200],requireInteraction:false};
   if('serviceWorker' in navigator){
     navigator.serviceWorker.ready.then(reg=>{

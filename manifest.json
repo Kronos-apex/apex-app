@@ -1,10 +1,10 @@
 {
   "name": "AVI",
   "short_name": "AVI",
-  "id": "/apex-app/",
+  "id": "./",
   "description": "Entrenamiento con nombre propio. Rutinas, seguimiento y comunicación directa con tu coach.",
-  "start_url": "/apex-app/",
-  "scope": "/apex-app/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
@@ -13,37 +13,37 @@
   "lang": "es",
   "categories": ["health", "fitness", "sports"],
   "icons": [
-    { "src": "/apex-app/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/apex-app/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/apex-app/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/apex-app/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
       "name": "Entreno de hoy",
       "short_name": "Hoy",
       "description": "Abre tu entrenamiento del día",
-      "url": "/apex-app/?go=hoy",
-      "icons": [{ "src": "/apex-app/icons/sc-hoy.png", "sizes": "96x96", "type": "image/png" }]
+      "url": "./?go=hoy",
+      "icons": [{ "src": "./icons/sc-hoy.png", "sizes": "96x96", "type": "image/png" }]
     },
     {
       "name": "Mi progreso",
       "short_name": "Progreso",
       "description": "Mira cómo vas avanzando",
-      "url": "/apex-app/?go=progreso",
-      "icons": [{ "src": "/apex-app/icons/sc-progreso.png", "sizes": "96x96", "type": "image/png" }]
+      "url": "./?go=progreso",
+      "icons": [{ "src": "./icons/sc-progreso.png", "sizes": "96x96", "type": "image/png" }]
     },
     {
       "name": "Mensajes con tu coach",
       "short_name": "Mensajes",
       "description": "Escríbele a tu coach",
-      "url": "/apex-app/?go=mensajes",
-      "icons": [{ "src": "/apex-app/icons/sc-mensajes.png", "sizes": "96x96", "type": "image/png" }]
+      "url": "./?go=mensajes",
+      "icons": [{ "src": "./icons/sc-mensajes.png", "sizes": "96x96", "type": "image/png" }]
     }
   ],
   "screenshots": [
-    { "src": "/apex-app/screenshots/01-hoy.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu entrenamiento del día" },
-    { "src": "/apex-app/screenshots/02-rutinas.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tus rutinas, armadas por tu coach" },
-    { "src": "/apex-app/screenshots/03-constancia.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu constancia, semana a semana" }
+    { "src": "./screenshots/01-hoy.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu entrenamiento del día" },
+    { "src": "./screenshots/02-rutinas.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tus rutinas, armadas por tu coach" },
+    { "src": "./screenshots/03-constancia.jpg", "sizes": "1080x1990", "type": "image/jpeg", "form_factor": "narrow", "label": "Tu constancia, semana a semana" }
   ]
 }
