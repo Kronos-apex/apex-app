@@ -729,10 +729,58 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   const r=x.createRadialGradient(540,700,40,540,700,620);r.addColorStop(0,'rgba(16,224,160,.28)');r.addColorStop(1,'rgba(16,224,160,0)');
   x.fillStyle=r;x.fillRect(0,0,1080,1920);
   x.textAlign='center';
+  // ══════════ v661 · CON FOTO, LA FOTO ES LA TARJETA (modelo G, elegido por el PO) ══════════
+  // Decisión suya viendo siete modelos dibujados: *«no sé porque la foto debe estar encerrada en el
+  // círculo si va a estar la foto completa»*. Con foto de perfil, va A SANGRE —sin marco y sin
+  // recorte circular— y el texto encima; sin foto, se queda la tarjeta verde de v660.
+  // 📊 Medido el 22-sep contra la nube: **8 de 27 asesorados tienen foto**, y son casi todos los que
+  //    de verdad entrenan (mi cifra anterior, «solo 3», estaba vieja y la corrigió el PO).
+  // 🔒 La foto que entra aquí ya pasó por `_wfPrepShareAvatar` → `canvasSafePhoto`, o sea que no
+  //    tiñe el lienzo; si no hay, `foto` es null y no se dibuja nada (v597).
+  const foto=(typeof _wfShareAvatar!=='undefined')?_wfShareAvatar:null;
+  if(foto&&foto.width){
+    // Cubre el lienzo entero conservando la proporción (lo que sobra se recorta por los lados).
+    const rel=Math.max(1080/foto.width,1920/foto.height), fw=foto.width*rel, fh=foto.height*rel;
+    x.save();
+    // 🔴 Teñir con `multiply` sobre verde oscuro BORRABA la foto (medido en las pruebas): se aclara
+    //    y se tiñe por encima con transparencia, que conserva los medios tonos.
+    x.filter='saturate(.6) contrast(1.06) brightness(1.18)';
+    x.drawImage(foto,(1080-fw)/2,(1920-fh)/2,fw,fh);
+    x.filter='none';
+    x.fillStyle='rgba(10,74,56,.30)';x.fillRect(0,0,1080,1920);
+    x.restore();
+    // El velo: oscuro arriba (para la marca) y abajo (para el texto), transparente en el medio,
+    // que es donde se ve la persona.
+    const vv=x.createLinearGradient(0,0,0,1920);
+    vv.addColorStop(0,'rgba(3,10,7,.72)');vv.addColorStop(.40,'rgba(3,10,7,.10)');
+    vv.addColorStop(.72,'rgba(3,10,7,.80)');vv.addColorStop(1,'rgba(3,10,7,.96)');
+    x.fillStyle=vv;x.fillRect(0,0,1080,1920);
+  }
   // v660 · MEDIDO sobre una captura real del PO: WhatsApp recorta la imagen en el chat a ~1080×1516
   //   centrado (queda visible y≈202-1718), así que la marca en 150 salía CORTADA y el pie en 1830
   //   no se veía. La marca baja y el pie sube: los dos dentro de lo que se ve sin abrir la imagen.
   x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,250);
+  if(foto&&foto.width){
+    // Con foto no hay retrato en círculo ni raya: el texto va abajo, sobre la imagen.
+    x.fillStyle='#10E0A0';x.font=_cf(42,'800');
+    try{ x.letterSpacing='8px'; }catch(e){}
+    x.fillText(eyebrow.toUpperCase(),540,1310);
+    try{ x.letterSpacing='0px'; }catch(e){}
+    let pxG=150; x.fillStyle='#FFFFFF';
+    do{ x.font=_cf(pxG,'900',true); pxG-=6; }while(x.measureText(title.toUpperCase()).width>960&&pxG>60);
+    x.fillText(title.toUpperCase(),540,1460);
+    x.fillStyle='rgba(234,251,244,.86)';x.font=_cf(46,'600');
+    const wG=String(sub||'').split(' ');let lG='',yG=1548;
+    wG.forEach(w=>{ const t=lG?lG+' '+w:w; if(x.measureText(t).width>900){ x.fillText(lG,540,yG); yG+=58; lG=w; } else lG=t; });
+    if(lG)x.fillText(lG,540,yG);
+    x.fillStyle='#FFFFFF';x.font=_cf(48,'800');x.fillText(name||'',540,yG+78);
+    const coachG=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
+    const siteG=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+    x.fillStyle='rgba(234,251,244,.66)';x.font=_cf(32,'600');
+    x.fillText('Entreno con '+(coachG||'mi coach')+'  ·  '+siteG,540,yG+146);   // dentro de la franja visible, con aire
+    try{window._gxLastCanvas=cv;}catch(e){}
+    return cv;
+  }
   // v660 · el bloque baja 120 px para repartir el aire que dejó subir el pie: si no, el hueco
   //   entre el subtítulo y la raya se lee como que algo no cargó (misma regla que v624).
   const _gy=120;

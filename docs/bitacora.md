@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v661: con foto de perfil, la tarjeta de logro es la FOTO
+
+- **Decisión del PO viendo siete modelos dibujados** (`_preview-logro.mjs`, con su foto real): *«no sé por qué la
+  foto debe estar encerrada en el círculo si va a estar la foto completa»* → eligió el **modelo G**: foto a sangre,
+  sin marco ni recorte circular, y el texto encima. Sin foto se conserva la tarjeta verde de v660.
+- 📊 **Y corrigió una cifra mía vieja**: medido contra la nube, **8 de 27 asesorados tienen foto de perfil**
+  (Astrid, Claudia, Danilo, Diana Pilar, Estella, Kathe, Natalia y Yovan — él nombró 7 y faltaba Yovan), y son casi
+  todos los que de verdad entrenan. Mi radar decía «solo 3». **Una cifra del radar se re-mide antes de citarla.**
+- 🔴 **Teñir con `multiply` sobre verde oscuro BORRABA la foto** (se vio dibujándolo): se aclara y se tiñe por
+  encima con transparencia. El velo es oscuro arriba y abajo y transparente en el medio, que es donde se ve la
+  persona. Todo el texto cae dentro de la franja que WhatsApp muestra en el chat (medida en v660).
+- **QA:** suite **1321** · `_sabotaje-v661` **5/5** — 🔴 dos salieron VERDES y eran huecos míos: pedir el nombre
+  de `_wfDrawCrest` no distingue una llamada viva de una bajo `if(false)` (4ª cara del gotcha), y la rama con foto
+  son DOS guardas, así que hay que contarlas. `_shot-gxshare` ahora dibuja los dos casos (con foto y sin ella).
+
 ## ⏮️ 2026-09-22 — v660: la tarjeta de logro, dentro de lo que WhatsApp muestra
 
 - **Lo destapó una captura REAL del PO** compartiendo un logro: el chat de WhatsApp **RECORTA** la imagen. Medido

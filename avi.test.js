@@ -21050,13 +21050,15 @@ test('🔒 v659 · las TRES imágenes que se comparten llevan el enlace en el pi
   const rd = f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
   const a4 = rd('app-4-entreno.js'), a3 = rd('app-3-coach.js');
   const pies = (a4.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []).concat(a3.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []);
-  assert.strictEqual(pies.length, 3, '🔴 cambió el número de pies: el cierre, el logro y el progreso del coach');
+  // 🔁 v661 · son CUATRO: el cierre, el logro SIN foto, el logro CON foto (modelo G, a sangre) y
+  //    el progreso del coach. Lo que se vigila es que NINGUNO se quede sin el enlace.
+  assert.strictEqual(pies.length, 4, '🔴 cambió el número de pies que se comparten');
   pies.forEach(p => assert.ok(!/site\?\(/.test(p), '🔴 volvió el pie condicional: sin sitio del coach, la imagen sale sin enlace'));
   // 🔒 Contar los pies NO basta: un pie puede seguir ahí y haber perdido el enlace (dos sabotajes
   //    salieron VERDES con este test antes de exigirlo). Cada uno lleva el separador y su variable.
-  pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,\d+\);$/,
+  pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,[\w+ ]+\);$/,
     '🔴 un pie dejó de llevar el enlace: ' + p.slice(0, 90)));
-  assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 2, '🔴 una de las dos tarjetas del asesorado dejó de resolver el enlace');
+  assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 3, '🔴 una de las tarjetas del asesorado dejó de resolver el enlace');
   assert.ok(/shareSiteLabel\(/.test(a3), '🔴 la tarjeta de progreso del coach dejó de resolver el enlace');
 });
 test('🔒 v659 · al compartir, el enlace viaja también como TEXTO (tocable)', () => {
@@ -21087,6 +21089,36 @@ test('🔒 v660 · en la tarjeta de LOGRO, la marca y el enlace caen dentro de l
   // 🔒 El bloque se baja con UNA constante: con seis números a mano, el que se olvide se monta
   //    encima del vecino y en un lienzo no hay nada que avise (lección v619).
   assert.strictEqual((gx.match(/\+_gy/g) || []).length, 5, '🔴 alguna pieza del bloque dejó de derivar su posición');
+});
+
+test('🔒 v661 · con foto de perfil la tarjeta de logro va A SANGRE, sin círculo, y cabe en el chat', () => {
+  const ALTO = 1920, VISIBLE = 1516, ABAJO = ALTO - (ALTO - VISIBLE) / 2;   // hasta y≈1718 (v660)
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const gx = a4.slice(a4.indexOf('function _gxCard('), a4.indexOf('\n}', a4.indexOf('function _gxCard(')));
+  // Son DOS guardas: la del fondo a sangre y la del bloque de texto. Contar las dos es lo único
+  // que caza que alguien dibuje la foto sin comprobar que exista (lienzo roto para quien no tiene).
+  assert.strictEqual((gx.match(/if\(foto&&foto\.width\)\{/g) || []).length, 2,
+    '🔴 la foto se dibujaría sin comprobar que exista, o se fue la rama con foto (modelo G del PO)');
+  // La rama con foto termina en su propio return: si cayera al diseño de v660 dibujaría las dos.
+  // 🔴 La rama se recorta EN SU `return cv;`: sin eso, el trozo incluye la tarjeta sin foto de más
+  //    abajo y el candado del círculo acusa al diseño correcto (me pasó al escribirlo).
+  const iRama = gx.lastIndexOf('if(foto&&foto.width){');
+  const conFoto = gx.slice(iRama, gx.indexOf('return cv;', iRama) + 10);
+  assert.ok(/return cv;/.test(conFoto), '🔴 la rama con foto no devuelve su lienzo: se dibujarían las dos tarjetas encima');
+  assert.ok(!/_wfDrawCrest/.test(conFoto), '🔴 volvió el retrato en CÍRCULO sobre la foto a sangre (lo que el PO pidió quitar)');
+  // El texto de abajo se deriva de una sola referencia (yG): con números sueltos, el que se olvide
+  // se monta sobre el vecino y en un lienzo no hay nada que avise (lección v619).
+  const base = +(conFoto.match(/let lG='',yG=(\d+);/) || [])[1];
+  const dPie = +(conFoto.match(/\+siteG,540,yG\+(\d+)\)/) || [])[1];
+  assert.ok(base > 0 && dPie > 0, 'no se pudo leer la posición del pie con foto');
+  assert.ok(base + dPie < ABAJO - 10, `🔴 el enlace en y=${base + dPie} no se ve en el chat (visible hasta ${ABAJO})`);
+  // 🔒 CONTROL: sin foto se conserva la tarjeta verde de v660, con su retrato y su raya.
+  const sinFoto = gx.slice(gx.indexOf('const _gy=120;'));
+  // 🔴 Pedir el identificador NO basta: `if(false)` deja el nombre intacto y el sabotaje salió VERDE.
+  //    Se afirma la LÍNEA con su guarda (4ª cara del gotcha: v552/v568/v570/v579).
+  assert.ok(/if\(typeof _wfDrawCrest==='function'\)_wfDrawCrest\(x,540,560\+_gy/.test(sinFoto),
+    '🔴 quien no tiene foto se quedó sin retrato');
+  assert.ok(/fillRect\(90,1600,900,4\)/.test(sinFoto), '🔴 quien no tiene foto se quedó sin la raya del pie');
 });
 
 // ══════════════════════════════════════════════════════

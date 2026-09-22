@@ -37,14 +37,14 @@ try {
   const arranco = await waitFor(`typeof _gxCard==='function'`);
   if(!arranco) console.log('   diagnóstico:', JSON.stringify(await ev(`({url:location.href, wfShare:typeof wfShare, gx:typeof _gxCard, gxShare:typeof gxShareLogro, body:(document.body&&document.body.innerText||'').slice(0,60)})`)));
   ok('la app arrancó y la tarjeta existe', arranco);
-  const r = await ev(`(async()=>{
-    // Retrato de mentira con contraste, para ver el recorte del círculo.
-    const c=document.createElement('canvas');c.width=400;c.height=400;const g=c.getContext('2d');
-    g.fillStyle='#2E6E58';g.fillRect(0,0,400,400);
-    g.fillStyle='#F7D9B5';g.beginPath();g.ellipse(200,190,105,130,0,0,Math.PI*2);g.fill();
-    const img=new Image(); img.src=c.toDataURL('image/png');
+  const SIN = process.argv.includes('--sin-foto');
+const r = await ev(`(async()=>{
+    const SIN_FOTO=${SIN};
+    // La foto REAL que mandó el PO: una composición a sangre no se juzga con un dibujo.
+    const img=new Image(); img.src='/scripts/_tmp-foto-llena.png';
     await new Promise(ok2=>{img.onload=ok2;img.onerror=ok2;});
-    _wfShareAvatar=img;
+    // Dos casos REALES: con foto de perfil (8 de 27 asesorados, medido) y sin ella.
+    _wfShareAvatar = (SIN_FOTO ? null : img);
     const cv=_gxCard('Logro desbloqueado','Tres meses seguidos','Doce semanas seguidas sin fallar una','Andres','Andres');
     // La MISMA tarjeta con la franja que WhatsApp recorta, oscurecida.
     const cut=document.createElement('canvas');cut.width=1080;cut.height=1920;
@@ -58,8 +58,8 @@ try {
   })()`);
   ok('la tarjeta se pudo dibujar', !!(r && r.entera));
   if (r && r.entera) {
-    writeFileSync(RAIZ + '/scripts/_gxshare.png', Buffer.from(r.entera.split(',')[1], 'base64'));
-    writeFileSync(RAIZ + '/scripts/_gxshare-recorte.png', Buffer.from(r.recorte.split(',')[1], 'base64'));
+    writeFileSync(RAIZ + '/scripts/_gxshare' + (SIN ? '-sinfoto' : '') + '.png', Buffer.from(r.entera.split(',')[1], 'base64'));
+    writeFileSync(RAIZ + '/scripts/_gxshare' + (SIN ? '-sinfoto' : '') + '-recorte.png', Buffer.from(r.recorte.split(',')[1], 'base64'));
     console.log('  🖼️  scripts/_gxshare.png y scripts/_gxshare-recorte.png — MIRARLOS, no solo generarlos');
   }
   ok('sin errores JS', jsErrors.length === 0);
