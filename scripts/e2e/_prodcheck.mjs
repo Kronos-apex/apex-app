@@ -10,11 +10,15 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 const EXPECT = (process.argv[2] || '').replace(/^v/, '').trim(); // '326' | ''
-const URL = 'https://kronos-apex.github.io/apex-app/?nocache=' + Date.now();
+// v658 · El 2.º argumento permite apuntar al HOGAR NUEVO (app.avientrena.com) durante la mudanza:
+// `node scripts/e2e/_prodcheck.mjs v658 https://app.avientrena.com/`. Sin él, la dirección de siempre.
+const BASE = (process.argv[3] || 'https://kronos-apex.github.io/apex-app/').replace(/\/?$/, '/');
+const HOST = new global.URL(BASE).host;
+const URL = BASE + '?nocache=' + Date.now();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--remote-debugging-port=9293', '--user-data-dir=' + process.env.TEMP + '/prodcheck-' + Date.now(), '--no-first-run', '--window-size=390,844', URL]);
-async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9293/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes('kronos-apex')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
+async function fp() { for (let i = 0; i < 120; i++) { try { const t = await (await fetch('http://localhost:9293/json/list')).json(); const p = t.find(x => x.type === 'page' && x.url.includes(HOST)); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map(); const jsErrors = [];
 ws.on('message', d => { const m = JSON.parse(d); if (m.id && pend.has(m.id)) { const { resolve } = pend.get(m.id); pend.delete(m.id); resolve(m.result); } else if (m.method === 'Runtime.exceptionThrown') jsErrors.push((m.params.exceptionDetails?.exception?.description || m.params.exceptionDetails?.text || '?').split('\n')[0]); });
