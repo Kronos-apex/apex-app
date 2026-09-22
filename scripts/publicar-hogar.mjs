@@ -12,7 +12,7 @@
 //
 // Corre: node scripts/publicar-hogar.mjs
 // ─────────────────────────────────────────────────────────────────────────────
-import { cpSync, mkdirSync, rmSync, copyFileSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, copyFileSync, readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
@@ -24,8 +24,17 @@ const ARCHIVOS = ['index.html', 'sw.js', 'manifest.json', 'styles.css', 'foods.j
   'app-6-extra.js', 'app-7-community.js'];
 const CARPETAS = ['icons', 'splash', 'screenshots', 'legal'];
 
+// 🔴 El enlace con el proyecto de Vercel vive en `DEST/.vercel`: si se borra con el resto, el
+//    deploy se va a un proyecto NUEVO (o a ninguno) y app.avientrena.com se queda en la versión
+//    anterior — pasó al publicar v659 y solo lo delató el prodcheck contra el hogar nuevo.
+const LINK = join(DEST, '.vercel');
+const linkTmp = join(process.env.TEMP || '/tmp', 'avi-home-vercel-link');
+rmSync(linkTmp, { recursive: true, force: true });
+if (existsSync(LINK)) cpSync(LINK, linkTmp, { recursive: true });
 rmSync(DEST, { recursive: true, force: true });
 mkdirSync(DEST, { recursive: true });
+if (existsSync(linkTmp)) cpSync(linkTmp, LINK, { recursive: true });
+else console.log('⚠️  Sin enlace previo: `npx vercel link --yes --project avi-app` en ' + DEST);
 for (const f of ARCHIVOS) copyFileSync(join(ROOT, f), join(DEST, f));
 for (const d of CARPETAS) cpSync(join(ROOT, d), join(DEST, d), { recursive: true });
 copyFileSync(join(ROOT, 'scripts', 'hogar-vercel.json'), join(DEST, 'vercel.json'));
