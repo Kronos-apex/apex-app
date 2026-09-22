@@ -2255,7 +2255,7 @@ function shareClientProgress(){
   const site=(typeof getCoachSite==='function'&&getCoachSite())||'';
   x.fillText('Entrena con '+(coach||'AVI')+(site?('  ·  '+site):''),90,1830);
   try{window._storyLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness)
-  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  // v654 · la puerta única (PNG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
   if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-progreso','Progreso en AVI','📥 Imagen guardada — súbela a tu historia');
   else toast('No se pudo crear la imagen');
 }

@@ -750,7 +750,7 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   return cv;
 }
 function _gxShareCanvas(cv,file){
-  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  // v654 · la puerta única (PNG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
   if(typeof shareCanvasImage==='function')shareCanvasImage(cv,file,'Mi logro en AVI');
   else toast('No se pudo crear la imagen');
 }
@@ -3099,7 +3099,7 @@ function wfShare(){
   // `_wfPrepShareAvatar` ya impide que una foto teñida llegue aquí, pero si alguna vez entra una
   // imagen por otra puerta, el asesorado tiene que ver un aviso — no una excepción que se lleve
   // el cierre entero (misma razón que el blindaje de los récords en v579).
-  // v654 · la puerta única (JPEG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
+  // v654 · la puerta única (PNG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
   if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-entreno','Mi entreno en AVI');
   else toast('No se pudo crear la imagen');
 }

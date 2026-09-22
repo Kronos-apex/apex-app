@@ -4,6 +4,13 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v655: la imagen compartida vuelve a PNG (definición máxima)
+
+- **Decisión del PO:** *«La idea es que la imagen salga con muy buena resolución, no quiero una imagen con mala
+  definición»*. La resolución nunca bajó (1080×1920), pero el JPEG 0,9 de v654 comprime con pérdida letras y degradados.
+- `shareCanvasImage` vuelve a PNG sin pérdida (~915 KB). El doble toque lo siguen arreglando el candado y el aviso:
+  `_verify-compartir-toque` 5/5 con el PNG completo y el menú lento. Candados v597 y v654 re-encuadrados: JPEG = rojo.
+
 ## ⏮️ 2026-09-22 — v654: «Compartir» responde al primer toque
 
 - **Reporte del PO (21-sep):** al terminar el entreno tuvo que tocar «Compartir» varias veces antes de que saliera el menú.

@@ -1,5 +1,5 @@
 // Verificación E2E de v654: COMPARTIR RESPONDE AL PRIMER TOQUE (reporte del PO, 21-sep).
-// Antes: PNG pesado, sin aviso, y un segundo toque chocaba con el primero y caía a «guardar».
+// Antes: sin aviso, y un segundo toque chocaba con el primero y caía a «guardar».
 // Corre: node scripts/e2e/_verify-compartir-toque.mjs
 //
 // Se sustituye SOLO `navigator.share` (espía con menú lento de 1,5 s, como un Android con archivo
@@ -54,7 +54,7 @@ const r1 = await ev(`(async()=>{ window.__shares=[]; window.__toasts=[]; const t
   window.toast=tO; return {avisoInmediato:t0, shares:window.__shares, primeraTanda}; })()`);
 check('K1 tres toques seguidos abren el menú UNA sola vez', r1.primeraTanda === 1, JSON.stringify(r1.shares));
 check('K2 el aviso sale en el mismo toque', (r1.avisoInmediato || []).includes('Preparando tu imagen…'), JSON.stringify(r1.avisoInmediato));
-check('K3 la imagen va en JPEG y liviana', r1.shares[0] && r1.shares[0].t === 'image/jpeg' && /\.jpg$/.test(r1.shares[0].n) && r1.shares[0].kb < 400, JSON.stringify(r1.shares[0]));
+check('K3 la imagen va en PNG (sin pérdida, decisión del PO)', r1.shares[0] && r1.shares[0].t === 'image/png' && /\.png$/.test(r1.shares[0].n), JSON.stringify(r1.shares[0]));
 check('K4 terminado el primero, un toque nuevo vuelve a funcionar', r1.shares.length === 2, 'shares=' + r1.shares.length);
 const r2 = await ev(`(async()=>{ window.__toasts=[]; const tO=window.toast; window.toast=m=>{window.__toasts.push(m); return tO&&tO(m);};
   let descargas=0; const oc=document.createElement.bind(document); document.createElement=t=>{const el=oc(t); if(t==='a')el.click=()=>{descargas++;}; return el;};

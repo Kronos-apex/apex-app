@@ -16881,7 +16881,7 @@ test('🔒 v597: una foto NO puede llevarse el compartir entero (lienzo teñido)
   const share = _v597('wfShare');
   assert.ok(/shareCanvasImage\(cv,/.test(share) && !/cv\.toBlob/.test(share), '🔴 el cierre volvió a compartir por su cuenta');
   const sci = infra.slice(infra.indexOf('async function shareCanvasImage('), infra.indexOf('\n}', infra.indexOf('async function shareCanvasImage(')));
-  assert.ok(/try\{ cv\.toBlob\(ok,'image\/jpeg',0\.9\); \}catch\(e\)\{ ok\(null\); \}/.test(sci) && /No se pudo crear la imagen/.test(sci),
+  assert.ok(/try\{ cv\.toBlob\(ok,'image\/png'\); \}catch\(e\)\{ ok\(null\); \}/.test(sci) && /No se pudo crear la imagen/.test(sci),
     '🔴 `toBlob` volvió a correr a pelo: un lienzo teñido se llevaría el cierre con una excepción');
 });
 
@@ -20934,14 +20934,15 @@ test('🔒 v652 · el bucket viejo `apex-photos` quedó PRIVADO (cinturón: ya n
 // ══════════════════════════════════════════════════════
 // v654 · COMPARTIR UNA IMAGEN: UNA SOLA PUERTA
 // ══════════════════════════════════════════════════════
-test('🔒 CABLEADO v654 · las tres tarjetas comparten por la puerta única, en JPEG y sin doble toque', () => {
+test('🔒 CABLEADO v654 · las tres tarjetas comparten por la puerta única, en PNG y sin doble toque', () => {
   const fs = require('fs'), path = require('path');
   const a1 = sinComentarios(_srcApp1());
   const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
   const sci = cuerpo(a1, 'async function shareCanvasImage(');
   assert.ok(/if\(_shareBusy\)return;/.test(sci) && /_shareBusy=true;/.test(sci) && /finally\{ _shareBusy=false; \}/.test(sci), '🔴 un segundo toque vuelve a chocar con el primero (o el candado no se suelta nunca)');
   assert.ok(sci.indexOf("toast('Preparando tu imagen…')") < sci.indexOf('cv.toBlob('), '🔴 sin aviso inmediato: la persona no sabe que su toque entró');
-  assert.ok(/'image\/jpeg',0\.9/.test(sci) && /type:'image\/jpeg'/.test(sci) && !/image\/png/.test(sci), '🔴 la imagen volvió a PNG (~10 veces más pesada)');
+  // v655 · decisión del PO: definición máxima → PNG sin pérdida, nunca JPEG.
+  assert.ok(/cv\.toBlob\(ok,'image\/png'\)/.test(sci) && /type:'image\/png'/.test(sci) && !/image\/jpeg/.test(sci), '🔴 la imagen compartida volvió a comprimirse con pérdida (JPEG)');
   assert.ok(/n==='NotAllowedError'/.test(sci) && /Toca «Compartir» otra vez/.test(sci), '🔴 si Android pierde el permiso, la app vuelve a guardar en silencio');
   // Ninguna otra parte arma su propio `navigator.share` con archivos: la puerta es una.
   ['app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'].forEach(f => {

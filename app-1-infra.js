@@ -241,8 +241,7 @@ async function _chatPrepMedia(f){
 // ══════════ v654 · COMPARTIR UNA IMAGEN: UNA SOLA PUERTA ══════════
 // Reporte del PO (21-sep): al terminar el entreno tuvo que tocar «Compartir» VARIAS veces antes de
 // que saliera el menú. Medido: la imagen se prepara en 0,2-0,6 s (no se vence el permiso de Android),
-// pero se compartía como PNG de ~900 KB (más con foto de fondo) — el mismo dibujo en JPEG pesa ~96 KB —
-// y sin ninguna señal de que el toque entró: el menú tardaba, la persona volvía a tocar, el segundo
+// y no había ninguna señal de que el toque entró: el menú tardaba, la persona volvía a tocar, el segundo
 // `navigator.share` chocaba con el primero y la app caía EN SILENCIO a «guardar imagen».
 // 🔒 Las tres tarjetas (cierre, logro, progreso del coach) pasan por aquí: tres copias ya se habían
 //    quedado iguales en el defecto, y la próxima arreglaría una sola.
@@ -253,11 +252,12 @@ async function shareCanvasImage(cv,nombre,titulo,textoGuardada){
   const base=String(nombre||'avi').replace(/\.(png|jpe?g)$/i,'');
   try{
     if(typeof toast==='function')toast('Preparando tu imagen…');
-    // JPEG: la tarjeta es opaca (fondo propio), así que no pierde nada y pesa ~10 veces menos.
+    // 🔒 v655 · PNG, sin pérdida: decisión del PO («no quiero una imagen con mala definición»). El JPEG
+    //    de v654 ensuciaba letras y degradados; el doble toque lo arreglan el candado y el aviso, no el peso.
     // `toBlob` de un lienzo TEÑIDO lanza síncrono: dentro de la promesa, eso es un «no se pudo».
-    const blob=await new Promise(ok=>{ try{ cv.toBlob(ok,'image/jpeg',0.9); }catch(e){ ok(null); } });
+    const blob=await new Promise(ok=>{ try{ cv.toBlob(ok,'image/png'); }catch(e){ ok(null); } });
     if(!blob){ if(typeof toast==='function')toast('No se pudo crear la imagen'); return; }
-    const file=new File([blob],base+'.jpg',{type:'image/jpeg'});
+    const file=new File([blob],base+'.png',{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       try{ await navigator.share({files:[file],title:titulo||'AVI'}); }
       catch(e){
@@ -269,7 +269,7 @@ async function shareCanvasImage(cv,nombre,titulo,textoGuardada){
       return;
     }
     // Respaldo (computador o navegador sin compartir archivos): se descarga.
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=base+'.jpg';
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=base+'.png';
     document.body.appendChild(a);a.click();a.remove();
     if(typeof toast==='function')toast(textoGuardada||'📥 Imagen guardada — súbela a tu estado');
   }catch(e){ if(typeof toast==='function')toast('No se pudo compartir la imagen'); }
