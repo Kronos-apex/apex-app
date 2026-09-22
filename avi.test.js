@@ -19125,13 +19125,20 @@ test('v619 · el retrato ocupa una parte seria del lienzo, no un botoncito', () 
 //    APRETADO (4 cifras + 3 records, el maximo) DERIVANDO cada medida del codigo, nunca a mano.
 test('v619 🔒 con el caso APRETADO nada se monta sobre el pie', () => {
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const archivo = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  // 🔁 v660 · la tarjeta de LOGRO tiene ahora su propia raya y su propio pie, así que medir sobre
+  //    el archivo entero mide la tarjeta de al lado: se recorta al CIERRE antes de leer nada.
+  const iCierre = archivo.indexOf('function wfShare(');
+  assert.ok(iCierre > 0, 'no encontré la función que dibuja el cierre');
+  const src = archivo.slice(iCierre);
   const num = (re, q) => { const m = src.match(re); assert.ok(m, 'no se pudo leer ' + q); return +m[1]; };
   const R = num(/const CR_R=(\d+),/, 'CR_R'), TOP = num(/CR_TOP0=(\d+);/, 'CR_TOP0');
   const CH = num(/CW=\d+,CH=(\d+),/, 'alto de ficha'), GAP = num(/CH=\d+,GAP=(\d+);/, 'separacion');
   const PRH = num(/const PRH=(\d+),/, 'alto de la tarjeta de record');
   const PRGAP = num(/PRH=\d+, PRGAP=(\d+);/, 'separacion de records');
-  const PIE = num(/x\.fillRect\(90,(\d+),900,4\)/, 'la raya del pie');
+  // 🔁 v660 · la tarjeta de LOGRO también tiene su raya (y=1600): el patrón se ancla al CIERRE,
+  //    que es lo que este candado mide, o mide la tarjeta de al lado y da un rojo que no es.
+  const PIE = num(/fillRect\(90,(\d+),900,4\)/, 'la raya del pie del cierre');
   // v622 re-encuadre: las cifras pasaron a UNA fila (modelo C). La propiedad no cambia —con el
   // radio que sea, lo de abajo cabe—, así que ahora TAMBIÉN el arranque de la fila y el salto a
   // los récords se LEEN del código en vez de suponer las dos filas de antes.
@@ -21047,7 +21054,7 @@ test('🔒 v659 · las TRES imágenes que se comparten llevan el enlace en el pi
   pies.forEach(p => assert.ok(!/site\?\(/.test(p), '🔴 volvió el pie condicional: sin sitio del coach, la imagen sale sin enlace'));
   // 🔒 Contar los pies NO basta: un pie puede seguir ahí y haber perdido el enlace (dos sabotajes
   //    salieron VERDES con este test antes de exigirlo). Cada uno lleva el separador y su variable.
-  pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,1830\);$/,
+  pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,\d+\);$/,
     '🔴 un pie dejó de llevar el enlace: ' + p.slice(0, 90)));
   assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 2, '🔴 una de las dos tarjetas del asesorado dejó de resolver el enlace');
   assert.ok(/shareSiteLabel\(/.test(a3), '🔴 la tarjeta de progreso del coach dejó de resolver el enlace');
@@ -21056,10 +21063,30 @@ test('🔒 v659 · al compartir, el enlace viaja también como TEXTO (tocable)',
   const a1 = sinComentarios(_srcApp1());
   const f = a1.slice(a1.indexOf('async function shareCanvasImage('), a1.indexOf('\n}', a1.indexOf('async function shareCanvasImage(')));
   assert.ok(/_aviWebUrl\(\)\)\|\|'https:\/\/avientrena\.com\/'/.test(f), '🔴 el texto dejó de llevar la dirección de la web');
-  assert.ok(/text:\(titulo\?titulo\+' · ':''\)\+'Entrena con AVI: '\+web/.test(f), '🔴 se fue el texto que acompaña a la imagen');
+  assert.ok(/text:\(titulo\?titulo\+' · ':''\)\+web/.test(f), '🔴 se fue el texto que acompaña a la imagen');
+  assert.ok(!/Entrena con AVI: /.test(f), '🔴 volvió el texto que repetía «AVI» dos veces (se vio compartido)');
   // 🔒 Un destino que no admite texto junto al archivo NO puede quedarse sin compartir la imagen.
   assert.ok(/navigator\.canShare\(datos\)\?datos:\{files:\[file\],title:titulo\|\|'AVI'\}/.test(f),
     '🔴 sin el respaldo, un destino que rechaza el texto se queda sin imagen');
+});
+
+test('🔒 v660 · en la tarjeta de LOGRO, la marca y el enlace caen dentro de lo que WhatsApp muestra', () => {
+  // Medido sobre una captura real del PO (22-sep): el chat muestra ~1080×1516 centrado de un
+  // 1080×1920, o sea y ≈ 202-1718. Fuera de ahí, el enlace solo se ve abriendo la imagen.
+  const ALTO = 1920, VISIBLE = 1516, ARRIBA = (ALTO - VISIBLE) / 2, ABAJO = ALTO - ARRIBA;
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const gx = a4.slice(a4.indexOf('function _gxCard('), a4.indexOf('\n}', a4.indexOf('function _gxCard(')));
+  const marca = gx.match(/fillText\('A V I',540,(\d+)\)/);
+  assert.ok(marca, 'desapareció la marca de la tarjeta de logro');
+  assert.ok(+marca[1] > ARRIBA + 20, `🔴 la marca en y=${marca[1]} sale CORTADA en el chat (visible desde ${ARRIBA})`);
+  const pie = gx.match(/fillText\('Entreno con '[^;]*,540,(\d+)\);/);
+  assert.ok(pie, 'desapareció el pie de la tarjeta de logro');
+  assert.ok(+pie[1] < ABAJO - 20, `🔴 el enlace en y=${pie[1]} NO se ve en el chat (visible hasta ${ABAJO})`);
+  const raya = gx.match(/fillRect\(90,(\d+),900,4\)/);
+  assert.ok(raya && +raya[1] < +pie[1], '🔴 la raya del pie tiene que ir ENCIMA del pie');
+  // 🔒 El bloque se baja con UNA constante: con seis números a mano, el que se olvide se monta
+  //    encima del vecino y en un lienzo no hay nada que avise (lección v619).
+  assert.strictEqual((gx.match(/\+_gy/g) || []).length, 5, '🔴 alguna pieza del bloque dejó de derivar su posición');
 });
 
 // ══════════════════════════════════════════════════════

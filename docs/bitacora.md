@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-22 — v660: la tarjeta de logro, dentro de lo que WhatsApp muestra
+
+- **Lo destapó una captura REAL del PO** compartiendo un logro: el chat de WhatsApp **RECORTA** la imagen. Medido
+  sobre su captura: la burbuja muestra ~**1080×1516 centrado** de un 1080×1920, o sea **y ≈ 202-1718** — la marca
+  «A V I» (y=150) salía cortada y **el pie con el enlace (y=1830) no se veía sin abrir la imagen**.
+- **Arreglo en la tarjeta de LOGRO** (la que tenía sitio de sobra): marca a y=250, raya y pie a 1600/1670, y el
+  bloque entero baja 120 px con UNA constante (`_gy`) para repartir el aire — con seis números a mano, el que se
+  olvide se monta encima del vecino y en un lienzo no hay nada que avise (lección v619).
+- **El texto del compartir ya no repite «AVI» dos veces** («Mi logro en AVI · Entrena con AVI: …» → «Mi logro en
+  AVI · https://avientrena.com/»).
+- ⏭️ **La tarjeta del CIERRE se deja como está**: su caso apretado termina en y=1608 y subir el pie lo dejaría sin
+  aire. Ahí el enlace se ve en el estado/historia (que muestra la imagen entera) y al abrirla; en el chat, lo que
+  convierte es el enlace de TEXTO, que sí se ve (verificado en su captura).
+- **QA:** suite **1320** · `_sabotaje-v660` **5/5** · harness nuevo `_shot-gxshare` que además pinta la franja que
+  WhatsApp recorta. 🔴 Tres candados cayeron al subir la versión y **dos eran ambigüedad que introduje**: la raya
+  nueva del logro hacía que el candado de v619 midiera la tarjeta de al lado (se recorta a `wfShare` antes de leer).
+
 ## ⏮️ 2026-09-22 — v659: lo que se comparte lleva el enlace de la web
 
 - **Pedido del PO:** que la imagen del cierre del entreno y la de los logros lleven el enlace de la web.

@@ -729,26 +729,33 @@ function _gxCard(eyebrow,title,sub,name,avatarName){
   const r=x.createRadialGradient(540,700,40,540,700,620);r.addColorStop(0,'rgba(16,224,160,.28)');r.addColorStop(1,'rgba(16,224,160,0)');
   x.fillStyle=r;x.fillRect(0,0,1080,1920);
   x.textAlign='center';
-  x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,150);
-  if(typeof _wfDrawCrest==='function')_wfDrawCrest(x,540,560,200,avatarName||name,(typeof _wfShareAvatar!=='undefined')?_wfShareAvatar:null,'system-ui,Roboto,sans-serif');
+  // v660 · MEDIDO sobre una captura real del PO: WhatsApp recorta la imagen en el chat a ~1080×1516
+  //   centrado (queda visible y≈202-1718), así que la marca en 150 salía CORTADA y el pie en 1830
+  //   no se veía. La marca baja y el pie sube: los dos dentro de lo que se ve sin abrir la imagen.
+  x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,250);
+  // v660 · el bloque baja 120 px para repartir el aire que dejó subir el pie: si no, el hueco
+  //   entre el subtítulo y la raya se lee como que algo no cargó (misma regla que v624).
+  const _gy=120;
+  if(typeof _wfDrawCrest==='function')_wfDrawCrest(x,540,560+_gy,200,avatarName||name,(typeof _wfShareAvatar!=='undefined')?_wfShareAvatar:null,'system-ui,Roboto,sans-serif');
   x.fillStyle='#10E0A0';x.font=_cf(44,'800');
   try{ x.letterSpacing='8px'; }catch(e){}
-  x.fillText(eyebrow.toUpperCase(),540,990);
+  x.fillText(eyebrow.toUpperCase(),540,990+_gy);
   try{ x.letterSpacing='0px'; }catch(e){}
   // El titular en la tipografía display; se achica hasta caber en el ancho.
   let px=150; x.fillStyle='#FFFFFF';
   do{ x.font=_cf(px,'900',true); px-=6; }while(x.measureText(title.toUpperCase()).width>960&&px>60);
-  x.fillText(title.toUpperCase(),540,1160);
+  x.fillText(title.toUpperCase(),540,1160+_gy);
   x.fillStyle='rgba(234,251,244,.82)';x.font=_cf(46,'600');
-  const words=String(sub||'').split(' ');let line='',y=1270;
+  const words=String(sub||'').split(' ');let line='',y=1270+_gy;
   words.forEach(w=>{ const t=line?line+' '+w:w; if(x.measureText(t).width>900){ x.fillText(line,540,y); y+=62; line=w; } else line=t; });
   if(line)x.fillText(line,540,y);
-  x.fillStyle='#FFFFFF';x.font=_cf(58,'800');x.fillText(name||'',540,860);  // el nombre va pegado a su retrato
+  x.fillStyle='#FFFFFF';x.font=_cf(58,'800');x.fillText(name||'',540,860+_gy);  // el nombre va pegado a su retrato
   const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   // v659 · el pie lleva el enlace de la web (pedido del PO): quien vea esta imagen en una historia
   //   tiene a dónde ir. Manda el sitio del coach si lo configuró; si no, la web de AVI.
   const _site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
-  x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+_site,540,1830);
+  x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1600,900,4);   // la misma raya que las otras dos tarjetas
+  x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(34,'600');x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+_site,540,1670);
   try{window._gxLastCanvas=cv;}catch(e){}
   return cv;
 }

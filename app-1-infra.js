@@ -349,7 +349,10 @@ async function shareCanvasImage(cv,nombre,titulo,textoGuardada){
       //   queda TOCABLE en WhatsApp o Instagram, que es lo que convierte a quien la ve. Si el
       //   destino no admite texto junto al archivo, `canShare` lo dice y se manda solo la imagen.
       const web=(typeof _aviWebUrl==='function'&&_aviWebUrl())||'https://avientrena.com/';
-      const datos={files:[file],title:titulo||'AVI',text:(titulo?titulo+' · ':'')+'Entrena con AVI: '+web};
+      // v660 · el texto no repite «AVI» dos veces (se vio compartido: «Mi logro en AVI · Entrena
+      //   con AVI: …»). El título ya dice qué es; el enlace va detrás, con `https://` porque es lo
+      //   que WhatsApp convierte en enlace tocable sin depender de que reconozca el dominio.
+      const datos={files:[file],title:titulo||'AVI',text:(titulo?titulo+' · ':'')+web};
       const pay=navigator.canShare(datos)?datos:{files:[file],title:titulo||'AVI'};
       try{ await navigator.share(pay); }
       catch(e){
