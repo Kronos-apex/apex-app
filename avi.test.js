@@ -21229,9 +21229,11 @@ test('🔒 v662 · al cambiar de endpoint, el aparato retira SU fila anterior (s
   // La base tiene que dejarlo: sin policy de DELETE el borrado devuelve 0 filas sin error.
   const sql = require('fs').readFileSync(require('path').join(__dirname, 'supabase', 'migrations', '20260923_push_del_own.sql'), 'utf8')
     .split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
-  const alcance = "client_id = ((select auth.uid()))::text\n    or (client_id = '_coach'::text and (select auth.uid()) = '0a6484ed-42af-449d-9903-e440ac683ecf'::uuid)";
   assert.ok(/create policy push_del_own on public\.push_subscriptions\s+for delete to authenticated/.test(sql), '🔴 sin policy de DELETE');
-  assert.ok(sql.replace(/\r/g, '').includes(alcance), '🔴 el alcance del DELETE no es el mismo de INSERT/UPDATE/SELECT');
+  // 🔴 La cláusula ENTERA, anclada al `using (` y al `);`: pedir que el alcance «aparezca» aprobaba
+  //    `true or <alcance>` (sabotaje verde, 23-sep). Lo que se afirma es que no hay NADA más.
+  assert.ok(/using \(\s*client_id = \(\(select auth\.uid\(\)\)\)::text\s+or \(client_id = '_coach'::text and \(select auth\.uid\(\)\) = '0a6484ed-42af-449d-9903-e440ac683ecf'::uuid\)\s*\);/.test(sql),
+    '🔴 el alcance del DELETE no es EXACTAMENTE el de INSERT/UPDATE/SELECT (cada quien su fila; el coach, la de _coach)');
 });
 
 // ══════════════════════════════════════════════════════
