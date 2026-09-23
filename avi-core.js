@@ -3968,6 +3968,22 @@ function painCareActive(list, nowTs) {
 // Gobierna la tarjeta del coach (y sirve para la del asesorado). 'granted' → oculta;
 // 'denied' → 'denied' (instrucciones, sin botón inútil); 'default' → 'ask' salvo snooze
 // vigente. `now`/`snoozeDays` inyectables para tests.
+// ── v665 · QUIEN TENÍA AVISOS Y LOS PERDIÓ (la mudanza a app.avientrena.com) ──
+// Pedido del PO (23-sep): *«recuérdale a las personas que se mudaron activar las notificaciones»*.
+// El permiso de avisos es POR DIRECCIÓN: quien salta al hogar nuevo llega sin él, aunque en
+// github.io lo tuviera dado. La señal exacta de «los tenía y los perdió» es que su teléfono guarda
+// la marca de su suscripción (`apex_push:<id>`, que viaja con la mudanza) y hoy el permiso vuelve
+// a estar SIN DAR. No se mira la dirección: un navegador que borró sus permisos es el mismo caso.
+// 🔒 Bloqueadas (`denied`) NO es este caso: ahí sale su propia tarjeta con instrucciones.
+// 🔒 Su «mañana» dura UN día y vive en su propia clave: el «ahora no» de 7 días de la dirección
+//    vieja viajó con la mudanza y, si se respetara, escondería justo este recordatorio.
+const PUSH_LOST_SNOOZE_DAYS = 1;
+function pushLostReminder(perm, hadEndpoint, snoozeTs, now) {
+  if (perm !== 'default' || !hadEndpoint) return false;
+  const n = (now != null ? new Date(now).getTime() : Date.now());
+  const s = parseInt(snoozeTs, 10) || 0;
+  return n - s >= PUSH_LOST_SNOOZE_DAYS * 86400000;
+}
 function pushNudgeDecision(perm, snoozeTs, now, snoozeDays) {
   if (perm === 'granted') return 'hidden';
   if (perm === 'denied') return 'denied';
@@ -11979,6 +11995,8 @@ if (typeof module !== 'undefined' && module.exports) {
     clientAttentionRank,
     sortClientsByAttention,
     pushNudgeDecision,
+    pushLostReminder,
+    PUSH_LOST_SNOOZE_DAYS,
     isFreeClient,
     premiumLocked,
     clientHasCoach,

@@ -1046,9 +1046,12 @@ function _todayOrder(training){
   // no una tarea del día; jamás debe empujar el entreno bajo el pliegue (regla R1.6).
   // Día 1 (variante C): #cn-firstrun va JUSTO tras el saludo y antes del entreno — es la portada
   // que ocupa la primera pantalla de quien nunca ha entrenado. Los demás días queda vacía.
+  // v665: #cn-push-moved (quien se mudó y perdió sus avisos) va JUSTO bajo la cabecera y FUERA
+  // del tope: es una acción de un solo toque que desaparece al hacerla, y si compitiera con los
+  // demás avisos le tocaría esperar detrás de «Tienes N avisos más» — que es no recordárselo.
   const ids=training
-    ? ['cn-today-head','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-med-due','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share','cn-more']
-    : ['cn-today-head','cn-firstrun','cn-deload','cn-missday','cn-coach-card','cn-med-due','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share','cn-more'];
+    ? ['cn-today-head','cn-push-moved','cn-firstrun','cn-deload','cn-today-body','cn-missday','cn-coach-card','cn-med-due','cn-habits','cn-meals','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-cmty-nudge','cn-share','cn-more']
+    : ['cn-today-head','cn-push-moved','cn-firstrun','cn-deload','cn-missday','cn-coach-card','cn-med-due','qw-entry','cn-push-nudge','cn-today-upsell','cn-news','cn-habits','cn-meals','cn-today-body','cn-cmty-nudge','cn-share','cn-more'];
   ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.parentElement===panel)panel.appendChild(el);});
   _applyTodayCap();
 }

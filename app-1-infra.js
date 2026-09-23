@@ -776,10 +776,26 @@ function _pushDeniedHowto(){
 }
 function renderPushNudge(){
   const el=document.getElementById('cn-push-nudge'); if(!el)return;
+  const mv=document.getElementById('cn-push-moved'); if(mv)mv.innerHTML='';
   const cid=_pushCtx&&_pushCtx.clientId;
   if(!cid||typeof Notification==='undefined'||!('PushManager' in window)){ el.innerHTML=''; return; }
   const bell=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
   if(Notification.permission==='granted'){ el.innerHTML=''; return; }
+  // v665 · TENÍA AVISOS Y LOS PERDIÓ (se mudó a app.avientrena.com: el permiso es por dirección).
+  //   Va en su propio espacio, arriba y fuera del tope, y el aviso normal se calla para no repetir.
+  let _had=false, _mvSnz=0;
+  try{ _had=!!localStorage.getItem('apex_push:'+cid); _mvSnz=parseInt(localStorage.getItem('ax_pushmv_snooze_'+cid)||'0',10)||0; }catch(_e){}
+  if(mv&&typeof pushLostReminder==='function'&&pushLostReminder(Notification.permission,_had,_mvSnz,Date.now())){
+    el.innerHTML='';
+    mv.innerHTML=`<div class="push-nudge">
+    <div class="push-nudge-txt"><b>${bell} Vuelve a activar tus avisos</b><span>AVI estrenó dirección y tu teléfono pide el permiso otra vez. Actívalos para que te sigamos avisando en tus días de entreno.</span></div>
+    <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozePushMoved()">Mañana</button></div>
+  </div>`;
+    return;
+  }
+  // Pospuesto con su «Mañana»: se calla TODO por hoy. Sin esto, al tocarlo aparecía en el acto el
+  // aviso genérico pidiendo lo mismo — contradiciendo lo que la persona acababa de elegir.
+  if(_had&&Notification.permission==='default'){ el.innerHTML=''; return; }
   // Bloqueadas: instrucciones (antes el asesorado quedaba sin salida — aviso Lucas v320).
   if(Notification.permission==='denied'){
     el.innerHTML=`<div class="push-nudge"><div class="push-nudge-txt"><b>${bell} Notificaciones bloqueadas</b><span>Para recibir tus recordatorios de entreno: ${_pushDeniedHowto()}</span></div></div>`;
@@ -808,6 +824,8 @@ async function aviAskPush(){
   renderPushNudge();
 }
 function aviSnoozePush(){ try{ if(_pushCtx)localStorage.setItem('ax_push_snooze_'+_pushCtx.clientId,String(Date.now())); }catch(_e){} renderPushNudge(); }
+// v665 · el «Mañana» del recordatorio de la mudanza: su propia clave, un día (ver `pushLostReminder`).
+function aviSnoozePushMoved(){ try{ if(_pushCtx)localStorage.setItem('ax_pushmv_snooze_'+_pushCtx.clientId,String(Date.now())); }catch(_e){} renderPushNudge(); }
 // Self-heal del ASESORADO (2026-07-11): si ya dio permiso, re-suscribe FORZADO una vez por
 // sesión — así el asesorado cuya suscripción murió en el cutover (o que nunca posteó por la
 // carrera del token a los 4s) se recupera al abrir la app. Marca "curado" SOLO tras éxito
@@ -838,6 +856,18 @@ function renderCoachPushNudge(){
   const el=document.getElementById('h-push-nudge'); if(!el)return;
   if(CUR.loggedAs!=='coach'||typeof Notification==='undefined'||!('PushManager' in window)){ el.innerHTML=''; return; }
   let snooze=0; try{ snooze=parseInt(localStorage.getItem('ax_push_snooze__coach')||'0',10)||0; }catch(_e){}
+  // v665 · el coach que se mudó y perdió sus avisos: la misma regla que el asesorado, con su marca.
+  let _had=false, _mvSnz=0;
+  try{ _had=!!localStorage.getItem('apex_push:_coach'); _mvSnz=parseInt(localStorage.getItem('ax_pushmv_snooze__coach')||'0',10)||0; }catch(_e){}
+  if(typeof pushLostReminder==='function'&&pushLostReminder(Notification.permission,_had,_mvSnz,Date.now())){
+    const bellM=typeof aviIcon==='function'?aviIcon('bell',15):'🔔';
+    el.innerHTML=`<div class="push-nudge">
+    <div class="push-nudge-txt"><b>${bellM} Vuelve a activar tus notificaciones</b><span>AVI estrenó dirección y tu navegador pide el permiso otra vez. Sin esto no te enteras cuando un asesorado te escribe, reporta dolor o avisa un pago.</span></div>
+    <div class="push-nudge-btns"><button class="btn bp bsm" onclick="aviAskCoachPush()">Activar</button><button class="btn bg bsm" onclick="aviSnoozeCoachPushMoved()">Mañana</button></div>
+  </div>`;
+    return;
+  }
+  if(_had&&Notification.permission==='default'){ el.innerHTML=''; return; }   // su «Mañana» calla todo por hoy
   const state=(typeof pushNudgeDecision==='function')
     ? pushNudgeDecision(Notification.permission,snooze,Date.now(),7)
     : (Notification.permission==='granted'?'hidden':'ask');
@@ -853,6 +883,7 @@ function renderCoachPushNudge(){
   </div>`;
 }
 function aviSnoozeCoachPush(){ try{ localStorage.setItem('ax_push_snooze__coach',String(Date.now())); }catch(_e){} renderCoachPushNudge(); }
+function aviSnoozeCoachPushMoved(){ try{ localStorage.setItem('ax_pushmv_snooze__coach',String(Date.now())); }catch(_e){} renderCoachPushNudge(); }
 async function aviAskCoachPush(){
   try{
     const p=await Notification.requestPermission();

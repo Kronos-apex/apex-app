@@ -176,6 +176,8 @@ const {
   clientAttentionRank,
   sortClientsByAttention,
   pushNudgeDecision,
+  pushLostReminder,
+  PUSH_LOST_SNOOZE_DAYS,
   waterGoalGlasses,
   waterToday,
   waterAdd,
@@ -21254,6 +21256,45 @@ test('🔒 v662 · un iPhone con la app instalada NO salta (se queda en la direc
   // CONTROL: la guarda nombra SOLO `navigator.standalone` (propiedad exclusiva de iOS). Un
   // `display-mode: standalone` dejaría fuera también a los Android instalados, que sí deben saltar.
   assert.ok(!/display-mode/.test(cuerpo), '🔴 la guarda también frenaría a los Android instalados');
+});
+test('🔒 v665 · a quien se mudó y perdió sus avisos se le recuerda activarlos (y no lo esconde el «ahora no» viejo)', () => {
+  const H = 3600e3, D = 24 * H, now = Date.parse('2026-09-23T15:00:00Z');
+  // Tenía avisos (su marca viajó) y el permiso volvió a estar sin dar → se le recuerda.
+  assert.strictEqual(pushLostReminder('default', true, 0, now), true);
+  // CONTROLES: con permiso dado, bloqueado (tiene su propia tarjeta) o sin haberlos tenido nunca, NO.
+  assert.strictEqual(pushLostReminder('granted', true, 0, now), false);
+  assert.strictEqual(pushLostReminder('denied', true, 0, now), false, 'bloqueadas tiene su propia tarjeta con instrucciones');
+  assert.strictEqual(pushLostReminder('default', false, 0, now), false, 'a quien nunca los tuvo le toca el aviso normal');
+  // Su «Mañana» dura UN día, no los 7 del aviso normal.
+  assert.strictEqual(PUSH_LOST_SNOOZE_DAYS, 1);
+  assert.strictEqual(pushLostReminder('default', true, now - 5 * H, now), false, 'recién pospuesto: se calla');
+  assert.strictEqual(pushLostReminder('default', true, now - D - H, now), true, '🔴 al día siguiente tiene que volver');
+  // CABLEADO: la pantalla le pregunta a ESTA regla con la marca que viaja y SU clave de snooze —
+  // no la del aviso normal, que viajó con la mudanza y lo escondería 7 días.
+  const a1 = sinComentarios(_srcApp1());
+  const f = a1.slice(a1.indexOf('function renderPushNudge(){'), a1.indexOf('\nasync function aviAskPush('));
+  assert.ok(/localStorage\.getItem\('apex_push:'\+cid\)/.test(f) && /localStorage\.getItem\('ax_pushmv_snooze_'\+cid\)/.test(f),
+    '🔴 el recordatorio del asesorado no lee la marca de sus avisos o usa el snooze viejo');
+  assert.ok(/pushLostReminder\(Notification\.permission,_had,_mvSnz,Date\.now\(\)\)/.test(f), '🔴 el asesorado no consulta la regla');
+  assert.ok(/mv\.innerHTML=`<div class="push-nudge">/.test(f) && /onclick="aviAskPush\(\)"/.test(f), '🔴 el recordatorio no se pinta o no activa nada');
+  assert.ok(f.indexOf("if(mv)mv.innerHTML='';") > 0 && f.indexOf("if(mv)mv.innerHTML='';") < f.indexOf("if(Notification.permission==='granted')"),
+    '🔴 al activar los avisos el recordatorio se quedaría pegado (no se limpia antes de decidir)');
+  // Pospuesto con su «Mañana», NO lo reemplaza el aviso genérico pidiendo lo mismo en el acto.
+  assert.ok(/^\s*if\(_had&&Notification\.permission==='default'\)\{ el\.innerHTML=''; return; \}/m.test(f),
+    '🔴 al tocar «Mañana» aparece en el acto el aviso genérico pidiendo lo mismo');
+  const fc = a1.slice(a1.indexOf('function renderCoachPushNudge(){'), a1.indexOf('\nfunction aviSnoozeCoachPush('));
+  assert.ok(/^\s*if\(_had&&Notification\.permission==='default'\)\{ el\.innerHTML=''; return; \}/m.test(fc),
+    '🔴 al coach, tocar «Mañana» le muestra en el acto el aviso genérico');
+  assert.ok(/localStorage\.getItem\('apex_push:_coach'\)/.test(fc) && /localStorage\.getItem\('ax_pushmv_snooze__coach'\)/.test(fc)
+    && /pushLostReminder\(Notification\.permission,_had,_mvSnz,Date\.now\(\)\)/.test(fc), '🔴 el coach que se mudó no recibe el recordatorio');
+  // Su espacio va arriba (justo bajo la cabecera) y FUERA del tope de 2 avisos.
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const ord = a4.slice(a4.indexOf('function _todayOrder('), a4.indexOf('_applyTodayCap();', a4.indexOf('function _todayOrder(')));
+  assert.strictEqual((ord.match(/\['cn-today-head','cn-push-moved',/g) || []).length, 2, '🔴 el recordatorio no va justo bajo la cabecera en los dos órdenes');
+  assert.ok(TODAY_CARD_PRIORITY.indexOf('cn-push-moved') === -1, '🔴 el recordatorio entró al tope: quedaría detrás de «Tienes N avisos más»');
+  assert.ok(todayCardPlan(['cn-push-moved', 'cn-deload', 'cn-missday', 'cn-coach-card']).visibles.indexOf('cn-push-moved') >= 0,
+    '🔴 con el tope lleno, el recordatorio se esconde');
+  assert.ok(/<div id="cn-push-moved"><\/div>/.test(require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8')), 'falta su contenedor');
 });
 test('🔒 v664 · con foto de perfil, la imagen del cierre es la FOTO (modelo G, el de la de logro)', () => {
   const fs = require('fs'), path = require('path');
