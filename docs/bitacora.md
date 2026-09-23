@@ -4,6 +4,40 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v662: la mudanza se lleva lo que solo vive en el teléfono (y el iPhone instalado se queda)
+
+- **Día de encender la mudanza** (decidido por el PO el 22-sep). Antes de encenderla se revisó QUÉ viaja, y v658 se
+  quedaba corto: solo llevaba la sesión y los `ax_*` chicos, así que **un entreno a medias** (`done_`/`log_`/`work_`…)
+  y el «ya vi la bienvenida» se quedaban atrás. Ahora lo decide UNA regla pura (`mudanzaPick`, avi-core): lo
+  imprescindible del entreno en curso viaja entero (si no cabe, NO se muda: se queda donde funciona), lo opcional
+  entra de menor a mayor hasta el tope, y los respaldos que la nube ya tiene no viajan nunca.
+- 🔒 **La cola del COACH sin subir frena el salto** (`mudanzaQueuePending`): v658 miraba las banderas del asesorado
+  y no esa cola, así que el coach con un mensaje escrito sin señal se habría mudado dejándolo atrás.
+- 🔒 **La llegada acepta con la MISMA regla** (`mudanzaKeyAllowed`) y **solo la primera vez**: quien ya se mudó y
+  vuelve a tocar el ícono viejo recibiría otra vez las series de AQUEL día marcadas en el entreno de hoy; y un enlace
+  fabricado no puede plantar una cola del coach que se escribiría en la nube al arrancar.
+- 🔒 **La señal cambió de `home` a `hogar` + `v:2`** para que los teléfonos en v658-v661 NO salten con la regla vieja:
+  se actualizan primero y saltan ya con esta.
+- 🔒 **Avisos sin duplicar:** el permiso de avisos es por dominio, y quien los reactiva en el hogar nuevo estrena un
+  endpoint mientras el de github.io sigue vivo. `subscribePush` retira la fila del endpoint anterior de ESE aparato
+  **después** de guardar la nueva. Hacía falta la policy de DELETE (`push_del_own`, mismo alcance que las otras
+  tres), aplicada en producción.
+- 🔴 **El iPhone con la app instalada NO salta** (`navigator.standalone`). En iOS una app de la pantalla de inicio que
+  navega a otro dominio lo abre en un navegador superpuesto, y el ícono viejo repetiría el salto en cada apertura;
+  además cada app instalada en iOS tiene su propio almacenamiento, así que la sesión no puede llegar a la app nueva
+  de ninguna forma. **No se pudo probar en un iPhone real**, y ante la duda se queda en github.io, que sigue vivo.
+  Hoy son Laura y Kathe: se mudan reinstalando desde `app.avientrena.com` en Safari (con su contraseña, una vez).
+- 📊 **Versiones medidas el 23-sep (latido de v541):** **9 teléfonos en v661** (el PO, Diana Pilar, Estella, Diana
+  Paola, Danilo, María Rubio, Laura, Claudia, Kathe) y 10 entre v544 y v657. Los que se actualicen a v662 saltan
+  en la apertura siguiente; los demás siguen funcionando en github.io.
+- **Las 5 edge functions que llama el navegador, desplegadas con `conCors`** (los dos orígenes; `_probe-edge-cors`).
+- **QA:** suite **1328** · `_sabotaje-v662` **22/22** · `_sabotaje-v658` **11/11** (reapuntada: dos anclas se movieron
+  a la regla pura) · `_verify-mudanza` **21/21** (M2c del iPhone probado por sabotaje: sin la guarda, salta) ·
+  `_verify-mudanza-instalada` 3/3 · `_verify-arranque-modulos` 6/6. 🔴 **Dos candados míos aprobaban por casualidad**
+  (el SQL del DELETE aceptaba `true or <alcance>`; se ancla la cláusula entera) y **una matriz interrumpida dejó
+  `sw.js` saboteado**: el hook se puso rojo y las anclas «aparecían 0 veces» — se diagnosticó con `git diff` antes de
+  tocar nada.
+
 ## ⏮️ 2026-09-22 — v661: con foto de perfil, la tarjeta de logro es la FOTO
 
 - **Decisión del PO viendo siete modelos dibujados** (`_preview-logro.mjs`, con su foto real): *«no sé por qué la
