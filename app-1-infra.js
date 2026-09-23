@@ -93,6 +93,12 @@ function _mvTry(){
     const sp=new URLSearchParams((location.search||'').replace(/^\?/,'')); sp.delete('mudanza');
     const q=sp.toString();
     history.replaceState(null,'',location.pathname+(q?'?'+q:''));
+    window._aviLlegoMudanza=true;
+    // v662 · SOLO LA PRIMERA VEZ. Si este teléfono ya tiene sesión en el hogar nuevo, ya se mudó:
+    // quien vuelve a tocar el ícono VIEJO salta otra vez, y el origen viejo guarda las series de
+    // AQUEL día — plantarlas aquí («solo lo que falte») las haría aparecer marcadas en el entreno
+    // de hoy. Y un enlace fabricado tampoco le mete nada a quien ya usa la app.
+    if(localStorage.getItem('avi_auth')!=null)return;
     const data=_mvDecode(m[1]);
     // v662 · la MISMA regla que decide qué viaja (avi-core). Esto lee lo que venga en un ENLACE:
     // lo que escribe en la nube al arrancar (las colas del coach) no se acepta nunca. Sin la regla,
@@ -102,7 +108,6 @@ function _mvTry(){
       if(!_mvOk(k))return;
       if(localStorage.getItem(k)==null) localStorage.setItem(k,String(data[k]));
     });
-    window._aviLlegoMudanza=true;
   }catch(e){}
 })();
 

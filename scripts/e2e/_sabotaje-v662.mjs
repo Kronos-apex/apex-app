@@ -72,6 +72,9 @@ const SABOTAJES = [
   ['sin la regla, la llegada acepta cualquier clave', 'infra',
     "mudanzaKeyAllowed:(k=>k==='avi_auth');",
     "mudanzaKeyAllowed:(k=>true);"],
+  ['quien ya se mudó recibe otra vez las series de aquel día (ícono viejo)', 'infra',
+    "    if(localStorage.getItem('avi_auth')!=null)return;",
+    "    void 0;"],
   // ── Los avisos no se duplican ──
   ['borra la fila del endpoint VIGENTE', 'infra',
     "    if(_prevEp && _prevEp!==sub.endpoint){",

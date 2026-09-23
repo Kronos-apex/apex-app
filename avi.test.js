@@ -21018,7 +21018,8 @@ test('🔒 v658 · la llegada borra el # antes de leerlo y no pisa lo que el hog
   // (v662: QUÉ viaja ya no se afirma aquí con regex sobre app-1 — lo decide `mudanzaPick`, pura,
   //  probada de verdad en los tests de v662.)
   const lleg = a1.slice(a1.indexOf('function _aviLlegada('), a1.indexOf('\n}', a1.indexOf('function _aviLlegada(')));
-  assert.ok(lleg.indexOf('history.replaceState') < lleg.indexOf('_mvDecode'),
+  const iRS = lleg.indexOf('history.replaceState');
+  assert.ok(iRS > 0 && iRS < lleg.indexOf('_mvDecode'),
     '🔴 la sesión se quedaría a la vista en la barra: el # se borra ANTES de nada');
   assert.ok(/sp\.delete\('mudanza'\)/.test(lleg), '🔴 la marca ?mudanza se queda en la barra');
   assert.ok(/localStorage\.getItem\(k\)==null/.test(lleg), '🔴 la llegada pisaría lo que el hogar nuevo ya tiene');
@@ -21181,6 +21182,11 @@ test('🔒 v662 · la llegada acepta con la MISMA regla, y nunca una cola planta
     '🔴 la llegada dejó de usar la regla compartida (o, sin ella, aceptaría de más)');
   assert.ok(/^\s*if\(!_mvOk\(k\)\)return;/m.test(lleg), '🔴 la llegada escribe sin preguntarle a la regla');
   assert.ok(!/\/\^ax_\/\.test\(k\)/.test(lleg), '🔴 volvió el filtro viejo que tiraba el entreno a medias');
+  // Solo la PRIMERA vez: quien ya tiene sesión aquí y vuelve a tocar el ícono viejo recibiría las
+  // series marcadas de aquel día como si fueran de hoy. El guard va ANTES de leer lo que trae.
+  const iGuard = lleg.search(/^\s*if\(localStorage\.getItem\('avi_auth'\)!=null\)return;/m);
+  assert.ok(iGuard > 0 && iGuard < lleg.indexOf('_mvDecode'), '🔴 quien ya se mudó recibiría otra vez lo de aquel día');
+  assert.ok(lleg.indexOf('window._aviLlegoMudanza=true;') < iGuard, 'el aviso de la dirección nueva sale también en los saltos siguientes');
 });
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');

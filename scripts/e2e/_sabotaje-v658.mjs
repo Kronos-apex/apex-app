@@ -35,8 +35,10 @@ const SABOTAJES = [
   // v662: «el respaldo grande no viaja» y «el tope de tamaño» ya no viven en app-1 sino en
   // `mudanzaPick` (avi-core, pura). Sus sabotajes se mudaron a `_sabotaje-v662.mjs`.
   ['la sesión se queda a la vista en la barra (el # se borra DESPUÉS de leerlo)', 'infra',
-    "    const sp=new URLSearchParams((location.search||'').replace(/^\\?/,'')); sp.delete('mudanza');\n    const q=sp.toString();\n    history.replaceState(null,'',location.pathname+(q?'?'+q:''));\n    const data=_mvDecode(m[1]);",
-    "    const data=_mvDecode(m[1]);\n    const sp=new URLSearchParams((location.search||'').replace(/^\\?/,'')); sp.delete('mudanza');\n    const q=sp.toString();\n    history.replaceState(null,'',location.pathname+(q?'?'+q:''));"],
+    // v662: entre el borrado del # y la lectura ahora van la marca y el guard de «solo la primera
+    // vez», así que el ancla se reapuntó: el sabotaje LEE lo que trae antes de borrar la barra.
+    "    history.replaceState(null,'',location.pathname+(q?'?'+q:''));\n    window._aviLlegoMudanza=true;",
+    "    const _leido=_mvDecode(m[1]);\n    history.replaceState(null,'',location.pathname+(q?'?'+q:''));\n    window._aviLlegoMudanza=true;"],
   ['la marca ?mudanza se queda pegada en la barra', 'infra',
     "sp.delete('mudanza');",
     "void 0;"],

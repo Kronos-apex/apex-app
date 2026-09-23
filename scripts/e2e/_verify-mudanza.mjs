@@ -12,6 +12,7 @@
 //   M3g-M3i se lleva el entreno a medias (aunque una clave pese más de 4.000) y el «ya vi la bienvenida».
 //   M3j NO se lleva la cola del coach (vacía para poder saltar; la llegada no la acepta).
 //   M5 un ENLACE fabricado hacia el hogar nuevo no puede plantar una cola del coach.
+//   M6 quien ya se mudó y vuelve a tocar el ícono VIEJO no recibe las series de aquel día.
 // Corre: node scripts/e2e/_verify-mudanza.mjs
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
@@ -36,8 +37,10 @@ a1 = a1.replace("const AVI_HOME_ORIGIN='https://app.avientrena.com';", "const AV
        .replace("const AVI_OLD_HOSTS=['kronos-apex.github.io'];", "const AVI_OLD_HOSTS=['127.0.0.1:8861'];");
 // Sonda: lo que la llegada escribió, leído EN ESE INSTANTE. Después el cliente de auth descarta la
 // sesión FALSA de la prueba (su token no existe en Supabase) — eso es correcto y no es la mudanza.
-if (a1.split('window._aviLlegoMudanza=true;').length - 1 !== 1) { console.log('🔴 MONTAJE: no encuentro la marca de llegada'); process.exit(1); }
-a1 = a1.replace('window._aviLlegoMudanza=true;', "window._aviLlegoMudanza=true; window.__mvAuth=localStorage.getItem('avi_auth'); window.__mvSnap=Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)]));");
+const _plantado = 'localStorage.setItem(k,String(data[k]));' + String.fromCharCode(10) + '    });';
+const _plantadoArch = a1.includes(String.fromCharCode(13, 10)) ? _plantado.replace(String.fromCharCode(10), String.fromCharCode(13, 10)) : _plantado;
+if (a1.split(_plantadoArch).length - 1 !== 1) { console.log('🔴 MONTAJE: no encuentro el final de la llegada'); process.exit(1); }
+a1 = a1.replace(_plantadoArch, () => _plantadoArch + " window.__mvAuth=localStorage.getItem('avi_auth'); window.__mvSnap=Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)]));");
 writeFileSync(TMP + '/app-1-infra.js', a1);
 
 const viejo = spawn('python', [SRV + '/rootsrv.py', '8861', TMP, '/apex-app/']);
@@ -117,6 +120,14 @@ await ir('http://127.0.0.1:8862/?mudanza=1#avimv=' + trampa);
 const tr = await ev("({cwq:localStorage.getItem('ax_cwq_u-prueba'), snap:window.__mvSnap||null})");
 check('M5 un enlace fabricado NO planta una cola del coach', tr && tr.cwq === null && tr.snap && !('ax_cwq_u-prueba' in tr.snap), JSON.stringify(tr && tr.cwq));
 check('M5b (control) lo inocuo del mismo enlace sí se escribe: la llegada funcionó', tr && tr.snap && tr.snap.ax_theme === '"light"');
+
+// ── M6: este teléfono YA tiene sesión en el hogar nuevo y llega otro salto (el ícono viejo)
+await ev(`localStorage.clear(); localStorage.setItem('avi_auth', ${JSON.stringify(FAKE)}); true`);
+const viejo2 = Buffer.from(JSON.stringify({ avi_auth: 'sesion-vieja', 'done_r9_0_0': '1', ax_theme: '"light"' })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+await send('Page.navigate', { url: 'http://127.0.0.1:8862/?mudanza=1#avimv=' + viejo2 }); await sleep(1500);
+const m6 = await ev("({done:localStorage.getItem('done_r9_0_0'), theme:localStorage.getItem('ax_theme'), marca:!!window._aviLlegoMudanza, href:location.href})");
+check('M6 quien ya se mudó no recibe las series viejas otra vez', m6 && m6.done === null && m6.theme === null, JSON.stringify(m6));
+check('M6b (control) la llegada sí ocurrió: la barra quedó limpia y sabe que llegó', m6 && m6.marca === true && !/avimv/.test(m6.href), m6 && m6.href);
 
 console.log('\njsErrors: ' + JSON.stringify(jsErr));
 const fallas = results.filter(r => r.startsWith('FAIL')).length;
