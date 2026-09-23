@@ -13,8 +13,9 @@ const F = { infra: join(ROOT, 'app-1-infra.js'), sw: join(ROOT, 'sw.js') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 
 const SABOTAJES = [
+  // v662: la señal pasó de `home` a `hogar` + `v:2` (reapuntada en el mismo commit que la cambió).
   ['el salto se arma sin comprobar que el hogar nuevo responda (saltaría ANTES de la mudanza)', 'infra',
-    "      if(!j||j.home!==AVI_HOME_ORIGIN)return;",
+    "      if(!j||j.v!==2||j.hogar!==AVI_HOME_ORIGIN)return;",
     "      if(false)return;"],
   ['el hogar nuevo que no responde deja de ser silencio', 'infra',
     "    .catch(()=>{});   // el hogar nuevo aún no existe: seguir aquí, sin ruido",
@@ -31,12 +32,8 @@ const SABOTAJES = [
   ['ante la duda (excepción) se muda igual', 'infra',
     "  }catch(e){ return true; }",
     "  }catch(e){ return false; }"],
-  ['se lleva el respaldo grande de la fila por el # de la dirección', 'infra',
-    "    if(/^ax_udcache_/.test(k))continue;",
-    "    if(false)continue;"],
-  ['se va el tope de tamaño de lo que viaja', 'infra',
-    "    if(k!=='avi_auth'&&(v.length>4000||total+v.length>60000))continue;",
-    "    if(false)continue;"],
+  // v662: «el respaldo grande no viaja» y «el tope de tamaño» ya no viven en app-1 sino en
+  // `mudanzaPick` (avi-core, pura). Sus sabotajes se mudaron a `_sabotaje-v662.mjs`.
   ['la sesión se queda a la vista en la barra (el # se borra DESPUÉS de leerlo)', 'infra',
     "    const sp=new URLSearchParams((location.search||'').replace(/^\\?/,'')); sp.delete('mudanza');\n    const q=sp.toString();\n    history.replaceState(null,'',location.pathname+(q?'?'+q:''));\n    const data=_mvDecode(m[1]);",
     "    const data=_mvDecode(m[1]);\n    const sp=new URLSearchParams((location.search||'').replace(/^\\?/,'')); sp.delete('mudanza');\n    const q=sp.toString();\n    history.replaceState(null,'',location.pathname+(q?'?'+q:''));"],

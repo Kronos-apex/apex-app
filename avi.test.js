@@ -21152,6 +21152,9 @@ test('🔒 v662 · viaja el entreno a medias y el «ya vi la bienvenida»; los r
   const r3 = mudanzaPick([['avi_auth', 'a'], ...muchas]);
   const peso = Object.entries(r3.carry).reduce((s, [k, v]) => s + k.length + v.length, 0);
   assert.ok(r3.ok && peso <= MV_TOTAL_MAX && r3.dejados.length > 0, '🔴 se pasó del tope que cabe en la dirección');
+  // …y cuando el tope APRIETA, dos teléfonos con lo mismo se llevan lo mismo (sin orden, no).
+  const r3b = mudanzaPick([['avi_auth', 'a'], ...muchas.slice().reverse()]);
+  assert.deepStrictEqual(Object.keys(r3b.carry).sort(), Object.keys(r3.carry).sort(), '🔴 lo que viaja depende del orden en que el navegador lista las claves');
   // Lo IMPRESCINDIBLE que no cabe NO se deja atrás en silencio: no se muda.
   const r4 = mudanzaPick([['avi_auth', 'a'], ['work_r1', 'w'.repeat(MV_TOTAL_MAX + 1)]]);
   assert.strictEqual(r4.ok, false, '🔴 se mudaría dejando atrás el entreno a medias');
@@ -21159,8 +21162,10 @@ test('🔒 v662 · viaja el entreno a medias y el «ya vi la bienvenida»; los r
   assert.strictEqual(mudanzaPick(null).ok, true);
   assert.deepStrictEqual(mudanzaPick([['k', null], [null, 'v'], 'x']).carry, {});
   // Lo que ESCRIBE en la nube al arrancar no viaja, aunque sea chico (para saltar ya está vacío).
-  const r5 = mudanzaPick([['avi_auth', 'a'], ['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]'], ['ax_udirty_u1', '0'], ['ax_udbase_u1', '{}']]);
-  assert.deepStrictEqual(Object.keys(r5.carry), ['avi_auth'], '🔴 viajan colas o bases que la llegada no debe aceptar');
+  // Ni los respaldos, aunque hoy estén casi vacíos (el tope de tamaño no puede ser lo único que los frena).
+  const r5 = mudanzaPick([['avi_auth', 'a'], ['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]'], ['ax_udirty_u1', '0'], ['ax_udbase_u1', '{}'],
+    ['ax_udcache_u1', '{}'], ['ax_coachcache_u1', '{}'], ['ax_bccache', '{}']]);
+  assert.deepStrictEqual(Object.keys(r5.carry), ['avi_auth'], '🔴 viajan colas, bases o respaldos que la llegada no debe aceptar');
 });
 test('🔒 v662 · la llegada acepta con la MISMA regla, y nunca una cola plantada por un enlace', () => {
   const { mudanzaKeyAllowed } = require('./avi-core.js');
