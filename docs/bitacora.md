@@ -4,6 +4,35 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v667: la tarjeta de progreso del coach, con foto, también es la FOTO · y las capturas de la web
+
+- **Pedido del PO:** *«haz que ese sea el modelo para todas las pantallas»* (la imagen grande de la de logro). Las
+  imágenes que se comparten son tres: la de logro (G desde v661), la del cierre (G desde v664) y **la de progreso que
+  el coach arma desde la ficha**, que era la única que seguía en el modelo C.
+- `_storyDrawG` (app-3): foto a sangre encuadrada sobre el texto, texto anclado abajo, marca y enlace dentro de la
+  franja que WhatsApp muestra. **Dice lo mismo que el C** —mediana y no máximo, CARGA y no fuerza, barras en kilos
+  ganados— y los candados de v601 se afirman ahora sobre las dos. 🔒 **Hasta 5 barras y no 8**: con 8 el texto
+  arrancaba en y≈370 y le tapaba la cara; el recuento completo va debajo. Sin foto, el C de siempre (su círculo ya
+  solo pinta iniciales: la rama de la foto quedó inalcanzable y se quitó). La foto sigue sin entrar en `showcaseRow`.
+- 🔴 **Dos fallos míos, cazados antes de servir:** el espaciado se calculó con la versal de Anton a 0,74 del cuerpo y
+  mide 0,87 (la etiqueta y el nombre salían pegados — se vio MIRANDO la imagen); y la sonda pedía un naranja puro
+  cuando el tratamiento de marca lo templa a (145,111,65) — el control sin foto (7,43,31) es el que prueba que el
+  umbral nuevo separa.
+- **QA:** suite **1332 → 1335** (el test de los pies pasa de 5 a 6, re-encuadrado; uno de los nuevos EJECUTA el
+  dibujo con un contexto falso y afirma dónde queda cada bloque) · `_sabotaje-v667` **9/9 a la primera** ·
+  `_verify-story-g` **8/8** con su control.
+- **Las 6 capturas de avientrena.com, regeneradas** (decisión del PO: *«Genéralas tú»*). Las del 27-jun eran del
+  diseño viejo, una decía «Borrador generado automáticamente» y **la del plan saludaba a un asesorado MENOR de edad
+  en una página pública**. `_capturas-web.mjs` monta a una asesorada INVENTADA con los mismos motores que usa la app
+  (`bwUpsert`, `medUpsert`) y fotografía lo que promete cada rótulo. Van a `/shots/2026-09/` (el escape de caché de
+  `next.config`: con el mismo nombre se habrían seguido sirviendo las viejas) y **las viejas dan 404**. El texto de la
+  web dice ahora «con datos de ejemplo». 🔴 El «Invalid Date» de la primera toma era MÍO: el peso se guarda como
+  `YYYY-MM-DD` y el montaje le pasaba la fecha completa.
+- ⏭️ **Visto al hacer las capturas, sin tocar (radar):** la lista del peso se arrastra 14 px de lado (el área táctil
+  del ✕ se sale del contenedor) · las etiquetas de fecha de la gráfica de medidas se cortan por abajo («27 jul») y su
+  línea sale naranja aunque todo baje · el color del cambio de peso no mira el objetivo (subir es naranja también para
+  quien busca ganar músculo) · la gráfica de la habitación de la rutina pinta «9082.5 kg» sin separador de miles.
+
 ## ⏮️ 2026-09-23 — v666: «¿Cómo te sientes hoy?» con los íconos de la marca
 
 - **Pedido del PO:** *«no me gustan esos stickers genéricos del banner de cómo te sientes hoy»*. Eran emojis del
