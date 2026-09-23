@@ -11505,6 +11505,71 @@ function shareSiteLabel(site) {
   return s || AVI_WEB_HOST;
 }
 
+// ══════════ v662 · QUÉ SE LLEVA EL TELÉFONO AL MUDARSE A app.avientrena.com ══════════
+// v658 se llevaba SOLO la sesión y las claves `ax_*` de hasta 4.000 caracteres. Revisado el 23-sep,
+// antes de encender la mudanza, eso dejaba atrás tres cosas que solo viven en el teléfono:
+//   · el ENTRENO A MEDIAS (`done_`, `log_`, `session_id_`…): quien reabre la app entre series
+//     saltaba y encontraba sus series sin marcar — y con otra `session_id`, un segundo registro;
+//   · las marcas de «ya lo vi» sin prefijo `ax_` (`apex_ob_done_<id>` es la bienvenida de 3
+//     pantallas): a TODOS los asesorados les volvía a salir la bienvenida al llegar;
+//   · la cola del coach (`ax_cwq_*`) si pesaba más de 4.000 caracteres: se descartaba en silencio.
+// La regla nueva se invierte: viaja TODO menos los respaldos grandes que la nube ya tiene.
+//   · IMPRESCINDIBLE (la sesión y el entreno en curso): viaja entero; si no cabe, NO se muda
+//     (`ok:false`) — jamás se deja atrás en silencio.
+//   · NUNCA viaja ni se acepta al llegar (`mudanzaKeyAllowed`):
+//       - los respaldos grandes (`ax_udcache_`, `ax_coachcache_`, `ax_bccache`): el hogar nuevo los baja;
+//       - lo que ESCRIBE en la nube al arrancar: las colas del coach (`ax_cwq_`, `ax_coachpending_`),
+//         la bandera de «sin confirmar» (`ax_udirty_`) y la base de la fusión (`ax_udbase_`). Para
+//         saltar tienen que estar vacías (`_mvHasPending`), así que no hace falta llevarlas; y la
+//         llegada lee lo que venga en un ENLACE — quien fabrique uno no puede plantarle al coach
+//         una cola que su app subiría con sus permisos.
+//   · lo demás viaja si mide ≤ MV_ITEM_MAX y cabe en MV_TOTAL_MAX, de menor a mayor (determinista):
+//     lo que se queda afuera es grande y, por eso mismo, es de lo que la nube tiene copia.
+// El tope total existe porque todo viaja en el `#` de la dirección.
+const MV_ITEM_MAX = 4000;
+const MV_TOTAL_MAX = 100000;
+const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
+const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpending_|ax_udirty_|ax_udbase_)/;
+// La MISMA regla del lado que envía y del que recibe (una sola definición).
+function mudanzaKeyAllowed(k) {
+  return typeof k === 'string' && k.length > 0 && !MV_SKIP_RE.test(k);
+}
+function mudanzaPick(entries) {
+  const must = [], opt = [];
+  for (const e of (Array.isArray(entries) ? entries : [])) {
+    if (!Array.isArray(e)) continue;
+    const k = e[0], v = e[1];
+    if (v == null || !mudanzaKeyAllowed(k)) continue;
+    (MV_MUST_RE.test(k) ? must : opt).push([k, String(v)]);
+  }
+  const carry = {}; let total = 0;
+  for (const [k, v] of must) { carry[k] = v; total += k.length + v.length; }
+  if (total > MV_TOTAL_MAX) return { ok: false, reason: 'imprescindible_no_cabe', carry: {}, dejados: [] };
+  const dejados = [];
+  opt.sort((a, b) => (a[1].length - b[1].length) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  for (const [k, v] of opt) {
+    const peso = k.length + v.length;
+    if (v.length > MV_ITEM_MAX || total + peso > MV_TOTAL_MAX) { dejados.push(k); continue; }
+    carry[k] = v; total += peso;
+  }
+  return { ok: true, carry, dejados };
+}
+// ¿Quedó trabajo del COACH sin subir? La cola de escrituras (v588) y las altas sin red (junio)
+// viven en localStorage; mudarse con algo ahí es arriesgar lo que escribió. Ante un valor que no
+// se entiende, se responde «sí, hay algo» (no mudarse es el lado seguro).
+function mudanzaQueuePending(entries) {
+  for (const e of (Array.isArray(entries) ? entries : [])) {
+    if (!Array.isArray(e) || typeof e[0] !== 'string' || !/^(ax_cwq_|ax_coachpending_)/.test(e[0])) continue;
+    const v = e[1];
+    if (v == null || v === '') continue;
+    try {
+      const x = JSON.parse(v);
+      if (Array.isArray(x) ? x.length > 0 : (x && typeof x === 'object' ? Object.keys(x).length > 0 : !!x)) return true;
+    } catch (_e) { return true; }
+  }
+  return false;
+}
+
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -11514,6 +11579,11 @@ if (typeof module !== 'undefined' && module.exports) {
     waPhoneNote,
     AVI_WEB_HOST,
     shareSiteLabel,
+    MV_ITEM_MAX,
+    MV_TOTAL_MAX,
+    mudanzaPick,
+    mudanzaKeyAllowed,
+    mudanzaQueuePending,
     coachCanReach,
     coachPendingRenewals,
     coachInGrace,

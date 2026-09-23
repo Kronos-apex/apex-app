@@ -21001,7 +21001,8 @@ test('🔒 v658 · el salto solo se arma con el hogar nuevo RESPONDIENDO, y nunc
   const cuerpo = (fn) => { const i = a1.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return a1.slice(i, a1.indexOf('\n}', i)); };
   assert.ok(/const AVI_HOME_ORIGIN='https:\/\/app\.avientrena\.com';/.test(a1), '🔴 cambió el hogar nuevo');
   const arma = cuerpo('function _aviMudanza(');
-  assert.ok(/fetch\(AVI_HOME_ORIGIN\+'\/mudanza\.json'/.test(arma) && /j\.home!==AVI_HOME_ORIGIN/.test(arma),
+  // v662 · la señal pasó de `home` a `hogar` + `v:2` (ver el test de v662 más abajo).
+  assert.ok(/fetch\(AVI_HOME_ORIGIN\+'\/mudanza\.json'/.test(arma) && /if\(!j\|\|j\.v!==2\|\|j\.hogar!==AVI_HOME_ORIGIN\)return;/.test(arma),
     '🔴 el salto dejó de exigir que el hogar nuevo responda: se activaría antes de la mudanza');
   assert.ok(/\.catch\(\(\)=>\{\}\)/.test(arma), '🔴 sin hogar nuevo tiene que seguir en silencio');
   const tryFn = cuerpo('function _mvTry(');
@@ -21012,12 +21013,10 @@ test('🔒 v658 · el salto solo se arma con el hogar nuevo RESPONDIENDO, y nunc
     assert.ok(pend.includes(k), `🔴 dejó de mirar ${k} antes de mudarse`));
   assert.ok(/catch\(e\)\{ return true; \}/.test(pend), '🔴 ante la duda tiene que NO mudarse');
 });
-test('🔒 v658 · lo que viaja es la sesión y los ajustes chicos, jamás los respaldos grandes', () => {
+test('🔒 v658 · la llegada borra el # antes de leerlo y no pisa lo que el hogar nuevo ya tiene', () => {
   const a1 = sinComentarios(_srcApp1());
-  const pick = a1.slice(a1.indexOf('function _mvPickStorage('), a1.indexOf('\n}', a1.indexOf('function _mvPickStorage(')));
-  assert.ok(/k==='avi_auth'\|\|\/\^ax_\/\.test\(k\)/.test(pick), '🔴 cambió qué claves viajan');
-  assert.ok(/\/\^ax_udcache_\/\.test\(k\)\)continue;/.test(pick), '🔴 volvería a viajar el respaldo grande de la fila');
-  assert.ok(/v\.length>4000\|\|total\+v\.length>60000/.test(pick), '🔴 se fue el tope de tamaño');
+  // (v662: QUÉ viaja ya no se afirma aquí con regex sobre app-1 — lo decide `mudanzaPick`, pura,
+  //  probada de verdad en los tests de v662.)
   const lleg = a1.slice(a1.indexOf('function _aviLlegada('), a1.indexOf('\n}', a1.indexOf('function _aviLlegada(')));
   assert.ok(lleg.indexOf('history.replaceState') < lleg.indexOf('_mvDecode'),
     '🔴 la sesión se quedaría a la vista en la barra: el # se borra ANTES de nada');
@@ -21119,6 +21118,115 @@ test('🔒 v661 · con foto de perfil la tarjeta de logro va A SANGRE, sin círc
   assert.ok(/if\(typeof _wfDrawCrest==='function'\)_wfDrawCrest\(x,540,560\+_gy/.test(sinFoto),
     '🔴 quien no tiene foto se quedó sin retrato');
   assert.ok(/fillRect\(90,1600,900,4\)/.test(sinFoto), '🔴 quien no tiene foto se quedó sin la raya del pie');
+});
+
+// ══════════════════════════════════════════════════════
+// v662 · LA MUDANZA SE LLEVA LO QUE SOLO VIVE EN EL TELÉFONO
+// ══════════════════════════════════════════════════════
+test('🔒 v662 · viaja el entreno a medias y el «ya vi la bienvenida»; los respaldos grandes, nunca', () => {
+  const { mudanzaPick, MV_ITEM_MAX, MV_TOTAL_MAX } = require('./avi-core.js');
+  const grande = 'x'.repeat(MV_ITEM_MAX + 1);
+  const entradas = [
+    ['avi_auth', '{"access_token":"t"}'],
+    ['done_r1_0_0', '1'], ['log_r1_0_0_kg', '40'], ['log_r1_0_0_reps', '12'],
+    ['session_date_r1', 'Wed Sep 23 2026'], ['session_id_r1', 's-123'],
+    ['work_r1', grande],                               // el reorden de hoy puede ser grande: viaja igual
+    ['apex_ob_done_c1', '1'],                          // la bienvenida de 3 pantallas ya vista
+    ['ax_theme', '"dark"'],
+    ['ax_udcache_u1', 'y'.repeat(20000)], ['ax_coachcache_u1', 'z'.repeat(9000)], ['ax_bccache', '{}'],
+    ['ax_e', grande],                                  // la biblioteca: grande, la nube la tiene
+  ];
+  const r = mudanzaPick(entradas);
+  assert.strictEqual(r.ok, true);
+  ['avi_auth', 'done_r1_0_0', 'log_r1_0_0_kg', 'log_r1_0_0_reps', 'session_date_r1', 'session_id_r1', 'work_r1'].forEach(k =>
+    assert.ok(k in r.carry, `🔴 el entreno a medias se queda atrás: falta ${k} (series sin marcar y un segundo registro)`));
+  assert.ok('apex_ob_done_c1' in r.carry, '🔴 a todos les volvería a salir la bienvenida al llegar');
+  assert.ok('ax_theme' in r.carry, '🔴 se perdieron los ajustes chicos');
+  ['ax_udcache_u1', 'ax_coachcache_u1', 'ax_bccache'].forEach(k => assert.ok(!(k in r.carry), `🔴 viajaría el respaldo ${k} por la dirección`));
+  assert.ok(!('ax_e' in r.carry) && r.dejados.includes('ax_e'), '🔴 lo grande que la nube tiene no se deja atrás (o no se dice)');
+  // El orden de entrada no cambia el resultado (dos teléfonos iguales se mudan igual).
+  const r2 = mudanzaPick(entradas.slice().reverse());
+  assert.deepStrictEqual(Object.keys(r2.carry).sort(), Object.keys(r.carry).sort());
+  // El total nunca pasa el tope, aunque haya muchísimas claves chicas opcionales.
+  const muchas = Array.from({ length: 400 }, (_, i) => ['coachmute_c' + i + '_x', 'x'.repeat(3000)]);
+  const r3 = mudanzaPick([['avi_auth', 'a'], ...muchas]);
+  const peso = Object.entries(r3.carry).reduce((s, [k, v]) => s + k.length + v.length, 0);
+  assert.ok(r3.ok && peso <= MV_TOTAL_MAX && r3.dejados.length > 0, '🔴 se pasó del tope que cabe en la dirección');
+  // Lo IMPRESCINDIBLE que no cabe NO se deja atrás en silencio: no se muda.
+  const r4 = mudanzaPick([['avi_auth', 'a'], ['work_r1', 'w'.repeat(MV_TOTAL_MAX + 1)]]);
+  assert.strictEqual(r4.ok, false, '🔴 se mudaría dejando atrás el entreno a medias');
+  // Entradas raras no rompen nada.
+  assert.strictEqual(mudanzaPick(null).ok, true);
+  assert.deepStrictEqual(mudanzaPick([['k', null], [null, 'v'], 'x']).carry, {});
+  // Lo que ESCRIBE en la nube al arrancar no viaja, aunque sea chico (para saltar ya está vacío).
+  const r5 = mudanzaPick([['avi_auth', 'a'], ['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]'], ['ax_udirty_u1', '0'], ['ax_udbase_u1', '{}']]);
+  assert.deepStrictEqual(Object.keys(r5.carry), ['avi_auth'], '🔴 viajan colas o bases que la llegada no debe aceptar');
+});
+test('🔒 v662 · la llegada acepta con la MISMA regla, y nunca una cola plantada por un enlace', () => {
+  const { mudanzaKeyAllowed } = require('./avi-core.js');
+  ['avi_auth', 'done_r1_0_0', 'log_r1_0_0_kg', 'session_id_r1', 'apex_ob_done_c1', 'ax_theme', 'ax_news_seen'].forEach(k =>
+    assert.strictEqual(mudanzaKeyAllowed(k), true, 'tendría que llegar: ' + k));
+  ['ax_cwq_u1', 'ax_coachpending_u1', 'ax_udirty_u1', 'ax_udbase_u1', 'ax_udcache_u1', 'ax_coachcache_u1', 'ax_bccache', '', null, 5].forEach(k =>
+    assert.strictEqual(mudanzaKeyAllowed(k), false, '🔴 la llegada aceptaría ' + k));
+  // CONTROL: el prefijo exacto, no uno parecido.
+  assert.strictEqual(mudanzaKeyAllowed('ax_bccache_x'), true);
+  const a1 = sinComentarios(_srcApp1());
+  const lleg = a1.slice(a1.indexOf('function _aviLlegada('), a1.indexOf('\n}', a1.indexOf('function _aviLlegada(')));
+  assert.ok(/const _mvOk=\(typeof mudanzaKeyAllowed==='function'\)\?mudanzaKeyAllowed:\(k=>k==='avi_auth'\);/.test(lleg),
+    '🔴 la llegada dejó de usar la regla compartida (o, sin ella, aceptaría de más)');
+  assert.ok(/^\s*if\(!_mvOk\(k\)\)return;/m.test(lleg), '🔴 la llegada escribe sin preguntarle a la regla');
+  assert.ok(!/\/\^ax_\/\.test\(k\)/.test(lleg), '🔴 volvió el filtro viejo que tiraba el entreno a medias');
+});
+test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
+  const { mudanzaQueuePending } = require('./avi-core.js');
+  assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');
+  assert.strictEqual(mudanzaQueuePending([]), false);
+  assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[{"col":"msgs"}]']]), true, '🔴 se mudaría con mensajes sin subir');
+  assert.strictEqual(mudanzaQueuePending([['ax_coachpending_u1', '[{"client":{}}]']]), true, '🔴 se mudaría con un alta sin subir');
+  assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '{roto']]), true, '🔴 ante la duda tiene que NO mudarse');
+  // CONTROL: una clave parecida que no es una cola no frena nada.
+  assert.strictEqual(mudanzaQueuePending([['ax_cwqx', '[1]'], ['ax_theme', '[1]']]), false);
+});
+test('🔒 v662 · el salto delega en la regla y, si falta o no cabe, se queda', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const cuerpo = (fn) => { const i = a1.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return a1.slice(i, a1.indexOf('\n}', i)); };
+  const pick = cuerpo('function _mvPickStorage(');
+  assert.ok(/if\(typeof mudanzaPick!=='function'\)return \{ok:false/.test(pick) && /return mudanzaPick\(_mvEntries\(ls\)\);/.test(pick),
+    '🔴 la selección de lo que viaja dejó de ser la regla probada (o se muda sin ella)');
+  const target = cuerpo('function _mvTarget(');
+  assert.ok(/if\(!pick\|\|!pick\.ok\)return null;/.test(target) && /_mvEncode\(pick\.carry\)/.test(target), '🔴 se mudaría sin lo imprescindible');
+  const tryFn = cuerpo('function _mvTry(');
+  assert.ok(/^\s*if\(!destino\)return false;/m.test(tryFn), '🔴 salta aunque lo imprescindible no quepa');
+  assert.ok(tryFn.indexOf('_mvHasPending()') < tryFn.indexOf('_mvTarget()'), 'primero lo pendiente, después el destino');
+  const pend = cuerpo('function _mvHasPending(');
+  assert.ok(/if\(typeof mudanzaQueuePending!=='function'\)return true;/.test(pend) && /^\s*if\(mudanzaQueuePending\(_mvEntries\(localStorage\)\)\)return true;/m.test(pend),
+    '🔴 se mudaría con la cola del coach sin subir');
+});
+test('🔒 v662 · la señal nueva no la entienden v658-v661 (saltarían con la regla vieja)', () => {
+  const s = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'scripts', 'hogar-mudanza.json'), 'utf8'));
+  assert.strictEqual(s.v, 2);
+  assert.strictEqual(s.hogar, 'https://app.avientrena.com');
+  assert.ok(!('home' in s), '🔴 con `home`, los teléfonos en v658-v661 saltarían con la regla vieja y dejarían atrás el entreno a medias');
+});
+test('🔒 v662 · al cambiar de endpoint, el aparato retira SU fila anterior (sin avisos dobles), después de guardar la nueva', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const i = a1.indexOf('async function subscribePush(');
+  const sp = a1.slice(i, a1.indexOf('\n}', i));
+  const iPrev = sp.indexOf('const _prevEp=localStorage.getItem(_pushKey);');
+  const iUpsert = sp.indexOf(".from('push_subscriptions').upsert(");
+  const iErr = sp.indexOf("if(_perr){");
+  const iDel = sp.indexOf(".from('push_subscriptions').delete().eq('client_id',_cid).eq('subscription->>endpoint',_prevEp)");
+  const iSet = sp.indexOf('localStorage.setItem(_pushKey,sub.endpoint);');
+  assert.ok(iPrev > 0 && iPrev < iUpsert, '🔴 el endpoint anterior se lee después de pisarlo');
+  assert.ok(iDel > iErr && iErr > iUpsert, '🔴 se borraría la vieja ANTES de tener la nueva: un hueco sin avisos');
+  assert.ok(iSet > iDel, '🔴 se marcaría la nueva antes de retirar la vieja');
+  assert.ok(/if\(_prevEp && _prevEp!==sub\.endpoint\)\{/.test(sp), '🔴 borraría la fila del endpoint VIGENTE');
+  // La base tiene que dejarlo: sin policy de DELETE el borrado devuelve 0 filas sin error.
+  const sql = require('fs').readFileSync(require('path').join(__dirname, 'supabase', 'migrations', '20260923_push_del_own.sql'), 'utf8')
+    .split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
+  const alcance = "client_id = ((select auth.uid()))::text\n    or (client_id = '_coach'::text and (select auth.uid()) = '0a6484ed-42af-449d-9903-e440ac683ecf'::uuid)";
+  assert.ok(/create policy push_del_own on public\.push_subscriptions\s+for delete to authenticated/.test(sql), '🔴 sin policy de DELETE');
+  assert.ok(sql.replace(/\r/g, '').includes(alcance), '🔴 el alcance del DELETE no es el mismo de INSERT/UPDATE/SELECT');
 });
 
 // ══════════════════════════════════════════════════════

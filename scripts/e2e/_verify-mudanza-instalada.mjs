@@ -35,7 +35,7 @@ for (const [a, b] of [["const AVI_HOME_ORIGIN='https://app.avientrena.com';", "c
   a1 = a1.replace(a, b);
 }
 writeFileSync(NUEVA + '/app-1-infra.js', a1);
-writeFileSync(NUEVA + '/mudanza.json', JSON.stringify({ home: 'http://127.0.0.1:8862' }));
+writeFileSync(NUEVA + '/mudanza.json', JSON.stringify({ hogar: 'http://127.0.0.1:8862', v: 2 }));
 const vNueva = (readFileSync(NUEVA + '/sw.js', 'utf8').match(/avi-v(\d+)/) || [])[1];
 console.log(`instalada v${vVieja} (${REF}) → nueva v${vNueva} (código de trabajo)`);
 

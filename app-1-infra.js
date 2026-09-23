@@ -16,23 +16,23 @@ const warn = (...a) => window.AVI_DEBUG && console.warn(...a);
 //     el dominio no existe y esto no hace nada; con el certificado aún sin emitir, tampoco;
 //   · espera a que la nube haya confirmado todo (flag «sucio», escrituras en vuelo o pendientes) y a
 //     que no haya un entreno vivo ni un modal abierto (`_aviUpdateBusy`, la misma noción de v325);
-//   · se LLEVA la sesión y los ajustes pequeños del teléfono por el `#` de la dirección (no viaja al
-//     servidor y la llegada lo borra de la barra en el acto).
+//   · se LLEVA la sesión, el entreno a medias y lo que el teléfono recuerda por el `#` de la
+//     dirección (no viaja al servidor y la llegada lo borra de la barra en el acto). v662 amplió
+//     qué viaja: ver `mudanzaPick` en avi-core.
 const AVI_HOME_ORIGIN='https://app.avientrena.com';
 const AVI_OLD_HOSTS=['kronos-apex.github.io'];
-// Qué se lleva: la sesión (`avi_auth`) y los ajustes locales pequeños. NO los respaldos grandes de
-// la fila (`ax_udcache_*`): la nube los tiene y el hogar nuevo los baja al entrar.
-function _mvPickStorage(ls){
-  const out={}; let total=0;
-  for(let i=0;i<ls.length;i++){
-    const k=ls.key(i); if(!k)continue;
-    if(!(k==='avi_auth'||/^ax_/.test(k)))continue;
-    if(/^ax_udcache_/.test(k))continue;
-    const v=ls.getItem(k); if(v==null)continue;
-    if(k!=='avi_auth'&&(v.length>4000||total+v.length>60000))continue;
-    out[k]=v; total+=v.length;
-  }
+// Qué se lleva (v662): TODO menos los respaldos grandes que la nube ya tiene — la regla vive en
+// `mudanzaPick` (avi-core), que es pura y está probada. v658 solo llevaba la sesión y los `ax_*`
+// chicos, y dejaba atrás el entreno a medias y el «ya vi la bienvenida» (ver avi-core).
+function _mvEntries(ls){
+  const out=[];
+  for(let i=0;i<ls.length;i++){ const k=ls.key(i); if(!k)continue; out.push([k,ls.getItem(k)]); }
   return out;
+}
+function _mvPickStorage(ls){
+  // Sin la regla (avi-core no cargó) NO se muda: mudarse a ciegas es justo lo que esto evita.
+  if(typeof mudanzaPick!=='function')return {ok:false,carry:{},dejados:[]};
+  return mudanzaPick(_mvEntries(ls));
 }
 function _mvEncode(obj){ return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function _mvDecode(s){ s=String(s||'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return JSON.parse(decodeURIComponent(escape(atob(s)))); }
@@ -45,20 +45,29 @@ function _mvHasPending(){
     if(typeof _udFailedKeys!=='undefined'&&Object.keys(_udFailedKeys).length)return true;
     if(typeof _pendingPush!=='undefined'&&Object.keys(_pendingPush).length)return true;
     for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^ax_udirty_/.test(k||'')&&localStorage.getItem(k)==='1')return true; }
+    // v662 · la cola del COACH (lo que escribió sin señal) y sus altas sin red también son trabajo
+    // sin subir, y no siempre levantan la bandera de arriba. Sin la regla, tampoco se muda.
+    if(typeof mudanzaQueuePending!=='function')return true;
+    if(mudanzaQueuePending(_mvEntries(localStorage)))return true;
   }catch(e){ return true; }
   return false;
 }
+// Devuelve la dirección del hogar nuevo con lo que viaja, o null si algo imprescindible no cabe.
 function _mvTarget(){
+  const pick=_mvPickStorage(localStorage);
+  if(!pick||!pick.ok)return null;
   const sp=new URLSearchParams((location.search||'').replace(/^\?/,'')); sp.set('mudanza','1');
-  return AVI_HOME_ORIGIN+'/?'+sp.toString()+'#avimv='+_mvEncode(_mvPickStorage(localStorage));
+  return AVI_HOME_ORIGIN+'/?'+sp.toString()+'#avimv='+_mvEncode(pick.carry);
 }
 let _mvArmed=false, _mvGone=false;
 function _mvTry(){
   if(!_mvArmed||_mvGone)return false;
   if(typeof window._aviUpdateBusy==='function'&&window._aviUpdateBusy())return false;
   if(_mvHasPending())return false;
+  const destino=_mvTarget();
+  if(!destino)return false;   // v662 · lo imprescindible no cabe: se queda aquí, que funciona igual
   _mvGone=true;
-  try{ location.replace(_mvTarget()); }catch(e){ _mvGone=false; return false; }
+  try{ location.replace(destino); }catch(e){ _mvGone=false; return false; }
   return true;
 }
 (function _aviMudanza(){
@@ -67,7 +76,9 @@ function _mvTry(){
   fetch(AVI_HOME_ORIGIN+'/mudanza.json',{cache:'no-store'})
     .then(r=>r.ok?r.json():null)
     .then(j=>{
-      if(!j||j.home!==AVI_HOME_ORIGIN)return;
+      // v662 · la señal usa `hogar` y ya NO `home`: v658-v661 solo miran `home`, así que con esta
+      // señal NO saltan — se actualizan primero y saltan ya con la regla de lo que viaja corregida.
+      if(!j||j.v!==2||j.hogar!==AVI_HOME_ORIGIN)return;
       _mvArmed=true;
       if(!_mvTry()) setInterval(_mvTry,5000);
     })
@@ -83,8 +94,12 @@ function _mvTry(){
     const q=sp.toString();
     history.replaceState(null,'',location.pathname+(q?'?'+q:''));
     const data=_mvDecode(m[1]);
+    // v662 · la MISMA regla que decide qué viaja (avi-core). Esto lee lo que venga en un ENLACE:
+    // lo que escribe en la nube al arrancar (las colas del coach) no se acepta nunca. Sin la regla,
+    // solo la sesión — mejor llegar con menos que plantar algo que no se revisó.
+    const _mvOk=(typeof mudanzaKeyAllowed==='function')?mudanzaKeyAllowed:(k=>k==='avi_auth');
     Object.keys(data||{}).forEach(k=>{
-      if(!(k==='avi_auth'||/^ax_/.test(k)))return;
+      if(!_mvOk(k))return;
       if(localStorage.getItem(k)==null) localStorage.setItem(k,String(data[k]));
     });
     window._aviLlegoMudanza=true;
@@ -679,9 +694,10 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
       });
     }
     const _pushKey=`apex_push:${clientId}`;
+    const _prevEp=localStorage.getItem(_pushKey);
     // force: re-inserta aunque el endpoint no haya cambiado (self-heal cuando la fila del
     // servidor se borró — p.ej. tras el cutover o al podar suscripciones muertas).
-    if(!force && !shouldPostPush(localStorage.getItem(_pushKey),sub.endpoint))return true; // ya al día
+    if(!force && !shouldPostPush(_prevEp,sub.endpoint))return true; // ya al día
     // Escribir con el CLIENTE de Supabase (como UD.upsertOwn), NO con fetch crudo. El fetch
     // crudo mandaba `Bearer ${getSession().access_token}` — un token que llegaba VENCIDO (no se
     // refrescaba) → PostgREST lo trataba como ANÓNIMO → la RLS rechazaba TODAS las suscripciones
@@ -712,6 +728,18 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
       { onConflict:'client_id,subscription' }
     );
     if(_perr){ warn('AVI Push: registro rechazado',_perr.message); return false; } // no marcar el endpoint como registrado
+    // v662 · ESTE aparato cambió de endpoint: su fila anterior sobra. Pasa en la mudanza a
+    // app.avientrena.com —el permiso es por origen, así que al reactivar avisos nace un endpoint
+    // nuevo mientras el de github.io SIGUE VIVO (su service worker no muere) y cada aviso llegaría
+    // DOS veces hasta que la poda de v577 lo alcanzara, 21 días después— y cuando el navegador
+    // rota la suscripción. Se borra solo DESPUÉS de guardar la nueva (nunca un hueco sin avisos),
+    // solo esa fila exacta, y un fallo aquí no cambia nada: queda la poda de v577 de respaldo.
+    if(_prevEp && _prevEp!==sub.endpoint){
+      try{
+        const { error:_derr }=await _c.from('push_subscriptions').delete().eq('client_id',_cid).eq('subscription->>endpoint',_prevEp);
+        if(_derr) warn('AVI Push: no se pudo retirar el endpoint anterior',_derr.message);
+      }catch(_e){ warn('AVI Push: no se pudo retirar el endpoint anterior',_e&&_e.message); }
+    }
     localStorage.setItem(_pushKey,sub.endpoint);
     log('AVI Push: suscripción guardada ✅');
     return true;

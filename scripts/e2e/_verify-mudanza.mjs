@@ -6,6 +6,12 @@
 //   M3 todo confirmado: salta al hogar nuevo, se lleva la sesión y los ajustes chicos,
 //      NO se lleva el respaldo grande de la fila, y borra de la barra el # y la marca ?mudanza.
 //   M4 el hogar nuevo no vuelve a saltar (no hay bucle) y la app arranca.
+// v662:
+//   M1b con la señal VIEJA (`home`) no salta: así los teléfonos en v658-v661 no saltan con su regla vieja.
+//   M2b con la cola del coach sin subir, no salta.
+//   M3g-M3i se lleva el entreno a medias (aunque una clave pese más de 4.000) y el «ya vi la bienvenida».
+//   M3j NO se lleva la cola del coach (vacía para poder saltar; la llegada no la acepta).
+//   M5 un ENLACE fabricado hacia el hogar nuevo no puede plantar una cola del coach.
 // Corre: node scripts/e2e/_verify-mudanza.mjs
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
@@ -31,7 +37,7 @@ a1 = a1.replace("const AVI_HOME_ORIGIN='https://app.avientrena.com';", "const AV
 // Sonda: lo que la llegada escribió, leído EN ESE INSTANTE. Después el cliente de auth descarta la
 // sesión FALSA de la prueba (su token no existe en Supabase) — eso es correcto y no es la mudanza.
 if (a1.split('window._aviLlegoMudanza=true;').length - 1 !== 1) { console.log('🔴 MONTAJE: no encuentro la marca de llegada'); process.exit(1); }
-a1 = a1.replace('window._aviLlegoMudanza=true;', "window._aviLlegoMudanza=true; window.__mvAuth=localStorage.getItem('avi_auth');");
+a1 = a1.replace('window._aviLlegoMudanza=true;', "window._aviLlegoMudanza=true; window.__mvAuth=localStorage.getItem('avi_auth'); window.__mvSnap=Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)]));");
 writeFileSync(TMP + '/app-1-infra.js', a1);
 
 const viejo = spawn('python', [SRV + '/rootsrv.py', '8861', TMP, '/apex-app/']);
@@ -60,17 +66,30 @@ await plantar();
 await ir('http://127.0.0.1:8861/apex-app/'); await sleep(3000);
 check('M1 sin hogar nuevo, la app se queda donde está', (await ev('location.host')) === '127.0.0.1:8861', await ev('location.href'));
 
-// Se enciende el hogar nuevo con su marca.
+// ── M1b: el hogar responde pero con la señal VIEJA (la de v658) → v662 no la toma
 writeFileSync(TMP + '/mudanza.json', JSON.stringify({ home: 'http://127.0.0.1:8862' }));
 nuevo = spawn('python', [SRV + '/rootsrv.py', '8862', TMP]); await sleep(1000);
+await plantar();
+await ir('http://127.0.0.1:8861/apex-app/'); await sleep(4000);
+check('M1b con la señal vieja (`home`) no salta', (await ev('location.host')) === '127.0.0.1:8861', await ev('location.href'));
+
+// Se enciende la señal de v662.
+writeFileSync(TMP + '/mudanza.json', JSON.stringify({ hogar: 'http://127.0.0.1:8862', v: 2 }));
 
 // ── M2: algo sin confirmar → no salta aunque el hogar responda
 await plantar("localStorage.setItem('ax_udirty_u-prueba','1');");
 await ir('http://127.0.0.1:8861/apex-app/'); await sleep(7000);
 check('M2 con algo sin confirmar en la nube, NO salta', (await ev('location.host')) === '127.0.0.1:8861', await ev('location.href'));
 
-// ── M3: todo confirmado → salta con la sesión
-await plantar();
+// ── M2b: la cola del coach tiene algo → no salta
+await plantar("localStorage.setItem('ax_cwq_u-prueba', JSON.stringify([{col:'msgs',id:'c1',val:[],ts:1}]));");
+await ir('http://127.0.0.1:8861/apex-app/'); await sleep(7000);
+check('M2b con la cola del coach sin subir, NO salta', (await ev('location.host')) === '127.0.0.1:8861', await ev('location.href'));
+
+// ── M3: todo confirmado → salta con la sesión, el entreno a medias y lo que el teléfono recuerda
+await plantar(`localStorage.setItem('done_r1_0_0','1'); localStorage.setItem('log_r1_0_0_kg','40');
+  localStorage.setItem('session_id_r1','s-123'); localStorage.setItem('work_r1','w'.repeat(5000));
+  localStorage.setItem('apex_ob_done_u-prueba','1'); localStorage.setItem('ax_cwq_u-prueba','[]');`);
 await ir('http://127.0.0.1:8861/apex-app/?go=hoy'); await sleep(4000);
 const llegada = await ev(`({host:location.host, href:location.href, auth:localStorage.getItem('avi_auth'), theme:localStorage.getItem('ax_theme'),
   cache:localStorage.getItem('ax_udcache_u-prueba'), marca:!!window._aviLlegoMudanza, authLlegada:window.__mvAuth})`);
@@ -80,11 +99,24 @@ check('M3c se lleva los ajustes chicos', llegada && llegada.theme === '"dark"');
 check('M3d NO se lleva el respaldo grande de la fila (lo baja de la nube)', llegada && llegada.cache === null);
 check('M3e la barra queda limpia: ni la sesión en el # ni la marca ?mudanza', llegada && !/#|avimv|mudanza/.test(llegada.href) && /go=hoy/.test(llegada.href), llegada && llegada.href);
 check('M3f la página sabe que llegó por la mudanza (para el aviso)', llegada && llegada.marca === true);
+const snap = await ev('window.__mvSnap||null');
+check('M3g se lleva las series marcadas y la sesión del entreno a medias', snap && snap.done_r1_0_0 === '1' && snap.log_r1_0_0_kg === '40' && snap.session_id_r1 === 's-123');
+check('M3h se lleva el reorden aunque pese más de 4.000', snap && snap.work_r1 && snap.work_r1.length === 5000);
+check('M3i se lleva el «ya vi la bienvenida» (no le vuelve a salir)', snap && snap['apex_ob_done_u-prueba'] === '1');
+check('M3j NO se lleva la cola del coach', snap && !('ax_cwq_u-prueba' in snap));
 
 // ── M4: en el hogar nuevo no se vuelve a saltar y la app arranca
 await sleep(3000);
 check('M4a sin bucle: sigue en el hogar nuevo', (await ev('location.host')) === '127.0.0.1:8862');
 check('M4b la app arrancó en el hogar nuevo', await ev("typeof showScreen==='function' && document.body.innerText.length>50"));
+
+// ── M5: alguien fabrica un enlace al hogar nuevo con una cola del coach adentro
+await ev('localStorage.clear(); true');
+const trampa = Buffer.from(JSON.stringify({ 'ax_cwq_u-prueba': '[{"col":"routines","id":"victima","val":[]}]', ax_theme: '"light"' })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+await ir('http://127.0.0.1:8862/?mudanza=1#avimv=' + trampa);
+const tr = await ev("({cwq:localStorage.getItem('ax_cwq_u-prueba'), snap:window.__mvSnap||null})");
+check('M5 un enlace fabricado NO planta una cola del coach', tr && tr.cwq === null && tr.snap && !('ax_cwq_u-prueba' in tr.snap), JSON.stringify(tr && tr.cwq));
+check('M5b (control) lo inocuo del mismo enlace sí se escribe: la llegada funcionó', tr && tr.snap && tr.snap.ax_theme === '"light"');
 
 console.log('\njsErrors: ' + JSON.stringify(jsErr));
 const fallas = results.filter(r => r.startsWith('FAIL')).length;
