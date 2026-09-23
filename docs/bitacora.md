@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v664: con foto de perfil, la imagen del cierre del entreno es la FOTO
+
+- **Pedido del PO:** la tarjeta de logro de v661 (foto a sangre, sin círculo) pasa a ser el modelo de la imagen del
+  cierre: *«a las personas que les mostré hoy querían esa imagen grande para compartir al finalizar el entrenamiento»*.
+  Sin foto de perfil se queda el modelo C (retrato de iniciales), igual que la de logro se queda verde.
+- El cierre trae más que un logro (hasta 4 cifras y 3 récords): el bloque de texto se **ancla abajo y crece hacia
+  arriba** según lo que haya, y los récords van **compactos** (una línea: estrella · ejercicio · marca).
+- 🔴 **Mirando la imagen apareció que una foto de perfil cuadrada, cubriendo los 1080×1920, deja la CARA justo donde
+  empieza el texto** cuando hay récords. La foto se encuadra en la zona libre sobre el texto (hasta 300 px por debajo
+  de su inicio, ancla un poco arriba del centro) y se funde en el fondo oscuro: sigue viéndose a sangre y la cara
+  queda arriba. También se corrigió que la tilde de «¡LO LOGRÉ!» se montaba sobre «COMPLETADO».
+- Marca en y=250 y enlace en y=1670: dentro de lo que WhatsApp muestra en el chat (v660).
+- Vale también para compartir una sesión desde el historial (mismo lienzo, v624).
+- **QA:** suite **1330** · `_sabotaje-v664` **6/6** · `_verify-v597` verde (C2 y S6b re-encuadrados al modelo G: la
+  foto se ve en la zona libre y no la entierra el velo; sin foto siguen midiendo el modelo C) ·
+  `_verify-compartir-sesion` 12/12 · `_shot-wfshare --foto=<archivo> --prs=N` dibuja con una foto real.
+
 ## ⏮️ 2026-09-23 — v663: LA MUDANZA ESTÁ ENCENDIDA, y lo que se comparte ya lleva la dirección nueva
 
 - **Señal encendida** (`app.avientrena.com/mudanza.json`, `{hogar, v:2}`, CORS `*`, sin caché). **Verificado contra
