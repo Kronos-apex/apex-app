@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v665: a quien se mudó y perdió sus avisos se le recuerda activarlos
+
+- **Pedido del PO:** *«recuerda por favor recordarle a las personas que se mudaron activar las notificaciones»*. El
+  permiso de avisos es POR DIRECCIÓN: quien salta a `app.avientrena.com` llega sin él aunque en github.io lo tuviera.
+- **La señal exacta:** su teléfono guarda la marca de su suscripción (`apex_push:<id>`, que viaja con la mudanza) y
+  el permiso vuelve a estar sin dar → «Vuelve a activar tus avisos», en su propio espacio (`#cn-push-moved`) justo
+  debajo del entreno de hoy y **FUERA del tope de 2 avisos**. Al coach, lo mismo en su Inicio (`apex_push:_coach`).
+  Regla pura `pushLostReminder` (avi-core).
+- 🔒 **El «ahora no» de 7 días de la dirección vieja viajó con la mudanza** y, respetado, habría escondido justo este
+  recordatorio: el suyo tiene su propia clave y su «Mañana» dura UN día. Y pospuesto no lo reemplaza en el acto el
+  aviso genérico pidiendo lo mismo (lo destapó el propio harness).
+- Al activar, `subscribePush` retira la suscripción vieja de github.io (v662): no llegan avisos dobles.
+- **QA:** suite **1331** · `_sabotaje-v665` **8/8** · `_verify-avisos-mudanza` **13/13** (con el tope lleno, con el
+  «ahora no» viejo, control de quien nunca tuvo avisos, y el coach) · `_verify-tope` y `_verify-arranque-modulos` verdes.
+
 ## ⏮️ 2026-09-23 — v664: con foto de perfil, la imagen del cierre del entreno es la FOTO
 
 - **Pedido del PO:** la tarjeta de logro de v661 (foto a sangre, sin círculo) pasa a ser el modelo de la imagen del
