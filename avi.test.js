@@ -21054,8 +21054,9 @@ test('🔒 v659 · las TRES imágenes que se comparten llevan el enlace en el pi
   const pies = (a4.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []).concat(a3.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []);
   // 🔁 v661 · eran CUATRO: el cierre, el logro SIN foto, el logro CON foto (modelo G, a sangre) y
   //    el progreso del coach. 🔁 v664 · son CINCO: el cierre CON foto pasa también al modelo G y
-  //    trae su propio pie. Lo que se vigila es que NINGUNO se quede sin el enlace.
-  assert.strictEqual(pies.length, 5, '🔴 cambió el número de pies que se comparten');
+  //    trae su propio pie. 🔁 v667 · son SEIS: el progreso del coach CON foto también pasa al G.
+  //    Lo que se vigila es que NINGUNO se quede sin el enlace.
+  assert.strictEqual(pies.length, 6, '🔴 cambió el número de pies que se comparten');
   pies.forEach(p => assert.ok(!/site\?\(/.test(p), '🔴 volvió el pie condicional: sin sitio del coach, la imagen sale sin enlace'));
   // 🔒 Contar los pies NO basta: un pie puede seguir ahí y haber perdido el enlace (dos sabotajes
   //    salieron VERDES con este test antes de exigirlo). Cada uno lleva el separador y su variable.
@@ -21373,6 +21374,88 @@ test('🔒 v663 · lo que la app le da a OTRA persona apunta al hogar nuevo; la 
   // CONTROL: la vieja SIGUE reconocida — sin ella, los teléfonos que abren github.io no saltarían.
   assert.ok(/^const AVI_OLD_HOSTS=\['kronos-apex\.github\.io'\];$/m.test(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8').replace(/\r/g, '')),
     '🔴 la dirección vieja dejó de reconocerse: nadie saltaría');
+});
+
+// 🔒 v667 · LA TARJETA DE PROGRESO DEL COACH, CON FOTO, TAMBIÉN ES LA FOTO (modelo G).
+// Pedido del PO: «haz que ese sea el modelo para todas las pantallas». La de logro lo es desde v661
+// y la del cierre desde v664; faltaba la que arma el coach desde la ficha.
+function _storyGSrc() {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = src.indexOf('function _storyDrawG(');
+  assert.ok(i > 0, 'desapareció el modelo G de la tarjeta de progreso');
+  return { src, g: src.slice(i, src.indexOf('\nfunction ', i + 10)) };
+}
+test('🔒 v667 · con foto de perfil, la tarjeta de progreso del coach es la FOTO (modelo G)', () => {
+  const fs = require('fs'), path = require('path');
+  const { src, g } = _storyGSrc();
+  const w = src.slice(src.indexOf('function shareClientProgress(){'));
+  assert.ok(/const _conFoto=!!\(_storyAvatar&&_storyAvatar\.width&&_storyAvatar\.height\);/.test(w), '🔴 la tarjeta dejó de mirar si hay foto');
+  assert.ok(/^\s*if\(_conFoto\)\{ const lyG=_storyDrawG\(x,d,_storyAvatar\); try\{ cv\._layout=lyG; \}catch\(e\)\{\} \}$/m.test(w),
+    '🔴 con foto de perfil la tarjeta no dibuja el modelo G');
+  assert.ok(/\}\s+\/\/ fin del modelo C \(sin foto de perfil\)/.test(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8')),
+    '🔴 el modelo C ya no está dentro del «sin foto»: se dibujarían los dos');
+  // La foto se ENCUADRA sobre el texto (lección del cierre) y pasa por el tratamiento de marca.
+  assert.ok(/const H=Math\.min\(1920,textTop\+300\);/.test(g), '🔴 la foto volvió a cubrir el lienzo entero: la cara queda detrás del texto');
+  assert.ok(/x\.drawImage\(foto,\(1080-fw\)\/2,\(H-fh\)\*0\.4,fw,fh\);/.test(g), '🔴 la foto no se encuadra en la zona libre');
+  assert.ok(/x\.filter='saturate\(\.6\) contrast\(1\.06\) brightness\(1\.18\)'/.test(g) && /x\.filter='none'/.test(g),
+    '🔴 la foto perdió el tratamiento de marca (o el filtro se queda puesto para lo de abajo)');
+  // Marca y enlace DENTRO de la franja que WhatsApp muestra en el chat (y≈202-1718, v660).
+  const marca = +(g.match(/x\.fillText\('A V I',540,(\d+)\)/) || [])[1];
+  const pie = +(g.match(/\+site,540,(\d+)\);/) || [])[1];
+  assert.ok(marca >= 220 && pie > 0 && pie <= 1690, `🔴 la marca (${marca}) o el enlace (${pie}) se salen de lo que WhatsApp muestra`);
+  // 🔒 La cara de la persona sigue yendo SOLO en la imagen que el coach comparte con su dedo.
+  const core = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const sr = core.slice(core.indexOf('function showcaseRow('), core.indexOf('\nfunction ', core.indexOf('function showcaseRow(') + 10));
+  assert.ok(sr.length > 50 && !/avatar|foto/i.test(sinComentarios(sr)), '🔴 la foto se coló en la fila que se publica sola en la web');
+});
+test('🔒 v667 · el modelo G dice lo MISMO que el C: mediana, CARGA y barras en kilos', () => {
+  const { g } = _storyGSrc();
+  // Los candados de v601, ahora también sobre la tarjeta con foto: si solo vivieran en el C,
+  // la mitad de las tarjetas (las que tienen foto) podrían volver a presumir el máximo.
+  assert.ok(/560\*\(\(s2\.gano\|\|0\)\/maxGano\)/.test(g), '🔴 la barra dejó de medir kilos ganados');
+  assert.ok(!/maxPct/.test(g), 'apareció una escala por porcentaje para las barras');
+  assert.ok(/s2\.de\+' → '\+s2\.a\+' kg'/.test(g) && /'\+'\+s2\.pct\+'%'/.test(g), 'la fila dejó de mostrar los kilos junto al porcentaje');
+  assert.ok(/d\.medianaPct!=null&&d\.medianaPct>0/.test(g), '🔴 el titular ya no pregunta por medianaPct');
+  assert.ok(/x\.fillText\('DE CARGA'/.test(g) && !/FUERZA/.test(g), '🔴 el titular dice FUERZA');
+  assert.ok(/EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR/.test(g), 'sin titular en % la tarjeta con foto se queda sin hero');
+  assert.ok(/\(d\.subidas\|\|\[\]\)\.slice\(0,STORY_G_BARS\)/.test(g), 'la gráfica del modelo G dejó de toparse');
+  assert.ok(/_cf\(\d+/.test(g) && /typeof canvasFont==='function'/.test(g) && !/px '\+F;/.test(g),
+    '🔴 el modelo G no usa la tipografía de la marca (o la llama sin guarda)');
+});
+test('🔒 v667 · el modelo G deja sitio a la cara y nada pisa el pie (ejecutado, no leído)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('const STORY_G_BARS=');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction shareClientProgress(', i));
+  const drawG = new Function(cuerpo + '\nreturn _storyDrawG;')();
+  // Un contexto de mentira que mide el texto como una fuente cualquiera (media em por letra).
+  const ctx = () => {
+    const c = { font: '16px x', filter: 'none', measureText(t) { const px = +(/(\d+)px/.exec(this.font) || [0, 16])[1]; return { width: String(t).length * px * 0.5 }; } };
+    ['save', 'restore', 'fillRect', 'drawImage', 'fillText', 'beginPath', 'roundRect', 'rect', 'fill', 'stroke'].forEach(k => { c[k] = () => {}; });
+    c.createLinearGradient = () => ({ addColorStop() {} });
+    return c;
+  };
+  const foto = { width: 800, height: 800 };
+  const sub = n => Array.from({ length: n }, (_, k) => ({ ejercicio: 'Ejercicio ' + k, de: 20, a: 30 + k, gano: 10 + k, pct: 50 }));
+  const base = { nombre: 'Mariana', meses: 3, entrenos: 22, subieron: 6, conCarga: 7 };
+  // EL PEOR CASO: titular en %, línea de volumen y 8 subidas (se topan a 5).
+  const peor = drawG(ctx(), Object.assign({}, base, { medianaPct: 40, volRatio: 1.3, subidas: sub(8) }), foto);
+  assert.strictEqual(peor.modo, 'G');
+  assert.strictEqual(peor.barras, 5, 'la gráfica con foto se topa en 5 barras');
+  assert.ok(peor.textTop >= 560, `🔴 el texto arranca en y=${peor.textTop}: le tapa la cara a la foto`);
+  assert.ok(peor.lastY + 36 <= peor.totY - 40, '🔴 la última barra pisa el recuento');
+  assert.ok(peor.totY < peor.pie - 40 && peor.pie <= 1690, '🔴 el recuento pisa el enlace o el enlace sale de la franja de WhatsApp');
+  assert.ok(peor.eyeY > 250 + 60, '🔴 la etiqueta se monta sobre la marca');
+  // CONTROL: con pocas subidas la foto GANA sitio (el texto se ancla abajo, no arriba).
+  const corto = drawG(ctx(), Object.assign({}, base, { medianaPct: 40, subidas: sub(2) }), foto);
+  assert.ok(corto.textTop > peor.textTop + 200, '🔴 con 2 subidas el texto no bajó: no está anclado abajo');
+  // Y el caso sin titular en % (volumen a la baja) también cabe.
+  const rec = drawG(ctx(), Object.assign({}, base, { medianaPct: null, subidas: sub(5) }), foto);
+  assert.ok(rec.textTop >= 560 && rec.lastY + 36 <= rec.totY, '🔴 el recuento no cabe con la foto');
+  // 🔒 el filtro SIEMPRE se quita: lo que se dibuja después no puede salir fundido con la foto.
+  const c = ctx(); drawG(c, Object.assign({}, base, { medianaPct: 40, subidas: sub(3) }), foto);
+  assert.strictEqual(c.filter, 'none', '🔴 el filtro de la foto se quedó puesto');
 });
 
 // ══════════════════════════════════════════════════════

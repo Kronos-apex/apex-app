@@ -2112,10 +2112,142 @@ let _storyData=null;
 let _storyAvatar=null;
 // Dibuja 1080×1920 (formato historia) con la MISMA marca que el cierre del asesorado (v313):
 // gradiente esmeralda, sin fotos en el lienzo (jamás canvas contaminado ni dependencias de red).
+// ── v667 · EL MODELO G EN LA TARJETA DE PROGRESO ─────────────────────────────────────────
+// La misma forma que la de logro (v661) y la del cierre (v664): la foto de perfil a sangre, el
+// texto anclado abajo y la marca y el enlace dentro de la franja que WhatsApp muestra en el chat
+// (y≈202-1718, medido en v660). Lo que NO cambia es lo que dice: la mediana y no el máximo, CARGA
+// y no fuerza, y la barra mide kilos ganados (ver los candados de v601).
+// 🔒 La foto sigue yendo SOLO en esta imagen, la que el coach comparte con su dedo: no entra en
+//    `showcaseRow`, que se publica sola en la web.
+// Hasta 5 barras y no 8: con la foto arriba no caben 8 sin taparle la cara (con 8 el texto
+// empezaría en y≈370). El recuento completo va debajo, así que el total sigue diciéndose.
+const STORY_G_BARS=5;
+function _storyDrawG(x,d,foto){
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  const lista=(d.subidas||[]).slice(0,STORY_G_BARS), FILA=86;
+  const conPct=d.medianaPct!=null&&d.medianaPct>0;
+  const conVol=conPct&&d.volRatio!=null&&d.volRatio>=1.15;
+  // ── Las alturas, de ABAJO hacia arriba: en un lienzo no hay reflow que avise ──
+  const totY=1606;
+  const lastY=lista.length?totY-86:totY;               // la última barra termina 50 px sobre el total
+  const firstY=lastY-Math.max(0,lista.length-1)*FILA;
+  const labelY=lista.length?firstY-64:totY-60;
+  const volY=labelY-66;
+  const subY=conVol?volY-50:labelY-66;
+  const cargaY=subY-48;
+  const bigSize=conPct?150:110;
+  const bigY=conPct?cargaY-58:subY-54;
+  // Anton es ALTA: su versal ocupa ~0,87 del cuerpo (medido en la imagen: el «+38%» de 150 px
+  // mide 130). Con 0,74 la etiqueta y el nombre quedaban pegados.
+  const nameY=bigY-Math.round(bigSize*0.87)-40;
+  const eyeY=nameY-118, textTop=eyeY-34;
+  // ── La foto se ENCUADRA en la zona libre sobre el texto (lección del cierre, v664) ──
+  const H=Math.min(1920,textTop+300);
+  const rel=Math.max(1080/foto.width,H/foto.height), fw=foto.width*rel, fh=foto.height*rel;
+  x.save();
+  try{ x.filter='saturate(.6) contrast(1.06) brightness(1.18)'; }catch(e){}
+  x.drawImage(foto,(1080-fw)/2,(H-fh)*0.4,fw,fh);
+  try{ x.filter='none'; }catch(e){}   // SIEMPRE se quita, o todo lo de abajo sale filtrado
+  x.fillStyle='rgba(10,74,56,.30)';x.fillRect(0,0,1080,H);
+  x.restore();
+  const fundido=x.createLinearGradient(0,H-320,0,H);
+  fundido.addColorStop(0,'rgba(3,10,7,0)');fundido.addColorStop(1,'rgba(3,10,7,1)');
+  x.fillStyle=fundido;x.fillRect(0,H-320,1080,320);
+  x.fillStyle='#030A07';x.fillRect(0,H,1080,1920-H);
+  const t0=Math.max(.24,(textTop-260)/1920), t1=Math.min(.97,(textTop-30)/1920);
+  const vv=x.createLinearGradient(0,0,0,1920);
+  vv.addColorStop(0,'rgba(3,10,7,.72)');vv.addColorStop(.18,'rgba(3,10,7,.10)');
+  vv.addColorStop(t0,'rgba(3,10,7,.12)');vv.addColorStop(t1,'rgba(3,10,7,.84)');vv.addColorStop(1,'rgba(3,10,7,.96)');
+  x.fillStyle=vv;x.fillRect(0,0,1080,1920);
+  x.textAlign='center';
+  x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,250);
+  // la etiqueta (cuánto lleva), el nombre y el titular — cada uno se achica hasta caber
+  const eye=(d.meses===1?'UN MES':d.meses+' MESES')+' ENTRENANDO  ·  '+d.entrenos+' ENTRENOS';
+  x.fillStyle='#10E0A0';
+  let es=36; x.font=_cf(es,'800');
+  try{ x.letterSpacing='5px'; }catch(e){}
+  while(es>22&&x.measureText(eye).width>960){es-=2;x.font=_cf(es,'800');}
+  x.fillText(eye,540,eyeY);
+  try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillStyle='#FFFFFF';
+  let ns=96; x.font=_cf(ns,'900',true);
+  while(ns>52&&x.measureText(d.nombre).width>940){ns-=6;x.font=_cf(ns,'900',true);}
+  x.fillText(d.nombre,540,nameY);
+  if(d.medianaPct!=null&&d.medianaPct>0){
+    x.fillStyle='#10E0A0';x.font=_cf(bigSize,'900',true);
+    x.fillText('+'+d.medianaPct+'%',540,bigY);
+    x.fillStyle='rgba(234,251,244,.9)';x.font=_cf(40,'800');
+    x.fillText('DE CARGA',540,cargaY);
+    x.fillStyle='rgba(234,251,244,.62)';x.font=_cf(30,'600');
+    x.fillText('en la mitad de sus '+d.subieron+' ejercicios que subieron',540,subY);
+    if(conVol){
+      x.fillStyle='rgba(234,251,244,.72)';x.font=_cf(34,'600');
+      x.fillText('Y mueve '+Math.round((d.volRatio-1)*100)+'% más peso en cada entreno',540,volY);
+    }
+  }else{
+    // Sin titular en % (volumen a la baja): el recuento, que es verdad igual y no presume.
+    x.fillStyle='#10E0A0';x.font=_cf(bigSize,'900',true);
+    x.fillText(d.subieron+' de '+d.conCarga,540,bigY);
+    x.fillStyle='rgba(234,251,244,.85)';
+    let rs=34; x.font=_cf(rs,'800');
+    while(rs>22&&x.measureText('EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR').width>960){rs-=2;x.font=_cf(rs,'800');}
+    x.fillText('EJERCICIOS CON MÁS CARGA QUE AL EMPEZAR',540,subY);
+  }
+  // ── LA GRÁFICA: la barra mide KILOS GANADOS (el % va de etiqueta, al lado de sus kilos) ──
+  x.textAlign='start';
+  if(lista.length){
+    x.fillStyle='rgba(234,251,244,.5)';x.font=_cf(28,'700');
+    try{ x.letterSpacing='4px'; }catch(e){}
+    x.fillText('DÓNDE SUBIÓ',90,labelY);
+    try{ x.letterSpacing='0px'; }catch(e){}
+  }
+  const maxGano=Math.max.apply(null,lista.map(s2=>s2.gano||0).concat([1]));
+  let y=firstY;
+  lista.forEach(s2=>{
+    x.fillStyle='rgba(234,251,244,.92)';x.font=_cf(34,'700');
+    let nom=String(s2.ejercicio);
+    while(nom.length>4&&x.measureText(nom).width>600)nom=nom.slice(0,-1);
+    if(nom!==s2.ejercicio)nom=nom.replace(/\s+\S*$/,'')+'…';
+    x.fillText(nom,90,y);
+    x.textAlign='right';
+    x.fillStyle='rgba(234,251,244,.62)';x.font=_cf(32,'700');
+    x.fillText(s2.de+' → '+s2.a+' kg',990,y);
+    x.textAlign='start';
+    const w=Math.max(8,Math.round(560*((s2.gano||0)/maxGano)));
+    x.fillStyle='rgba(255,255,255,.08)';_rr(90,y+16,560,20,10);x.fill();
+    const g2=x.createLinearGradient(90,0,90+w,0);
+    g2.addColorStop(0,'#0A6B4F');g2.addColorStop(1,'#13B583');
+    x.fillStyle=g2;_rr(90,y+16,w,20,10);x.fill();
+    if(s2.pct!=null){
+      x.fillStyle='rgba(234,251,244,.82)';x.font=_cf(34,'900');
+      x.fillText('+'+s2.pct+'%',668,y+38);
+    }
+    y+=FILA;
+  });
+  // El recuento completo: la gráfica muestra hasta 5 y el titular habla de la mitad. Con el
+  // titular en recuento ya lo dice el titular, y repetirlo abajo sería decirlo dos veces.
+  x.textAlign='center';
+  if(conPct){
+    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(32,'600');
+    x.fillText('Subió carga en '+d.subieron+' de '+d.conCarga+' ejercicios',540,totY);
+  }
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillStyle='rgba(234,251,244,.72)';x.font=_cf(32,'600');
+  x.fillText('Entrena con '+(coach||'AVI')+'  ·  '+site,540,1670);
+  x.textAlign='start';
+  return {modo:'G',textTop,eyeY,nameY,bigY,labelY,firstY,lastY,totY,barras:lista.length,pie:1670,fotoH:H};
+}
 function shareClientProgress(){
   const d=_storyData; if(!d){toast('Aún no hay historia que contar');return;}
   const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
   const x=cv.getContext('2d');
+  // v667 · con foto de perfil, la tarjeta es la FOTO (modelo G, el de la de logro y el del cierre):
+  // lo pidió el PO para TODAS las imágenes que se comparten. Sin foto, el modelo C de siempre.
+  const _conFoto=!!(_storyAvatar&&_storyAvatar.width&&_storyAvatar.height);
+  if(_conFoto){ const lyG=_storyDrawG(x,d,_storyAvatar); try{ cv._layout=lyG; }catch(e){} }
+  else{
   const bg=x.createLinearGradient(0,0,0,1920);
   bg.addColorStop(0,'#06120D');bg.addColorStop(.55,'#0A2118');bg.addColorStop(1,'#04090688');
   x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
@@ -2145,15 +2277,12 @@ function shareClientProgress(){
   // de iniciales con SU color de la paleta, que es el avatar que ella ya se ve en la app.
   // 🔒 Va SOLO en esta imagen, la que el coach comparte con su dedo. **No entra en `showcaseRow`**:
   //    esa fila se publica sola en la web, y la cara de una persona no se publica de rebote.
+  // v667 · aquí solo se llega SIN foto (con foto se dibuja el modelo G), así que el círculo lleva
+  // siempre las iniciales.
   const _cx=880,_cy=420,_cr=100;
   x.save();
   x.beginPath();x.arc(_cx,_cy,_cr,0,Math.PI*2);x.closePath();
-  if(_storyAvatar&&_storyAvatar.width&&_storyAvatar.height){
-    x.clip();
-    const _s=Math.max(2*_cr/_storyAvatar.width,2*_cr/_storyAvatar.height);   // cubrir sin deformar
-    x.drawImage(_storyAvatar,_cx-_storyAvatar.width*_s/2,_cy-_storyAvatar.height*_s/2,
-      _storyAvatar.width*_s,_storyAvatar.height*_s);
-  }else{
+  {
     // El color y SU tinta se declaran juntos (candado del 29-jul: separarlos dejó dos avatares
     // con el blanco fijo y 6 de los 8 colores por debajo del mínimo de lectura).
     const _col=(typeof avc==='function'&&d.nombre)?avc(d.nombre):'#0A7C5B',_tin=(typeof inkOn==='function')?inkOn(_col):'#FFFFFF';
@@ -2255,6 +2384,7 @@ function shareClientProgress(){
   // v659 · sin sitio propio del coach cae a la web de AVI (medido: `ax_site` está vacío).
   const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
   x.fillText('Entrena con '+(coach||'AVI')+'  ·  '+site,90,1830);
+  }   // fin del modelo C (sin foto de perfil)
   try{window._storyLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness)
   // v654 · la puerta única (PNG, aviso inmediato, sin doble toque): ver `shareCanvasImage`.
   if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-progreso','Progreso en AVI','📥 Imagen guardada — súbela a tu historia');
