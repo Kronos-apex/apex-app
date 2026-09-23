@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v663: LA MUDANZA ESTÁ ENCENDIDA, y lo que se comparte ya lleva la dirección nueva
+
+- **Señal encendida** (`app.avientrena.com/mudanza.json`, `{hogar, v:2}`, CORS `*`, sin caché). **Verificado contra
+  producción** con `_prodcheck-mudanza.mjs` (nuevo, solo lee): un navegador limpio que abre github.io **salta solo**
+  al hogar nuevo, la barra queda limpia, la app arranca allá y sabe que llegó por la mudanza; con la marca de iPhone
+  instalado se queda en github.io — **6/6**.
+- **Lo que la app le da a otra persona apunta al hogar nuevo:** `AVI_SHARE_URL` y sus 3 respaldos, `CMTY_INVITE_URL`
+  y la imagen de vista previa (`og:image`/`twitter:image`, que responde igual en el dominio nuevo). La dirección
+  vieja solo sobrevive en `AVI_OLD_HOSTS`, que es la lista de lo que SALTA. Candado nuevo en la suite con su control
+  (si la vieja deja de reconocerse, nadie saltaría) y `_sabotaje-v663` **6/6**.
+- **La web de venta** (`avi-web`, `site.appUrl`) enlaza ahora `app.avientrena.com`. El primer despliegue en Vercel
+  falló bajando las fuentes de Google (la compilación local pasaba); el reintento salió limpio.
+- 🔴 **Trampa cerrada en `publicar-hogar.mjs`:** sin bandera publicaba el hogar SIN la señal, así que el siguiente
+  despliegue normal habría APAGADO la mudanza en silencio. Desde hoy la señal va siempre y apagarla exige
+  `--sin-mudanza`.
+- **QA:** suite **1329** · `_sabotaje-v663` 6/6 · `_prodcheck-mudanza` 6/6 · prodcheck en las dos direcciones.
+
 ## ⏮️ 2026-09-23 — v662: la mudanza se lleva lo que solo vive en el teléfono (y el iPhone instalado se queda)
 
 - **Día de encender la mudanza** (decidido por el PO el 22-sep). Antes de encenderla se revisó QUÉ viaja, y v658 se

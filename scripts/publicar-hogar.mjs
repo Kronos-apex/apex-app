@@ -10,7 +10,8 @@
 // `scripts/hogar-vercel.json` la reenvía a github.io, así que para el navegador sigue siendo
 // del mismo origen (sin CORS y sin teñir ningún lienzo).
 //
-// Corre: node scripts/publicar-hogar.mjs
+// Corre: node scripts/publicar-hogar.mjs          (con la señal de mudanza, que desde el 23-sep va siempre)
+//       node scripts/publicar-hogar.mjs --sin-mudanza   (solo para APAGARLA a propósito)
 // ─────────────────────────────────────────────────────────────────────────────
 import { cpSync, mkdirSync, rmSync, copyFileSync, readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -38,13 +39,15 @@ else console.log('⚠️  Sin enlace previo: `npx vercel link --yes --project av
 for (const f of ARCHIVOS) copyFileSync(join(ROOT, f), join(DEST, f));
 for (const d of CARPETAS) cpSync(join(ROOT, d), join(DEST, d), { recursive: true });
 copyFileSync(join(ROOT, 'scripts', 'hogar-vercel.json'), join(DEST, 'vercel.json'));
-// La señal de arranque de la mudanza va APARTE (`mudanza.json`): mientras no exista, ningún
-// teléfono salta. Se publica el día del cambio, con `--mudanza`.
-if (process.argv.includes('--mudanza')) {
-  copyFileSync(join(ROOT, 'scripts', 'hogar-mudanza.json'), join(DEST, 'mudanza.json'));
-  console.log('⚠️  Con SEÑAL DE MUDANZA: los teléfonos en v662+ (salvo iPhone instalado) van a saltar al hogar nuevo.');
+// La señal de la mudanza va APARTE (`mudanza.json`): sin ella, ningún teléfono salta.
+// 🔴 Desde el 23-sep-2026 la mudanza está ENCENDIDA, así que la señal va SIEMPRE: con el valor por
+//    defecto al revés (como estaba), el siguiente despliegue normal la habría APAGADO en silencio y
+//    los teléfonos habrían dejado de mudarse sin que nadie lo notara. Apagarla exige decirlo.
+if (process.argv.includes('--sin-mudanza')) {
+  console.log('⚠️  SIN señal de mudanza: nadie salta al hogar nuevo (se apagó a propósito).');
 } else {
-  console.log('Sin señal de mudanza (nadie salta). Para encenderla: --mudanza');
+  copyFileSync(join(ROOT, 'scripts', 'hogar-mudanza.json'), join(DEST, 'mudanza.json'));
+  console.log('Con señal de mudanza: los teléfonos en v662+ (salvo iPhone instalado) saltan al hogar nuevo.');
 }
 const v = (readFileSync(join(ROOT, 'sw.js'), 'utf8').match(/avi-v(\d+)/) || [])[1];
 console.log(`Publicando v${v} en app.avientrena.com…`);
