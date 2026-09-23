@@ -42,7 +42,7 @@ copyFileSync(join(ROOT, 'scripts', 'hogar-vercel.json'), join(DEST, 'vercel.json
 // teléfono salta. Se publica el día del cambio, con `--mudanza`.
 if (process.argv.includes('--mudanza')) {
   copyFileSync(join(ROOT, 'scripts', 'hogar-mudanza.json'), join(DEST, 'mudanza.json'));
-  console.log('⚠️  Con SEÑAL DE MUDANZA: los teléfonos en v658+ van a saltar al hogar nuevo.');
+  console.log('⚠️  Con SEÑAL DE MUDANZA: los teléfonos en v662+ (salvo iPhone instalado) van a saltar al hogar nuevo.');
 } else {
   console.log('Sin señal de mudanza (nadie salta). Para encenderla: --mudanza');
 }

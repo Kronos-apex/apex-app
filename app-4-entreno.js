@@ -1711,7 +1711,7 @@ function missMoveToday(rid){
 // Banner ocasional en "Hoy" para que el asesorado invite a alguien. Aparece SOLO tras engagement
 // real (≥3 sesiones finalizadas, motor puro shareBannerEligible) y se pospone 45 días al descartar.
 // Comparte con navigator.share nativo (móvil) y cae a WhatsApp (elige contacto) si no está.
-const AVI_SHARE_URL='https://kronos-apex.github.io/apex-app/';
+const AVI_SHARE_URL='https://app.avientrena.com/';
 // La WEB de venta (proyecto `avi-web` en Vercel, v543). Son DOS direcciones distintas y hacen
 // cosas distintas: esta EXPLICA y vende (qué es AVI, los 3 pasos, testimonios, precios, el
 // WhatsApp del coach) y `AVI_SHARE_URL` es la app, donde se crea la cuenta y salen las tarjetas

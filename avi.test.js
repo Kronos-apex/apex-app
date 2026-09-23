@@ -3244,7 +3244,7 @@ test('communityInviteMsg: texto plano, honesto y con el nombre de pila', () => {
   // dice lo que se ve Y lo que no (la corrección de copy que salió en A1)
   assert.ok(/apodo y tu constancia/.test(m), m);
   assert.ok(/nunca tu peso, tus fotos ni tus kilos/.test(m), m);
-  assert.ok(m.indexOf('https://kronos-apex.github.io/apex-app/') > 0, m);
+  assert.ok(m.indexOf('https://app.avientrena.com/') > 0, m);
   // va por WhatsApp: TEXTO PLANO, sin una sola etiqueta
   assert.ok(!/[<>]/.test(m), m);
 });
@@ -21253,6 +21253,29 @@ test('🔒 v662 · un iPhone con la app instalada NO salta (se queda en la direc
   // CONTROL: la guarda nombra SOLO `navigator.standalone` (propiedad exclusiva de iOS). Un
   // `display-mode: standalone` dejaría fuera también a los Android instalados, que sí deben saltar.
   assert.ok(!/display-mode/.test(cuerpo), '🔴 la guarda también frenaría a los Android instalados');
+});
+test('🔒 v663 · lo que la app le da a OTRA persona apunta al hogar nuevo; la dirección vieja solo existe para saltar', () => {
+  const fs = require('fs'), path = require('path');
+  const NUEVO = 'https://app.avientrena.com/';
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.strictEqual((ent.match(/const AVI_SHARE_URL='([^']+)'/) || [])[1], NUEVO, 'el enlace que se comparte no es el hogar nuevo');
+  const core = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  assert.strictEqual((core.match(/const CMTY_INVITE_URL = '([^']+)'/) || [])[1], NUEVO, 'la invitación de Comunidad no apunta al hogar nuevo');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const og = [...html.matchAll(/<meta (?:property="og:image"|name="twitter:image") content="([^"]+)"/g)].map(m => m[1]);
+  assert.strictEqual(og.length, 2, 'faltan las imágenes de vista previa');
+  og.forEach(u => assert.ok(u.startsWith(NUEVO), '🔴 la vista previa del enlace sale del dominio viejo: ' + u));
+  // Ningún archivo que llega al teléfono nombra la dirección vieja salvo la lista de lo que SALTA.
+  const archivos = ['index.html', 'sw.js', 'manifest.json', 'avi-core.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js',
+    'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'];
+  const viejas = [];
+  archivos.forEach(f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).split('\n').forEach(l => {
+    if (/kronos-apex\.github\.io/.test(l) && !/^const AVI_OLD_HOSTS=\['kronos-apex\.github\.io'\];$/.test(l.trim())) viejas.push(f + ': ' + l.trim());
+  }));
+  assert.deepStrictEqual(viejas, [], '🔴 queda la dirección vieja en lo que la app entrega');
+  // CONTROL: la vieja SIGUE reconocida — sin ella, los teléfonos que abren github.io no saltarían.
+  assert.ok(/^const AVI_OLD_HOSTS=\['kronos-apex\.github\.io'\];$/m.test(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8').replace(/\r/g, '')),
+    '🔴 la dirección vieja dejó de reconocerse: nadie saltaría');
 });
 
 // ══════════════════════════════════════════════════════

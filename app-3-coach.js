@@ -4089,7 +4089,7 @@ function coachInviteOpenApp(){
   const saludo=nombre?`Hola ${nombre} 👋 `:'¡Hola! 👋 ';
   // El enlace NO es opcional: el mensaje pedía «abre AVI» sin decir DÓNDE, así que el asesorado
   // recibía la orden sin la puerta (hallazgo 2026-07-31). Mismo patrón defensivo que app-7.
-  const url=(typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://kronos-apex.github.io/apex-app/';
+  const url=(typeof AVI_SHARE_URL!=='undefined')?AVI_SHARE_URL:'https://app.avientrena.com/';
   const msg=`${saludo}Abre AVI un momentito (solo entrar) para activar tus recordatorios y no perderte tus rutinas ni tu progreso 💪\n\n${url}`;
   const phone=waPhone(c.phone); // normaliza (móvil CO sin +57 → 57…) — bug de clase v364
   if(phone){ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank'); toast('📲 Invitación lista en WhatsApp'); return; }

@@ -576,7 +576,7 @@ async function cmtyCopyCode(){
 }
 async function cmtyShareCode(){
   const code = (CMTY.profile && CMTY.profile.share_code) || '';
-  const url = (typeof AVI_SHARE_URL !== 'undefined') ? AVI_SHARE_URL : 'https://kronos-apex.github.io/apex-app/';
+  const url = (typeof AVI_SHARE_URL !== 'undefined') ? AVI_SHARE_URL : 'https://app.avientrena.com/';
   const msg = 'Agrégame en AVI 💪 Mi código es ' + code + '. Descarga la app: ' + url;
   try{
     if(navigator.share){ await navigator.share({ title: 'AVI', text: msg }); return; }

@@ -9420,7 +9420,7 @@ function communityGymHint(adoption, opts) {
 // revisa el coach antes de enviarlo — AVI nunca escribe sola a un asesorado.
 // El texto dice la verdad de lo que se verá (apodo + constancia) y de lo que NO (peso/fotos/kilos),
 // que es exactamente la corrección de copy que salió en A1: el gym también te ve.
-const CMTY_INVITE_URL = 'https://kronos-apex.github.io/apex-app/';
+const CMTY_INVITE_URL = 'https://app.avientrena.com/';
 function communityInviteMsg(name, peers, url) {
   const first = (typeof name === 'string' ? name.trim().split(/\s+/)[0] : '') || '';
   const saludo = first ? 'Hola ' + first + ' 👋' : '¡Hola! 👋';
