@@ -4,6 +4,18 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v666: «¿Cómo te sientes hoy?» con los íconos de la marca
+
+- **Pedido del PO:** *«no me gustan esos stickers genéricos del banner de cómo te sientes hoy»*. Eran emojis del
+  SISTEMA: cada teléfono los dibuja a su manera y no son de AVI. Se dibujaron **cuatro opciones con el CSS real**
+  (`_preview-animo.mjs`: íconos en su color · caritas propias · sin íconos · círculo sólido) y **eligió la D**:
+  círculo de color sólido con el ícono de la marca en blanco (sol, llama, luna, destello, gota y una curita nueva).
+- 🔴 **Los tonos de marca del tema oscuro (--yl #F2C94C, --bl #7FB2E8…) daban 1,5-2,8:1 con el ícono blanco.** Se
+  declaran tokens propios por ánimo (`--mood-*`), UNA vez para los dos temas como `--emerald-hdr`: medido, 4,7-6,0:1.
+- Sin el módulo de íconos vuelve el emoji: nunca un círculo vacío.
+- **QA:** suite **1332** (el contraste se CALCULA desde los tokens) · `_sabotaje-v666` **6/6** · `_verify-animo`
+  **13/13** en los dos temas.
+
 ## ⏮️ 2026-09-23 — v665: a quien se mudó y perdió sus avisos se le recuerda activarlos
 
 - **Pedido del PO:** *«recuerda por favor recordarle a las personas que se mudaron activar las notificaciones»*. El
