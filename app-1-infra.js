@@ -2455,6 +2455,8 @@ let editTplId=null,tplExs=[],tplRestSec=60,pickerTarget='routine';
 const AVI_ICONS={
   sparkles:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/>',
   droplet:'<path d="M12 3c3.5 4.2 6 7.5 6 10.5a6 6 0 0 1-12 0C6 10.5 8.5 7.2 12 3z"/>',
+  // v666 · la curita del ánimo «Con dolor o molestia» (mismo trazo que el resto: 24px, 2px, redondo).
+  bandage:'<rect x="3" y="8.6" width="18" height="6.8" rx="3.4" transform="rotate(-45 12 12)"/><path d="M11 11h.01M13 13h.01M11 13h.01M13 11h.01"/>',
   bike:'<circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M6 17l3.6-7h5.2l3.2 7"/><path d="M9.6 10L8.2 7H6.2"/><path d="M14.8 10L13.6 7h2.6"/>',
   bolt:'<path d="M13 2L5 13.5h5L9 22l8-11.5h-5L13 2z"/>',
   wind:'<path d="M3 8h9.5A2.5 2.5 0 1 0 10.5 5.5"/><path d="M3 12h13.5A2.5 2.5 0 1 1 14 14.5"/><path d="M3 16h7.5a2.25 2.25 0 1 1-2.3 2.2"/>',

@@ -5522,13 +5522,16 @@ function rowToClient(row) {
 // Cada estado es una REGLA UNIVERSAL que TRANSFORMA la rutina del día que el
 // asesorado ya tiene (mismo patrón que la fase de adaptación). No es una rutina
 // por estado por persona.
+// v666 · `icon` es el ícono de la MARCA que pinta el selector (modelo D, elegido por el PO: *«no me
+// gustan esos stickers genéricos»* — los emojis los dibuja cada teléfono a su manera y no son de AVI).
+// El `emoji` se conserva como respaldo si el módulo de íconos no cargó.
 const MOOD_STATES = [
-  { id: 'bien',    emoji: '😊',   label: 'Bien' },
-  { id: 'energia', emoji: '🔥',   label: 'Con toda la energía' },
-  { id: 'cansado', emoji: '😴', label: 'Cansado' },  // v632: el anterior era un emoji compuesto (ZWJ) y en teléfonos viejos salía partido en dos
-  { id: 'estres',  emoji: '😤',   label: 'Estresado / enojado' },
-  { id: 'periodo', emoji: '🩸',   label: 'En mi periodo', femaleOnly: true },
-  { id: 'dolor',   emoji: '🤕',   label: 'Con dolor o molestia' },
+  { id: 'bien',    emoji: '😊',   icon: 'sun',     label: 'Bien' },
+  { id: 'energia', emoji: '🔥',   icon: 'flame',   label: 'Con toda la energía' },
+  { id: 'cansado', emoji: '😴', icon: 'moon', label: 'Cansado' },  // v632: el anterior era un emoji compuesto (ZWJ) y en teléfonos viejos salía partido en dos
+  { id: 'estres',  emoji: '😤',   icon: 'burst',   label: 'Estresado / enojado' },
+  { id: 'periodo', emoji: '🩸',   icon: 'droplet', label: 'En mi periodo', femaleOnly: true },
+  { id: 'dolor',   emoji: '🤕',   icon: 'bandage', label: 'Con dolor o molestia' },
 ];
 
 // ¿El ejercicio es de carga (fuerza con peso externo)?

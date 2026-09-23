@@ -21257,6 +21257,34 @@ test('🔒 v662 · un iPhone con la app instalada NO salta (se queda en la direc
   // `display-mode: standalone` dejaría fuera también a los Android instalados, que sí deben saltar.
   assert.ok(!/display-mode/.test(cuerpo), '🔴 la guarda también frenaría a los Android instalados');
 });
+test('🔒 v666 · «¿Cómo te sientes hoy?» lleva los íconos de la MARCA en blanco sobre su color (modelo D)', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = a1.indexOf('const AVI_ICONS={'), j = a1.indexOf('\n};', i);
+  const iconos = new Set([...a1.slice(i, j).matchAll(/^\s*'?([a-zA-Z0-9_-]+)'?\s*:/gm)].map(m => m[1]));
+  assert.ok(iconos.size > 40, 'no se pudo leer la lista de íconos');
+  // Cada ánimo tiene un ícono de la marca que EXISTE (aviIcon cae a ✨ en silencio si no, gotcha de F).
+  MOOD_STATES.forEach(m => assert.ok(m.icon && iconos.has(m.icon), '🔴 el ánimo «' + m.label + '» no tiene un ícono de la marca que exista: ' + m.icon));
+  // Cada ánimo tiene su color propio declarado UNA vez (igual en los dos temas), y el ícono blanco
+  // pasa 3:1 sobre él — calculado desde los tokens, no afirmado.
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const hex = t => { const m = css.match(new RegExp('--' + t + ':(#[0-9A-Fa-f]{6})')); return m && m[1]; };
+  const lum = h => { const v = [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const tinta = hex('mood-ink'); assert.ok(tinta, 'falta --mood-ink');
+  MOOD_STATES.forEach(m => {
+    const c = hex('mood-' + m.id);
+    assert.ok(c, '🔴 falta el color del ánimo ' + m.id);
+    assert.strictEqual((css.match(new RegExp('--mood-' + m.id + ':', 'g')) || []).length, 1, '🔴 el color de ' + m.id + ' se redefine por tema: en uno de los dos el ícono dejaría de leerse');
+    const a = lum(c), b = lum(tinta), r = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    assert.ok(r >= 3, `🔴 el ícono de «${m.label}» queda a ${r.toFixed(2)}:1 sobre su círculo (mínimo 3)`);
+  });
+  assert.ok(/\.mood-emoji\.mood-ic\{background:var\(--ms\);color:var\(--mood-ink\)/.test(css), '🔴 el círculo dejó de pintarse con el color del ánimo');
+  // CABLEADO: el selector pinta el ícono de la marca; sin el módulo de íconos, el emoji (nunca vacío).
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const f = a4.slice(a4.indexOf('function moodChooserHtml('), a4.indexOf('\nfunction moodBannerHtml('));
+  assert.ok(/aviIcon\(m\.icon,26\)/.test(f) && /--ms:var\(--mood-\$\{m\.id\}\)/.test(f), '🔴 el selector no pinta el ícono de la marca con su color');
+  assert.ok(/\$\{ic\|\|m\.emoji\}/.test(f) && /mood-emoji\$\{ic\?' mood-ic':''\}/.test(f), '🔴 sin el módulo de íconos el círculo quedaría vacío');
+});
 test('🔒 v665 · a quien se mudó y perdió sus avisos se le recuerda activarlos (y no lo esconde el «ahora no» viejo)', () => {
   const H = 3600e3, D = 24 * H, now = Date.parse('2026-09-23T15:00:00Z');
   // Tenía avisos (su marca viajó) y el permiso volvió a estar sin dar → se le recuerda.

@@ -1429,7 +1429,10 @@ function moodChooserHtml(client,fnName){
   const opts=MOOD_STATES.filter(m=>!m.femaleOnly||client.sex==='F');
   const btns=opts.map(m=>{
     const [mc,mct]=MOOD_COLORS[m.id]||['var(--g2)','var(--gl)'];
-    return `<button class="mood-btn" style="--mc:${mc};--mct:${mct}" onclick="${fn}('${m.id}')" aria-label="${esc(m.label)}"><span class="mood-emoji">${m.emoji}</span><span class="mood-lbl">${esc(m.label)}</span></button>`;
+    // v666 · el ícono de la MARCA en blanco sobre el color del ánimo (modelo D); sin el módulo de
+    //   íconos, el emoji de siempre. `m.id` sale de MOOD_STATES (lista cerrada), nunca del usuario.
+    const ic=(typeof aviIcon==='function'&&typeof AVI_ICONS!=='undefined'&&m.icon&&AVI_ICONS[m.icon])?aviIcon(m.icon,26):'';
+    return `<button class="mood-btn" style="--mc:${mc};--mct:${mct};--ms:var(--mood-${m.id})" onclick="${fn}('${m.id}')" aria-label="${esc(m.label)}"><span class="mood-emoji${ic?' mood-ic':''}">${ic||m.emoji}</span><span class="mood-lbl">${esc(m.label)}</span></button>`;
   }).join('');
   return `<div class="checkin-card"><div class="checkin-q">¿Cómo te sientes hoy?</div><div class="checkin-sub">Ajustamos tu entrenamiento a cómo amaneciste.</div><div class="mood-grid">${btns}</div></div>`;
 }
