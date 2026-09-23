@@ -2981,6 +2981,116 @@ function _wfDrawCrest(x,cx,cy,r,name,img,F){
   x.strokeStyle='#10E0A0';x.lineWidth=9;x.stroke();
   x.restore();
 }
+// ══════════ v664 · CON FOTO DE PERFIL, LA IMAGEN DEL CIERRE ES LA FOTO (modelo G) ══════════
+// Pedido del PO (23-sep): la tarjeta de logro de v661 —la foto A SANGRE, sin círculo— pasa a ser el
+// modelo de las imágenes que se comparten: *«a las personas que les mostré hoy querían esa imagen
+// grande para compartir al finalizar el entrenamiento»*. Sin foto de perfil se queda el modelo C
+// (retrato de iniciales), igual que la de logro se queda verde.
+// El cierre trae MÁS que un logro (hasta 4 cifras y 3 récords), así que el bloque de texto se ancla
+// ABAJO y crece hacia ARRIBA según lo que haya: la foto queda libre arriba, que es donde suele estar
+// la cara, y el velo empieza justo encima del texto (no en un punto fijo). Todo cae dentro de la
+// franja que WhatsApp muestra en el chat sin abrir la imagen (y≈202-1718, medido en v660).
+// 🔒 La foto ya pasó por `canvasSafePhoto` (no tiñe el lienzo) y recibe el MISMO tratamiento que la
+//    de logro: aclarar y teñir con transparencia (el `multiply` sobre verde la borraba, v661).
+function _wfDrawShareG(x,d,foto){
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  // ── Las alturas, de ABAJO hacia arriba ──
+  const cells=d.chips.slice(0,4), prs=d.prs.slice(0,3);
+  const GW=210,GH=140,GG=20, GPR=84,GPRG=12;
+  let y=1610;                                            // borde inferior del contenido
+  const prTop=prs.length?y-(prs.length*GPR+(prs.length-1)*GPRG):y;
+  if(prs.length)y=prTop-24;
+  const stTop=cells.length?y-GH:y;
+  if(cells.length)y=stTop-40;
+  const subY=y, nameY=subY-60, titleY=nameY-80, eyeY=titleY-132, textTop=eyeY-34;
+  // ── La foto se ENCUADRA en la zona que queda libre sobre el texto, no en la imagen entera ──
+  // Medido con las primeras pruebas: una foto de perfil suele ser CUADRADA, y cubriendo los
+  // 1080×1920 su cara cae en y≈800-950, justo donde empieza el texto cuando hay récords. Se cubre
+  // el rectángulo que va de arriba hasta 300 px por debajo del inicio del texto, con el ancla un
+  // poco por encima del centro (en una foto alta la cara está arriba), y por debajo se funde en el
+  // fondo oscuro: sigue viéndose a sangre y la cara queda en lo que se ve.
+  const H=Math.min(1920,textTop+300);
+  const rel=Math.max(1080/foto.width,H/foto.height), fw=foto.width*rel, fh=foto.height*rel;
+  x.save();
+  try{ x.filter='saturate(.6) contrast(1.06) brightness(1.18)'; }catch(e){}
+  x.drawImage(foto,(1080-fw)/2,(H-fh)*0.4,fw,fh);
+  try{ x.filter='none'; }catch(e){}   // SIEMPRE se quita, o todo lo de abajo sale filtrado
+  x.fillStyle='rgba(10,74,56,.30)';x.fillRect(0,0,1080,H);
+  x.restore();
+  const fundido=x.createLinearGradient(0,H-320,0,H);
+  fundido.addColorStop(0,'rgba(3,10,7,0)');fundido.addColorStop(1,'rgba(3,10,7,1)');
+  x.fillStyle=fundido;x.fillRect(0,H-320,1080,320);
+  x.fillStyle='#030A07';x.fillRect(0,H,1080,1920-H);
+  // El velo: oscuro arriba (la marca) y desde un poco antes del texto hasta abajo; transparente en medio.
+  const t0=Math.max(.24,(textTop-260)/1920), t1=Math.min(.97,(textTop-30)/1920);
+  const vv=x.createLinearGradient(0,0,0,1920);
+  vv.addColorStop(0,'rgba(3,10,7,.72)');vv.addColorStop(.18,'rgba(3,10,7,.10)');
+  vv.addColorStop(t0,'rgba(3,10,7,.12)');vv.addColorStop(t1,'rgba(3,10,7,.84)');vv.addColorStop(1,'rgba(3,10,7,.96)');
+  x.fillStyle=vv;x.fillRect(0,0,1080,1920);
+  x.textAlign='center';
+  x.fillStyle='#FFFFFF';x.font=_cf(40,'800');x.fillText('A V I',540,250);   // la marca, como la de logro
+  // la etiqueta, el titular, el nombre y la rutina — cada uno se achica hasta caber
+  x.fillStyle='#10E0A0';
+  let es=40; x.font=_cf(es,'800');
+  try{ x.letterSpacing='6px'; }catch(e){}
+  while(es>26&&x.measureText('ENTRENAMIENTO COMPLETADO').width>960){es-=2;x.font=_cf(es,'800');}
+  x.fillText('ENTRENAMIENTO COMPLETADO',540,eyeY);
+  try{ x.letterSpacing='0px'; }catch(e){}
+  x.fillStyle='#FFFFFF';
+  const tit=d.name?'¡Lo logré!':'¡Sesión lista!';
+  let ts=104; x.font=_cf(ts,'900',true);
+  while(ts>56&&x.measureText(tit.toUpperCase()).width>960){ts-=6;x.font=_cf(ts,'900',true);}
+  x.fillText(tit.toUpperCase(),540,titleY);
+  if(d.name){
+    let ns=52; x.font=_cf(ns,'800');
+    while(ns>30&&x.measureText(d.name).width>900){ns-=4;x.font=_cf(ns,'800');}
+    x.fillText(d.name,540,nameY);
+  }
+  x.fillStyle='rgba(234,251,244,.86)';
+  const sub=(d.rname?d.rname+'  ·  ':'')+d.fecha;
+  let ss=36; x.font=_cf(ss,'600');
+  while(ss>22&&x.measureText(sub).width>940){ss-=2;x.font=_cf(ss,'600');}
+  x.fillText(sub,540,subY);
+  // las cifras, en UNA fila centrada (la misma ficha que el modelo C)
+  const X0=540-(cells.length*GW+Math.max(0,cells.length-1)*GG)/2;
+  cells.forEach((c2,i)=>{
+    const cx=X0+i*(GW+GG);
+    x.fillStyle='rgba(4,8,10,.62)';_rr(cx,stTop,GW,GH,30);x.fill();
+    x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=3;_rr(cx,stTop,GW,GH,30);x.stroke();
+    x.fillStyle='#10E0A0';
+    let vs=48; x.font=_cf(vs,'800');
+    while(vs>26&&x.measureText(String(c2[1])).width>GW-26){vs-=2;x.font=_cf(vs,'800');}
+    x.fillText(String(c2[1]),cx+GW/2,stTop+76);
+    x.fillStyle='rgba(242,245,244,.72)';
+    let ls=24; x.font=_cf(ls,'600');
+    while(ls>16&&x.measureText(String(c2[0]).toUpperCase()).width>GW-20){ls-=2;x.font=_cf(ls,'600');}
+    x.fillText(String(c2[0]).toUpperCase(),cx+GW/2,stTop+114);
+  });
+  // los récords, compactos: una línea cada uno (estrella · ejercicio · marca a la derecha)
+  let ry=prTop;
+  prs.forEach(pr=>{
+    x.fillStyle='rgba(4,8,10,.62)';_rr(90,ry,900,GPR,26);x.fill();
+    x.strokeStyle='rgba(16,224,160,.35)';x.lineWidth=3;_rr(90,ry,900,GPR,26);x.stroke();
+    const marca=pr.unit==='kg'?(pr.val+' kg'+(pr.reps?' × '+pr.reps:'')):(pr.val+' '+pr.unit);
+    x.textAlign='right';x.fillStyle='#10E0A0';x.font=_cf(32,'800');x.fillText(marca,958,ry+54);
+    const anchoMarca=x.measureText(marca).width;
+    x.textAlign='left';x.fillStyle='#F2C94C';x.font=_cf(36,'900');x.fillText('★',122,ry+56);
+    x.fillStyle='#FFFFFF';x.font=_cf(30,'800');
+    const maxN=958-anchoMarca-30-176; let nm=pr.name;
+    if(x.measureText(nm).width>maxN){ while(nm.length>4&&x.measureText(nm+'…').width>maxN)nm=nm.slice(0,-1); nm=nm.replace(/\s+$/,'')+'…'; }
+    x.fillText(nm,176,ry+54);
+    ry+=GPR+GPRG;
+  });
+  // el pie con el enlace, dentro de la franja visible (como la de logro)
+  x.textAlign='center';
+  const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
+  const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillStyle='rgba(234,251,244,.72)';x.font=_cf(32,'600');
+  x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+site,540,1670);
+  x.textAlign='start';
+  return {modo:'G',textTop,eyeY,titleY,nameY,subY,stTop,prTop,pie:1670,fotoH:H};
+}
 function wfShare(){
   const d=_wfShareData; if(!d){toast('Aún no hay datos de esta sesión');return;}
   const cv=document.createElement('canvas');cv.width=1080;cv.height=1920;
@@ -2997,6 +3107,10 @@ function wfShare(){
   const F='system-ui,Roboto,sans-serif';   // el circulo de iniciales lo sigue usando via _wfDrawCrest
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
   x.fillStyle='#06120D';x.fillRect(0,0,1080,1920);
+  // v664 · con foto de perfil, la foto ES la tarjeta (modelo G); sin ella, el modelo C de abajo.
+  const _conFoto=!!(_wfShareAvatar&&_wfShareAvatar.width&&_wfShareAvatar.height);
+  if(_conFoto){ const lyG=_wfDrawShareG(x,d,_wfShareAvatar); try{ cv._layout=lyG; }catch(e){} }
+  else{
   if(_wfBgPhoto&&_wfBgPhoto.width&&_wfBgPhoto.height){
     // 🔴 DESENFOCADA A PROPÓSITO. Con la foto nítida, una selfie de cara cubriendo 1080×1920 deja
     // una cara ENORME a medio recortar detrás del texto: compite con lo que la tarjeta viene a
@@ -3153,6 +3267,7 @@ function wfShare(){
   const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
   x.fillText('Entreno con '+(coach||'mi coach')+'  ·  '+site,540,1830);
   x.textAlign='start';
+  }   // fin del modelo C (sin foto de perfil)
   try{window._wfLastCanvas=cv;}catch(e){} // gancho de verificación visual (harness v313)
   // 🔒 Cinturón sobre los tirantes: `toBlob` de un lienzo teñido lanza SÍNCRONO. La sonda de
   // `_wfPrepShareAvatar` ya impide que una foto teñida llegue aquí, pero si alguna vez entra una

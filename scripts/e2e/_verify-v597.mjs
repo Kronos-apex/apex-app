@@ -114,10 +114,19 @@ const medirLienzo = async (conNombre) => {
       const d=g.getImageData(120,Math.round(LY.nameY)-52,840,70).data; let claros=0;
       for(let i=0;i<d.length;i+=4){ if(d[i]>230&&d[i+1]>230&&d[i+2]>230) claros++; }
       px=claros;
-      // centro del CÍRCULO del retrato, donde lo dibujó la tarjeta
-      const c=g.getImageData(Math.round(LY.cx),Math.round(LY.cy),1,1).data;
-      centro=[c[0],c[1],c[2]];
-      rojoCentro=(c[0]>200&&c[1]<60&&c[2]<60);
+      // 🔁 v664 · con foto de perfil la tarjeta es el MODELO G: la foto va A SANGRE, sin círculo, y se
+      //    encuadra en la zona libre sobre el texto (cv._layout.fotoH). Ahí se busca la foto roja,
+      //    ya con el tratamiento de marca (desaturada y teñida): sigue dominando el rojo.
+      //    Sin foto, el modelo C de siempre: el centro del círculo del retrato.
+      if(LY.modo==='G'){
+        const c=g.getImageData(540,Math.round(LY.fotoH*0.35),1,1).data;
+        centro=[c[0],c[1],c[2]];
+        rojoCentro=(c[0]>120&&c[0]>c[1]+40&&c[0]>c[2]+40);
+      }else{
+        const c=g.getImageData(Math.round(LY.cx),Math.round(LY.cy),1,1).data;
+        centro=[c[0],c[1],c[2]];
+        rojoCentro=(c[0]>200&&c[1]<60&&c[2]<60);
+      }
     }catch(e){ teñido=String(e&&e.name||e); }  // getImageData lanza si el lienzo quedó TEÑIDO
     return JSON.stringify({blob,err,claros:px,centro,rojoCentro,teñido,
       avatarListo:!!_wfShareAvatar, w:cv.width, h:cv.height, layout:LY});
@@ -161,7 +170,7 @@ try {
   let L = await medirLienzo(true);
   check('C0 el lienzo se genera 1080×1920 y sale el blob', L.blob === true && L.w === 1080 && L.h === 1920 && !L.err, JSON.stringify(L).slice(0, 180));
   check('C1 el NOMBRE se dibuja en el lienzo', (L.claros || 0) > 400, 'píxeles claros en la banda del nombre=' + L.claros);
-  check('C2 el RETRATO se dibuja dentro del círculo', L.rojoCentro === true, 'centro=' + JSON.stringify(L.centro));
+  check('C2 la FOTO se dibuja: a sangre en la zona libre (modelo G, v664)', L.rojoCentro === true && L.layout && L.layout.modo === 'G', 'centro=' + JSON.stringify(L.centro));
   check('C2b la foto pasó la sonda de teñido (data: URL)', L.avatarListo === true, 'avatarListo=' + L.avatarListo);
   // v603 · Y la tarjeta con una sesion COMPLETA (las 4 cifras y sus records), que es el caso real:
   // con dos cifras y sin records la composicion no se puede juzgar (era el hueco muerto de antes).
@@ -320,6 +329,16 @@ try {
     // fallaba cuando lo que medía era justo lo que NO debe tratarse.
     // 🔁 v653 · el retrato se excluye DONDE LO DIBUJÓ la tarjeta («cv._layout»), con su anillo.
     const LY=cv._layout; if(!LY) return JSON.stringify({err:'el lienzo no dice su geometría (cv._layout)'});
+    // 🔁 v664 · con foto de perfil es el MODELO G: la foto ES la tarjeta y lleva el tratamiento de la
+    //    de logro (desaturada y teñida, no el duotono verde). Lo que se exige es que no quede el color
+    //    crudo Y que la foto SE VEA en la zona libre — un velo que la enterrara pasaría el primer check.
+    if(LY.modo==='G'){
+      const H=LY.fotoH, y0=Math.round(H*0.25), y1=Math.round(H*0.6);
+      const dg=g.getImageData(0,y0,1080,y1-y0).data; let nar=0, lum=0, n=0;
+      for(let i=0;i<dg.length;i+=40){ const r=dg[i],gg=dg[i+1],b=dg[i+2]; n++;
+        if(r>120&&r>gg+50&&r>b+60)nar++; lum+=0.299*r+0.587*gg+0.114*b; }
+      return JSON.stringify({modo:'G',naranja:nar,luma:Math.round(lum/n),muestras:n});
+    }
     const RX=LY.r+14;
     const d=g.getImageData(0,0,1080,900).data; let naranja=0, verdes=0, muestras=0;
     for(let i=0;i<d.length;i+=40){
@@ -332,10 +351,13 @@ try {
     }
     return JSON.stringify({naranja,verdes,muestras});
   })()`);
-  check('S6 el duotono APLICA: no queda naranja de la foto original en el fondo',
+  check('S6 la foto se TRATA con la marca: no queda el naranja crudo de la original',
     (trat.naranja || 0) === 0, JSON.stringify(trat));
-  check('S6b y el fondo queda en la paleta (verde domina)',
-    (trat.verdes || 0) > (trat.muestras || 0) * 0.6, JSON.stringify(trat));
+  if (trat.modo === 'G')
+    check('S6b y la foto SE VE en la zona libre (el velo no la entierra)', (trat.luma || 0) > 90, JSON.stringify(trat));
+  else
+    check('S6b y el fondo queda en la paleta (verde domina)',
+      (trat.verdes || 0) > (trat.muestras || 0) * 0.6, JSON.stringify(trat));
   const duP = await ev(`window._wfLastCanvas?window._wfLastCanvas.toDataURL('image/png'):''`);
   if (duP && duP.startsWith('data:image/png')) { writeFileSync(SHOTDIR + '/v605-foto-propia.png', Buffer.from(duP.split(',')[1], 'base64')); log('  shot -> ' + SHOTDIR + '/v605-foto-propia.png'); }
 

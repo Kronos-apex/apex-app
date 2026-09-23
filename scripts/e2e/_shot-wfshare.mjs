@@ -40,6 +40,10 @@ try {
 
   // ── CONTROL DE MONTAJE: el avatar tiene que ser una imagen REAL y cargada ──
   const SIN = process.argv.includes('--sin-foto');
+  // v664 · --foto=<archivo de media/brand>: una foto REAL de persona, para juzgar el modelo G (foto a
+  //   sangre) con una cara de verdad y no con el muñeco. Mismo origen: no tiñe el lienzo.
+  const FOTO = (process.argv.find(a => a.startsWith('--foto=')) || '').slice(7);
+  const PRS = +((process.argv.find(a => a.startsWith('--prs=')) || '--prs=3').slice(6));
   const montaje = await ev(`(async()=>{
     const SIN_FOTO=${SIN};
     const c=document.createElement('canvas');c.width=400;c.height=400;
@@ -49,7 +53,8 @@ try {
     g.fillStyle='#F7D9B5';g.beginPath();g.ellipse(200,190,105,130,0,0,Math.PI*2);g.fill();
     g.fillStyle='#2A1A12';g.beginPath();g.arc(165,170,14,0,Math.PI*2);g.arc(235,170,14,0,Math.PI*2);g.fill();
     g.strokeStyle='#2A1A12';g.lineWidth=9;g.beginPath();g.arc(200,225,45,0.15*Math.PI,0.85*Math.PI);g.stroke();
-    const img=new Image(); img.src=c.toDataURL('image/png');
+    const FOTO=${JSON.stringify(FOTO)};
+    const img=new Image(); img.src=FOTO?('media/brand/'+FOTO):c.toDataURL('image/png');
     await new Promise(r=>{img.onload=r;img.onerror=r;});
     // 🔴 un let de un script clasico NO cuelga de window (gotcha de la casa): se asigna al
     //    NOMBRE PELADO, o wfShare sigue viendo su variable vacia y no dibuja nada.
@@ -60,13 +65,13 @@ try {
       chips:[['Duración','48 min'],['Series','18/18'],['Volumen','4.320 kg'],['Calorías','412 kcal']],
       prs:[{name:'Prensa de Pierna',val:95,unit:'kg',reps:12},
            {name:'Hip Thrust con Barra',val:110,unit:'kg',reps:10},
-           {name:'Sentadilla Búlgara con Mancuernas',val:22,unit:'kg',reps:12}]};
+           {name:'Sentadilla Búlgara con Mancuernas',val:22,unit:'kg',reps:12}].slice(0,${PRS})};
     // El share real abriria un dialogo: se neutraliza para quedarnos solo con el dibujo.
     navigator.canShare=()=>false;
     return {w:img.width,h:img.height};
   })()`);
   ok('CONTROL: el avatar de prueba cargó de verdad (' + (montaje && montaje.w) + 'px)',
-    !!(montaje && montaje.w === 400));
+    !!(montaje && (FOTO ? montaje.w > 300 : montaje.w === 400)));
 
   await ev(`(()=>{ try{ wfShare(); }catch(e){ return String(e); } return ''; })()`);
   await sleep(1200);
@@ -87,7 +92,7 @@ try {
 
   const png = await ev(`window._wfLastCanvas.toDataURL('image/png')`);
   if (png && png.startsWith('data:image/png;base64,')) {
-    const out = RAIZ + (SIN ? '/scripts/_wfshare-iniciales.png' : '/scripts/_wfshare.png');
+    const out = RAIZ + (SIN ? '/scripts/_wfshare-iniciales.png' : FOTO ? '/scripts/_wfshare-foto-' + PRS + '.png' : '/scripts/_wfshare.png');
     writeFileSync(out, Buffer.from(png.split(',')[1], 'base64'));
     console.log('\n  🖼️  guardado en scripts/_wfshare.png — MIRARLO, no solo generarlo');
     ok('la imagen se pudo exportar', true);

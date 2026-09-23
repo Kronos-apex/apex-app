@@ -21050,15 +21050,16 @@ test('🔒 v659 · las TRES imágenes que se comparten llevan el enlace en el pi
   const rd = f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
   const a4 = rd('app-4-entreno.js'), a3 = rd('app-3-coach.js');
   const pies = (a4.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []).concat(a3.match(/x\.fillText\('Entren[oa] con '[^;]*;/g) || []);
-  // 🔁 v661 · son CUATRO: el cierre, el logro SIN foto, el logro CON foto (modelo G, a sangre) y
-  //    el progreso del coach. Lo que se vigila es que NINGUNO se quede sin el enlace.
-  assert.strictEqual(pies.length, 4, '🔴 cambió el número de pies que se comparten');
+  // 🔁 v661 · eran CUATRO: el cierre, el logro SIN foto, el logro CON foto (modelo G, a sangre) y
+  //    el progreso del coach. 🔁 v664 · son CINCO: el cierre CON foto pasa también al modelo G y
+  //    trae su propio pie. Lo que se vigila es que NINGUNO se quede sin el enlace.
+  assert.strictEqual(pies.length, 5, '🔴 cambió el número de pies que se comparten');
   pies.forEach(p => assert.ok(!/site\?\(/.test(p), '🔴 volvió el pie condicional: sin sitio del coach, la imagen sale sin enlace'));
   // 🔒 Contar los pies NO basta: un pie puede seguir ahí y haber perdido el enlace (dos sabotajes
   //    salieron VERDES con este test antes de exigirlo). Cada uno lleva el separador y su variable.
   pies.forEach(p => assert.match(p, /\+'  ·  '\+\w+,\d+,[\w+ ]+\);$/,
     '🔴 un pie dejó de llevar el enlace: ' + p.slice(0, 90)));
-  assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 3, '🔴 una de las tarjetas del asesorado dejó de resolver el enlace');
+  assert.strictEqual((a4.match(/shareSiteLabel\(/g) || []).length, 4, '🔴 una de las tarjetas del asesorado dejó de resolver el enlace');
   assert.ok(/shareSiteLabel\(/.test(a3), '🔴 la tarjeta de progreso del coach dejó de resolver el enlace');
 });
 test('🔒 v659 · al compartir, el enlace viaja también como TEXTO (tocable)', () => {
@@ -21253,6 +21254,33 @@ test('🔒 v662 · un iPhone con la app instalada NO salta (se queda en la direc
   // CONTROL: la guarda nombra SOLO `navigator.standalone` (propiedad exclusiva de iOS). Un
   // `display-mode: standalone` dejaría fuera también a los Android instalados, que sí deben saltar.
   assert.ok(!/display-mode/.test(cuerpo), '🔴 la guarda también frenaría a los Android instalados');
+});
+test('🔒 v664 · con foto de perfil, la imagen del cierre es la FOTO (modelo G, el de la de logro)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = src.indexOf('function _wfDrawShareG(');
+  assert.ok(i > 0, 'desapareció el modelo G del cierre');
+  const g = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  // CABLEADO: con foto se dibuja el G; sin foto, el C de siempre (el else que cierra abajo).
+  const w = src.slice(src.indexOf('function wfShare(){'));
+  assert.ok(/const _conFoto=!!\(_wfShareAvatar&&_wfShareAvatar\.width&&_wfShareAvatar\.height\);/.test(w), '🔴 el cierre dejó de mirar si hay foto');
+  assert.ok(/^\s*if\(_conFoto\)\{ const lyG=_wfDrawShareG\(x,d,_wfShareAvatar\); try\{ cv\._layout=lyG; \}catch\(e\)\{\} \}$/m.test(w),
+    '🔴 con foto de perfil el cierre no dibuja el modelo G');
+  assert.ok(/\}\s+\/\/ fin del modelo C \(sin foto de perfil\)/.test(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')),
+    '🔴 el modelo C ya no está dentro del «sin foto»: se dibujarían los dos');
+  // La foto se ENCUADRA sobre el texto (si cubre los 1920, la cara cae detrás del texto con récords).
+  assert.ok(/const H=Math\.min\(1920,textTop\+300\);/.test(g), '🔴 la foto volvió a cubrir el lienzo entero: la cara queda detrás del texto');
+  assert.ok(/x\.drawImage\(foto,\(1080-fw\)\/2,\(H-fh\)\*0\.4,fw,fh\);/.test(g), '🔴 la foto no se encuadra en la zona libre');
+  // El titular no se monta sobre la etiqueta: el hueco supera el cuerpo máximo del titular (la tilde de «LOGRÉ»).
+  const ts = +(g.match(/let ts=(\d+);/) || [])[1], gap = +(g.match(/eyeY=titleY-(\d+)/) || [])[1];
+  assert.ok(ts > 0 && gap >= ts + 24, `🔴 la etiqueta y el titular se pisan (hueco ${gap} con titular de ${ts})`);
+  // Marca y enlace DENTRO de la franja que WhatsApp muestra en el chat (y≈202-1718, medido en v660).
+  const marca = +(g.match(/x\.fillText\('A V I',540,(\d+)\)/) || [])[1];
+  const pie = +(g.match(/\+site,540,(\d+)\);/) || [])[1];
+  assert.ok(marca >= 220 && pie > 0 && pie <= 1690, `🔴 la marca (${marca}) o el enlace (${pie}) se salen de lo que WhatsApp muestra`);
+  // La foto pasa por el tratamiento de la de logro, y el filtro SIEMPRE se quita.
+  assert.ok(/x\.filter='saturate\(\.6\) contrast\(1\.06\) brightness\(1\.18\)'/.test(g) && /x\.filter='none'/.test(g),
+    '🔴 la foto perdió el tratamiento de marca (o el filtro se queda puesto para lo de abajo)');
 });
 test('🔒 v663 · lo que la app le da a OTRA persona apunta al hogar nuevo; la dirección vieja solo existe para saltar', () => {
   const fs = require('fs'), path = require('path');
