@@ -21241,6 +21241,19 @@ test('🔒 v662 · al cambiar de endpoint, el aparato retira SU fila anterior (s
   assert.ok(/using \(\s*client_id = \(\(select auth\.uid\(\)\)\)::text\s+or \(client_id = '_coach'::text and \(select auth\.uid\(\)\) = '0a6484ed-42af-449d-9903-e440ac683ecf'::uuid\)\s*\);/.test(sql),
     '🔴 el alcance del DELETE no es EXACTAMENTE el de INSERT/UPDATE/SELECT (cada quien su fila; el coach, la de _coach)');
 });
+test('🔒 v662 · un iPhone con la app instalada NO salta (se queda en la dirección que funciona)', () => {
+  const a1 = sinComentarios(_srcApp1());
+  const i = a1.indexOf('(function _aviMudanza(){');
+  assert.ok(i > 0, 'desapareció _aviMudanza');
+  const cuerpo = a1.slice(i, a1.indexOf('})();', i));
+  const iGuard = cuerpo.search(/^\s*if\(typeof navigator!=='undefined'&&navigator\.standalone===true\)return;\s*$/m);
+  const iFetch = cuerpo.indexOf('fetch(AVI_HOME_ORIGIN');
+  assert.ok(iGuard > 0, '🔴 el iPhone instalado saltaría a un navegador superpuesto en cada apertura');
+  assert.ok(iFetch > iGuard, '🔴 la guarda del iPhone va DESPUÉS de armar el salto: no protege nada');
+  // CONTROL: la guarda nombra SOLO `navigator.standalone` (propiedad exclusiva de iOS). Un
+  // `display-mode: standalone` dejaría fuera también a los Android instalados, que sí deben saltar.
+  assert.ok(!/display-mode/.test(cuerpo), '🔴 la guarda también frenaría a los Android instalados');
+});
 
 // ══════════════════════════════════════════════════════
 // RESUMEN

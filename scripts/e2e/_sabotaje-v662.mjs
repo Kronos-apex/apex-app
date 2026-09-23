@@ -85,6 +85,10 @@ const SABOTAJES = [
   ['la policy de DELETE deja borrar filas ajenas', 'sql',
     "  using (\n    client_id = ((select auth.uid()))::text",
     "  using (\n    true or client_id = ((select auth.uid()))::text"],
+  // ── El iPhone instalado se queda ──
+  ['el iPhone con la app instalada salta igual', 'infra',
+    "  if(typeof navigator!=='undefined'&&navigator.standalone===true)return;",
+    "  void 0;"],
   // ── La señal ──
   ['la señal vuelve a traer `home`: v658-v661 saltarían con la regla vieja', 'senal',
     '{"hogar":"https://app.avientrena.com","v":2}',

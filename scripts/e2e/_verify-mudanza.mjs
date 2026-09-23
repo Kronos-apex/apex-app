@@ -13,6 +13,7 @@
 //   M3j NO se lleva la cola del coach (vacía para poder saltar; la llegada no la acepta).
 //   M5 un ENLACE fabricado hacia el hogar nuevo no puede plantar una cola del coach.
 //   M6 quien ya se mudó y vuelve a tocar el ícono VIEJO no recibe las series de aquel día.
+//   M2c un iPhone con la app instalada no salta (su control es M3).
 // Corre: node scripts/e2e/_verify-mudanza.mjs
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
@@ -88,6 +89,15 @@ check('M2 con algo sin confirmar en la nube, NO salta', (await ev('location.host
 await plantar("localStorage.setItem('ax_cwq_u-prueba', JSON.stringify([{col:'msgs',id:'c1',val:[],ts:1}]));");
 await ir('http://127.0.0.1:8861/apex-app/'); await sleep(7000);
 check('M2b con la cola del coach sin subir, NO salta', (await ev('location.host')) === '127.0.0.1:8861', await ev('location.href'));
+
+// ── M2c: iPhone con la app instalada (`navigator.standalone`) → no salta aunque todo esté confirmado.
+//    Su control es M3: el MISMO teléfono sin esa marca, con todo confirmado, sí salta.
+const iosScript = await send('Page.addScriptToEvaluateOnNewDocument', { source: "Object.defineProperty(navigator,'standalone',{value:true,configurable:true});" });
+await plantar();
+await ir('http://127.0.0.1:8861/apex-app/'); await sleep(4000);
+const m2c = await ev("({host:location.host, ios:navigator.standalone===true})");
+check('M2c un iPhone con la app instalada NO salta (se queda donde funciona)', m2c && m2c.ios === true && m2c.host === '127.0.0.1:8861', JSON.stringify(m2c));
+await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: iosScript.result.identifier });
 
 // ── M3: todo confirmado → salta con la sesión, el entreno a medias y lo que el teléfono recuerda
 await plantar(`localStorage.setItem('done_r1_0_0','1'); localStorage.setItem('log_r1_0_0_kg','40');

@@ -72,6 +72,14 @@ function _mvTry(){
 }
 (function _aviMudanza(){
   if(typeof location==='undefined'||AVI_OLD_HOSTS.indexOf(location.host)<0)return;
+  // v662 · iPhone con la app INSTALADA (`navigator.standalone`, solo existe en iOS): no salta.
+  // En iOS una app de la pantalla de inicio que navega a otro dominio no lo abre dentro de la app
+  // sino en un navegador superpuesto, y el ícono viejo repetiría el salto en cada apertura. Además
+  // cada app instalada en iOS tiene su propio almacenamiento: la sesión no puede llegar a la app
+  // NUEVA de ninguna forma, así que reinstalar pide la contraseña igual. Esta dirección sigue viva
+  // (decisión del PO) y aquí funciona como siempre; se muda reinstalando desde app.avientrena.com.
+  // No se pudo probar en un iPhone real: ante la duda, se queda donde funciona.
+  if(typeof navigator!=='undefined'&&navigator.standalone===true)return;
   if(typeof fetch!=='function')return;
   fetch(AVI_HOME_ORIGIN+'/mudanza.json',{cache:'no-store'})
     .then(r=>r.ok?r.json():null)
