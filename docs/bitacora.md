@@ -4,6 +4,28 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-23 — v668: el peso y las medidas sin color por dirección, y tres detalles vistos al hacer las capturas
+
+- **Pedido del PO:** *«Arreglalos»*, sobre los cuatro puntos del radar que salieron al generar las capturas de la web.
+- **1 · El color del cambio del cuerpo ya no juzga.** El peso se pintaba verde al bajar y naranja al subir sin mirar el
+  objetivo: a quien busca ganar músculo (Nataly, por ejemplo) la app le marcaba como alerta que el plan funcionara. Se
+  aplica la regla que **Valery dictó para la grasa en v607: sin color por dirección**. Cubre la línea, el resumen y las
+  píldoras del peso, la tabla y la gráfica de medidas (que era naranja SIEMPRE, bajara o subiera) y el mini-gráfico del
+  coach en su lista. La flecha y el signo siguen diciendo hacia dónde. 🔒 **El rendimiento conserva su color**: más
+  kilos levantados es bueno para todos, y un control de la suite y de la matriz lo exige.
+- **2 · La lista del peso se arrastraba 14 px de lado**: el área de toque de 40 px del ✕ (`.hit40`) se salía del
+  scroller. Hueco a la derecha y `overflow-x` oculto; el ✕ conserva su área (hit-testing a 16 px de cada lado).
+- **3 · Las fechas de la gráfica de medidas perdían la parte de abajo** («jul», «sept»): franja propia y extremos
+  anclados al borde, como en las otras gráficas desde v336.
+- **4 · La gráfica de la habitación de la rutina escribía «9082.5 kg»** bajo casillas que decían «9,9 t»:
+  `drawExProgChart` acepta un formateador y la habitación le pasa el suyo; las gráficas de ejercicios no cambian.
+- 🔴 **De paso, un defecto latente de la suite:** la prueba de v645 cortaba el cuerpo de una función en `'\n}\n'` y
+  fallaba en cuanto la copia de trabajo quedaba en CRLF (la dejó así un `git stash pop`). El helper compartido
+  `sinComentarios` quita ahora los `\r`, así que la clase queda cerrada para todas las pruebas que lo usan.
+- **QA:** suite **1335 → 1338** · `_verify-v668` **14/14** con el código nuevo y **4/13 con el viejo** (reproduce los
+  cuatro), con controles de cobertura y de TEMA (la primera corrida medía oscuro dos veces: el tema se fija con
+  `setTheme`) · contraste de la píldora neutra 5,45 (claro) y 6,33 (oscuro) · `_sabotaje-v668` **13/13 a la primera**.
+
 ## ⏮️ 2026-09-23 — v667: la tarjeta de progreso del coach, con foto, también es la FOTO · y las capturas de la web
 
 - **Pedido del PO:** *«haz que ese sea el modelo para todas las pantallas»* (la imagen grande de la de logro). Las
