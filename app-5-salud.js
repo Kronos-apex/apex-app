@@ -1115,7 +1115,9 @@ function renderMedidasClient(clientId){
     const cintPts=entries.filter(e=>e.cintura).slice(0,12).reverse();
     if(cintPts.length>=2){
       chartWrap.style.display='block';
-      drawMedChart(document.getElementById('cn-med-chart'),cintPts,'cintura','var(--chart-or)');
+      // v668 · la línea en el color de gráfica de siempre: en naranja se leía como alarma aunque
+      // la cintura bajara, y la dirección la dicen la línea y la tabla, no el color.
+      drawMedChart(document.getElementById('cn-med-chart'),cintPts,'cintura','var(--chart-g)');
     } else chartWrap.style.display='none';
   }
   const cli=DB.clients.find(x=>x.id===clientId)||{};
@@ -1152,7 +1154,9 @@ function renderMedidasClient(clientId){
     if(!cur&&!ini)return;
     const mudo=sinInterpretar(f.key);
     const delta=(!primera&&!mudo&&cur&&ini)?(cur-ini).toFixed(1):null;
-    const dc=delta===null?'':parseFloat(delta)<0?'var(--gt)':parseFloat(delta)>0?'var(--ort)':'var(--t3)';
+    // v668 · sin color por dirección (regla de Valery, v607): el brazo que crece en volumen no es
+    // una alerta. El signo dice hacia dónde fue; el color no juzga.
+    const dc=delta===null?'':'var(--t1)';
     html+=`<tr style="border-bottom:1px solid var(--br)">
       <td style="padding:7px 8px;font-weight:600">${esc(f.label)}</td>
       <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${cur?esc(String(cur))+' cm':'—'}</td>
@@ -1258,7 +1262,7 @@ function renderMedidasCoach(clientId){
     const cur=latest[f.key];if(!cur)return;
     const ini=first?first[f.key]:null;
     const delta=ini?(cur-ini).toFixed(1):null;
-    const dc=delta!==null&&parseFloat(delta)<0?'var(--gt)':delta!==null&&parseFloat(delta)>0?'var(--ort)':'var(--t3)';
+    const dc='var(--t2)';   // v668 · sin color por dirección, igual que lo que ve la persona
     html+=`<div style="background:var(--w);border:1px solid var(--br);border-radius:var(--rsm);padding:10px;text-align:center;box-shadow:var(--sh)">
       <div style="font-size:10px;color:var(--t2);margin-bottom:3px">${f.label}</div>
       <div style="font-size:18px;font-weight:800">${cur}cm</div>
@@ -1307,12 +1311,14 @@ function renderPhotosCoach(clientId){
 
 function drawMedChart(container,points,field,color){
   if(!container||!points.length)return;
-  const W=Math.max(container.offsetWidth||280,200);const H=60;const pad=8;
+  // v668 · 6 px más de alto para las fechas: con la línea base en el borde, «jul» y «sept» perdían
+  // la parte de abajo de la j y la p. Y los extremos se anclan al borde (patrón v336) para no salirse.
+  const W=Math.max(container.offsetWidth||280,200);const H=66;const pad=8;
   const vals=points.map(p=>p[field]);
   const maxV=Math.max(...vals)||1;const minV=Math.min(...vals);const span=maxV-minV||1;
   const pts=points.map((p,i)=>({
     x:pad+i*(W-pad*2)/Math.max(points.length-1,1),
-    y:6+(H-16)-((p[field]-minV)/span)*(H-16),p
+    y:6+(H-22)-((p[field]-minV)/span)*(H-22),p
   }));
   const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   // Mismo motor que las otras dos graficas: con muchas tomas de medidas las fechas se
@@ -1324,7 +1330,7 @@ function drawMedChart(container,points,field,color){
     <path d="${pathD} L${pts[pts.length-1].x},${H} L${pts[0].x},${H} Z" style="fill:${color}" fill-opacity="0.1"/>
     <path d="${pathD}" fill="none" style="stroke:${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     ${pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" style="fill:${color}"/>
-      ${medConFecha.has(i)?`<text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="8" style="fill:var(--t3)" font-family="sans-serif">${medFechas[i]}</text>`:''}`).join('')}
+      ${medConFecha.has(i)?`<text x="${(i===0?pad:i===pts.length-1?W-pad:p.x).toFixed(1)}" y="${H-3}" text-anchor="${i===0?'start':i===pts.length-1?'end':'middle'}" font-size="8" style="fill:var(--t3)" font-family="sans-serif">${medFechas[i]}</text>`:''}`).join('')}
   </svg>`;
 }
 

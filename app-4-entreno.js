@@ -329,8 +329,12 @@ function renderBodyWeightSection(clientId){
     const areaD=`${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
     const trend=entries[entries.length-1].kg-entries[0].kg;
     // Tokens de gráfica (C6) — var() solo en style=, nunca en atributos SVG (gotcha en styles.css)
-    const trendColor=trend<0?'var(--chart-g)':trend>0?'var(--chart-or)':'var(--t3)';
-    const lineColor=trend<=0?'var(--chart-g)':'var(--chart-or)';
+    // 🔴 v668 · SIN COLOR POR DIRECCIÓN (la regla de Valery para la grasa, v607, en el peso). Verde
+    //    al bajar y naranja al subir le dice «bajar es bueno» a quien busca GANAR músculo, para quien
+    //    subir es el plan funcionando. La flecha y la cifra dicen hacia dónde; el color no juzga.
+    //    El rendimiento (kilos levantados) SÍ se colorea al subir: ahí subir es bueno para todos.
+    const trendColor='var(--t1)';
+    const lineColor='var(--chart-g)';
     document.getElementById('bw-chart').innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="bwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:${lineColor}" stop-opacity="0.15"/><stop offset="100%" style="stop-color:${lineColor}" stop-opacity="0"/></linearGradient></defs>
       <path d="${areaD}" fill="url(#bwg)"/>
@@ -349,7 +353,8 @@ function renderBodyWeightSection(clientId){
   listEl.innerHTML=recents.map((e,i)=>{
     const delta=e.kg-first;
     const isToday=e.date===new Date().toISOString().split('T')[0];
-    const deltaStr=i===recents.length-1?'':(delta===0?'':`<span class="wlog-delta" style="background:${delta<0?'var(--gl)':'var(--orl)'};color:${delta<0?'var(--gt)':'var(--ort)'}">${delta>0?'+':''}${delta.toFixed(1)}</span>`);
+    // v668: la píldora es neutra (su estilo vive en `.wlog-delta`); ver la regla de arriba.
+    const deltaStr=i===recents.length-1?'':(delta===0?'':`<span class="wlog-delta">${delta>0?'+':''}${delta.toFixed(1)}</span>`);
     return `<div class="wlog-row">
       <div class="wlog-date">${isToday?'<strong>Hoy</strong>':new Date(e.date+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</div>
       <div class="wlog-kg">${e.kg} kg</div>
@@ -3981,7 +3986,7 @@ function openRoutineRoom(clientId,routineId){
     ${planHTML}
     <div style="height:30px"></div>`;
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
-  if(vols.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('rtroom-chart');if(ch){const pts=done.slice().reverse().filter(s=>s.totalVol>0).map(s=>({date:s.date,dateStr:new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}),maxKg:s.totalVol}));drawExProgChart(ch,pts,IND,'kg');}});
+  if(vols.length>=2)requestAnimationFrame(()=>{const ch=document.getElementById('rtroom-chart');if(ch){const pts=done.slice().reverse().filter(s=>s.totalVol>0).map(s=>({date:s.date,dateStr:new Date(s.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}),maxKg:s.totalVol}));drawExProgChart(ch,pts,IND,'kg',fv);}});
 }
 function closeRoutineRoom(){
   const room=document.getElementById('routine-room');

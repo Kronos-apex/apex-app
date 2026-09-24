@@ -17213,7 +17213,10 @@ test('🔒 CABLEADO v583: la nota se pinta y las CIFRAS no se tocan', () => {
 // 🔴 QUITAR LOS COMENTARIOS ANTES DE MIRAR. Cuatro candados distintos aprobaron el 8-sep porque
 // el comentario que EXPLICA la decisión contiene el mismo texto que la aserción busca (clase
 // v523/v546). Todo check estático sobre código pasa por aquí.
-const sinComentarios = t => String(t).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+// v668 · quita también los \r: la copia de trabajo de este repo alterna LF y CRLF (git la reescribe
+// con autocrlf, y un `git stash pop` la dejó en CRLF), y una prueba que corta en '\n}\n' falla en
+// CRLF sin que el código haya cambiado — le pasó a la de v645. El helper compartido normaliza para todas.
+const sinComentarios = t => String(t).replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 const _srcApp1 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
 const _srcApp3 = () => require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8');
 const _m = (from, date, text) => ({ from, date, text });
@@ -21456,6 +21459,74 @@ test('🔒 v667 · el modelo G deja sitio a la cara y nada pisa el pie (ejecutad
   // 🔒 el filtro SIEMPRE se quita: lo que se dibuja después no puede salir fundido con la foto.
   const c = ctx(); drawG(c, Object.assign({}, base, { medianaPct: 40, subidas: sub(3) }), foto);
   assert.strictEqual(c.filter, 'none', '🔴 el filtro de la foto se quedó puesto');
+});
+
+// 🔒 v668 · LOS CAMBIOS DEL CUERPO NO SE COLOREAN POR DIRECCIÓN (la regla de Valery, v607, llevada al
+// peso y a las medidas). Verde al bajar y naranja al subir le decía «bajar es bueno» a quien busca
+// GANAR músculo: medido con `_verify-v668`, el mismo peso subiendo salía naranja y bajando verde.
+function _v668Fn(archivo, nombre) {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, archivo), 'utf8'));
+  const i = src.indexOf('function ' + nombre + '(');
+  assert.ok(i >= 0, 'desapareció ' + nombre);
+  return src.slice(i, src.indexOf('\nfunction ', i + 10));
+}
+test('🔒 v668 · peso y medidas: el color NO depende de si subió o bajó', () => {
+  const COLOR_POR_SIGNO = /(?:<|>|<=|>=)\s*0\)?\s*\?\s*'var\(--[\w-]+\)'|<=\s*entries\[0\]\.kg\s*\?/;
+  [['app-4-entreno.js', 'renderBodyWeightSection'], ['app-3-coach.js', 'miniSparkline'],
+    ['app-5-salud.js', 'renderMedidasClient'], ['app-5-salud.js', 'renderMedidasCoach']].forEach(([f, fn]) => {
+    const cuerpo = _v668Fn(f, fn);
+    assert.ok(!COLOR_POR_SIGNO.test(cuerpo), `🔴 ${fn} volvió a elegir el color según el signo del cambio`);
+    assert.ok(!/var\(--chart-or\)|var\(--ort\)|var\(--orl\)/.test(cuerpo), `🔴 ${fn} volvió a pintar un cambio del cuerpo en naranja de alerta`);
+  });
+  // La píldora del peso es neutra y su estilo vive en la clase, no en línea.
+  const rw = _v668Fn('app-4-entreno.js', 'renderBodyWeightSection');
+  assert.ok(/<span class="wlog-delta">/.test(rw), '🔴 la píldora del peso volvió a llevar un color en línea');
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.wlog-delta\{[^}]*background:var\(--surface\);color:var\(--t2\)/.test(css), 'la píldora perdió su estilo neutro');
+  assert.ok(/drawMedChart\(.*,'cintura','var\(--chart-g\)'\)/.test(_v668Fn('app-5-salud.js', 'renderMedidasClient')),
+    '🔴 la gráfica de medidas volvió al naranja de alerta');
+  // 🔒 CONTROL: el RENDIMIENTO sí se colorea al subir (más kilos es bueno para todos). Si alguien
+  //    «arregla» esto quitando el color en todas partes, este control lo dice.
+  assert.ok(/trend>0\?'var\(--gt\)'/.test(_v668Fn('app-2-login.js', 'renderExerciseProgressInto')),
+    'el progreso de los EJERCICIOS perdió su color: la regla es para el cuerpo, no para lo que levantas');
+});
+test('🔒 v668 · la lista del peso no se arrastra de lado y las fechas de medidas caben', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const bw = (html.match(/<div id="bw-list" style="([^"]*)"/) || [])[1] || '';
+  // El ✕ amplía su área a 40 px con un ::after (`.hit40`) y en el borde derecho se salía 14 px:
+  // la lista, que es un scroller, se podía arrastrar de lado. El hueco le devuelve el sitio.
+  assert.ok(/overflow-x:hidden/.test(bw) && /padding-right:14px/.test(bw), '🔴 la lista del peso volvió a poder arrastrarse de lado');
+  const mc = _v668Fn('app-5-salud.js', 'drawMedChart');
+  const H = +(mc.match(/const H=(\d+);/) || [])[1];
+  assert.ok(H >= 66, 'la gráfica de medidas perdió la franja de las fechas');
+  assert.ok(/y="\$\{H-3\}"/.test(mc) && !/y="\$\{H\}"/.test(mc), '🔴 las fechas vuelven a apoyarse en el borde: se corta la j y la p');
+  assert.ok(/text-anchor="\$\{i===0\?'start':i===pts\.length-1\?'end':'middle'\}"/.test(mc), 'los extremos dejaron de anclarse al borde');
+  // los puntos no bajan a la franja de las fechas
+  assert.ok(/y:6\+\(H-22\)-/.test(mc), '🔴 los puntos bajan hasta la franja de las fechas');
+});
+test('🔒 v668 · la gráfica de la rutina escribe el volumen como sus casillas («9,9 t»)', () => {
+  const fs = require('fs'), path = require('path');
+  const a2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const i = a2.indexOf('function drawExProgChart(');
+  const src = a2.slice(i, a2.indexOf('\nfunction ', i + 10));
+  const core = require('./avi-core.js');
+  const draw = new Function('fmtMetric', 'chartLabelIndices', 'chartLabelBelow', 'window', src + '\nreturn drawExProgChart;')(
+    core.fmtMetric, core.chartLabelIndices, core.chartLabelBelow, { innerWidth: 390 });
+  const pts = [6800.5, 7261, 7720, 8180.5, 9082.5].map((v, k) => ({ maxKg: v, dateStr: (k + 1) + ' ago' }));
+  const fv = v => v >= 1000 ? core.fmtMiles(v / 1000) + ' t' : core.fmtMiles(v) + ' kg';
+  const con = { offsetWidth: 330, innerHTML: '' };
+  draw(con, pts, '#6366f1', 'kg', fv);
+  assert.ok(!/\d{4}(\.\d)? kg/.test(con.innerHTML), '🔴 volvió «9082.5 kg»: miles sin separar');
+  assert.ok(/9,1 t/.test(con.innerHTML), 'la etiqueta no usa el formateador que se le pasó');
+  // CONTROL: sin formateador sigue el de siempre (las gráficas de ejercicios no cambian).
+  const con2 = { offsetWidth: 330, innerHTML: '' };
+  draw(con2, [{ maxKg: 40, dateStr: 'a' }, { maxKg: 42.5, dateStr: 'b' }], '#0A7C5B', 'kg');
+  assert.ok(/42\.5 kg/.test(con2.innerHTML), 'sin formateador cambió la etiqueta de los ejercicios');
+  // Y la habitación de la rutina le pasa el SUYO.
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/drawExProgChart\(ch,pts,IND,'kg',fv\);/.test(a4), '🔴 la habitación de la rutina dejó de pasar su formateador');
 });
 
 // ══════════════════════════════════════════════════════

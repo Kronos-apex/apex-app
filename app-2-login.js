@@ -895,9 +895,13 @@ function buildExerciseProgress(clientId){
 }
 
 // Draw inline SVG line chart for kg progression
-function drawExProgChart(container, points, color, unit){
+// v668 · `fmt` (opcional) escribe las etiquetas de valor. Sin él, `fmtMetric`, que no separa miles:
+// la habitación de la rutina pinta VOLUMEN (6.825-9.890 kg) y salía «9082.5 kg» encima de unas
+// casillas que decían «9,9 t». Ahora le pasa su propio formateador y la pantalla habla una sola vez.
+function drawExProgChart(container, points, color, unit, fmt){
   if(!points.length)return;
   unit=unit||'kg';
+  const _val=(typeof fmt==='function')?fmt:(v=>fmtMetric(v,unit));
   const W=Math.max(container.offsetWidth||window.innerWidth-80||260,200);
   // v629: franja propia arriba (etiqueta de un pico) y abajo (etiqueta de un valle + fechas).
   const H=96;const pad=8;const TOP=16;const chartW=W-pad*2;const chartH=H-TOP-28;
@@ -919,7 +923,7 @@ function drawExProgChart(container, points, color, unit){
   // escondía TODAS las fechas en cuanto había 9 puntos, y los VALORES no preguntaban nada y
   // se encaballaban («7 series» encima de «4 series»). Sans 8.5px ≈ 4.7px/carácter; mono 8px ≈ 4.8.
   const epFechas=pts.map(p=>p.p.dateStr||'');
-  const epVals=pts.map(p=>fmtMetric(p.p.maxKg,unit));
+  const epVals=pts.map(p=>_val(p.p.maxKg));
   const epHay=typeof chartLabelIndices==='function';
   const epConFecha=new Set(epHay?chartLabelIndices(epFechas,chartW,4.7):[]);
   const epConValor=new Set(epHay?chartLabelIndices(epVals,chartW,4.8):epVals.map((_,i)=>i));
@@ -945,7 +949,7 @@ function drawExProgChart(container, points, color, unit){
       // v629: del lado donde NO pasa la línea — debajo en un valle, encima en lo demás.
       const abajo=typeof chartLabelBelow==='function'&&chartLabelBelow(vals,i);
       const ly=abajo?(p.y+13):(p.y-6);
-      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" style="fill:${lineColor}" font-weight="600">${fmtMetric(p.p.maxKg,unit)}</text>`;
+      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" font-family="JetBrains Mono,monospace" font-size="8" style="fill:${lineColor}" font-weight="600">${epVals[i]}</text>`;
     }).join('')}
   </svg>`;
 }
