@@ -117,7 +117,9 @@
   enlace ajeno sin origen y desde otra página no planta nada; M7c, el MISMO enlace desde el origen viejo
   sí — el rechazo es por el origen; M5/M6 llegan ahora con referrer, como el ícono viejo) ·
   `_sabotaje-v669` **8/8 a la primera** · `_sabotaje-v662` re-corrida **22/22**.
-- ⏳ **Sin desplegar todavía:** el `git push` lo bloqueó el filtro de permisos; sale con el lote.
+- ✅ **Desplegado con el lote el 25-sep** (el `git push` lo bloqueó el filtro de permisos y lo corrió el PO):
+  v675 en las DOS direcciones, `_prodcheck` verde en ambas, `_prodcheck-mudanza` **6/6** (P3b: el salto REAL
+  desde github.io se acepta en producción — el referrer llega), CI verde con el job nuevo `dos-direcciones`.
 
 ## ⏮️ 2026-09-25 — Datos: Sharith y Santiago suspendidos (decisión del PO)
 
