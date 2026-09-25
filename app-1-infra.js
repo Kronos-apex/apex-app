@@ -749,8 +749,10 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
     // client_id = el UID REAL del usuario autenticado (no el _pushCtx, que podía estar
     // desfasado) → coincide SIEMPRE con la RLS `client_id = auth.uid()`. El coach usa '_coach'.
     const _cid=(clientId==='_coach')?'_coach':_u.id;
+    // v670 · la suscripción lleva el ORIGEN que la creó: es lo que deja al hogar nuevo reconocer las de
+    // la dirección vieja (ver `pushRowsToRetire`). `web-push` solo lee `endpoint` y `keys`.
     const { error:_perr }=await _c.from('push_subscriptions').upsert(
-      { client_id:_cid, subscription:sub.toJSON(), updated_at:new Date().toISOString(), training_days:trainingDays, training_shift:shiftMap },
+      { client_id:_cid, subscription:Object.assign({},sub.toJSON(),{origin:location.origin}), updated_at:new Date().toISOString(), training_days:trainingDays, training_shift:shiftMap },
       { onConflict:'client_id,subscription' }
     );
     if(_perr){ warn('AVI Push: registro rechazado',_perr.message); return false; } // no marcar el endpoint como registrado
@@ -765,6 +767,20 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
         const { error:_derr }=await _c.from('push_subscriptions').delete().eq('client_id',_cid).eq('subscription->>endpoint',_prevEp);
         if(_derr) warn('AVI Push: no se pudo retirar el endpoint anterior',_derr.message);
       }catch(_e){ warn('AVI Push: no se pudo retirar el endpoint anterior',_e&&_e.message); }
+    }
+    // v670 · En el HOGAR NUEVO, lo que sobra de esta persona se retira aquí, en cada sesión: las
+    // suscripciones de la dirección vieja siguen vivas y cada aviso le llegaba DOS veces (medido el
+    // 25-sep: 3 personas, el PO incluido). Va DESPUÉS de guardar la nueva —nunca un hueco sin avisos—
+    // y no depende de `apex_push:` (la retirada de arriba), que solo viaja en la primera llegada.
+    if(location.origin===AVI_HOME_ORIGIN&&typeof pushRowsToRetire==='function'){
+      try{
+        const { data:_filas, error:_lerr }=await _c.from('push_subscriptions').select('id,subscription').eq('client_id',_cid);
+        const _sobran=_lerr?[]:pushRowsToRetire(_filas,AVI_HOME_ORIGIN,sub.endpoint);
+        if(_sobran.length){
+          const { error:_derr2 }=await _c.from('push_subscriptions').delete().in('id',_sobran);
+          if(_derr2) warn('AVI Push: no se pudieron retirar los avisos de la dirección vieja',_derr2.message);
+        }
+      }catch(_e){ warn('AVI Push: no se pudieron retirar los avisos de la dirección vieja',_e&&_e.message); }
     }
     localStorage.setItem(_pushKey,sub.endpoint);
     log('AVI Push: suscripción guardada ✅');

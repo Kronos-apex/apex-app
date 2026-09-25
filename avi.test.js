@@ -21229,6 +21229,38 @@ test('🔒 v669 · la sesión que viaja solo se acepta si la llegada viene del S
   assert.ok(iRef < lleg.indexOf('_mvDecode'), '🔴 leería lo que trae el enlace antes de saber de dónde viene');
   assert.ok(iRef > lleg.indexOf('history.replaceState'), 'el # se borra de la barra aunque la llegada se rechace');
 });
+test('🔒 v670 · al activar los avisos en el hogar nuevo se retiran los de la dirección vieja (no llegan dobles)', () => {
+  const { pushRowsToRetire } = require('./avi-core.js');
+  const HOGAR = 'https://app.avientrena.com', VIEJO = 'https://kronos-apex.github.io';
+  const fila = (id, endpoint, origin) => ({ id, subscription: Object.assign({ endpoint, keys: { p256dh: 'k', auth: 'a' } }, origin ? { origin } : {}) });
+  const filas = [
+    fila('vieja', 'https://fcm/ep-viejo', VIEJO),        // la de github.io: SOBRA
+    fila('sinmarca', 'https://fcm/ep-antes', null),        // de antes de marcar el origen: SOBRA
+    fila('actual', 'https://fcm/ep-nuevo', null),          // la de ESTE aparato (aún sin marcar): se queda
+    fila('otro', 'https://fcm/ep-pc', HOGAR),              // otro aparato ya en el hogar nuevo: se queda
+  ];
+  assert.deepStrictEqual(pushRowsToRetire(filas, HOGAR, 'https://fcm/ep-nuevo'), ['vieja', 'sinmarca']);
+  // La del aparato que activa no se toca aunque venga marcada del origen viejo.
+  assert.deepStrictEqual(pushRowsToRetire([fila('yo', 'https://fcm/ep', VIEJO)], HOGAR, 'https://fcm/ep'), [], '🔴 borraría la suscripción recién guardada');
+  // Lo que no se entiende no se borra.
+  assert.deepStrictEqual(pushRowsToRetire([{ id: 'x', subscription: 'texto' }, { id: 'y', subscription: null }, { subscription: { endpoint: 'e' } }, null], HOGAR, 'https://fcm/ep'), []);
+  assert.deepStrictEqual(pushRowsToRetire(null, HOGAR, 'e'), []);
+  assert.deepStrictEqual(pushRowsToRetire(filas, '', 'e'), [], 'sin saber cuál es el hogar no se borra nada');
+  assert.deepStrictEqual(pushRowsToRetire(filas, HOGAR, ''), [], 'sin saber cuál es la de este aparato no se borra nada');
+  // Cableado en `subscribePush`: marca el origen, y retira SOLO en el hogar nuevo, DESPUÉS de guardar.
+  const a1 = sinComentarios(_srcApp1());
+  const i0 = a1.indexOf('async function subscribePush(');
+  const fn = a1.slice(i0, Math.min(...['\nasync function ', '\nfunction '].map(s => a1.indexOf(s, i0 + 10)).filter(x => x > 0)));
+  assert.ok(fn.length > 500 && fn.indexOf('pushManager') > 0, 'MONTAJE: no se encontró el cuerpo de subscribePush');
+  assert.ok(/subscription:Object\.assign\(\{\},sub\.toJSON\(\),\{origin:location\.origin\}\)/.test(fn), '🔴 la suscripción dejó de decir de qué dirección es');
+  const iGuard = fn.search(/^\s*if\(location\.origin===AVI_HOME_ORIGIN&&typeof pushRowsToRetire==='function'\)\{\s*$/m);
+  assert.ok(iGuard > 0, '🔴 el hogar nuevo dejó de retirar los avisos de la dirección vieja (o lo hace en cualquier dirección)');
+  assert.ok(iGuard > fn.search(/if\(_perr\)\{/), '🔴 retiraría ANTES de guardar la nueva: habría un hueco sin avisos');
+  const bloque = fn.slice(iGuard, fn.indexOf('localStorage.setItem(_pushKey', iGuard));
+  assert.ok(/pushRowsToRetire\(_filas,AVI_HOME_ORIGIN,sub\.endpoint\)/.test(bloque), '🔴 no le pregunta a la regla qué sobra');
+  assert.ok(/\.delete\(\)\.in\('id',_sobran\)/.test(bloque), '🔴 no borra lo que la regla dijo que sobra');
+  assert.ok(/\.eq\('client_id',_cid\)/.test(bloque), '🔴 leería suscripciones que no son de esta persona');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');

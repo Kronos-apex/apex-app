@@ -11553,6 +11553,28 @@ const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpen
 function mudanzaKeyAllowed(k) {
   return typeof k === 'string' && k.length > 0 && !MV_SKIP_RE.test(k);
 }
+// v670 · ¿Qué suscripciones de avisos de ESTA persona sobran cuando los activa en el hogar nuevo? PURA.
+// El permiso de avisos es POR DIRECCIÓN: quien se muda y los reactiva estrena una suscripción, y la de
+// github.io SIGUE VIVA (su service worker no muere) — cada aviso le llega DOS veces. v662 lo intentó
+// retirando «el endpoint anterior de este aparato», leído de `apex_push:<id>` en el localStorage, y
+// medido el 25-sep NO FUNCIONÓ NUNCA: en 24 h de logs hubo cero DELETE, con tres personas (el PO
+// incluido) recibiendo todo doble. Ese dato solo viaja en la PRIMERA llegada, y quien entró directo a
+// la dirección nueva antes de saltar (el PO, probándola el 22-sep) nunca lo recibe.
+// Ahora cada suscripción lleva el ORIGEN que la creó (`subscription.origin`), y en el hogar nuevo sobran
+// las de esta persona que no son de aquí: las de la dirección vieja y las de antes de marcar el origen.
+// 🔒 La del aparato que está activando no se toca jamás, venga marcada como venga.
+// 🔒 Una fila ilegible tampoco: no saber qué es no autoriza a borrarla.
+// ⚠️ Lo de antes de marcar el origen puede ser OTRO aparato ya mudado: pierde sus avisos hasta que se
+//    vuelva a abrir allí (se re-suscribe solo, `ensureClientPush`), y desde entonces queda marcado.
+function pushRowsToRetire(rows, homeOrigin, currentEndpoint) {
+  if (!Array.isArray(rows) || !homeOrigin || !currentEndpoint) return [];
+  return rows.filter(r => {
+    const s = r && r.subscription;
+    if (!r || r.id == null || !s || typeof s !== 'object' || typeof s.endpoint !== 'string') return false;
+    if (s.endpoint === currentEndpoint) return false;
+    return s.origin !== homeOrigin;
+  }).map(r => r.id);
+}
 // v669 · ¿Esta llegada viene de verdad del SALTO de la dirección vieja? PURA.
 // La sesión viaja en el `#` de la dirección y ese formato está en un repo público: cualquiera con
 // cuenta puede armar un enlace con SU sesión adentro. Abierto por alguien que nunca había entrado al
@@ -11622,6 +11644,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mudanzaPick,
     mudanzaKeyAllowed,
     mudanzaReferrerOk,
+    pushRowsToRetire,
     mudanzaQueuePending,
     coachCanReach,
     coachPendingRenewals,
