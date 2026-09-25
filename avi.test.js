@@ -21195,6 +21195,40 @@ test('🔒 v662 · la llegada acepta con la MISMA regla, y nunca una cola planta
   assert.ok(iGuard > 0 && iGuard < lleg.indexOf('_mvDecode'), '🔴 quien ya se mudó recibiría otra vez lo de aquel día');
   assert.ok(lleg.indexOf('window._aviLlegoMudanza=true;') < iGuard, 'el aviso de la dirección nueva sale también en los saltos siguientes');
 });
+test('🔒 v669 · la sesión que viaja solo se acepta si la llegada viene del SALTO de la dirección vieja', () => {
+  const { mudanzaReferrerOk } = require('./avi-core.js');
+  const VIEJOS = ['kronos-apex.github.io'];
+  // Lo que deja el navegador en el salto legítimo (`location.replace` desde github.io, que no manda
+  // Referrer-Policy): el ORIGEN viejo.
+  assert.strictEqual(mudanzaReferrerOk('https://kronos-apex.github.io/', VIEJOS), true, 'el salto de verdad tiene que pasar');
+  assert.strictEqual(mudanzaReferrerOk('https://kronos-apex.github.io/apex-app/?go=hoy', VIEJOS), true, 'con ruta completa también');
+  // Un enlace armado por otra persona: pegado en WhatsApp llega SIN referrer; desde una página, con el de ella.
+  assert.strictEqual(mudanzaReferrerOk('', VIEJOS), false, '🔴 un enlace sin origen metería a alguien en una cuenta ajena');
+  assert.strictEqual(mudanzaReferrerOk(undefined, VIEJOS), false);
+  assert.strictEqual(mudanzaReferrerOk('https://web.whatsapp.com/', VIEJOS), false);
+  // El HOST exacto: ni un sufijo, ni otro usuario de github.io, ni un subdominio.
+  assert.strictEqual(mudanzaReferrerOk('https://kronos-apex.github.io.evil.test/', VIEJOS), false, '🔴 el host se compara EXACTO, no por prefijo');
+  assert.strictEqual(mudanzaReferrerOk('https://otro.github.io/', VIEJOS), false, '🔴 cualquiera puede publicar en su propio github.io');
+  assert.strictEqual(mudanzaReferrerOk('https://x.kronos-apex.github.io/', VIEJOS), false);
+  assert.strictEqual(mudanzaReferrerOk('javascript:alert(1)', VIEJOS), false);
+  assert.strictEqual(mudanzaReferrerOk('ftp://kronos-apex.github.io/', VIEJOS), false, 'solo una página web (http/https) es un salto');
+  assert.strictEqual(mudanzaReferrerOk('no es una dirección', VIEJOS), false);
+  assert.strictEqual(mudanzaReferrerOk('https://kronos-apex.github.io/', null), false, 'sin lista de orígenes viejos no se acepta nada');
+  // Cableado: la llegada le pregunta ANTES de marcar que llegó y ANTES de escribir nada.
+  const a1 = sinComentarios(_srcApp1());
+  const lleg = a1.slice(a1.indexOf('function _aviLlegada('), a1.indexOf('\n}', a1.indexOf('function _aviLlegada(')));
+  const iRef = lleg.search(/^\s*const _refOk=\(typeof mudanzaReferrerOk==='function'\)&&mudanzaReferrerOk\(document\.referrer,AVI_OLD_HOSTS\);\s*$/m);
+  assert.ok(iRef > 0, '🔴 la llegada dejó de comprobar de dónde viene (o acepta sin la regla)');
+  const iCorte = lleg.search(/^\s*if\(!_refOk\)\{\s*$/m);
+  assert.ok(iCorte > iRef, '🔴 la comprobación no corta la llegada');
+  const corte = lleg.slice(iCorte, lleg.indexOf('\n    }', iCorte));
+  assert.ok(/^\s*return;\s*$/m.test(corte), '🔴 una llegada rechazada sigue de largo');
+  assert.ok(/window\._aviMudanzaRechazada=_rh;/.test(corte), 'el rechazo tiene que quedar a la vista (telemetría)');
+  assert.ok(!/avimv|m\[1\]|_mvDecode/.test(corte), '🔴 la telemetría no puede llevar la sesión');
+  assert.ok(iRef < lleg.indexOf('window._aviLlegoMudanza=true;'), '🔴 marcaría «llegó por la mudanza» a un enlace ajeno');
+  assert.ok(iRef < lleg.indexOf('_mvDecode'), '🔴 leería lo que trae el enlace antes de saber de dónde viene');
+  assert.ok(iRef > lleg.indexOf('history.replaceState'), 'el # se borra de la barra aunque la llegada se rechace');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');

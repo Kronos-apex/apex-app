@@ -14,6 +14,12 @@
 //   M5 un ENLACE fabricado hacia el hogar nuevo no puede plantar una cola del coach.
 //   M6 quien ya se mudó y vuelve a tocar el ícono VIEJO no recibe las series de aquel día.
 //   M2c un iPhone con la app instalada no salta (su control es M3).
+// v669 (fijación de sesión, auditoría del 25-sep):
+//   M3 es ahora también el CONTROL de lo nuevo: el salto real (`location.replace` desde el origen
+//      viejo) deja ese origen en `document.referrer` y la llegada lo acepta.
+//   M5/M6 llegan como llega el ícono viejo: con el origen viejo de referrer.
+//   M7 un enlace armado por OTRA persona con SU sesión adentro — sin referrer (pegado en WhatsApp) o
+//      con el de otra página — no planta nada; M7c (control) el mismo enlace desde el origen viejo sí.
 // Corre: node scripts/e2e/_verify-mudanza.mjs
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
@@ -56,6 +62,10 @@ const send = (method, params = {}) => new Promise(r => { const i = id++; pend.se
 const ev = async e => (await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true })).result?.result?.value;
 await send('Page.enable'); await send('Runtime.enable');
 const ir = async url => { await send('Page.navigate', { url }); await sleep(5000); };
+// Llegar al hogar nuevo con un REFERRER dado: así llega el salto del origen viejo (y así NO llega un
+// enlace pegado en WhatsApp, que no trae ninguno).
+const VIEJO_REF = 'http://127.0.0.1:8861/';
+const irDesde = async (url, referrer, ms = 5000) => { await send('Page.navigate', referrer ? { url, referrer } : { url }); await sleep(ms); };
 
 const FAKE = JSON.stringify({ access_token: 'tok-falso', refresh_token: 'ref-falso', user: { id: 'u-prueba' } });
 const plantar = extra => ev(`(()=>{ localStorage.clear();
@@ -126,7 +136,7 @@ check('M4b la app arrancó en el hogar nuevo', await ev("typeof showScreen==='fu
 // ── M5: alguien fabrica un enlace al hogar nuevo con una cola del coach adentro
 await ev('localStorage.clear(); true');
 const trampa = Buffer.from(JSON.stringify({ 'ax_cwq_u-prueba': '[{"col":"routines","id":"victima","val":[]}]', ax_theme: '"light"' })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-await ir('http://127.0.0.1:8862/?mudanza=1#avimv=' + trampa);
+await irDesde('http://127.0.0.1:8862/?mudanza=1#avimv=' + trampa, VIEJO_REF);
 const tr = await ev("({cwq:localStorage.getItem('ax_cwq_u-prueba'), snap:window.__mvSnap||null})");
 check('M5 un enlace fabricado NO planta una cola del coach', tr && tr.cwq === null && tr.snap && !('ax_cwq_u-prueba' in tr.snap), JSON.stringify(tr && tr.cwq));
 check('M5b (control) lo inocuo del mismo enlace sí se escribe: la llegada funcionó', tr && tr.snap && tr.snap.ax_theme === '"light"');
@@ -134,10 +144,28 @@ check('M5b (control) lo inocuo del mismo enlace sí se escribe: la llegada funci
 // ── M6: este teléfono YA tiene sesión en el hogar nuevo y llega otro salto (el ícono viejo)
 await ev(`localStorage.clear(); localStorage.setItem('avi_auth', ${JSON.stringify(FAKE)}); true`);
 const viejo2 = Buffer.from(JSON.stringify({ avi_auth: 'sesion-vieja', 'done_r9_0_0': '1', ax_theme: '"light"' })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-await send('Page.navigate', { url: 'http://127.0.0.1:8862/?mudanza=1#avimv=' + viejo2 }); await sleep(1500);
+await irDesde('http://127.0.0.1:8862/?mudanza=1#avimv=' + viejo2, VIEJO_REF, 1500);
 const m6 = await ev("({done:localStorage.getItem('done_r9_0_0'), theme:localStorage.getItem('ax_theme'), marca:!!window._aviLlegoMudanza, href:location.href})");
 check('M6 quien ya se mudó no recibe las series viejas otra vez', m6 && m6.done === null && m6.theme === null, JSON.stringify(m6));
 check('M6b (control) la llegada sí ocurrió: la barra quedó limpia y sabe que llegó', m6 && m6.marca === true && !/avimv/.test(m6.href), m6 && m6.href);
+
+// ── M7 (v669): OTRA persona arma un enlace con SU sesión adentro y alguien que nunca entró al hogar
+//    nuevo lo abre. Antes quedaba dentro de la cuenta ajena; ahora la llegada mira de dónde viene.
+const ajena = Buffer.from(JSON.stringify({ avi_auth: 'sesion-ajena', ax_theme: '"light"' })).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const leerLlegada = () => ev("({auth:localStorage.getItem('avi_auth'), theme:localStorage.getItem('ax_theme'), marca:!!window._aviLlegoMudanza, rechazo:window._aviMudanzaRechazada||null, probe:window.__mvAuth||null, href:location.href})");
+await ev('localStorage.clear(); true');
+await irDesde('http://127.0.0.1:8862/?mudanza=1#avimv=' + ajena, null, 1500);   // pegado en WhatsApp: sin referrer
+const m7 = await leerLlegada();
+check('M7a un enlace ajeno SIN origen no planta la sesión', m7 && m7.auth === null && m7.probe === null && m7.theme === null, JSON.stringify(m7));
+check('M7a2 la barra queda limpia igual y la llegada queda anotada como rechazada', m7 && !/avimv/.test(m7.href) && m7.marca === false && m7.rechazo === 'sin origen', JSON.stringify(m7));
+await ev('localStorage.clear(); true');
+await irDesde('http://127.0.0.1:8862/?mudanza=1#avimv=' + ajena, 'http://127.0.0.1:9911/', 1500);   // desde otra página
+const m7b = await leerLlegada();
+check('M7b un enlace ajeno desde OTRA página tampoco planta nada', m7b && m7b.auth === null && m7b.probe === null && m7b.rechazo === '127.0.0.1:9911', JSON.stringify(m7b));
+await ev('localStorage.clear(); true');
+await irDesde('http://127.0.0.1:8862/?mudanza=1#avimv=' + ajena, VIEJO_REF, 1500);   // CONTROL: el mismo enlace, desde el origen viejo
+const m7c = await leerLlegada();
+check('M7c (control) el MISMO enlace desde la dirección vieja sí llega: el rechazo es por el origen, no por otra cosa', m7c && m7c.probe === 'sesion-ajena' && m7c.marca === true && m7c.rechazo === null, JSON.stringify(m7c));
 
 console.log('\njsErrors: ' + JSON.stringify(jsErr));
 const fallas = results.filter(r => r.startsWith('FAIL')).length;

@@ -101,6 +101,19 @@ function _mvTry(){
     const sp=new URLSearchParams((location.search||'').replace(/^\?/,'')); sp.delete('mudanza');
     const q=sp.toString();
     history.replaceState(null,'',location.pathname+(q?'?'+q:''));
+    // v669 · SOLO si viene del SALTO de la dirección vieja. Un enlace armado por otra persona con SU
+    // sesión adentro dejaba a quien lo abría dentro de la cuenta ajena (fijación de sesión, auditoría
+    // del 25-sep): lo que registrara después le llegaba al que armó el enlace. Sin la regla (avi-core no
+    // cargó) tampoco se acepta nada: entrar con la contraseña es mejor que aceptar a ciegas.
+    // El rechazo se anota en la telemetría —sin la sesión, solo de dónde venía— para ver si alguien
+    // legítimo cae aquí; se manda después, cuando `_logAppError` ya existe.
+    const _refOk=(typeof mudanzaReferrerOk==='function')&&mudanzaReferrerOk(document.referrer,AVI_OLD_HOSTS);
+    if(!_refOk){
+      let _rh='sin origen'; try{ if(document.referrer)_rh=new URL(document.referrer).host; }catch(_e){ _rh='origen ilegible'; }
+      window._aviMudanzaRechazada=_rh;
+      setTimeout(()=>{ try{ if(typeof _logAppError==='function')_logAppError('mudanza','llegada rechazada: no viene de la dirección vieja',_rh); }catch(_e){} },4000);
+      return;
+    }
     window._aviLlegoMudanza=true;
     // v662 · SOLO LA PRIMERA VEZ. Si este teléfono ya tiene sesión en el hogar nuevo, ya se mudó:
     // quien vuelve a tocar el ícono VIEJO salta otra vez, y el origen viejo guarda las series de

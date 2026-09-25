@@ -11553,6 +11553,25 @@ const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpen
 function mudanzaKeyAllowed(k) {
   return typeof k === 'string' && k.length > 0 && !MV_SKIP_RE.test(k);
 }
+// v669 · ¿Esta llegada viene de verdad del SALTO de la dirección vieja? PURA.
+// La sesión viaja en el `#` de la dirección y ese formato está en un repo público: cualquiera con
+// cuenta puede armar un enlace con SU sesión adentro. Abierto por alguien que nunca había entrado al
+// hogar nuevo, lo dejaba DENTRO DE LA CUENTA AJENA — y lo que esa persona registrara después (su
+// peso, sus fotos, sus mensajes) le llegaba al que armó el enlace. Fijación de sesión: auditoría del
+// 25-sep, hallazgo F1-1, reproducido en local.
+// El salto legítimo lo hace `location.replace` DESDE el origen viejo, así que el navegador pone ese
+// origen en `document.referrer`: GitHub Pages no manda Referrer-Policy (medido el 25-sep), así que
+// vale la del navegador, que entre orígenes distintos deja el ORIGEN. Un enlace pegado en WhatsApp o
+// en otra página llega sin referrer o con el de esa página — y en `kronos-apex.github.io` solo
+// publica el PO.
+// Se compara el HOST EXACTO: `kronos-apex.github.io.evil.test` u `otro.github.io` no pasan.
+function mudanzaReferrerOk(referrer, oldHosts) {
+  if (typeof referrer !== 'string' || !referrer || !Array.isArray(oldHosts)) return false;
+  let u;
+  try { u = new URL(referrer); } catch (_e) { return false; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+  return oldHosts.indexOf(u.host) >= 0;
+}
 function mudanzaPick(entries) {
   const must = [], opt = [];
   for (const e of (Array.isArray(entries) ? entries : [])) {
@@ -11602,6 +11621,7 @@ if (typeof module !== 'undefined' && module.exports) {
     MV_TOTAL_MAX,
     mudanzaPick,
     mudanzaKeyAllowed,
+    mudanzaReferrerOk,
     mudanzaQueuePending,
     coachCanReach,
     coachPendingRenewals,
