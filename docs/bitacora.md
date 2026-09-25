@@ -4,6 +4,29 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-25 — v673: la foto del coach ya no dice «enviada» antes de estar guardada
+
+- **Hallazgo F3-3.** v588 le dio al TEXTO del coach la espera, el ⏳ y el «sin conexión»; la foto y el video
+  seguían diciendo «enviada» y mandándole el push al asesorado aunque el mensaje que nombra el archivo no se
+  hubiera guardado. Ahora `coachSendMedia` sigue el mismo patrón que `sendCoachChatMsg`, y si quedó en la
+  cola lo dice y no avisa. El lado del asesorado ya trataba igual su texto y sus fotos (su propia red de
+  reintentos), así que no se tocó.
+- **QA:** suite **1344** · 🔁 el cableado de v649 buscaba el literal `.push({from:` y se amplió a dónde nace el
+  mensaje (misma propiedad) · `_verify-chat-lote` 17/17 · `_sabotaje-v673` **4/4**.
+
+## ⏮️ 2026-09-25 — v672: una corrección hecha sin señal se reenvía sola si nadie tocó esa columna
+
+- **Hallazgo F3-1** (el auditor lo marcó 🔴 «en silencio»; re-medido: el aviso «⚠️ N sin guardar» SÍ se ve y
+  desde v620 se puede descartar). La cola de v588 retenía un pendiente si el `updated_at` de la FILA era
+  posterior al fallo, y ese sello se mueve con cualquier columna: el «visto» escribe el perfil del asesorado
+  y dejaba retenida una corrección de sus récords, su peso o sus medidas, obligando a rehacerla.
+- **El arreglo:** la cola guarda la HUELLA (`coachColHash`, canónica) de lo que la nube tenía confirmado antes
+  del cambio (`_coachSnap`). Al reintentar, si la fila se movió pero ESA columna sigue igual, nadie más la
+  tocó → se reenvía. Si cambió (el asesorado escribió), se retiene como siempre. Mensajes y ajustes ya
+  estaban exentos; `ax_c` conserva su fusión de tres vías. Las entradas viejas sin huella siguen con la
+  regla de antes.
+- **QA:** suite **1343** · `_verify-cola-coach` 18/18 · `_sabotaje-v672` **7/7**.
+
 ## ⏮️ 2026-09-25 — v671: sin edad registrada no se presume adulto
 
 - **Hallazgo F2-1 de la auditoría** (el #4 de la ronda del 1-sep, A7, seguía abierto) — y se cerró la
