@@ -4225,11 +4225,21 @@ function coachSendMedia(){
     catch(e){ _cchatMediaSubiendo=false; toast('No se pudo enviar. Revisa tu conexión e inténtalo de nuevo'); return; }
     _cchatMediaSubiendo=false;
     if(!DB.msgs[id])DB.msgs[id]=[];
-    DB.msgs[id].push({from:'coach',text:prep.kind==='vid'?'🎥 Video':'📷 Foto',date:new Date().toISOString(),media:{path,kind:prep.kind}});
+    // v673 · El MISMO trato que el texto (v588): el archivo ya subió, pero el MENSAJE que lo nombra
+    //   puede no guardarse (sin señal justo después). Hasta hoy la foto decía «enviada» y le mandaba el
+    //   push al asesorado pase lo que pase — un aviso de algo que su app todavía no tiene (auditoría
+    //   25-sep, F3-3). Ahora se espera, el hilo lo marca ⏳ mientras vuela, y si quedó en la cola se dice.
+    const _msg={from:'coach',text:prep.kind==='vid'?'🎥 Video':'📷 Foto',date:new Date().toISOString(),media:{path,kind:prep.kind}};
+    DB.msgs[id].push(_msg);
+    _cchatSending[_msg.date]=1;
     markCoachRead(id);
     if(_cchatId===id)renderCoachChatThread(id,true);
     if(typeof renderMsgs==='function')renderMsgs();
     try{ await svNow('ax_m',DB.msgs); }catch(e){ warn('AVI: enviar archivo falló:',e&&e.message); }
+    delete _cchatSending[_msg.date];
+    const _enCola=(typeof _cwqHasMsg==='function')&&_cwqHasMsg(id,_msg.date);
+    if(_cchatId===id)renderCoachChatThread(id,true);
+    if(_enCola){ toast(prep.kind==='vid'?'📴 Sin conexión: guardé el video y lo envío al reconectar':'📴 Sin conexión: guardé la foto y la envío al reconectar'); return; }
     if(DB.clients.find(x=>x.id===id))pushToClient(id,'💬 Mensaje de tu Coach',prep.kind==='vid'?'Te mandó un video':'Te mandó una foto',{type:'message',chatId:id,tag:'avi-chat-'+id});
     toast(prep.kind==='vid'?'Video enviado':'Foto enviada');
   });

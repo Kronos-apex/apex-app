@@ -20820,7 +20820,9 @@ test('🔒 CABLEADO v649 · primero se sube, después existe el mensaje; y nada 
   const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
   [[a4, 'function clientSendMedia('], [a3, 'function coachSendMedia(']].forEach(([src, fn]) => {
     const b = cuerpo(src, fn);
-    const iSube = b.indexOf('await _chatMediaUpload('), iPush = b.indexOf('.push({from:');
+    // 🔁 v673 · el mensaje del coach se arma en `const _msg={from:…}` (para marcarlo ⏳ como el texto):
+    //    se afirma dónde NACE el mensaje, en cualquiera de las dos formas — la propiedad es la misma.
+    const iSube = b.indexOf('await _chatMediaUpload('), iPush = b.search(/\.push\(\{from:|const _msg=\{from:/);
     assert.ok(iSube > 0 && iPush > iSube, `🔴 ${fn} crea el mensaje antes de subir el archivo`);
     assert.ok(/catch\(e\)\{[^}]*return;\s*\}/.test(b), `🔴 ${fn}: si la subida falla, el mensaje no puede crearse igual`);
     assert.ok(/chatMediaPath\(/.test(b), `${fn} arma la ruta a mano`);
@@ -21338,6 +21340,26 @@ test('🔒 v672 · una corrección del coach hecha sin señal se reenvía sola s
   const pcw = a1.slice(a1.indexOf('async function _persistCoachWrite('), a1.indexOf('\nfunction canCloudWrite('));
   assert.strictEqual((pcw.match(/_cwqAdd\(col,(SELF_CLIENT_ID|id),slice,undefined,_coachSnap\[sk\]\)/g) || []).length, 2,
     '🔴 una de las ramas que encolan columnas dejó de pasar lo que la nube tenía confirmado');
+});
+test('🔒 v673 · la foto o el video del coach no dice «enviada» ni avisa al asesorado si el mensaje quedó en la cola', () => {
+  // Auditoría del 25-sep, F3-3: v588 le dio al TEXTO la espera, el ⏳ y el «sin conexión»; la foto seguía
+  // anunciando «enviada» y mandando el push aunque el mensaje no se hubiera guardado.
+  const a3 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i0 = a3.indexOf('function coachSendMedia(');
+  const fn = a3.slice(i0, a3.indexOf('\nfunction ', i0 + 10));
+  assert.ok(fn.length > 400, 'MONTAJE: no se encontró coachSendMedia');
+  const iMarca = fn.indexOf('_cchatSending[_msg.date]=1;');
+  const iGuarda = fn.indexOf("await svNow('ax_m',DB.msgs);");
+  const iCola = fn.search(/const _enCola=\(typeof _cwqHasMsg==='function'\)&&_cwqHasMsg\(id,_msg\.date\);/);
+  const iSale = fn.search(/if\(_enCola\)\{[^}]*return; \}/);
+  const iPush = fn.indexOf('pushToClient(');
+  const iOk = fn.search(/toast\(prep\.kind==='vid'\?'Video enviado':'Foto enviada'\)/);
+  assert.ok(iMarca > 0 && iMarca < iGuarda, '🔴 el hilo no marca la foto como en vuelo mientras se guarda');
+  assert.ok(iGuarda > 0, '🔴 la foto dejó de ESPERAR a que el mensaje se guarde');
+  assert.ok(iCola > iGuarda, '🔴 no mira si el mensaje quedó en la cola');
+  assert.ok(iSale > iCola && iSale < iPush, '🔴 manda el push aunque el mensaje no se haya guardado');
+  assert.ok(iOk > iSale, '🔴 dice «enviada» antes de saber si se guardó');
+  assert.ok(/delete _cchatSending\[_msg\.date\];/.test(fn), '🔴 el ⏳ se quedaría para siempre');
 });
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
