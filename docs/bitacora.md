@@ -4,6 +4,33 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-25 — v671: sin edad registrada no se presume adulto
+
+- **Hallazgo F2-1 de la auditoría** (el #4 de la ronda del 1-sep, A7, seguía abierto) — y se cerró la
+  **CLASE**, no el sitio: `parseInt('')` es NaN, y tanto `edad && edad < 18` como `NaN < 18` dan false, así
+  que una ficha sin edad pasaba como ADULTA en **cuatro** candados de menores. El auditor vio dos (la tarjeta
+  de progreso y «Compartir este entreno» del coach); barriendo `< 18` en todo el código salieron la **grasa
+  estimada** y la **alerta de cintura** (regla v607: a un menor no se le habla de composición corporal).
+  El consentimiento del registro (`consentNeedsGuardian`) trata la edad vacía como «adulto» A PROPÓSITO
+  —quien no dice su edad no habilita el camino del menor— y no se tocó.
+- Sin edad: la tarjeta no se arma y la ficha lo explica («falta su edad: escríbela en su ficha»), la grasa
+  no se estima («Falta su edad en la ficha» para el coach, silencio para el asesorado, como con los
+  menores), la cintura no se marca, y el coach no comparte el entreno. **El alta del coach exige la edad**
+  (10-100); al editar no, para no encerrar a nadie con una ficha vieja. Hoy 0 de 27 están sin edad.
+- **QA:** suite **1342** · 🔁 el test de v624 afirmaba la forma EXACTA del defecto (`parseInt(age)<18`) y se
+  re-encuadró · `_verify-story-g` 8/8 · `_verify-grasa` verde · `_verify-compartir-sesion` 12/12 ·
+  `_sabotaje-v671` **6/6 a la primera**.
+
+## ⏮️ 2026-09-25 — CI: las dos direcciones tienen que servir la misma versión
+
+- **Hallazgo F1-3.** Un push publica github.io y el hogar nuevo se publica aparte (`publicar-hogar.mjs`, a
+  mano); ya pasó una vez en v659 que quedara atrás. Como casi todos saltaron al hogar nuevo, un arreglo
+  publicado solo en github.io no le llega a nadie. Job nuevo **`dos-direcciones`** en `ci.yml`: tras cada
+  push espera hasta 20 min a que las dos sirvan la MISMA versión, igual o más nueva que la del commit; si no,
+  falla (llega el correo de «Run failed») con el comando que falta. Un push más nuevo cancela la espera del
+  anterior. La lógica se probó contra producción (solo lectura): con v670 sin publicar falla, con v668 pasa.
+  Candado en la suite para que el job no desaparezca ni se afloje.
+
 ## ⏮️ 2026-09-25 — v670: los avisos dejan de llegar dobles tras la mudanza
 
 - **Hallazgo F1-2**, con la causa re-medida por el orquestador (el auditor la dejó abierta): **3 personas
