@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-25 — v675: «Esperando respuesta» ya no cuenta lo que no pide nada
+
+- **Hallazgo F3-2, decisión del PO** (entre «no contar lo que no pide nada», «botón Ya lo vi» y «dejarlo»):
+  el aviso `h-await` no se podía apagar sin escribir y contaba también «💪 ¡Entrenamiento hecho!» y
+  «🙏 ¡Gracias, coach!», dos de las cuatro respuestas rápidas que no preguntan nada — ese día marcaba a
+  Claudia por un «Entrenamiento hecho». `chatNeedsReply` (PURA) las excluye; la duda, el dolor, los
+  avisos automáticos, lo escrito a mano y cualquier foto o video siguen contando, y la espera se cuenta
+  desde el primero que SÍ pide respuesta. La lista es **espejo** de los botones de `index.html` (test).
+- Sobre los hilos reales de hoy: 1 persona, con «Buen día bien» escrito a mano (sigue contando: no se
+  adivina el texto libre). Claudia ya no sale — el PO le respondió esta mañana.
+- **QA:** suite **1346** · `_sabotaje-v675` **5/5**.
+
+## ⏮️ 2026-09-25 — v674: la tarjeta del perfil dice dónde puede salir la foto
+
+- **Hallazgo F2-2.** Las tres imágenes que se comparten ponen la foto de perfil a pantalla completa y al
+  subirla solo salía «Foto de perfil actualizada» (8 de 27 tienen foto). Bajo los datos de la tarjeta,
+  con el texto que eligió el PO: «Tu foto puede salir en las imágenes que compartes al terminar un
+  entreno o un logro.» Mismo trato que el correo de la tarjeta; mirado en captura (`_shot-profile`).
+- **QA:** suite **1345** · `_sabotaje-v674` **2/2** · 🔴 mi inserción en `styles.css` metió 3 finales LF en
+  un archivo CRLF (mixto): se normalizó ANTES del commit, que es la trampa de v600.
+
 ## ⏮️ 2026-09-25 — v673: la foto del coach ya no dice «enviada» antes de estar guardada
 
 - **Hallazgo F3-3.** v588 le dio al TEXTO del coach la espera, el ⏳ y el «sin conexión»; la foto y el video
