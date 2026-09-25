@@ -4,6 +4,41 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-25 — v669: la sesión de la mudanza solo se acepta si viene del salto de la dirección vieja
+
+- **Hallazgo F1-1 de la 12.ª auditoría** (`docs/auditoria-semana-2026-09-25/`), el único de seguridad de la
+  ronda. El formato del enlace de la mudanza (`#avimv=`) está en un repo público, y `_aviLlegada` aceptaba
+  `avi_auth` de cualquier enlace siempre que el navegador no tuviera sesión en el hogar nuevo — o sea,
+  **cualquiera con cuenta podía armar un enlace con SU sesión y dejar a quien lo abriera dentro de la cuenta
+  ajena**: lo que esa persona registrara después (peso, fotos, mensajes) le llegaba al que armó el enlace.
+  Reproducido en local por el auditor; sin víctima conocida.
+- **El arreglo:** `mudanzaReferrerOk` (avi-core, PURA) acepta la llegada solo si `document.referrer` es el
+  origen viejo, con el HOST exacto (ni sufijos, ni otro `*.github.io`). El salto legítimo es un
+  `location.replace` desde github.io, y **GitHub Pages no manda Referrer-Policy** (medido con `curl -I`), así
+  que el navegador deja ese origen. Un enlace pegado en WhatsApp llega sin referrer; desde otra página, con
+  el de ella. Se consulta ANTES de marcar «llegó» y antes de leer lo que trae; sin la regla no se acepta
+  nada (entrar con la contraseña es mejor que aceptar a ciegas). El `#` se borra igual.
+- **El rechazo se anota en la telemetría** (`kind='mudanza'`, solo el host de donde venía, nunca la
+  sesión) para ver si alguien legítimo cae ahí — un teléfono que por algo no mande referrer tendría que
+  escribir su contraseña una vez. ⚠️ **No se pudo probar en un Android instalado real**: el control es M3
+  en Chrome (el salto real sí deja el referrer), y la telemetría es la que diría si en un teléfono no.
+- **QA:** suite 1338 → **1339** en los cuatro modos, hook 12/12 · `_verify-mudanza` **25/25** (M7 nuevo: el
+  enlace ajeno sin origen y desde otra página no planta nada; M7c, el MISMO enlace desde el origen viejo
+  sí — el rechazo es por el origen; M5/M6 llegan ahora con referrer, como el ícono viejo) ·
+  `_sabotaje-v669` **8/8 a la primera** · `_sabotaje-v662` re-corrida **22/22**.
+- ⏳ **Sin desplegar todavía:** el `git push` lo bloqueó el filtro de permisos; sale con el lote.
+
+## ⏮️ 2026-09-25 — Datos: Sharith y Santiago suspendidos (decisión del PO)
+
+- Sale de la auditoría: de los 4 menores, solo Samuel tiene la autorización de su acudiente registrada.
+  **Valery** y **Sharith** tienen `consent.adulto:true` (la casilla que la app vieja obligaba a marcar, v565)
+  y **Santiago** un `consent` vacío. El PO eligió **suspender a Sharith (16) y Santiago (17)** hasta tener la
+  autorización; Valery no se toca (su acudiente es él).
+- Hecho en la nube con `profile || {"suspended": true}` sobre sus dos filas: ninguno abría la app (sin sello
+  de versión; Sharith entrenó por última vez el 21-jul, Santiago nunca), así que ningún teléfono lo pisa, y
+  el panel del coach lo respeta por la fusión de tres vías (v623). Quedan en `inactive`: no entran; sus
+  datos siguen intactos para lo que decida el abogado el 3-oct.
+
 ## ⏮️ 2026-09-23 — v668: el peso y las medidas sin color por dirección, y tres detalles vistos al hacer las capturas
 
 - **Pedido del PO:** *«Arreglalos»*, sobre los cuatro puntos del radar que salieron al generar las capturas de la web.
