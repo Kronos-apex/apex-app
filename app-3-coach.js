@@ -901,9 +901,14 @@ window.addEventListener('online',()=>{ _flushPendingClients(); });
 function _cwqKey(){ return 'ax_cwq_'+(_authUid||'anon'); }
 function _cwqRead(){ try{ const r=localStorage.getItem(_cwqKey()); const l=r?JSON.parse(r):[]; return Array.isArray(l)?l:[]; }catch(e){ return []; } }
 function _cwqWrite(list){ try{ localStorage.setItem(_cwqKey(),JSON.stringify(list||[])); }catch(e){ warn('AVI: no cabe la cola de pendientes:',e&&e.message); } }
-function _cwqAdd(col,id,val,nombre){
+function _cwqAdd(col,id,val,nombre,base){
   const c=(DB.clients||[]).find(x=>x.id===id);
-  const r=coachQueuePut(_cwqRead(),{col:col,id:id,name:nombre||(c&&c.name)||'Asesorado',val:val,ts:Date.now()});
+  // v672 · `base` = lo que la nube tenía confirmado ANTES de este cambio (`_coachSnap`). Se guarda su
+  //    HUELLA: al reintentar, si esa columna sigue igual, nadie más la tocó y se reenvía aunque la fila
+  //    se haya movido por otra cosa (el «visto»). Ver `coachQueueVerdict`.
+  let baseHash=null;
+  if(typeof base==='string'&&typeof coachColHash==='function'){ try{ baseHash=coachColHash(JSON.parse(base)); }catch(e){ baseHash=null; } }
+  const r=coachQueuePut(_cwqRead(),{col:col,id:id,name:nombre||(c&&c.name)||'Asesorado',val:val,ts:Date.now(),baseHash:baseHash});
   _cwqWrite(r.list); _setAuthDirty(true); _renderCoachSync();
   return r.tooBig;
 }

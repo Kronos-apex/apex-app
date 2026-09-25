@@ -11097,7 +11097,33 @@ function coachQueueVerdict(entry, lectura) {
   // regla de «no pisar», porque esa regla existe para no borrar trabajo ajeno, y aquí no hay
   // nada que escribir. Sin esto, «vuelve a hacerlo desde la ficha» no vaciaba nunca el aviso.
   if (lectura && lectura.valor !== undefined && coachQueueSameAsCloud(entry, lectura.valor)) return 'igual';
+  // v672 · La FILA se tocó después, pero ESTA COLUMNA sigue exactamente como estaba antes del cambio del
+  // coach: nadie más la escribió, así que reenviar es lo que habría pasado sin el fallo. Sin esto, el
+  // «visto» (que escribe el PERFIL de esa persona y mueve el `updated_at` de su fila) dejaba retenida
+  // cualquier corrección hecha sin señal sobre sus récords, su peso o sus medidas (auditoría 25-sep, F3-1).
+  // Solo para las columnas de datos: los mensajes y los ajustes ya están exentos, y `ax_c` tiene su
+  // propia fusión de tres vías (v623).
+  if (entry.col !== 'msgs' && entry.col !== 'ax_c' && String(entry.col).indexOf('cs:') !== 0
+      && typeof entry.baseHash === 'string' && lectura && lectura.valor !== undefined
+      && coachColHash(lectura.valor) === entry.baseHash) return 'subir';
   return coachQueueCanReplay(entry, lectura && lectura.updatedAt) ? 'subir' : 'retener';
+}
+
+// Huella de un valor de columna, sin depender del orden de las claves (jsonb las reordena). PURA (v672).
+// La cola guarda la huella de lo que la nube tenía ANTES del cambio del coach — no el valor entero,
+// que duplicaría lo que ocupa en el teléfono. 53 bits (cyrb53): un choque no es una preocupación real.
+function coachColHash(v) {
+  let s;
+  try { s = canonJSON(v === undefined ? null : v); } catch (e) { return ''; }
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
 // ¿La nube ya tiene lo que esta entrada quiere subir? PURA (v620).
@@ -12196,6 +12222,7 @@ if (typeof module !== 'undefined' && module.exports) {
     coachQueuePut,
     coachQueueCanReplay,
     coachQueueVerdict,
+    coachColHash,
     coachQueueSameAsCloud,
     prTombsMerge,
     prTombsPrune,

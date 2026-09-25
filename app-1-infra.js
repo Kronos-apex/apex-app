@@ -1631,7 +1631,7 @@ async function _persistCoachWrite(k,v){
       if(col==='msgs'&&DB.msgs)DB.msgs[SELF_CLIENT_ID]=slice;
       if(_coachSnap[sk]!==val0){
         try{ await UD.upsertOwn({[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,SELF_CLIENT_ID); }
-        catch(e){ _cwqAdd(col,SELF_CLIENT_ID,slice); warn('AVI: persistir mis propios datos falló ('+k+'), en cola para reintentar:',e&&e.message); }
+        catch(e){ _cwqAdd(col,SELF_CLIENT_ID,slice,undefined,_coachSnap[sk]); warn('AVI: persistir mis propios datos falló ('+k+'), en cola para reintentar:',e&&e.message); }
       }
     }
   }
@@ -1646,7 +1646,7 @@ async function _persistCoachWrite(k,v){
     const val=(col==='msgs')?JSON.stringify(slice):val0;
     if(col==='msgs'&&DB.msgs)DB.msgs[id]=slice;
     try{ await UD.updateClientRow(id,{[col]:slice}); _coachSnap[sk]=val; _cwqDrop(col,id); }
-    catch(e){ _cwqAdd(col,id,slice); warn('AVI coach persist '+k+' falló, en cola para reintentar:',id,e&&e.message); }
+    catch(e){ _cwqAdd(col,id,slice,undefined,_coachSnap[sk]); warn('AVI coach persist '+k+' falló, en cola para reintentar:',id,e&&e.message); }
   }
 }
 

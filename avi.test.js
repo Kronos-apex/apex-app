@@ -21301,6 +21301,44 @@ test('🔒 v671 · SIN EDAD NO SE PRESUME ADULTO: ni se publica, ni se comparte,
   const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
   assert.ok(/<label class="ilbl" for="cf-age">Edad \(años\) \*<\/label>/.test(html), 'el formulario tiene que marcar la edad como obligatoria');
 });
+test('🔒 v672 · una corrección del coach hecha sin señal se reenvía sola si NADIE tocó esa columna (el «visto» no la retiene)', () => {
+  const { coachQueueVerdict, coachColHash } = core;
+  // La huella no depende del orden de las claves (jsonb las reordena) y distingue valores distintos.
+  assert.strictEqual(coachColHash({ a: 1, b: [2, { c: 3, d: 4 }] }), coachColHash({ b: [2, { d: 4, c: 3 }], a: 1 }));
+  assert.notStrictEqual(coachColHash({ e1: { kg: 100 } }), coachColHash({ e1: { kg: 80 } }));
+  assert.strictEqual(coachColHash(undefined), coachColHash(null));
+  // El caso de la auditoría (F3-1): el coach corrige un récord sin señal (100 → 80), vuelve la señal,
+  // abre el chat de esa persona y el «visto» mueve el `updated_at` de su fila.
+  const antes = { e1: { kg: 100, reps: 5 } }, corregido = { e1: { kg: 80, reps: 5 } };
+  const e = { col: 'prs', id: 'c1', val: corregido, ts: 1000, baseHash: coachColHash(antes) };
+  const filaMovida = t => ({ estado: 'ok', updatedAt: new Date(t).toISOString() });
+  assert.strictEqual(coachQueueVerdict(e, Object.assign(filaMovida(5000), { valor: { e1: { reps: 5, kg: 100 } } })), 'subir',
+    '🔴 la corrección quedaría retenida por un cambio en OTRA columna (el «visto»)');
+  // CONTROL: si ESA columna sí cambió (el asesorado entrenó y escribió sus récords), se retiene: no se pisa.
+  assert.strictEqual(coachQueueVerdict(e, Object.assign(filaMovida(5000), { valor: { e1: { kg: 110, reps: 5 } } })), 'retener',
+    '🔴 pisaría lo que el asesorado escribió desde su teléfono');
+  // La nube ya tiene lo mismo: nada pendiente (manda lo de v620).
+  assert.strictEqual(coachQueueVerdict(e, Object.assign(filaMovida(5000), { valor: corregido })), 'igual');
+  // Sin huella (una entrada de antes de v672) se queda la regla de siempre.
+  assert.strictEqual(coachQueueVerdict(Object.assign({}, e, { baseHash: null }), Object.assign(filaMovida(5000), { valor: antes })), 'retener');
+  // La fila sin tocar después del fallo se reenvía como siempre.
+  assert.strictEqual(coachQueueVerdict(e, Object.assign(filaMovida(500), { valor: { otra: 1 } })), 'subir');
+  // `ax_c` tiene su propia fusión de tres vías: la huella no le cambia la regla.
+  const eC = { col: 'ax_c', id: 'c1', val: { profile: { a: 2 }, routines: [] }, ts: 1000, baseHash: coachColHash({ profile: { a: 1 }, routines: [] }) };
+  assert.strictEqual(coachQueueVerdict(eC, Object.assign(filaMovida(5000), { valor: { profile: { a: 1 }, routines: [] } })), 'retener');
+  // Sin poder preguntar, o sin la fila, nada cambia.
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'mudo' }), 'mudo');
+  assert.strictEqual(coachQueueVerdict(e, { estado: 'ausente' }), 'huerfana');
+  // Cableado: la cola guarda la huella de lo que la nube tenía confirmado, en las DOS ramas que encolan columnas.
+  const a3 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const add = a3.slice(a3.indexOf('function _cwqAdd('), a3.indexOf('\nfunction ', a3.indexOf('function _cwqAdd(') + 5));
+  assert.ok(/^function _cwqAdd\(col,id,val,nombre,base\)\{/.test(add), '🔴 la cola ya no recibe lo que la nube tenía');
+  assert.ok(/baseHash=coachColHash\(JSON\.parse\(base\)\)/.test(add) && /baseHash:baseHash\}/.test(add), '🔴 la cola no guarda la huella');
+  const a1 = sinComentarios(_srcApp1());
+  const pcw = a1.slice(a1.indexOf('async function _persistCoachWrite('), a1.indexOf('\nfunction canCloudWrite('));
+  assert.strictEqual((pcw.match(/_cwqAdd\(col,(SELF_CLIENT_ID|id),slice,undefined,_coachSnap\[sk\]\)/g) || []).length, 2,
+    '🔴 una de las ramas que encolan columnas dejó de pasar lo que la nube tenía confirmado');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');
