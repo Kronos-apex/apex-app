@@ -21361,6 +21361,18 @@ test('🔒 v673 · la foto o el video del coach no dice «enviada» ni avisa al 
   assert.ok(iOk > iSale, '🔴 dice «enviada» antes de saber si se guardó');
   assert.ok(/delete _cchatSending\[_msg\.date\];/.test(fn), '🔴 el ⏳ se quedaría para siempre');
 });
+test('v674 · la tarjeta del perfil dice dónde puede salir la foto que la persona sube', () => {
+  // Auditoría del 25-sep, F2-2: 8 de 27 tienen foto de perfil y las tres imágenes que se comparten la ponen
+  // a pantalla completa; al subirla solo salía «Foto de perfil actualizada». Texto elegido por el PO.
+  const a4 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = a4.indexOf("_pc.innerHTML=`<div class=\"profav tap\" onclick=\"openAvatarPicker()\"");
+  assert.ok(i > 0, 'MONTAJE: no se encontró la tarjeta del perfil');
+  const tarjeta = a4.slice(i, a4.indexOf('\n', i));
+  assert.ok(/<div class="profnote">Tu foto puede salir en las imágenes que compartes al terminar un entreno o un logro\.<\/div>/.test(tarjeta),
+    '🔴 la persona vuelve a subir su foto sin saber dónde puede salir');
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.profnote\{[^}]*font-size:11\.5px/.test(css), 'la línea necesita su estilo (sin él sale del tamaño del nombre)');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');
