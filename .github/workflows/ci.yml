@@ -21,3 +21,34 @@ jobs:
         run: node avi.test.js
       - name: Audit completo (mismo script que el pre-commit hook)
         run: python3 scripts/hooks/pre-commit
+
+  # Auditoría del 25-sep, hallazgo F1-3. La app vive en DOS direcciones: un push publica github.io y el
+  # hogar nuevo (app.avientrena.com) se publica APARTE con `node scripts/publicar-hogar.mjs`. Como casi
+  # todos ya saltaron al hogar nuevo, un arreglo que salga solo en github.io no le llega a nadie — y
+  # hasta hoy nada lo avisaba (ya pasó en v659). Este paso espera hasta 20 minutos a que las dos sirvan
+  # la MISMA versión, igual o más nueva que la de este commit; si no, se pone ROJO y llega el correo.
+  # Un push más nuevo cancela la espera del anterior (no es un fallo: la nueva espera lo cubre).
+  dos-direcciones:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: dos-direcciones
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Las dos direcciones sirven la versión de este commit
+        run: |
+          num() { echo "$1" | grep -o '[0-9]*$'; }
+          V=$(grep -o 'avi-v[0-9]*' sw.js | head -1)
+          echo "Versión de este commit: $V"
+          for i in $(seq 1 40); do
+            A=$(curl -s "https://kronos-apex.github.io/apex-app/sw.js?nc=$i$RANDOM" | grep -o 'avi-v[0-9]*' | head -1)
+            B=$(curl -s "https://app.avientrena.com/sw.js?nc=$i$RANDOM" | grep -o 'avi-v[0-9]*' | head -1)
+            echo "intento $i · github.io=$A · app.avientrena.com=$B"
+            if [ -n "$A" ] && [ "$A" = "$B" ] && [ "$(num "$A")" -ge "$(num "$V")" ]; then
+              echo "✅ las dos direcciones sirven $A"; exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::Tras 20 minutos las dos direcciones no sirven $V (github.io=$A, app.avientrena.com=$B). Publica el hogar nuevo: node scripts/publicar-hogar.mjs"
+          exit 1

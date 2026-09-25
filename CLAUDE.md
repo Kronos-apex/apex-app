@@ -269,7 +269,12 @@ AVI usa localStorage como fuente de verdad y sincroniza **hacia** Supabase, no a
 ```
 Plataforma: GitHub Pages (github.com/Kronos-apex/apex-app)
 Branch producción: main (NUNCA master, NUNCA --force)
-Workflow: edit → pre-commit hook (7 checks) → git commit → git push → GitHub Pages automático
+Workflow: edit → pre-commit hook (12 checks) → git commit → git push → GitHub Pages automático
+         → node scripts/publicar-hogar.mjs (el HOGAR NUEVO app.avientrena.com, proyecto Vercel avi-app: NO se
+           publica con el push) → _prodcheck.mjs vNNN en las DOS direcciones.
+         CI (job `dos-direcciones`, auditoría 25-sep F1-3) espera 20 min a que las dos sirvan la misma
+         versión y se pone ROJO si no — casi todos ya saltaron al hogar nuevo, así que un arreglo que
+         sale solo en github.io no le llega a nadie.
 Backend: Supabase (apex_data, push_subscriptions, Edge Functions)
 ```
 

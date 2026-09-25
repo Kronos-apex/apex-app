@@ -21261,6 +21261,17 @@ test('🔒 v670 · al activar los avisos en el hogar nuevo se retiran los de la 
   assert.ok(/\.delete\(\)\.in\('id',_sobran\)/.test(bloque), '🔴 no borra lo que la regla dijo que sobra');
   assert.ok(/\.eq\('client_id',_cid\)/.test(bloque), '🔴 leería suscripciones que no son de esta persona');
 });
+test('🔒 CI · un push no puede dejar las dos direcciones en versiones distintas sin ponerse en ROJO', () => {
+  const ci = require('fs').readFileSync(require('path').join(__dirname, '.github', 'workflows', 'ci.yml'), 'utf8');
+  const i = ci.indexOf('\n  dos-direcciones:');
+  assert.ok(i > 0, '🔴 CI dejó de comprobar que las dos direcciones sirvan la misma versión');
+  const job = ci.slice(i);
+  assert.ok(/kronos-apex\.github\.io\/apex-app\/sw\.js/.test(job) && /app\.avientrena\.com\/sw\.js/.test(job), '🔴 compara menos de las dos direcciones');
+  assert.ok(/\[ "\$A" = "\$B" \]/.test(job), '🔴 no exige que las dos sirvan LA MISMA versión');
+  assert.ok(/-ge "\$\(num "\$V"\)"/.test(job), '🔴 no exige que sea la versión de este commit (o una más nueva)');
+  assert.ok(/exit 1\s*$/.test(job.trimEnd() + '\n'), '🔴 si no se alinean, el paso tiene que FALLAR (y llegar el correo)');
+  assert.ok(/publicar-hogar\.mjs/.test(job), 'el error tiene que decir qué hacer');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');

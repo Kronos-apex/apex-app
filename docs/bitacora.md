@@ -4,6 +4,26 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-25 — v670: los avisos dejan de llegar dobles tras la mudanza
+
+- **Hallazgo F1-2**, con la causa re-medida por el orquestador (el auditor la dejó abierta): **3 personas
+  con dos suscripciones vivas** — Diana Paola, Claudia y **el PO, que confirmó que le llega todo dos
+  veces**. La retirada de v662 dependía de `apex_push:<id>`, que solo viaja en la PRIMERA llegada: quien
+  entró directo a la dirección nueva antes de saltar (el PO, probándola el 22-sep) nunca lo recibe. **En
+  24 h de logs no hubo ni un DELETE en `push_subscriptions`**: la retirada nunca corrió.
+- **El arreglo:** la suscripción guarda el ORIGEN que la creó (`subscription.origin`; `web-push` solo lee
+  `endpoint` y `keys`, verificado en las dos edge) y `pushRowsToRetire` (avi-core, PURA) decide qué sobra:
+  en el hogar nuevo, las de esta persona de la dirección vieja o sin marca. La del aparato que activa y las
+  ilegibles no se tocan jamás. Corre en cada sesión y DESPUÉS de guardar la nueva, así que **los
+  duplicados de hoy se limpian solos** la próxima vez que cada una abra la app.
+- ⚠️ Una suscripción sin marca puede ser OTRO aparato ya mudado: pierde sus avisos hasta que se vuelva a
+  abrir ahí (se re-suscribe solo) y desde entonces queda marcada. Un iPhone que reinstale y conserve el
+  ícono viejo podría alternar entre los dos; por eso a Laura y Kathe se les pide borrar el viejo.
+- **QA:** suite **1340** · harness nuevo **`_verify-avisos-dobles` 7/7** — ejecuta `subscribePush` DE VERDAD
+  con un cliente de Supabase falso (la retirada real no se puede correr desde localhost: el sello
+  `cloudWriteSealed` lo impide a propósito), con su control en la dirección vieja · `_verify-avisos-mudanza`
+  13/13 · `_sabotaje-v670` **7/7 a la primera**.
+
 ## ⏮️ 2026-09-25 — v669: la sesión de la mudanza solo se acepta si viene del salto de la dirección vieja
 
 - **Hallazgo F1-1 de la 12.ª auditoría** (`docs/auditoria-semana-2026-09-25/`), el único de seguridad de la
