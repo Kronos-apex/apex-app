@@ -21373,6 +21373,35 @@ test('v674 · la tarjeta del perfil dice dónde puede salir la foto que la perso
   const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
   assert.ok(/\.profnote\{[^}]*font-size:11\.5px/.test(css), 'la línea necesita su estilo (sin él sale del tamaño del nombre)');
 });
+test('🔒 v675 · «Esperando respuesta» no cuenta lo que no pide nada (Entrenamiento hecho, Gracias)', () => {
+  const { chatAwaiting, chatNeedsReply, CHAT_NO_REPLY_TEXTS } = core;
+  const ahora = new Date('2026-09-25T12:00:00Z');
+  const hace = h => new Date(ahora.getTime() - h * 3600000).toISOString();
+  const c = [{ id: 'cl', name: 'Claudia' }];
+  const hilo = (...ms) => ({ cl: ms });
+  const coach = h => ({ from: 'coach', text: 'Dale', date: hace(h) });
+  const yo = (h, text, extra) => Object.assign({ from: 'client', text, date: hace(h) }, extra || {});
+  // El caso real del 25-sep: su último mensaje es «💪 ¡Entrenamiento hecho!» — ya no la marca.
+  assert.deepStrictEqual(chatAwaiting(c, hilo(coach(60), yo(30, '💪 ¡Entrenamiento hecho!')), {}, ahora), [], '🔴 marca a quien no preguntó nada');
+  assert.deepStrictEqual(chatAwaiting(c, hilo(coach(60), yo(30, '🙏 ¡Gracias, coach!')), {}, ahora), []);
+  // Lo que SÍ pide respuesta sigue contando — y se cuenta desde ESE mensaje, no desde el «Gracias».
+  const r = chatAwaiting(c, hilo(coach(80), yo(50, '🙏 ¡Gracias, coach!'), yo(30, '🙋 Tengo una duda')), {}, ahora);
+  assert.strictEqual(r.length, 1, 'una duda sin responder tiene que salir');
+  assert.strictEqual(r[0].horas, 30, 'la espera se cuenta desde la duda, no desde el gracias');
+  assert.strictEqual(r[0].n, 1);
+  assert.strictEqual(chatAwaiting(c, hilo(coach(60), yo(30, '🤕 Algo me dolió')), {}, ahora).length, 1, '🔴 el dolor dejó de contar');
+  assert.strictEqual(chatAwaiting(c, hilo(coach(60), yo(30, 'Buen día bien')), {}, ahora).length, 1, 'lo escrito a mano cuenta (no se adivina)');
+  assert.strictEqual(chatAwaiting(c, hilo(coach(60), yo(30, '🩺 marcó que entrena con dolor', { system: true })), {}, ahora).length, 1, 'el aviso automático de dolor cuenta');
+  // Una foto o un video siempre cuenta, aunque su texto coincidiera.
+  assert.strictEqual(chatNeedsReply({ from: 'client', text: '💪 ¡Entrenamiento hecho!', media: { path: 'x' } }), true);
+  assert.strictEqual(chatNeedsReply({ from: 'coach', text: 'x' }), false);
+  // ESPEJO con los botones de verdad: las frases son las de `index.html`, y las que piden algo NO están.
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const botones = [...html.matchAll(/onclick="clientQuickMsg\(this\.textContent\)">([^<]+)<\/button>/g)].map(m => m[1].trim());
+  assert.strictEqual(botones.length, 4, 'MONTAJE: se esperaban las 4 respuestas rápidas');
+  CHAT_NO_REPLY_TEXTS.forEach(t => assert.ok(botones.includes(t), '🔴 «' + t + '» ya no es un botón: el aviso volvería a contarlo'));
+  assert.ok(!CHAT_NO_REPLY_TEXTS.some(t => /duda|doli/i.test(t)), '🔴 una duda o un dolor no pueden dejar de contar');
+});
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');
   assert.strictEqual(mudanzaQueuePending([['ax_cwq_u1', '[]'], ['ax_coachpending_u1', '[]']]), false, 'colas vacías = nada pendiente');

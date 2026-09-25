@@ -2541,6 +2541,17 @@ function chatCtxExLine(e) {
 // 🔒 Mira lo VISIBLE para el coach (su marca de «eliminé», v645): lo que eliminó no le reclama.
 // 🔒 Ordenado de la espera más larga a la más corta; empate por nombre (determinista, v360).
 const CHAT_WAIT_HOURS = 24;
+// v675 · Lo que NO pide respuesta no cuenta como espera (decisión del PO, 25-sep, auditoría F3-2). Dos de
+// las cuatro respuestas rápidas del asesorado —«💪 ¡Entrenamiento hecho!» y «🙏 ¡Gracias, coach!»— no
+// preguntan nada, y el aviso no se podía apagar sin escribir: el 25-sep marcaba a Claudia por un
+// «Entrenamiento hecho». Las otras dos (duda, dolor), los avisos automáticos y lo escrito a mano SÍ
+// cuentan. El texto es el de los botones de `index.html` EXACTO: un test lo compara contra el marcado.
+const CHAT_NO_REPLY_TEXTS = ['💪 ¡Entrenamiento hecho!', '🙏 ¡Gracias, coach!'];
+function chatNeedsReply(m) {
+  if (!m || m.from !== 'client') return false;
+  if (m.media) return true;   // una foto o un video del asesorado siempre merecen mirada
+  return !(typeof m.text === 'string' && CHAT_NO_REPLY_TEXTS.indexOf(m.text.trim()) >= 0);
+}
 function chatAwaiting(clients, msgsById, clearsById, now, horas) {
   const lim = (horas === undefined ? CHAT_WAIT_HOURS : horas) * 3600000;
   const t0 = new Date(now || Date.now()).getTime();
@@ -2553,9 +2564,12 @@ function chatAwaiting(clients, msgsById, clearsById, now, horas) {
     // desde el PRIMER mensaje sin respuesta (después de la última respuesta del coach)
     let i = vis.length - 1;
     while (i > 0 && vis[i - 1].from === 'client') i--;
-    const desde = new Date(vis[i].date).getTime();
+    // v675 · de lo que quedó sin respuesta, solo cuenta lo que la pide: se espera desde el primero de ESOS.
+    const pide = vis.slice(i).filter(chatNeedsReply);
+    if (!pide.length) return;
+    const desde = new Date(pide[0].date).getTime();
     if (!Number.isFinite(desde) || t0 - desde < lim) return;
-    out.push({ id: c.id, name: c.name || '', desde: vis[i].date, horas: Math.floor((t0 - desde) / 3600000), n: vis.length - i });
+    out.push({ id: c.id, name: c.name || '', desde: pide[0].date, horas: Math.floor((t0 - desde) / 3600000), n: pide.length });
   });
   return out.sort((a, b) => (b.horas - a.horas) || String(a.name).localeCompare(String(b.name)));
 }
@@ -11919,6 +11933,8 @@ if (typeof module !== 'undefined' && module.exports) {
     chatCtxExLine,
     CHAT_CTX_MAX_EX,
     chatAwaiting,
+    chatNeedsReply,
+    CHAT_NO_REPLY_TEXTS,
     chatWaitText,
     CHAT_WAIT_HOURS,
     coachQuickReplies,
