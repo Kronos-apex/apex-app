@@ -1023,7 +1023,7 @@ function cancelDelMedida(){ MED_CONFIRM_ID=null; renderMedidasClient(CUR.clientI
 function _medGrasaHtml(cli, entries){
   if(typeof bodyFatEstimate!=='function') return '';
   const e=bodyFatEstimate(cli, entries);
-  if(!e || e.razon==='menor' || e.razon==='sin_sexo') return '';   // silencio, no explicación
+  if(!e || e.razon==='menor' || e.razon==='sin_edad' || e.razon==='sin_sexo') return '';   // silencio, no explicación
   const box=(inner)=>`<div class="medgrasa">${inner}</div>`;
   if(!e.ok){
     if(e.razon==='sin_talla'){

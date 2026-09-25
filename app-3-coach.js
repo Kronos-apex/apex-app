@@ -243,6 +243,15 @@ async function saveClient(){
   const pass=document.getElementById('cf-pass').value.trim();
   if(!fn){toast('⚠️ El nombre es obligatorio');return}
   if(!CUR.editClientId&&(!email||!pass)){toast('⚠️ Email y contraseña son obligatorios');return}
+  // v671 · La EDAD es obligatoria al dar de alta (auditoría 25-sep, F2-1): decide qué autorización
+  //   corresponde, qué se puede compartir y cómo se calcula su plan. Una ficha sin edad se trataba como
+  //   ADULTA en lo que se publica. Al EDITAR no se exige: no se encierra a nadie con una ficha vieja.
+  const _ageAlta=parseInt(document.getElementById('cf-age').value);
+  if(!CUR.editClientId&&!(_ageAlta>=10&&_ageAlta<=100)){
+    toast('⚠️ Escribe su edad: decide qué autorización corresponde y qué se puede compartir');
+    const _ae=document.getElementById('cf-age'); if(_ae)_ae.focus();
+    return;
+  }
   const _pp=pass?passwordProblem(pass):null; if(_pp){toast('⚠️ '+_pp);return}
   const dup=DB.clients.find(c=>clientIsBillable(c)&&c.email&&c.email.toLowerCase()===email&&c.id!==CUR.editClientId);
   if(dup){toast('⚠️ Ya existe un asesorado con ese email');return}
@@ -1995,7 +2004,13 @@ function renderStoryCard(c){
     // acudiente— pero se CONFIRMA a mano: autorizar el tratamiento de sus datos no es autorizar
     // publicarlo (ver `showcaseMinorOk`), así que la casilla no puede venir marcada.
     const _acuPrev=((c&&c.consent&&c.consent.acudiente)||{});
+    // v671 · Sin edad tampoco se arma (antes pasaba como adulta, auditoría 25-sep F2-1). Se explica
+    //    porque es algo que el coach SÍ puede resolver: escribirla en la ficha.
+    const _sinEdad=!!(st&&st.razon==='sin_edad');
     el.innerHTML=`<div class="card"><div class="cb">`+
+      (_sinEdad?`<div style="font-size:12.5px;color:var(--t2);line-height:1.55">
+        ${_coIco('lock',13,'🔒')} <b>Sin imagen para compartir:</b> falta su edad. Escríbela en su ficha:
+        la app necesita saber si es mayor de edad antes de armar algo que se publica.</div>`:'')+
       (_menor?`<div style="font-size:12.5px;color:var(--t2);line-height:1.55">
         ${_coIco('lock',13,'🔒')} <b>Sin imagen para compartir:</b> es menor de edad. Publicar su nombre y sus
         datos de entrenamiento en una página abierta necesita el permiso de su acudiente, y ese
@@ -2017,10 +2032,10 @@ function renderStoryCard(c){
             Queda guardado quién autorizó y en qué fecha. Lo puedes retirar cuando quieras.</div>
         </div>
       </details>`:'')+
-      `<div id="d-story-pub"${_menor?' style="margin-top:9px"':''}></div></div></div>`;
+      `<div id="d-story-pub"${(_menor||_sinEdad)?' style="margin-top:9px"':''}></div></div></div>`;
     // La tarjeta se muestra ya si hay algo que decir; si no, la revela `_renderStoryPub` cuando
     // encuentra una fila publicada (la lectura es de red y no se puede resolver aquí).
-    if(_menor) el.style.display='block';
+    if(_menor||_sinEdad) el.style.display='block';
     _renderStoryPub({nombre:(typeof showcaseFirstName==='function')?showcaseFirstName(c.name):'',
                      ok:false, razon:(st&&st.razon)||null});
     return;
@@ -2425,7 +2440,9 @@ async function _renderStoryPub(st){
     const mal=st.ok===false;
     const _pq=st.razon==='menor'
       ? 'es menor de edad, y publicar su nombre necesita permiso de su acudiente'
-      : 'hoy ya no cumple las condiciones para publicarse';
+      : st.razon==='sin_edad'
+        ? 'a su ficha le falta la edad, y sin ella no se sabe si es mayor de edad'
+        : 'hoy ya no cumple las condiciones para publicarse';
     el2.innerHTML=(mal
       ? `<div style="font-size:12px;color:var(--ort);line-height:1.5;margin-bottom:7px">
            ${_coIco('alert',13,'⚠️')} <b>Tiene una tarjeta publicada</b> en tu web y la app hoy no la
@@ -2608,6 +2625,9 @@ function renderValoracion(c){
     //    distinguir «no hay dato» de «la app decidió no mostrarlo» — si no, le pide a la familia
     //    que «complete la medida». Corrección pedida por Laura el 11-sep.
     html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.','—','No se estima en menores de edad','var(--t3)');
+  } else if(_bf && _bf.razon==='sin_edad'){
+    // v671 · Sin edad no se estima (podría ser menor). Al coach se le dice qué falta, igual que las medidas.
+    html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.','—','Falta su edad en la ficha','var(--t3)');
   } else if(_bf && _bf.razon==='faltan_medidas' && (_bf.falta||[]).length){
     const _fn=_bf.falta.map(k=>{const f=(typeof MED_FIELDS!=='undefined'?MED_FIELDS:[]).filter(x=>x.key===k)[0];return f?f.label.toLowerCase():k;});
     html += statBox(_coIco('scale',12,'⚖️'),'Grasa estim.','—','Falta medir '+esc(_fn.join(' y ')),'var(--t3)');

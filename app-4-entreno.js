@@ -3619,7 +3619,8 @@ function openSessionRoom(clientId,sid){
   // 🔒 El COACH no comparte el entreno de un menor sin el permiso del acudiente (misma puerta que
   //    la tarjeta de progreso, v573). En la app del propio asesorado no cambia nada: es su dato y
   //    su pantalla de cierre ya se lo ofrece.
-  const _shMenor=CUR.loggedAs==='coach' && _shClient && parseInt(_shClient.age)<18
+  //    v671 · y sin edad TAMPOCO: `parseInt('')<18` es false y dejaba compartir (auditoría 25-sep F2-1).
+  const _shMenor=CUR.loggedAs==='coach' && _shClient && !(parseInt(_shClient.age)>=18)
     && !(typeof showcaseMinorOk==='function' && showcaseMinorOk(_shClient));
   let shareHTML='';
   if(_shData&&!_shMenor){

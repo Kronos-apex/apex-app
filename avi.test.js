@@ -19577,8 +19577,11 @@ test('v624 · CABLEADO: la habitación de la sesión ofrece compartir, prepara l
   assert.ok(iPrep > 0 && iBtn > 0 && iPrep < iBtn, '🔴 la foto del lienzo se prepararía después del toque');
   assert.ok(/\$\{shareHTML\}/.test(cuerpo), '🔴 el botón se arma y no se pinta (puerta cerrada, ventana abierta)');
   // 🔒 El coach no comparte el entreno de un menor sin permiso del acudiente (misma puerta que v573).
-  assert.ok(/CUR\.loggedAs==='coach' && _shClient && parseInt\(_shClient\.age\)<18\s*\r?\n?\s*&& !\(typeof showcaseMinorOk==='function' && showcaseMinorOk\(_shClient\)\)/.test(cuerpo),
-    '🔴 se fue el candado de menores del panel del coach');
+  // 🔁 v671 · RE-ENCUADRADO: afirmaba `parseInt(_shClient.age)<18`, que es la forma exacta del defecto
+  //    F2-1 de la auditoría del 25-sep — con la edad vacía da `NaN<18` = false y dejaba compartir. Ahora
+  //    exige la forma que trata «sin edad» como no confirmado.
+  assert.ok(/CUR\.loggedAs==='coach' && _shClient && !\(parseInt\(_shClient\.age\)>=18\)\s*\r?\n?\s*&& !\(typeof showcaseMinorOk==='function' && showcaseMinorOk\(_shClient\)\)/.test(cuerpo),
+    '🔴 se fue el candado de menores del panel del coach (o volvió a dejar pasar la ficha sin edad)');
   assert.ok(/if\(_shData&&!_shMenor\)\{/.test(cuerpo), '🔴 el candado de menores dejó de decidir si el botón existe');
 });
 
@@ -21271,6 +21274,32 @@ test('🔒 CI · un push no puede dejar las dos direcciones en versiones distint
   assert.ok(/-ge "\$\(num "\$V"\)"/.test(job), '🔴 no exige que sea la versión de este commit (o una más nueva)');
   assert.ok(/exit 1\s*$/.test(job.trimEnd() + '\n'), '🔴 si no se alinean, el paso tiene que FALLAR (y llegar el correo)');
   assert.ok(/publicar-hogar\.mjs/.test(job), 'el error tiene que decir qué hacer');
+});
+test('🔒 v671 · SIN EDAD NO SE PRESUME ADULTO: ni se publica, ni se comparte, ni se le habla de grasa o cintura', () => {
+  // Auditoría del 25-sep, F2-1: `parseInt('')` es NaN, y `NaN && …` / `NaN < 18` son false — una ficha sin
+  // edad pasaba como ADULTA en todo lo que tiene candado de menores. La clase entera, no un sitio.
+  const SIN = [{}, { age: null }, { age: '' }, { age: undefined }, { age: 'abc' }, { age: 0 }];
+  for (const x of SIN) {
+    const st = core.clientProgressStory(Object.assign({ name: 'Sin Edad' }, x), _HIST_ASTRID, new Date());
+    assert.strictEqual(st.ok, false, '🔴 una ficha sin edad se publica: ' + JSON.stringify(x));
+    assert.strictEqual(st.razon, 'sin_edad', 'la ficha tiene que decir que falta la edad: ' + JSON.stringify(x));
+    assert.strictEqual(core.bodyFatEstimate(Object.assign({ sex: 'M', height: 175 }, x), _BF_MED_PO).razon, 'sin_edad',
+      '🔴 se le estima la grasa a alguien que podría ser menor: ' + JSON.stringify(x));
+    assert.strictEqual(core.waistFlag(Object.assign({ sex: 'M', height: 175 }, x), _BF_MED_PO), null,
+      '🔴 se le habla de su cintura a alguien que podría ser menor: ' + JSON.stringify(x));
+  }
+  // Controles: el menor sigue siendo «menor» (no «sin_edad») y el adulto sigue pudiendo todo.
+  assert.strictEqual(core.clientProgressStory({ name: 'X', age: 15 }, _HIST_ASTRID, new Date()).razon, 'menor');
+  assert.strictEqual(core.clientProgressStory({ name: 'Astrid', age: 33 }, _HIST_ASTRID, new Date()).ok, true, 'a una adulta sí se le arma');
+  assert.strictEqual(core.bodyFatEstimate({ sex: 'M', age: 15, height: 175 }, _BF_MED_PO).razon, 'menor');
+  assert.ok(core.bodyFatEstimate({ sex: 'M', age: 37, height: 175 }, _BF_MED_PO).ok, 'a un adulto sí se le estima');
+  assert.ok(core.waistFlag({ sex: 'M', age: 37, height: 175 }, _BF_MED_PO), 'a un adulto con 102 cm sí se le marca');
+  // El formulario del coach: al dar de ALTA la edad es obligatoria; al editar, no (nadie queda encerrado).
+  const a3 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const sc = a3.slice(a3.indexOf('async function saveClient('), a3.indexOf('const clientId=CUR.editClientId||uid();'));
+  assert.ok(/if\(!CUR\.editClientId&&!\(_ageAlta>=10&&_ageAlta<=100\)\)\{/.test(sc), '🔴 se puede dar de alta a alguien sin edad');
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/<label class="ilbl" for="cf-age">Edad \(años\) \*<\/label>/.test(html), 'el formulario tiene que marcar la edad como obligatoria');
 });
 test('🔒 v662 · con trabajo del coach sin subir, no se muda', () => {
   const { mudanzaQueuePending } = require('./avi-core.js');

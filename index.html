@@ -72,7 +72,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=670">
+<link rel="stylesheet" href="styles.css?v=671">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1045,7 +1045,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
     <div class="frow"><div class="fg"><label class="ilbl" for="cf-email">Email (para entrar a la app) *</label><input class="inp" id="cf-email" type="email" maxlength="100" placeholder="maria@email.com"></div><div class="fg"><label class="ilbl">Contraseña *</label><div style="position:relative"><input type="password" class="inp" id="cf-pass" maxlength="100" placeholder="Ej: Maria2026" style="padding-right:42px"><button type="button" onclick="togglePass(this,'cf-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div></div></div>
     <div class="frow">
       <div class="fg"><label class="ilbl" for="cf-sex">Sexo biológico</label><select class="sel" id="cf-sex"><option value="">— Sin especificar —</option><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
-      <div class="fg"><label class="ilbl" for="cf-age">Edad (años)</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28" oninput="if(typeof cfSyncConsentAge==='function')cfSyncConsentAge()"></div>
+      <div class="fg"><label class="ilbl" for="cf-age">Edad (años) *</label><input type="number" class="inp" id="cf-age" inputmode="numeric" min="10" max="100" placeholder="Ej: 28" oninput="if(typeof cfSyncConsentAge==='function')cfSyncConsentAge()"></div>
     </div>
     <div class="frow">
       <div class="fg"><label class="ilbl" for="cf-weight">Peso (kg)</label><input class="inp" id="cf-weight" type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"></div>
@@ -1397,19 +1397,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=670"></script>
-<script src="muscle-map.js?v=670"></script>
-<script src="exercise-muscles.js?v=670"></script>
+<script src="avi-core.js?v=671"></script>
+<script src="muscle-map.js?v=671"></script>
+<script src="exercise-muscles.js?v=671"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=670"></script>
-<script src="app-2-login.js?v=670"></script>
-<script src="app-3-coach.js?v=670"></script>
-<script src="app-4-entreno.js?v=670"></script>
-<script src="app-5-salud.js?v=670"></script>
-<script src="app-6-extra.js?v=670"></script>
-<script src="app-7-community.js?v=670"></script>
+<script src="app-1-infra.js?v=671"></script>
+<script src="app-2-login.js?v=671"></script>
+<script src="app-3-coach.js?v=671"></script>
+<script src="app-4-entreno.js?v=671"></script>
+<script src="app-5-salud.js?v=671"></script>
+<script src="app-6-extra.js?v=671"></script>
+<script src="app-7-community.js?v=671"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

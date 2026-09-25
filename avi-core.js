@@ -5157,7 +5157,10 @@ function _bfPickEntry(vivas, sexo, desde) {
 function bodyFatEstimate(client, entries) {
   client = client || {};
   const edad = parseInt(client.age);
-  if (isFinite(edad) && edad < 18) return { ok: false, razon: 'menor' };
+  // v671 · Sin edad NO se estima: podría ser un menor, y a un menor esto no se le muestra (v607). Antes
+  // `isFinite(edad) && edad < 18` dejaba pasar la ficha sin edad (misma clase que F2-1, auditoría 25-sep).
+  if (!(edad > 0)) return { ok: false, razon: 'sin_edad' };
+  if (edad < 18) return { ok: false, razon: 'menor' };
   const sexo = client.sex === 'F' ? 'F' : (client.sex === 'M' ? 'M' : null);
   if (!sexo) return { ok: false, razon: 'sin_sexo' };
   const talla = Number(client.height);
@@ -5241,7 +5244,7 @@ const WAIST_RISK_CM = { M: 102, F: 88 };
 function waistFlag(client, entries) {
   client = client || {};
   const edad = parseInt(client.age);
-  if (isFinite(edad) && edad < 18) return null;     // a un menor no se le habla de esto
+  if (!(edad >= 18)) return null;     // a un menor no se le habla de esto — y sin edad no se sabe (v671)
   const sexo = client.sex === 'F' ? 'F' : (client.sex === 'M' ? 'M' : null);
   if (!sexo) return null;
   const vivas = medLive(entries);
@@ -11262,7 +11265,12 @@ function clientProgressStory(client, sessions, now) {
   client = client || {};
   const ses = (sessions || []).filter(s => s && s.date);
   const edad = parseInt(client.age);
-  if (edad && edad < 18 && !showcaseMinorOk(client)) return { ok: false, razon: 'menor' };
+  // v671 · SIN EDAD NO SE PRESUME ADULTO (auditoría del 25-sep, F2-1). Aquí decía `edad && edad < 18`, y
+  // `parseInt('')` es NaN: una ficha sin edad se trataba como ADULTA publicable — la regla de v565 al
+  // revés («el defecto por defecto es la rama menos protectora»). Sin edad no se arma: la ficha lo dice
+  // y el coach la completa.
+  if (!(edad > 0)) return { ok: false, razon: 'sin_edad' };
+  if (edad < 18 && !showcaseMinorOk(client)) return { ok: false, razon: 'menor' };
   if (ses.length < STORY_MIN_SESSIONS) return { ok: false, razon: 'pocos_entrenos', entrenos: ses.length, faltan: STORY_MIN_SESSIONS - ses.length };
   const ref = now ? new Date(now) : new Date();
   const ts = ses.map(s => Date.parse(s.date)).filter(t => isFinite(t)).sort((a, b) => a - b);
