@@ -62,9 +62,12 @@
   0 sin aplicar** · harness nuevo `_verify-marca-notas` **35/35** (ficha y editor, claro y oscuro, 360 px,
   contraste peor 6,92, con control sin notas) · `_verify-aviso-calentamiento` sin regresiones.
 - 🔴 **Un candado mío aprobaba un `return ''` arriba de la marca** (la clase del `if(false)`, v579): se
-  añadió una prueba que EJECUTA `_exWarnChip` antes de correr la matriz. Y dos tropiezos de herramienta:
-  un script de python por la terminal lee el código en cp1252 (un «·» del patrón no casaba) y el heredoc
-  volvió a comerse un `\n` (quinta vez). Los dos van a GOTCHAS.
+  añadió una prueba que EJECUTA `_exWarnChip` antes de correr la matriz. Y el heredoc volvió a comerse
+  un `\n` (quinta vez, gotcha ya escrito).
+- ⚠️ **CORRECCIÓN (mismo día):** esta entrada decía que «python por la terminal lee el código en cp1252»
+  y eso se llevó a GOTCHAS. **Medido después, es FALSO**: el código fuente por heredoc se decodifica en
+  UTF-8 (`·` = U+00B7, `ó` = U+00F3). Un `assert` falló esa mañana con un patrón que tenía «·», pero la
+  causa no se confirmó. Se retiró el gotcha: una razón falsa al lado de una regla convence al siguiente.
 
 ## ⏮️ 2026-09-25 — v675: «Esperando respuesta» ya no cuenta lo que no pide nada
 

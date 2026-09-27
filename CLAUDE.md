@@ -670,7 +670,6 @@ git push origin main
 - **PowerShell 5.1 `Set-Content`/`Out-File -Encoding UTF8` METE BOM** (EF BB BF al inicio) → rompe el arranque si cae en index.html/sw.js. Al hacer un replace masivo (ej. bump `?v=`) usar `[System.IO.File]::WriteAllText($p,$t,[System.Text.UTF8Encoding]::new($false))`, y verificar los 3 primeros bytes después (bug 2026-07-15 en el deploy v352: el bump metió BOM, se re-guardó sin él).
 - Tras ediciones por regex en CSS, **revisar selectores compuestos**: al quitar tokens pueden quedar dos selectores PEGADOS (pasó con `html[data-theme]` duplicado en F5b).
 - bash: `UID` es variable readonly del shell — no usarla como nombre propio.
-- **Un script de python pasado por la terminal (`python - <<EOF`) se lee en la codificación de la CONSOLA (cp1252), no en UTF-8**: un «·» o una tilde del patrón no casa con el archivo y el `assert` falla sin decir por qué (v676). Los scripts con caracteres no ASCII van a ARCHIVO (`python archivo.py`, que Python lee en UTF-8) — la misma salida que para las barras invertidas de abajo.
 - **Heredocs de Git Bash MANGLAN `\\`** en scripts python inline (2026-07-09: `s.index("log('\\njsErrors")` no encontraba el marcador). Scripts de reescritura con backslashes → escribirlos a ARCHIVO (Edit/Write tool) y correr `python archivo.py`; si no queda opción, construir el backslash con `chr(92)`.
 
 ### Deploy / GitHub Pages
