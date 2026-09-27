@@ -21962,6 +21962,51 @@ test('🔒 v678 · la regla de orígenes (CSP): scripts solo de la app, datos so
 });
 
 // ══════════════════════════════════════════════════════
+// v679 · R14: el correo sin confirmar y los dominios ajenos
+// ══════════════════════════════════════════════════════
+test('🔴 v679 · «no confirmaste tu correo» se reconoce, y NO se confunde con clave mala ni con red', () => {
+  // La forma EXACTA que deja la librería: status 400 + code desde `error_code` del servidor.
+  assert.strictEqual(core.loginNeedsConfirm({ status: 400, code: 'email_not_confirmed', message: 'Email not confirmed' }), true);
+  assert.strictEqual(core.loginNeedsConfirm({ status: 400, message: 'Email not confirmed' }), true, 'respaldo por el texto');
+  // CONTROLES: la clave mala y la red siguen siendo lo que eran.
+  assert.strictEqual(core.loginNeedsConfirm({ status: 400, code: 'invalid_credentials', message: 'Invalid login credentials' }), false);
+  assert.strictEqual(core.loginNeedsConfirm(new TypeError('Failed to fetch')), false);
+  assert.strictEqual(core.loginNeedsConfirm(null), false);
+  assert.strictEqual(core.loginFailIsNetwork({ status: 400, code: 'email_not_confirmed' }, true), false,
+    'un 400 de correo sin confirmar no es un fallo de red');
+});
+
+test('🔴 v679 · «olvidé mi contraseña» no manda el enlace a un dominio que no es del coach', () => {
+  for (const e of ['claudia@avi.com', 'Samuel@APEX.com', '  danilo@avi.com  '])
+    assert.strictEqual(core.resetPassWouldLeak(e), true, e + ' debía detectarse');
+  // CONTROLES: dominio EXACTO — el del PO, los subdominios y los correos personales pasan.
+  for (const e of ['x@avientrena.com', 'x@mail.avi.com', 'x@gmail.com', 'x@avi.com.co', 'avi.com', '', null])
+    assert.strictEqual(core.resetPassWouldLeak(e), false, String(e) + ' no debía detectarse');
+  assert.deepStrictEqual(core.RESET_DOMINIOS_AJENOS, ['avi.com', 'apex.com']);
+});
+
+test('🔒 v679 · CABLEADO: el login atiende el correo sin confirmar ANTES de gastar el intento', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf(n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const login = cuerpo('async function doLogin(');
+  assert.ok(/_sinConfirmar=!_falloDeRed&&\(typeof loginNeedsConfirm==='function'\)&&loginNeedsConfirm\(r&&r\.error\);/.test(login),
+    '🔴 el login dejó de preguntar si falta confirmar el correo');
+  const iSin = login.indexOf('if(_sinConfirmar){'), iGasta = login.indexOf('recordLoginFail()');
+  assert.ok(iSin > 0 && iGasta > iSin, '🔴 el aviso de correo sin confirmar quedó DESPUÉS de gastar el intento');
+  assert.ok(/if\(_sinConfirmar\)\{[\s\S]{0,400}reenviarConfirmacion\(\)[\s\S]{0,120}return;/.test(login),
+    '🔴 el aviso ya no ofrece reenviar el correo o no corta antes de gastar el intento');
+  const reenv = cuerpo('async function reenviarConfirmacion(');
+  assert.ok(/AUTH\.resendSignup\(correo\)/.test(reenv) && /RESET_COOLDOWN_MS/.test(reenv), 'el reenvío no llama a la librería o perdió el compás');
+  const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  assert.ok(/async resendSignup\(email\)\{[^}]*c\.auth\.resend\(\{type:'signup',email,/.test(infra), '🔴 resendSignup no pide el correo de REGISTRO');
+  const reset = cuerpo('async function pedirResetPass(');
+  const iLeak = reset.indexOf('resetPassWouldLeak(correo)'), iEnvia = reset.indexOf('AUTH.resetPassword(correo)');
+  assert.ok(iLeak > 0 && iEnvia > iLeak, '🔴 el enlace se manda ANTES de mirar si el dominio es ajeno');
+  assert.ok(/resetPassWouldLeak\(correo\)\)\{[\s\S]{0,300}return;/.test(reset), '🔴 detecta el dominio ajeno pero no corta');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

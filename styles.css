@@ -2064,6 +2064,10 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .cin-card{background:linear-gradient(180deg,rgba(10,14,12,.55),rgba(6,9,8,.84));backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid rgba(242,245,244,.12);border-radius:22px;padding:20px 18px 18px;box-shadow:0 -12px 54px rgba(0,0,0,.5)}
 .cin-card .lerr{display:none;background:rgba(230,57,70,.16);border:1px solid rgba(230,57,70,.5);color:#FF6B78;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px}
 .cin-card .lerr.on{display:block}
+/* v679 · «Reenviar correo» dentro del aviso de correo sin confirmar: un enlace, no un segundo botón
+   grande que compita con «Entrar». Área táctil de 36 px. */
+.lerr-btn{display:block;min-height:36px;margin:6px 0 -4px;padding:8px 0;background:none;border:none;color:inherit;
+  font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .cin-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(242,245,244,.40);margin-bottom:6px}
 .cin-in{width:100%;background:transparent;border:none;border-bottom:1.5px solid rgba(242,245,244,.18);color:#fff;font-family:inherit;font-size:16px;font-weight:600;padding:6px 2px 9px;outline:none;transition:border-color .25s;margin-bottom:14px}
 .cin-in::placeholder{color:rgba(242,245,244,.30);font-weight:500}

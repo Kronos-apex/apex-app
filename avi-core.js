@@ -9576,6 +9576,36 @@ function loginFailIsNetwork(err, online) {
     .test(String((err && err.message) || err || ''));
 }
 
+// ══════════ v679 · «NO CONFIRMASTE TU CORREO» NO ES «CONTRASEÑA INCORRECTA» (R14, hallazgo H2) ══════════
+// Supabase responde 400 con `error_code:'email_not_confirmed'` (la librería lo deja en `err.code`)
+// DESPUÉS de comprobar la contraseña: la clave era buena. El login lo trataba como credenciales malas,
+// gastaba uno de los 5 intentos que bloquean 30 s y no decía nada del correo, y no había forma de
+// pedirlo otra vez. Medido: Edwin Ávila (25-jul) se registró y nunca confirmó; Laura Ramírez (15-sep)
+// se atascó y 76 s después se registró de nuevo con Google (hoy tiene una cuenta viva y una fantasma).
+// PURA. Por código y, de respaldo, por el texto (una versión de la librería que no pase el código).
+function loginNeedsConfirm(err) {
+  if (!err) return false;
+  if (err.code === 'email_not_confirmed') return true;
+  return /email not confirmed/i.test(String(err.message || ''));
+}
+
+// ══════════ v679 · DOMINIOS QUE NO SON DEL COACH (R14, hallazgo H1) ══════════
+// Hay cuentas creadas por el coach con correos inventados en `avi.com` y `apex.com`, y esos dominios
+// SÍ reciben correo (MX de Microsoft 365 de terceros, medido el 27-sep: 9 asesorados, uno menor). Un
+// «olvidé mi contraseña» ahí manda el enlace —que abre la cuenta— a un desconocido. La salida real es
+// que el coach le cambie el correo o le ponga una clave nueva desde «Editar asesorado».
+// 🔒 Esto NO cierra el riesgo: alguien puede pedirlo directo al servidor. Lo que evita es el caso más
+//    probable — que la propia persona, sin saberlo, le mande su enlace a un tercero. Cuando el coach
+//    cambie esos correos, la lista se queda sin nadie a quien aplicar y no estorba.
+// PURA. Compara el dominio EXACTO: `avientrena.com` o `mail.avi.com` no son `avi.com`.
+const RESET_DOMINIOS_AJENOS = ['avi.com', 'apex.com'];
+function resetPassWouldLeak(email) {
+  const e = String(email || '').trim().toLowerCase();
+  const i = e.lastIndexOf('@');
+  if (i < 1) return false;
+  return RESET_DOMINIOS_AJENOS.indexOf(e.slice(i + 1)) >= 0;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // ETIQUETAS DEL EJE DE UNA GRAFICA — cuales caben
 // ──────────────────────────────────────────────────────────────────────
@@ -12242,6 +12272,9 @@ if (typeof module !== 'undefined' && module.exports) {
     exerciseIdentity,
     chartLabelIndices,
     loginFailIsNetwork,
+    loginNeedsConfirm,
+    resetPassWouldLeak,
+    RESET_DOMINIOS_AJENOS,
     coachInsight,
     coachPulse,
     stalledExercise: _insStallOf,

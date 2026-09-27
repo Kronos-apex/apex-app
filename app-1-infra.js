@@ -558,6 +558,9 @@ const AUTH={
   async signInGoogle(){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});},
   async sendMagicLink(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});},
   async resetPassword(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});},
+  // v679 · Reenviar el correo de confirmación del registro (R14): quien no lo confirmó no tenía cómo
+  // pedirlo otra vez y el login le decía «contraseña incorrecta».
+  async resendSignup(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});},
   async updatePassword(password){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.updateUser({password});},
   async signOut(){const c=sbAuthClient();if(!c)return;return await c.auth.signOut();},
   onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((_e,session)=>cb(session));},

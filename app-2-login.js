@@ -319,7 +319,7 @@ async function doLogin(){
     // sin señal la app decia «Email o contraseña incorrectos» y gastaba un intento (reporte
     // de Claudia, 31-ago). Un THROW aqui es que la peticion no llego; un error DEVUELTO con
     // status 4xx es que el servidor juzgo las credenciales. Ver `loginFailIsNetwork`.
-    let _falloDeRed=false;
+    let _falloDeRed=false, _sinConfirmar=false;
     if(AUTH.ready()){
       try{
         const r=await AUTH.signInEmail(u,p);
@@ -331,6 +331,8 @@ async function doLogin(){
         }
         _falloDeRed=(typeof loginFailIsNetwork==='function')
           ? loginFailIsNetwork(r&&r.error, navigator.onLine) : false;
+        // v679 · La clave era BUENA: lo que falta es confirmar el correo (ver `loginNeedsConfirm`).
+        _sinConfirmar=!_falloDeRed&&(typeof loginNeedsConfirm==='function')&&loginNeedsConfirm(r&&r.error);
       }catch(e){
         warn('AVI auth login (la peticion no llego):',e&&e.message);
         _falloDeRed=true;   // si lanza, no hubo respuesta que juzgara nada
@@ -347,6 +349,14 @@ async function doLogin(){
       err.textContent=(navigator.onLine===false)
         ? 'No hay internet, así que no pudimos verificar tu cuenta. Si ya habías entrado en este teléfono, ábrela de nuevo y entra sin conexión.'
         : 'No se pudo conectar para entrar. Revisa tu internet e intenta de nuevo.';
+      err.classList.add('on');
+      return;
+    }
+    // 🔒 v679 · Sin confirmar NO gasta intento ni dice «contraseña incorrecta»: dice qué falta y deja
+    //    pedir el correo otra vez. Marcado estático (sin datos de la persona), por eso va en innerHTML.
+    if(_sinConfirmar){
+      err.innerHTML='Ya casi: te falta confirmar tu correo. Busca el correo que te mandamos al registrarte (mira también en spam) y toca el enlace.'
+        +'<button type="button" class="lerr-btn" onclick="reenviarConfirmacion()">Reenviar correo</button>';
       err.classList.add('on');
       return;
     }
@@ -392,6 +402,12 @@ async function pedirResetPass(){
     if(inp)inp.focus();
     return;
   }
+  // 🔒 v679 · Una cuenta con correo de un dominio AJENO (ver `resetPassWouldLeak`): el enlace le llegaría
+  //    a un desconocido. No se manda; se le dice la salida que sí existe (su coach).
+  if(typeof resetPassWouldLeak==='function'&&resetPassWouldLeak(correo)){
+    _forgotMsg('Esa dirección la creó tu coach solo para entrar a AVI, y no te llega a ti. Escríbele: él te pone una contraseña nueva en un momento.');
+    return;
+  }
   if(!AUTH.ready()){
     _forgotMsg('Para esto necesitas internet: el enlace te lo mandamos por correo.',true);
     return;
@@ -409,13 +425,35 @@ async function pedirResetPass(){
     //    si ya se pidió hace poco. Solo se distingue lo que la persona puede arreglar: la red.
     if(r&&r.error) warn('AVI resetPassword:',r.error.message);
     _resetEnviadoAt=Date.now();
-    _forgotMsg('Listo: si esa cuenta existe, te llega un correo con un enlace para crear una contraseña nueva. Míralo también en spam.');
+    _forgotMsg('Listo: si esa cuenta existe, te llega un correo con un enlace para crear una contraseña nueva. Míralo también en spam. Si tu coach te creó la cuenta, él también te puede poner una contraseña nueva.');
   }catch(e){
     // Un THROW es que la petición no llegó — igual que en doLogin (v563).
     warn('AVI resetPassword (la peticion no llego):',e&&e.message);
     _forgotMsg('No pudimos conectarnos para mandarte el correo. Revisa tu internet e intenta de nuevo.',true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='¿Olvidaste tu contraseña?';}
+  }
+}
+
+// ── v679 · Reenviar el correo de confirmación (R14) ──────────────────────────────────────
+// Sale solo después de que el servidor dijo `email_not_confirmed`, o sea con la clave CORRECTA:
+// no delata si una cuenta existe. Mismo compás de 60 s que «olvidé mi contraseña».
+let _confirmEnviadoAt=0;
+async function reenviarConfirmacion(){
+  const err=document.getElementById('lerr'); if(err)err.classList.remove('on');
+  const correo=((document.getElementById('lu')||{}).value||'').trim().toLowerCase();
+  if(!correo||correo.indexOf('@')<0){ _forgotMsg('Escribe tu correo aquí arriba y vuelve a tocar «Entrar».',true); return; }
+  const falta=RESET_COOLDOWN_MS-(Date.now()-_confirmEnviadoAt);
+  if(_confirmEnviadoAt&&falta>0){ _forgotMsg(`Ya te lo mandamos. Míralo también en spam; si no llega, vuelve a intentar en ${Math.ceil(falta/1000)} segundos.`); return; }
+  if(!AUTH.ready()){ _forgotMsg('Para esto necesitas internet: te lo mandamos por correo.',true); return; }
+  try{
+    const r=await AUTH.resendSignup(correo);
+    if(r&&r.error) warn('AVI resendSignup:',r.error.message);
+    _confirmEnviadoAt=Date.now();
+    _forgotMsg('Listo, te lo volvimos a mandar. Míralo también en spam y toca el enlace para entrar.');
+  }catch(e){
+    warn('AVI resendSignup (la peticion no llego):',e&&e.message);
+    _forgotMsg('No pudimos conectarnos para mandarte el correo. Revisa tu internet e intenta de nuevo.',true);
   }
 }
 
