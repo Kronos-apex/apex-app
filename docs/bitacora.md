@@ -4,6 +4,33 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-27 — v677 + v678: la app solo carga su propio código y solo habla con su base de datos
+
+- **Pregunta del PO:** *«¿hay alguna posibilidad de que se infiltre un virus en la app?»*. Un virus en el
+  teléfono, no (la PWA vive en la caja del navegador). Código ajeno DENTRO de AVI, sí, y la puerta
+  concreta era una: **supabase-js llegaba de `cdn.jsdelivr.net` pidiendo «la última 2.x»**, sin comprobar
+  el archivo — **19 versiones en 30 días** llegaban a todos sin revisión (medido en el registro de npm).
+- **v677 · la librería vive en la app.** `vendor/supabase-js-2.117.2.js` es el `dist/umd/supabase.js`
+  ORIGINAL del paquete (tarball verificado contra el sha512 del registro; misma versión que ya recibían
+  los asesorados; la copia del CDN solo le añadía 292 bytes de comentario). Con su LICENSE (MIT).
+  `.gitattributes` `vendor/** -text` para que `autocrlf` no le cambie los bytes. El SW la precachea (login
+  sin red desde la primera instalación) y ya no habla del CDN; `publicar-hogar` sube `vendor/`.
+- **v678 · regla de orígenes (CSP)** en un `<meta>` antes del primer script: scripts solo de la app
+  (`'unsafe-inline'` por los `onclick`: el candado de XSS sigue siendo `esc()`), datos solo a Supabase
+  (https + wss) y a `app.avientrena.com` (señal de mudanza), imágenes y videos de la app, de Supabase o
+  `data:`/`blob:`, `object-src 'none'`. Inventario medido con un recorrido real, no leído del código.
+- **QA:** suite 1355 → **1359** · `_sabotaje-v677` **7/7** (incluye «la librería cambia UN byte») ·
+  `_sabotaje-v678` **6/6** · harness nuevo `_verify-supabase-local` **10/10** (se pide a la app y a nadie
+  más, login REAL con la cuenta QA, y sin red sigue disponible) — contra producción v676 daba **7/10**
+  (control) · harness nuevo `_verify-csp` **9/9** (sesión real, 6 pestañas, habitaciones, Comunidad y panel
+  del coach: 0 bloqueos de la app; un script de otro sitio y un fetch a un servidor ajeno quedan
+  BLOQUEADOS) · `_verify-arranque-modulos` 6/6 · `_verify-marca-notas` 35/35.
+- ⏭️ Actualizar la librería es ahora una DECISIÓN: bajar la versión nueva, verificarla igual, cambiar el
+  nombre del archivo, la huella de la suite y la línea del SW.
+- 🔴 Y de paso, al publicar v676: `publicar-hogar` había creado un proyecto Vercel `avi-home` (Windows
+  limpió la carpeta temporal donde vivía el enlace; el mismo error de v659, que lo creó el 22-sep).
+  Borrado con el OK del PO y el script ahora comprueba el proyecto antes de publicar.
+
 ## ⏮️ 2026-09-27 — v676: las notas del coach reconocen todas las zonas y marcan lo que cargan
 
 - **Sale de la 13.ª auditoría (lesiones, R13)**, consolidada y medida este mismo día
