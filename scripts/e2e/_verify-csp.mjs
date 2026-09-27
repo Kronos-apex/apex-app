@@ -46,7 +46,9 @@ const esperar = async (expr, veces = 60, ms = 500) => { for (let i = 0; i < vece
 const violaciones = async () => (await ev(`window.__csp||[]`)) || [];
 
 await send('Page.navigate', { url: URL });
-check('CONTROL · la app arrancó', await esperar(`!!window._aviUpdateBusy`, 80));
+// 120 × 500 ms: la primera carga EN FRÍO de producción (perfil nuevo, sin caché ni SW) llegó a pasar
+// de 40 s una vez el 27-sep, y el control cayó con todo lo demás en verde.
+check('CONTROL · la app arrancó', await esperar(`!!window._aviUpdateBusy`, 120));
 check('la regla está puesta en la página', await ev(`!!document.querySelector('meta[http-equiv="Content-Security-Policy"]')`));
 
 // ── Sesión real (cuenta QA) ─────────────────────────────────────────────────
