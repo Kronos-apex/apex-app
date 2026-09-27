@@ -49,7 +49,24 @@ if (process.argv.includes('--sin-mudanza')) {
   copyFileSync(join(ROOT, 'scripts', 'hogar-mudanza.json'), join(DEST, 'mudanza.json'));
   console.log('Con señal de mudanza: los teléfonos en v662+ (salvo iPhone instalado) saltan al hogar nuevo.');
 }
+// 🔴 27-sep-2026: Windows LIMPIÓ la carpeta temporal entre dos publicaciones, el enlace se perdió y
+//    `vercel deploy --yes` creó un proyecto NUEVO con el nombre de la carpeta («avi-home») y
+//    publicó AHÍ: app.avientrena.com se quedó en la versión anterior y solo lo delató el prodcheck.
+//    El aviso de arriba no bastaba (sale entre el ruido y el deploy sigue). Ahora el proyecto se
+//    COMPRUEBA antes de publicar: si no es `avi-app` se enlaza, y si aun así no lo es, se detiene.
+const PROYECTO = 'avi-app';
+const proyectoEnlazado = () => {
+  try { return JSON.parse(readFileSync(join(LINK, 'project.json'), 'utf8')).projectName || null; } catch { return null; }
+};
+if (proyectoEnlazado() !== PROYECTO) {
+  console.log(`Enlazando con el proyecto ${PROYECTO} (estaba: ${proyectoEnlazado() || 'sin enlace'})…`);
+  execSync(`npx -y vercel link --yes --project ${PROYECTO}`, { cwd: DEST, stdio: 'inherit' });
+}
+if (proyectoEnlazado() !== PROYECTO) {
+  console.error(`🔴 No se publica: la carpeta quedó enlazada a «${proyectoEnlazado()}», no a ${PROYECTO}.`);
+  process.exit(1);
+}
 const v = (readFileSync(join(ROOT, 'sw.js'), 'utf8').match(/avi-v(\d+)/) || [])[1];
-console.log(`Publicando v${v} en app.avientrena.com…`);
+console.log(`Publicando v${v} en app.avientrena.com (proyecto ${PROYECTO})…`);
 execSync('npx -y vercel deploy --prod --yes', { cwd: DEST, stdio: 'inherit' });
 console.log('\nVerifica: node scripts/e2e/_prodcheck.mjs v' + v + ' https://app.avientrena.com/');
