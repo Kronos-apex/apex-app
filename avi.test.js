@@ -21934,6 +21934,33 @@ test('🔒 v677 · el service worker y la publicación conocen la librería (log
   assert.ok(/'vendor'/.test(carpetas), '🔴 publicar-hogar no sube vendor/: app.avientrena.com se quedaría sin login');
 });
 
+test('🔒 v678 · la regla de orígenes (CSP): scripts solo de la app, datos solo a su base de datos', () => {
+  // Inventario medido el 27-sep con `_verify-csp` (sesión real, todas las pestañas, 0 bloqueos de la
+  // app y los dos controles bloqueados). Añadir un sitio es una DECISIÓN: se cambia aquí a propósito.
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const m = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
+  assert.ok(m, '🔴 la página perdió la regla de orígenes');
+  // Va ANTES del primer script: una regla puesta después no cubre lo que ya corrió.
+  assert.ok(html.indexOf(m[0]) < html.indexOf('<script'), '🔴 la regla quedó después de un script');
+  const dir = Object.fromEntries(m[1].split(';').map(s => s.trim()).filter(Boolean)
+    .map(s => { const [k, ...v] = s.split(/\s+/); return [k, v.sort()]; }));
+  const SB = 'https://eoebhrxbokyllqalyecj.supabase.co';
+  assert.deepStrictEqual(dir['script-src'], ["'self'", "'unsafe-inline'"].sort(), '🔴 se abrió script-src a otro sitio: ' + dir['script-src']);
+  assert.deepStrictEqual(dir['connect-src'],
+    ["'self'", 'data:', 'blob:', SB, 'wss://eoebhrxbokyllqalyecj.supabase.co', 'https://app.avientrena.com'].sort(),
+    '🔴 la app puede mandar datos a un sitio nuevo: ' + dir['connect-src']);
+  assert.deepStrictEqual(dir['default-src'], ["'self'"]);
+  assert.deepStrictEqual(dir['object-src'], ["'none'"]);
+  assert.deepStrictEqual(dir['base-uri'], ["'self'"]);
+  // Ningún comodín en ninguna directiva: un `*` o un `https:` suelto anula la regla entera.
+  for (const [k, v] of Object.entries(dir))
+    assert.ok(!v.some(x => x === '*' || /^https?:$/.test(x) || /\*/.test(x)), '🔴 comodín en ' + k + ': ' + v.join(' '));
+  // Y la dirección de la base de datos es la MISMA que usa la app (si se muda, la regla la sigue).
+  const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  assert.ok(infra.includes(SB), 'la base de datos de la app ya no es la que permite la regla');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

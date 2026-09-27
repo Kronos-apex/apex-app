@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 🔒 v678 · QUÉ PUEDE CARGAR Y A DÓNDE PUEDE HABLAR LA APP (segunda capa de la pregunta del PO:
+     «¿se puede infiltrar un virus?»). Scripts SOLO de la propia app; datos SOLO hacia su base de
+     datos (Supabase) y hacia la dirección nueva (la señal de mudanza); imágenes y videos de la app,
+     de Supabase o generados en el teléfono (data:/blob:). `'unsafe-inline'` en script-src hace falta
+     por los `onclick` y los dos scripts en línea — el candado de XSS sigue siendo `esc()`; lo que
+     esto cierra es que se cuele un <script src> de otro sitio o que algo mande datos a un tercero.
+     Inventario medido el 27-sep (suite: `🔒 v678`). Un sitio nuevo se AÑADE aquí a propósito. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://eoebhrxbokyllqalyecj.supabase.co; media-src 'self' data: blob: https://eoebhrxbokyllqalyecj.supabase.co; connect-src 'self' data: blob: https://eoebhrxbokyllqalyecj.supabase.co wss://eoebhrxbokyllqalyecj.supabase.co https://app.avientrena.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'">
 <title>AVI — Entrenamiento Personal</title>
 
 <!-- Captura TEMPRANA del evento de instalación. Chrome dispara beforeinstallprompt
@@ -72,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=677">
+<link rel="stylesheet" href="styles.css?v=678">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1402,19 +1410,19 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
   </div>
 </div>
 
-<script src="avi-core.js?v=677"></script>
-<script src="muscle-map.js?v=677"></script>
-<script src="exercise-muscles.js?v=677"></script>
+<script src="avi-core.js?v=678"></script>
+<script src="muscle-map.js?v=678"></script>
+<script src="exercise-muscles.js?v=678"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=677"></script>
-<script src="app-2-login.js?v=677"></script>
-<script src="app-3-coach.js?v=677"></script>
-<script src="app-4-entreno.js?v=677"></script>
-<script src="app-5-salud.js?v=677"></script>
-<script src="app-6-extra.js?v=677"></script>
-<script src="app-7-community.js?v=677"></script>
+<script src="app-1-infra.js?v=678"></script>
+<script src="app-2-login.js?v=678"></script>
+<script src="app-3-coach.js?v=678"></script>
+<script src="app-4-entreno.js?v=678"></script>
+<script src="app-5-salud.js?v=678"></script>
+<script src="app-6-extra.js?v=678"></script>
+<script src="app-7-community.js?v=678"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
