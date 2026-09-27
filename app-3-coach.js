@@ -3527,7 +3527,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${_coIco('timer',11,'⏱')}${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Guardar como plantilla" aria-label="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">${_coIco('folder',14,'📂')}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar rutina" aria-label="Editar rutina" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar rutina" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${_coIco('timer',11,'⏱')}${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Guardar como plantilla" aria-label="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">${_coIco('folder',14,'📂')}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar rutina" aria-label="Editar rutina" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar rutina" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div>${_exWarnChip(e,_limKeys,c.id==='_self')}</div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
 }
@@ -3678,6 +3678,7 @@ function unlinkBiset(i){ if(CUR.routineExs[i]){delete CUR.routineExs[i].ssNext;r
 // Una fila de ejercicio del constructor. abMark: 'A'|'B' si va dentro de una biserie.
 function rfExRow(i,n,abMark){
   const e=CUR.routineExs[i];
+  const _lim=_rfWarmLim();
   const inpSt=`width:50px;padding:6px 4px;border:1.5px solid var(--g);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;text-align:center;background:var(--surface);outline:none;color:var(--gt)`;
   const upDis=i===0; const dnDis=i===n-1;
   const ab=(dir,dis)=>`<button onclick="moveEx(${i},${dir})" ${dis?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1.5px solid var(--br2);background:var(--bg);color:${dis?'var(--t3)':'var(--t1)'};cursor:${dis?'default':'pointer'};font-size:14px;display:flex;align-items:center;justify-content:center;opacity:${dis?.3:1}">${dir===-1?'↑':'↓'}</button>`;
@@ -3724,6 +3725,7 @@ function rfExRow(i,n,abMark){
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;line-height:1.3">${esc(e.name)}</div>
           <div style="font-size:11px;color:var(--t2);margin-top:1px">${esc([typeof muscleHuman==='function'?muscleHuman(e.muscle):e.muscle,e.type].filter(Boolean).join(' · '))}</div>
+          ${_exWarnChip(e,_lim.keys,_lim.propio)}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">${linkBtn}${ab(-1,upDis)}${ab(1,dnDis)}</div>
       </div>
@@ -3788,6 +3790,14 @@ function _rfWarmLim(){
 function _rfWarmChip(ex,lim){
   const z=warmupWarnZones(ex,lim.keys); if(!z.length) return '';
   return `<div style="font-size:10.5px;font-weight:700;color:var(--ort);margin-top:2px">⚠️ ${esc(warmupWarnText(z,lim.propio))}</div>`;
+}
+// v676 · La MISMA marca para un EJERCICIO del plan (editor, plantilla aplicada y ficha). Marca, no
+// quita ni bloquea: el plan lo decide el coach; esto solo le pone delante lo que él mismo escribió
+// en las notas o lo que la persona reportó (`limitationsFor` une las dos).
+function _exWarnChip(ex,keys,propio){
+  if(!keys||!keys.length||typeof exerciseWarnZones!=='function') return '';
+  const z=exerciseWarnZones(ex,keys,DB.exercises); if(!z.length) return '';
+  return `<div class="ex-warn" style="font-size:10.5px;font-weight:700;color:var(--ort);margin-top:2px">⚠️ ${esc(warmupWarnText(z,propio))}</div>`;
 }
 function renderRfWarmup(){
   const con=document.getElementById('rf-warmup'); if(!con) return;

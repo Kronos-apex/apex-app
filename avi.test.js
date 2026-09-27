@@ -21737,6 +21737,137 @@ test('🔒 v668 · la gráfica de la rutina escribe el volumen como sus casillas
 });
 
 // ══════════════════════════════════════════════════════
+// v676 · R13 LESIONES: lo que el coach escribe en las NOTAS
+// ══════════════════════════════════════════════════════
+// Nace de la auditoría del 25-sep (docs/auditoria-lesiones-2026-09-25/README.md). Laura Ramírez
+// tiene escrito «Rodillas desgastadas, dolor en la espalda alta, dolor en los codos» y el lector
+// devolvía SOLO `rodilla`; ninguna pantalla del coach marcaba los ejercicios que eso carga.
+
+test('🔴 v676 · la nota REAL de Laura Ramírez reconoce sus tres zonas (antes solo rodilla)', () => {
+  const lim = core.parseLimitations('Rodillas desgastadas, dolor en la espalda alta, dolor en los codos');
+  assert.deepStrictEqual([...lim.keys].sort(), ['codo', 'cuello', 'rodilla'],
+    '🔴 las notas volvieron a ignorar «espalda alta» o «codos»: ' + JSON.stringify(lim.keys));
+  // CONTROL: las otras dos notas reales de la base no cambian.
+  assert.deepStrictEqual(core.parseLimitations('Lesión rodilla derecha operada, con 10 % menos de cartilago y tendon').keys.sort(), ['generic', 'rodilla']);
+  assert.deepStrictEqual(core.parseLimitations('Hernia lumbar L5\n\nHernia umbilical').keys, ['lumbar']);
+});
+
+test('🔒 v676 · cada palabra nueva de las notas hereda las reglas del ÁREA del cuestionario (una sola fuente)', () => {
+  // Si mañana cambia el mapa de `painExclZones`, cambian las dos puertas a la vez. Cada caso usa
+  // una frase que solo toca UNA entrada, y se compara contra lo que declara el cuestionario.
+  const casos = [
+    ['dolor de cuello', 'cuello'], ['me duele la espalda alta', 'espalda alta'],
+    ['epicondilitis en el codo derecho', 'codo'], ['tendinitis en la muñeca', 'muñeca o mano'],
+    ['molestia en el pecho al empujar', 'pecho'], ['esguince de tobillo', 'tobillo o pie'],
+    ['calambres en la pantorrilla', 'pantorrilla'], ['desgarro de isquiotibiales', 'muslo por detrás'],
+    ['dolor en el muslo por delante', 'muslo por delante'], ['dolor de cadera', 'cadera o ingle'],
+    ['tirón en el aductor', 'muslo por dentro (aductores)'], ['bursa del trocanter inflamada', 'cara externa del muslo o glúteo (abductores)'],
+  ];
+  for (const [nota, area] of casos) {
+    const esperado = core.painExclZones(area).slice().sort();
+    assert.ok(esperado.length, 'el área «' + area + '» ya no existe en el cuestionario');
+    assert.deepStrictEqual(core.parseLimitations(nota).keys.filter(k => k !== 'generic').sort(), esperado,
+      '🔴 «' + nota + '» debía dar las reglas de «' + area + '»');
+  }
+});
+
+test('🔒 v676 · las palabras nuevas NO detectan lo que solo se les parece (controles)', () => {
+  // Cada una es la trampa concreta de un término: `codo` a secas se come «codorniz», `ingle` a
+  // secas se come «inglés», `mano`/`pie`/`gluteo` son palabras de objetivo o de postura.
+  for (const nota of ['come huevos de codorniz', 'profesor de inglés', 'entrena de pie',
+    'remo a una mano sin problema', 'quiere más glúteo', 'alérgica al maní', 'quiere trabajar hombros y espalda']) {
+    const keys = core.parseLimitations(nota).keys.filter(k => k !== 'hombro');
+    assert.deepStrictEqual(keys, [], '🔴 «' + nota + '» detectó una lesión que no está: ' + JSON.stringify(keys));
+  }
+  // «la espalda ALTA» es cuello, no columna baja…
+  assert.deepStrictEqual(core.parseLimitations('me duele la espalda alta').keys, ['cuello']);
+  // …y el CONTROL: «me duele la espalda» a secas sigue siendo lumbar.
+  assert.deepStrictEqual(core.parseLimitations('me duele la espalda').keys, ['lumbar']);
+});
+
+test('🔴 v676 · el aviso dice lo que se quitó EN CADA ZONA (ya no la columna para una rodilla)', () => {
+  const rod = core.parseLimitations('rodillas desgastadas').advice;
+  assert.ok(/rodilla/.test(rod) && !/columna/.test(rod), '🔴 a una rodilla se le vuelve a describir la columna: ' + rod);
+  assert.ok(/NO una valoración clínica/.test(rod), 'se perdió la frase que dice que no es una valoración');
+  // CONTROL: lumbar conserva su frase de siempre.
+  assert.ok(/flexión y carga sobre la columna/.test(core.parseLimitations('hernia lumbar').advice));
+  // Varias zonas: dice las tres, cada una con lo suyo.
+  const tres = core.parseLimitations('Rodillas desgastadas, dolor en la espalda alta, dolor en los codos').advice;
+  assert.ok(/rodilla:/.test(tres) && /cuello:/.test(tres) && /codo:/.test(tres), tres);
+  // Toda zona con reglas tiene su frase: una zona nueva sin frase dejaría el aviso vacío.
+  for (const z of Object.keys(core.GEN_ZONE_EXCL))
+    assert.ok(core.GEN_ZONE_QUITA[z], '🔴 la zona «' + z + '» no dice qué quita');
+});
+
+test('🔴 v676 · la regla de rodilla ya no se lleva el wall-sit ni el sit-to-stand (Laura §3.2)', () => {
+  const by = id => _LIB_REAL.find(e => e.id === id);
+  // Los nombres se LEEN del catálogo: un nombre escrito a mano no probaría el catálogo (v549).
+  for (const id of ['e128', 'e158']) {
+    assert.ok(by(id) && /sentadilla/i.test(by(id).name), 'el fixture perdió ' + id);
+    assert.strictEqual(core.exerciseContraindicated(by(id), ['rodilla'], _LIB_REAL), false,
+      '🔴 «' + by(id).name + '» vuelve a caer con rodilla: Laura dictó que NO se borra');
+  }
+  // CONTROL: el resto de la regla ancha sigue mordiendo, e70 (🟡 condicional) incluido.
+  for (const id of ['e80', 'e70', 'e184', 'e35'])
+    assert.strictEqual(core.exerciseContraindicated(by(id), ['rodilla'], _LIB_REAL), true, id + ' dejó de caer con rodilla');
+  // Y la excepción es SOLO de rodilla.
+  assert.deepStrictEqual(Object.keys(core.GEN_KEEP_IDS), ['rodilla']);
+});
+
+test('🔒 v676 · el generador y el plan de choque pasan por la MISMA puerta (la excepción les llega)', () => {
+  const src = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf('function ' + n + '('); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const gen = cuerpo('_genMakeExcluder');
+  assert.ok(/exerciseContraindicated\(ex, zonas\)/.test(gen), '🔴 el generador volvió a la regex cruda: la excepción no le llega');
+  assert.ok(!/res\.push\(GEN_ZONE_EXCL\[z\]\)/.test(gen), '🔴 el generador vuelve a empujar la regex de la zona sin excepciones');
+  const shock = cuerpo('shockPlan');
+  assert.ok(/!exerciseContraindicated\(x, \[\.\.\.excludeZones\]\)/.test(shock), '🔴 el plan de choque volvió a la regex cruda');
+  // Y el efecto: con rodilla, el wall-sit o el sit-to-stand SÍ llegan a algún plan de casa.
+  let llegan = 0;
+  for (const seed of [1, 2, 3, 5, 7, 11, 13, 17]) for (const days of [3, 4, 5]) {
+    const c = { id: 'v', name: 'P', sex: 'F', age: 30, weight: 70, height: 165, goal: 'Mantener', level: 'Principiante', days, place: 'corporal', notes: 'rodillas desgastadas' };
+    const out = generarRutinas(c, _LIB_REAL, { seed, now: '2026-09-27T12:00:00Z', idFn: () => 'r' });
+    out.routines.forEach(r => (r.exercises || []).forEach(e => { if (e.id === 'e128' || e.id === 'e158') llegan++; }));
+  }
+  assert.ok(llegan > 0, '🔴 con rodilla el generador nunca entrega el wall-sit ni el sit-to-stand');
+});
+
+test('🔒 v676 · la marca del coach: qué zona carga cada ejercicio, por la misma puerta del filtro', () => {
+  const by = id => _LIB_REAL.find(e => e.id === id);
+  const keys = core.parseLimitations('Rodillas desgastadas, dolor en la espalda alta, dolor en los codos').keys;
+  assert.deepStrictEqual(core.exerciseWarnZones(by('e184'), keys, _LIB_REAL), ['rodilla', 'cuello']);
+  assert.deepStrictEqual(core.exerciseWarnZones(by('e11'), keys, _LIB_REAL), ['codo']);
+  // Un nombre RENOMBRADO en el plan se resuelve por el id del catálogo (clase v546).
+  assert.deepStrictEqual(core.exerciseWarnZones({ id: 'e11', name: 'Extensión en Polea' }, keys, _LIB_REAL), ['codo']);
+  // CONTROL: lo que no carga ninguna de sus zonas no se marca.
+  assert.deepStrictEqual(core.exerciseWarnZones(by('e42'), keys, _LIB_REAL), []);
+  // La etiqueta de isquios se lee en la frase del coach («Ojo con su …»), no le habla a la persona.
+  const isq = core.exerciseWarnZones(by('e15'), ['isquios'], _LIB_REAL);
+  assert.deepStrictEqual(isq, ['muslo por detrás']);
+  assert.strictEqual(core.warmupWarnText(isq, false), 'Ojo con su muslo por detrás');
+});
+
+test('🔒 v676 · CABLEADO: la marca sale en el editor (y las plantillas) y en la ficha, no en la vista previa', () => {
+  const src = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf('function ' + n + '('); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const chip = cuerpo('_exWarnChip');
+  assert.ok(/exerciseWarnZones\(ex,keys,DB\.exercises\)/.test(chip), '🔴 la marca dejó de preguntarle al filtro (o perdió los nombres del catálogo)');
+  assert.ok(/esc\(warmupWarnText\(z,propio\)\)/.test(chip), 'la marca dejó de escapar su texto');
+  const row = cuerpo('rfExRow');
+  assert.ok(/const _lim=_rfWarmLim\(\);/.test(row) && /\$\{_exWarnChip\(e,_lim\.keys,_lim\.propio\)\}/.test(row),
+    '🔴 el editor (y lo que llega de una plantilla) dejó de marcar');
+  const ficha = cuerpo('renderDetailRoutines');
+  assert.ok(/\$\{_exWarnChip\(e,_limKeys,c\.id==='_self'\)\}/.test(ficha), '🔴 la ficha del coach dejó de marcar');
+  // La vista previa del generador NO se marca: ahí el algoritmo ya filtró.
+  assert.ok(!/_exWarnChip/.test(cuerpo('renderGenPreview')), 'la vista previa del generador no debe marcar: ya está filtrada');
+  // La plantilla aplicada entra por el MISMO editor (vive en app-2).
+  const a2 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8'));
+  const ia = a2.indexOf('function openNewRoutineFromTemplate(');
+  assert.ok(ia > 0, 'openNewRoutineFromTemplate ya no está en app-2');
+  assert.ok(/renderRfExList\(\)/.test(a2.slice(ia, a2.indexOf('\nfunction ', ia + 10))), 'aplicar una plantilla dejó de pasar por el editor que marca');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

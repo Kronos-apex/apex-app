@@ -362,11 +362,36 @@ const GEN_SPLITS = {
 // protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1). Nota de Laura sobre
 // `hernia`: atrapa también la inguinal y NO se corrige — también desaconseja Valsalva y carga
 // axial alta, así que el error va hacia el lado seguro.
+// 🔴 v676 · LAS NOTAS SOLO RECONOCÍAN 3 ZONAS DE 11 (R13, 27-sep). Laura Ramírez tiene escrito
+// «Rodillas desgastadas, dolor en la espalda alta, dolor en los codos» y el lector devolvía SOLO
+// `rodilla`: las reglas de codo y cuello existían y no le llegaban. Las zonas nuevas NO traen
+// reglas nuevas: cada entrada apunta a un ÁREA del cuestionario de dolor y hereda sus reglas de
+// `painExclZones` — el mapa que Laura ya aprobó («espalda alta» → cuello, «cadera o ingle» →
+// aductor+abductor, «muslo por detrás» → lumbar+isquios). Una sola fuente: si mañana cambia el
+// mapa, cambian las dos puertas a la vez.
+// 🔒 LÍMITES DE PALABRA, cada uno con su control en la suite: `\bcodos?\b` (a secas se come
+//    «huevos de CODOrniz»), `\bingle\b` (a secas se come «inglés» normalizado), sin `mano` suelta
+//    («a una mano», «mano derecha»), sin `gluteo` (es el objetivo nº1 que se escribe, no una
+//    lesión, y el abductor quitaría el clamshell, que es el correctivo de rodilla), sin `pie`
+//    («de pie») y sin `gemelo`.
+// 🔒 `lumbar` ya no se come «me duele la espalda ALTA»: esa frase es cuello, no columna baja.
 const GEN_LIMIT_KWS = [
   { zone: 'rodilla', re: /rodilla|menisco|patela|rotula|ligamento|\blca\b|\blcl\b/ },
-  { zone: 'lumbar', re: /lumbar|lumbago|espalda baja|lumbalgia|hernia|ciatic|disco|escolios|espondil|protusi|protrusi|estenosis|sacroil|dolor de espalda|me duele la espalda|\bl4\b|\bl5\b|\bs1\b/ },
+  { zone: 'lumbar', re: /lumbar|lumbago|espalda baja|lumbalgia|hernia|ciatic|disco|escolios|espondil|protusi|protrusi|estenosis|sacroil|dolor de espalda(?! alta)|me duele la espalda(?! alta)|\bl4\b|\bl5\b|\bs1\b/ },
   { zone: 'hombro', re: /hombro|manguito|rotador|deltoid/ },
   { zone: 'generic', re: /lesion|operad|postoperat|posoperat|tendon|cirugia|protesis|fractura/ },
+  { area: 'cuello', re: /cuello|cervical|torticolis/ },
+  { area: 'espalda alta', re: /espalda alta|parte alta de la espalda|trapecio|interescapular|omoplato/ },
+  { area: 'codo', re: /\bcodos?\b|epicondil|epitrocle/ },
+  { area: 'muñeca o mano', re: /muneca|carpian|quervain|(dolor|lesion|fractura|molestia)\w* (de |en )?(la |las )?manos?\b/ },
+  { area: 'pecho', re: /\bpecho\b|pectoral|esternon|costocondr|costilla/ },
+  { area: 'tobillo o pie', re: /tobillo|aquiles|fascitis|fascia plantar|espolon|\btalon\b/ },
+  { area: 'pantorrilla', re: /pantorrilla|\bsoleo\b/ },
+  { area: 'muslo por detrás', re: /isquio|femoral|muslo por detras|detras del muslo|parte de atras del muslo/ },
+  { area: 'muslo por delante', re: /muslo por delante|cuadricep/ },
+  { area: 'cadera o ingle', re: /cadera|\bingle\b|inguinal|pubalgia|\bpubis\b/ },
+  { area: 'muslo por dentro (aductores)', re: /\baductor/ },
+  { area: 'cara externa del muslo o glúteo (abductores)', re: /abductor|trocanter/ },
 ];
 // 🔴 ESTE MAPA SE LLENA COMPLETO O LA ZONA NACE MUDA. Lo cazó Laura midiendo (dictamen del
 // 27-ago §5): desde la adenda del 8-ago, `aductor`, `abductor`, `cuello` y `tobillo` no tenían
@@ -598,6 +623,18 @@ const GEN_EXCL_IDS = {
   //    extendida — la posición de máximo estiramiento del aductor. El mecanismo que Laura nombró
   //    para esta zona es «el cambio de dirección y la base abierta», y esto es las dos cosas.
   aductor: ['e336'],
+};
+// 🔴 v676 · LO QUE LA REGLA ANCHA SE LLEVABA Y LAURA DICTÓ QUE NO SE BORRA. `rodilla` conserva
+// `sentadilla` a secas A PROPÓSITO (el riesgo vive en rango y alineación, y el sistema no controla
+// ninguno), pero el MISMO párrafo del dictamen (`dictamen-laura-dolor-2026-08-08.md` §3.2) dice:
+// «`e128` Wall Sit y `e158` Sit-to-Stand hasta el punto que no duela — son terapéuticos y NO se
+// borran». Medido en R13: la regla se los llevaba a los dos, y nadie lo había cruzado. Es la misma
+// clase que v424 cerró en lumbar, resuelta por ID y no estrechando la regex: aquí lo ancho es la
+// decisión, y lo que sobra son dos ejercicios con nombre propio.
+// 🔒 `e70` Goblet NO entra: Laura lo dejó 🟡 «en rango corto solo si va sin dolor», que es una
+// condición que el sistema no puede verificar — no es un «no se borra».
+const GEN_KEEP_IDS = {
+  rodilla: ['e128', 'e158'],
 };
 
 // ── TRABAJO CORRECTIVO (pedido del PO, 2026-08-08) ───────────────────────────────────────────
@@ -841,7 +878,25 @@ const WARMUP_ZONE_EXCL_IDS = {
 // filtra nada (ahí decide una persona, y hacer desaparecer opciones en silencio sería peor), pero
 // tiene que VERLO. Misma fuente que el generador — jamás una segunda lista, que se separan.
 function warmupWarnZones(wu, limKeys) {
-  return (limKeys || []).filter(z => warmupContraindicated(wu, [z])).map(z => GEN_ZONE_LABEL[z]).filter(Boolean);
+  return (limKeys || []).filter(z => warmupContraindicated(wu, [z])).map(_zoneLabelCoach).filter(Boolean);
+}
+// 🔴 v676 · LA MARCA DE LOS EJERCICIOS QUE ARMA EL COACH, QUE NUNCA EXISTIÓ (R13). La regla de la
+// casa dice «lo que arma el algoritmo se FILTRA, lo que arma una persona se MARCA», y el selector
+// del constructor lo repetía en su comentario — pero la única marca real era la 🩹 del entreno, que
+// sale SOLO con un reporte de dolor. Lo que el coach escribe en las NOTAS no marcaba nada en el
+// editor, al aplicar una plantilla ni en la ficha. Medido: Laura Ramírez («rodillas desgastadas…
+// codos») hizo el 23-sep una plantilla con saltos y escaladores sin que ninguna pantalla lo dijera.
+// 🔒 MARCA, NO QUITA NI BLOQUEA: el plan lo decide el coach (el PO, 27-sep: «los ejercicios los
+// decidí yo y no presenta dolor»). La marca solo le recuerda lo que él mismo escribió.
+// Misma puerta que el filtro (`exerciseContraindicated`, con `lib` por los nombres renombrados).
+function exerciseWarnZones(ex, limKeys, lib) {
+  return (limKeys || []).filter(z => exerciseContraindicated(ex, [z], lib)).map(_zoneLabelCoach).filter(Boolean);
+}
+// La etiqueta de `isquios` le habla a la PERSONA («la parte de atrás de TU muslo») y en la marca
+// del coach salía «Ojo con su la parte de atrás de tu muslo». Las demás sirven tal cual.
+const GEN_ZONE_LABEL_COACH = { isquios: 'muslo por detrás' };
+function _zoneLabelCoach(z) {
+  return GEN_ZONE_LABEL_COACH[z] || GEN_ZONE_LABEL[z];
 }
 // «Ojo con su zona lumbar y rodilla». `propio` = el coach editando SU propio entrenamiento.
 // Enuncia un HECHO (qué declaró la persona), nunca un consejo clínico ni un permiso: cero jerga
@@ -881,6 +936,8 @@ function exerciseContraindicated(ex, limKeys, lib) {
     }
   }
   return limKeys.some(z => {
+    const keep = GEN_KEEP_IDS[z];
+    if (keep && ex.id && keep.indexOf(ex.id) >= 0) return false;
     const ids = GEN_EXCL_IDS[z];
     if (ids && ex.id && ids.indexOf(ex.id) >= 0) return true;
     const re = GEN_ZONE_EXCL[z];
@@ -1016,11 +1073,32 @@ function limitationsFor(client, nowTs) {
   });
 }
 
+// 🔴 v676 · QUÉ QUITA CADA ZONA, DICHO POR ZONA. Hasta aquí el aviso decía SIEMPRE «flexión y
+// carga sobre la columna, giros cargados e impacto» —la frase de lumbar— y a quien tiene las
+// rodillas desgastadas le describía la columna (clase «rótulo que niega lo que rotula», v437).
+// Cada frase resume la regla de su zona en `GEN_ZONE_EXCL` y NO promete nada de lo que queda.
+const GEN_ZONE_QUITA = {
+  rodilla: 'rodilla: sentadillas, zancadas, saltos y extensión de cuádriceps',
+  lumbar: 'zona lumbar: flexión y carga sobre la columna, giros cargados e impacto',
+  hombro: 'hombro: lo que va por encima de la cabeza, los fondos y las aperturas profundas',
+  cuello: 'cuello: lo que va por encima de la cabeza, lo que cuelga, el crunch y el impacto',
+  codo: 'codo: extensiones de tríceps, fondos, colgarse de la barra y lo explosivo con los brazos',
+  muneca: 'muñeca: lagartijas y planchas sobre la mano, colgarse de la barra y el trabajo directo de muñeca',
+  pecho: 'pecho: aperturas, contractora, fondos y lanzamientos',
+  tobillo: 'tobillo: saltos, carrera, elevación de talones y escalones',
+  isquios: 'isquiotibiales: el curl femoral y el curl nórdico',
+  aductor: 'muslo por dentro: lo lateral, la base abierta y los saltos',
+  abductor: 'cara externa del muslo: abducción, lo lateral, lo que va sobre una pierna y los saltos',
+};
+function _zonasQueQuita(keys) {
+  return (keys || []).map(z => GEN_ZONE_QUITA[z]).filter(Boolean).join('; ');
+}
+
 // Parsea las notas del cliente → limitaciones detectadas. Exportada para tests.
 function parseLimitations(notes) {
   const n = _norm(notes);
   const keys = [];
-  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) keys.push(k.zone); });
+  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) (k.area ? painExclZones(k.area) : [k.zone]).forEach(z => keys.push(z)); });
   const uniq = [...new Set(keys)];
   const detected = uniq.length > 0;
   // Solo rodilla/lumbar/hombro tienen reglas de exclusión. Una limitación "genérica"
@@ -1042,7 +1120,7 @@ function parseLimitations(notes) {
     advice: !detected ? ''
       // Sin repetir «revisa cada día»: el banner del coach ya cierra con eso (se vio MIRANDO
       // la captura, no leyendo el texto — el string suelto no delata la redundancia).
-      : hasExclusions ? 'Quitamos lo que suele molestar ahí: flexión y carga sobre la columna, giros cargados e impacto. Es un filtro automático por lo que escribió, NO una valoración clínica: ajusta cargas y rangos, y confírmale qué hace hoy sin dolor.'
+      : hasExclusions ? 'Quitamos lo que suele molestar ahí — ' + _zonasQueQuita(uniq) + '. Es un filtro automático por lo que escribió, NO una valoración clínica: ajusta cargas y rangos, y confírmale qué hace hoy sin dolor.'
       : 'Limitación sin zona específica: NO se excluyó ningún ejercicio automáticamente. Revísala y ajústala a mano antes de aprobar.',
     nerveAdvice: !nerve ? ''
       : 'Menciona síntomas que pueden venir del nervio (dolor que baja por la pierna, hormigueo o falta de fuerza). Antes de cargar, que lo valore un profesional de la salud: este plan es un borrador y no reemplaza esa valoración.',
@@ -2093,15 +2171,16 @@ function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
   if (avoidHighImpact) res.push(GEN_HIIMPACT_RE);
   if (place === 'gym') res.push(/banda|elastic|\bliga\b/); // gym completo: bandas no como principal
-  lim.keys.forEach(z => { if (GEN_ZONE_EXCL[z]) res.push(GEN_ZONE_EXCL[z]); });
-  // Los ids de `GEN_EXCL_IDS` van por la MISMA puerta que las regex: si el generador solo mirase
-  // el nombre, `e93` («Sentadilla con Banda» = abductor disfrazado) se colaría y la lista sería
-  // decorativa. Es el caso que el nombre genuinamente no delata.
+  // Las zonas van por `exerciseContraindicated`, la MISMA puerta que el 🔄 y la marca del coach:
+  // regex + `GEN_EXCL_IDS` (si el generador solo mirase el nombre, `e93` «Sentadilla con Banda» =
+  // abductor disfrazado se colaría) + `GEN_KEEP_IDS` (v676: antes el generador empujaba la regex
+  // cruda y ninguna excepción podía llegarle).
+  const zonas = (lim.keys || []).filter(z => GEN_ZONE_EXCL[z] || GEN_EXCL_IDS[z]);
   const ids = new Set();
   if (place === 'gym') GEN_GYM_SUB_IDS.forEach(i => ids.add(i));
-  lim.keys.forEach(z => (GEN_EXCL_IDS[z] || []).forEach(i => ids.add(i)));
   return ex => {
     if (ex && ex.id && ids.has(ex.id)) return true;
+    if (zonas.length && exerciseContraindicated(ex, zonas)) return true;
     const n = _norm(ex.name); return res.some(re => re.test(n));
   };
 }
@@ -10563,7 +10642,7 @@ function shockPlan(client, exName, sessions, lib, now) {
   const exNorm = _norm(exName);
   const cand = lib.find(x => x && x.muscle === e.muscle && _norm(x.name) !== exNorm
     && exLevelRank(x) <= cap
-    && ![...excludeZones].some(z => GEN_ZONE_EXCL[z].test(_norm(x.name))));
+    && !exerciseContraindicated(x, [...excludeZones]));   // v676: la misma puerta (ids + excepciones)
   if (cand) {
     options.push({
       id: 'variante', title: 'Rota a una variante',
@@ -12081,6 +12160,9 @@ if (typeof module !== 'undefined' && module.exports) {
     painZoneKeys,
     limitationsFor,
     GEN_ZONE_LABEL,
+    GEN_ZONE_QUITA,
+    GEN_KEEP_IDS,
+    exerciseWarnZones,
     painExclZones,
     exerciseContraindicated,
     correctiveFor,
