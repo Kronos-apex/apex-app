@@ -4,6 +4,41 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-27 — v676: las notas del coach reconocen todas las zonas y marcan lo que cargan
+
+- **Sale de la 13.ª auditoría (lesiones, R13)**, consolidada y medida este mismo día
+  (`docs/auditoria-lesiones-2026-09-25/README.md`). Pedido del PO: *«arréglalo, pero con Laura los
+  ejercicios los decidí yo y hasta el momento no presenta ningún dolor en las rodillas»* → **se marca,
+  no se quita, y su plan no se tocó.**
+- **Las notas reconocían 3 zonas de 11.** La de Laura Ramírez («Rodillas desgastadas, dolor en la
+  espalda alta, dolor en los codos») daba solo `rodilla`. Ahora cada palabra nueva de `GEN_LIMIT_KWS`
+  apunta a un ÁREA del cuestionario de dolor y hereda sus reglas de `painExclZones` (una sola fuente):
+  su nota da `rodilla + cuello + codo`. Límites de palabra con su control en la suite: `\bcodos?\b`
+  (a secas se come «codorniz»), `\bingle\b` («inglés»), sin `mano`, `pie`, `gluteo` ni `gemelo`; y
+  «me duele la espalda ALTA» deja de caer en lumbar.
+- **La marca de lo que arma el coach solo existía con dolor REPORTADO** (`_painForEx`), y en toda la
+  historia de la app los asesorados han reportado dolor cero veces. `_exWarnChip` (el mismo chip naranja
+  del calentamiento, `exerciseWarnZones` en avi-core) sale ahora en el **editor de rutina** —donde también
+  entra una plantilla aplicada— y en la **ficha**. No en la vista previa del generador (ya filtrada) ni en
+  la pantalla del asesorado (decisión del PO: la nota es del coach).
+- **`rodilla` se llevaba el wall-sit y el sit-to-stand** por su `sentadilla` a secas, contra el dictamen
+  escrito de Laura (2026-08-08 §3.2: «terapéuticos y NO se borran»). `GEN_KEEP_IDS` los exceptúa por id;
+  `e70` Goblet (🟡 condicional) no entra. El generador y el plan de choque pasan ahora por
+  `exerciseContraindicated` —antes usaban la regex cruda— para que la excepción les llegue.
+- **El aviso del filtro decía «flexión y carga sobre la columna» para cualquier zona**: `GEN_ZONE_QUITA`
+  dice lo que quita en cada una.
+- **Medido sobre las personas reales:** solo cambia Laura Ramírez (Danilo, Miguel y el PO igual). Su
+  calentamiento automático cambia en 3 de 5 rutinas: salen piezas de la lista de cuello y entran otras que
+  la matriz 34×8 de Laura (v644) ya revisó. En su plan, 4 ejercicios del «Full body funcional» y 5 de sus
+  otras rutinas llevan la marca.
+- **QA:** suite **1346 → 1355** en local, UTC, inglés y LF · hook 12/12 · `_sabotaje-v676` **20/20 muerden,
+  0 sin aplicar** · harness nuevo `_verify-marca-notas` **35/35** (ficha y editor, claro y oscuro, 360 px,
+  contraste peor 6,92, con control sin notas) · `_verify-aviso-calentamiento` sin regresiones.
+- 🔴 **Un candado mío aprobaba un `return ''` arriba de la marca** (la clase del `if(false)`, v579): se
+  añadió una prueba que EJECUTA `_exWarnChip` antes de correr la matriz. Y dos tropiezos de herramienta:
+  un script de python por la terminal lee el código en cp1252 (un «·» del patrón no casaba) y el heredoc
+  volvió a comerse un `\n` (quinta vez). Los dos van a GOTCHAS.
+
 ## ⏮️ 2026-09-25 — v675: «Esperando respuesta» ya no cuenta lo que no pide nada
 
 - **Hallazgo F3-2, decisión del PO** (entre «no contar lo que no pide nada», «botón Ya lo vi» y «dejarlo»):
