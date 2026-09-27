@@ -518,8 +518,9 @@ window.addEventListener('unhandledrejection',e=>{
 });
 
 // ══════════ SUPABASE AUTH — Fase 2 (login real, fila por usuario) ══════════
-// supabase-js se carga por CDN con `defer`. El cliente se crea LAZY: solo al usar
-// login/registro, jamás en el arranque → el boot offline-first NUNCA depende del CDN.
+// supabase-js se carga con `defer` desde la propia app (vendor/, versión fija, v677). El cliente
+// se crea LAZY: solo al usar login/registro, jamás en el arranque → el boot offline-first NUNCA
+// depende de esa librería.
 // Si la librería no cargó (sin red / file://), las funciones degradan con gracia y la
 // app sigue funcionando con el camino actual (localStorage). NADA llama a AUTH todavía:
 // es el cimiento que el paso 2.2 (reescritura de login + capa de datos) va a conectar.

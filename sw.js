@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v676';
+const CACHE_NAME = 'avi-v677';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -8,7 +8,11 @@ const V = CACHE_NAME.replace('avi-v', '');
 // (antes solo se cacheaba on-demand). El .catch evita que un 404 puntual rompa el install.
 // v657 · la BASE sale del alcance del registro: '/apex-app/' en github.io, '/' en app.avientrena.com.
 const BASE = new URL(self.registration.scope).pathname;
-const SHELL = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icons/icon-192.png', BASE + 'icons/icon-512.png', BASE + 'icons/badge-96.png']
+// 🔒 v677 · La librería del login va AQUÍ, en el shell: antes venía de un CDN y se guardaba al
+//    primer uso; ahora es un archivo de la app con la versión en el NOMBRE (no cambia nunca), así
+//    que se precachea sin `?v=` y el login sin red funciona desde la primera instalación.
+const SUPABASE_JS = 'vendor/supabase-js-2.117.2.js';
+const SHELL = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icons/icon-192.png', BASE + 'icons/icon-512.png', BASE + 'icons/badge-96.png', BASE + SUPABASE_JS]
   // `foods.json` = catálogo de búsqueda del registro de alimentos (E8). Va precacheado con
   // ?v= como los módulos: sin él, la primera visita sin red se quedaría sin buscador. Si aun
   // así falta, `foodCatalog(null)` cae a los 50 que viajan dentro de avi-core (E9).
@@ -52,9 +56,9 @@ self.addEventListener('activate', e => {
 // una rama que se olvida.
 function _guardable(res){
   if(!res) return false;
-  // 🔒 OPACA se acepta a propósito: el supabase-js del CDN llega en modo no-cors (status 0,
-  //    `ok` falso) y NO se puede inspeccionar. Guardarla es justo lo que hace que el login
-  //    funcione sin red (hueco cazado en la auditoría 2026-07-06). Exigirle `ok` lo rompería.
+  // 🔒 OPACA se acepta a propósito: la hoja de las fuentes de Google llega en modo no-cors
+  //    (status 0, `ok` falso) y NO se puede inspeccionar; exigirle `ok` dejaría la app sin su
+  //    tipografía offline. (Hasta v676 también el supabase-js del CDN llegaba así — ya vive en la app.)
   if(res.type === 'opaque') return true;
   if(!res.ok) return false;              // 404, 500 y todo lo que no sea 2xx
   // 🔴 206 = respuesta PARCIAL. `Response.ok` es true para 200-299, o sea que un trozo de
@@ -75,9 +79,9 @@ self.addEventListener('fetch', e => {
   if(url.hostname.includes('supabase.co')){
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); return;
   }
-  // cdn.jsdelivr.net = supabase-js: sin cachearlo, el login moría offline aunque el shell
-  // entero estuviera precacheado (hueco cazado en la auditoría 2026-07-06).
-  if(url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com') || url.hostname.includes('cdn.jsdelivr.net')){
+  // Las fuentes de Google: cache-first. (v677: supabase-js ya no viene de un CDN — vive en la
+  // app y lo cubre la rama de assets del mismo origen, cache-first, precacheado en SHELL.)
+  if(url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')){
     e.respondWith(caches.match(e.request).then(c => {
       if(c) return c;
       return fetch(e.request).then(r => { _guardar(e.request, r); return r; });

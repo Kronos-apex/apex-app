@@ -339,7 +339,7 @@ async function doLogin(){
     // ── Fase 4 (v2.0): login SOLO por Supabase Auth — respaldo legacy ELIMINADO ──
     // apex_data quedó cerrado por RLS; el login client-side viejo (coach@apex.com +
     // ax_c con SHA-256) ya no aplica. Todas las cuentas reales viven en auth.users.
-    // Si supabase-js no cargó (CDN caído / sin red), avisar de conexión en vez de
+    // Si supabase-js no cargó (archivo que no llegó / sin red), avisar de conexión en vez de
     // marcar "contraseña incorrecta" (sería confuso y gastaría intentos).
     // Sin conexion NO se le echa la culpa a su clave NI se le gasta un intento de los 5 que
     // la bloquean 30 segundos: eso seria castigarla por no tener señal.

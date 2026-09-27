@@ -1,0 +1,3 @@
+# Codigo de terceros: se sirve BYTE A BYTE como lo publico su autor (su huella se verifica en la suite).
+# Sin esto, core.autocrlf reescribe los finales de linea y la huella cambia segun la maquina.
+vendor/** -text

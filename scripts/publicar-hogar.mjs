@@ -23,7 +23,8 @@ const DEST = join(process.env.TEMP || '/tmp', 'avi-home');
 const ARCHIVOS = ['index.html', 'sw.js', 'manifest.json', 'styles.css', 'foods.json', 'avi-core.js', 'muscle-map.js',
   'exercise-muscles.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js',
   'app-6-extra.js', 'app-7-community.js'];
-const CARPETAS = ['icons', 'splash', 'screenshots', 'legal'];
+// `vendor` = la librería del login (v677). Sin ella, el hogar nuevo se queda sin poder iniciar sesión.
+const CARPETAS = ['icons', 'splash', 'screenshots', 'legal', 'vendor'];
 
 // 🔴 El enlace con el proyecto de Vercel vive en `DEST/.vercel`: si se borra con el resto, el
 //    deploy se va a un proyecto NUEVO (o a ninguno) y app.avientrena.com se queda en la versión

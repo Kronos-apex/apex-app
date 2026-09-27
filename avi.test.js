@@ -21884,6 +21884,57 @@ test('🔒 v676 · la marca del coach se EJECUTA: pinta la zona y calla cuando n
 });
 
 // ══════════════════════════════════════════════════════
+// v677 · LA LIBRERÍA DEL LOGIN VIVE EN LA APP, EN VERSIÓN FIJA
+// ══════════════════════════════════════════════════════
+// Pregunta del PO (27-sep): «¿hay alguna posibilidad de que se infiltre un virus en la app?».
+// Medido: supabase-js llegaba de un CDN pidiendo «la última 2.x» — 19 versiones en 30 días
+// llegaban a todos sin revisión y sin comprobar el archivo. Ahora es un archivo de la app.
+
+const _V677_SUPA = 'vendor/supabase-js-2.117.2.js';
+// Huella del archivo ORIGINAL del paquete de npm (dist/umd/supabase.js de 2.117.2), cuyo tarball
+// se verificó contra el sha512 que publica el registro el 27-sep-2026. Cambiar la versión es una
+// DECISIÓN: se baja, se verifica igual y se cambia esta línea con su fecha.
+const _V677_SHA256 = '59d39487c3589843b410322d8a3d562ce022aba1e5ccb16898ef3fb2a0da2ecd';
+
+test('🔒 v677 · la página no carga NINGÚN script de otro sitio', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const srcs = [...html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]);
+  assert.ok(srcs.length >= 8, 'CONTROL · el extractor dejó de ver los scripts de la app: ' + srcs.length);
+  const externos = srcs.filter(s => /^(https?:)?\/\//i.test(s));
+  assert.deepStrictEqual(externos, [], '🔴 volvió un script de otro sitio: ' + externos.join(', '));
+  assert.ok(srcs.includes(_V677_SUPA), 'la página ya no carga la librería del login desde la app');
+  // Y ningún módulo la importa por su cuenta desde un CDN.
+  for (const f of fs.readdirSync(__dirname).filter(n => /^(app-\d-[\w-]+|avi-core)\.js$/.test(n))) {
+    const src = sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    assert.ok(!/import\(\s*['"`]https?:|createElement\(\s*['"]script['"]\)[^;]*;[^;]*src\s*=\s*['"`]https?:/.test(src),
+      '🔴 ' + f + ' carga código de otro sitio');
+  }
+});
+
+test('🔒 v677 · la librería es BYTE A BYTE la del paquete verificado', () => {
+  const fs = require('fs'), path = require('path');
+  const buf = fs.readFileSync(path.join(__dirname, _V677_SUPA));
+  const sha = require('crypto').createHash('sha256').update(buf).digest('hex');
+  assert.strictEqual(sha, _V677_SHA256, '🔴 el archivo de la librería CAMBIÓ: no es el que se verificó contra npm');
+  // Git no puede reescribirle los finales de línea (con autocrlf la huella dependería de la máquina).
+  assert.ok(/^vendor\/\*\* -text$/m.test(fs.readFileSync(path.join(__dirname, '.gitattributes'), 'utf8')),
+    '🔴 .gitattributes dejó de proteger los bytes de vendor/');
+  assert.ok(fs.existsSync(path.join(__dirname, 'vendor', 'supabase-js-LICENSE')), 'falta la licencia (MIT) de la librería');
+});
+
+test('🔒 v677 · el service worker y la publicación conocen la librería (login sin red y hogar nuevo)', () => {
+  const fs = require('fs'), path = require('path');
+  const sw = sinComentarios(fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8'));
+  assert.ok(sw.includes("const SUPABASE_JS = '" + _V677_SUPA + "';") && /BASE \+ SUPABASE_JS\]/.test(sw),
+    '🔴 la librería salió del precache: el login sin red dejaría de funcionar en una instalación nueva');
+  assert.ok(!/jsdelivr/.test(sw), 'el service worker sigue hablando del CDN');
+  const pub = fs.readFileSync(path.join(__dirname, 'scripts', 'publicar-hogar.mjs'), 'utf8');
+  const carpetas = (pub.match(/const CARPETAS = \[([^\]]*)\]/) || [])[1] || '';
+  assert.ok(/'vendor'/.test(carpetas), '🔴 publicar-hogar no sube vendor/: app.avientrena.com se quedaría sin login');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
