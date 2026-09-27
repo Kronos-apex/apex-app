@@ -21867,6 +21867,22 @@ test('🔒 v676 · CABLEADO: la marca sale en el editor (y las plantillas) y en 
   assert.ok(/renderRfExList\(\)/.test(a2.slice(ia, a2.indexOf('\nfunction ', ia + 10))), 'aplicar una plantilla dejó de pasar por el editor que marca');
 });
 
+test('🔒 v676 · la marca del coach se EJECUTA: pinta la zona y calla cuando no hay nada', () => {
+  // Un candado que solo pide que la función NOMBRE `exerciseWarnZones` aprueba un `return ''`
+  // puesto arriba (la clase del `if(false)`, v579). Se extrae `_exWarnChip` y se corre.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const i = src.indexOf('function _exWarnChip(');
+  const chip = new Function('DB', 'exerciseWarnZones', 'warmupWarnText', 'esc',
+    src.slice(i, src.indexOf('\nfunction ', i + 10)) + '\nreturn _exWarnChip;')(
+    { exercises: _LIB_REAL }, core.exerciseWarnZones, core.warmupWarnText, s => String(s).replace(/</g, '&lt;'));
+  const by = id => _LIB_REAL.find(e => e.id === id);
+  assert.ok(/Ojo con su rodilla y cuello/.test(chip(by('e184'), ['rodilla', 'cuello'], false)), '🔴 la marca no pinta la zona');
+  assert.ok(/Ojo con tu codo/.test(chip({ id: 'e11', name: 'Extensión en Polea' }, ['codo'], true)), '🔴 la marca no resuelve el nombre renombrado o no habla al coach de sí mismo');
+  assert.strictEqual(chip(by('e42'), ['rodilla', 'cuello'], false), '', 'marca un ejercicio que no carga ninguna zona');
+  assert.strictEqual(chip(by('e184'), [], false), '', 'marca sin ninguna limitación');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
