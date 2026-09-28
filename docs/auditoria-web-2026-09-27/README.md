@@ -31,7 +31,9 @@ veían justo donde entra la gente —compartir un enlace— y ya están arreglad
   v553). No es hallazgo.
 
 ## Decisiones del PO
-1. **Pagar AVI PRO desde el celular cuesta 3 toques y 2 pantallas** (☰ → Precios → bajar → «Quiero AVI PRO»),
+1. ✅ **HECHO el 27-sep (avi-web `80e37d3`)**: «AVI PRO desde $30.000 COP/mes» bajo los botones del inicio abre el
+   mismo WhatsApp de «Quiero AVI PRO» (`site.proMessage`, un solo texto). Verificado en vivo: 390×844 visible sin
+   bajar, 40 px, pulsable; en 360×640 queda a un deslizamiento corto. Antes: **Pagar AVI PRO desde el celular costaba 3 toques y 2 pantallas** (☰ → Precios → bajar → «Quiero AVI PRO»),
    contra 1 toque para WhatsApp o para «Probar la app gratis», los dos visibles al abrir. Es fricción medida, no
    un defecto: ¿se pone un acceso directo a AVI PRO arriba?
 2. **Google**: no se pudo confirmar si ya indexa `avientrena.com` (solo hay Search Console para saberlo). El paso
