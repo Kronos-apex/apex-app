@@ -4,6 +4,31 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-27 — v679 + v680: los arreglos de R14 (cuentas)
+
+- **Pedido:** «continúa» sobre los arreglos 2, 3 y 4 de R14 (`docs/auditoria-cuentas-2026-09-27/README.md`).
+- **v679 · el login reconoce el correo sin confirmar.** Supabase responde 400 `email_not_confirmed`
+  DESPUÉS de validar la clave; el login decía «Email o contraseña incorrectos» y gastaba uno de los 5
+  intentos. `loginNeedsConfirm` (pura) lo reconoce; el aviso dice qué falta y ofrece «Reenviar correo»
+  (`AUTH.resendSignup`, compás de 60 s). Víctimas: Edwin Ávila (25-jul) y Laura Ramírez (15-sep).
+- **v679 · «olvidé mi contraseña» no manda el enlace a un dominio ajeno.** `resetPassWouldLeak` (pura, dominio
+  exacto) para `avi.com`/`apex.com`, que reciben correo de terceros y los usan 9 asesorados: se le dice que se
+  lo pida al coach. 🔒 No cierra el riesgo (se puede pedir directo al servidor): lo cierra cambiar esos correos,
+  acto del PO. El mensaje normal recuerda que el coach también puede ponerle una clave nueva.
+- **v680 · eliminar a un asesorado le quita también el acceso.** `delete-account` (desplegada **v9**) saca el
+  borrado completo a `borrarTodo` (una sola lista, la usan «borrar mi cuenta» y el coach) y gana el modo coach
+  `{cliente}`: solo si quien llama es el `coach_id` de la FICHA de esa persona; sin ficha no se borra; nunca a sí
+  mismo ni a la cuenta del coach real. `delClient` espera al servidor y, si falla, **no borra nada** (antes, sin
+  señal, la ficha se borraba solo en el teléfono y reaparecía). Sellado en localhost. El aviso dice que ya no
+  podrá entrar. Tres pruebas de v574 re-encuadradas a `borrarTodo` (misma propiedad).
+- **QA:** suite 1359 → **1364** · `_sabotaje-v679` **9/9** · `_sabotaje-v680` **10/10** ·
+  `_verify-login-confirmar` **29/29** (login real espiado, claro y oscuro, con controles) · en PRODUCCIÓN con
+  cuentas desechables (cero correos): `_verify-borrado-por-coach` todo OK (un extraño recibe 403 y el asesorado
+  queda intacto; nadie apunta al coach real; su coach se lleva cuenta, ficha, tarjeta, avisos, errores y las
+  fotos de los dos almacenes privados; control de no-daño 4 → 4 tarjetas, 30 → 30 fichas) ·
+  `_verify-borrado-cuenta` OK con la rutina común · `_probe-delete-account` OK · 0 cuentas de prueba vivas.
+- 🔴 Una prueba nació async y la suite es síncrona (gotcha de v621): se sacó de la suite y se hizo en el harness.
+
 ## ⏮️ 2026-09-27 — v677 + v678: la app solo carga su propio código y solo habla con su base de datos
 
 - **Pregunta del PO:** *«¿hay alguna posibilidad de que se infiltre un virus en la app?»*. Un virus en el
