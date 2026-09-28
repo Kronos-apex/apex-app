@@ -64,6 +64,11 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 - SMTP propio (Brevo) activo; últimas 24 h de logs de auth: 58 eventos, 0 errores, 0 límites.
 - Advisors de seguridad: nada nuevo fuera de los conocidos.
 
+## ✅ Ejecutado el 27-sep
+- v679 (correo sin confirmar + dominios ajenos) y v680 (eliminar = quitar acceso) en producción.
+- Los 8 asesorados con correo ajeno ya tenían Google conectado: su correo de acceso pasó a ese Gmail (decisión
+  del PO, cero correos enviados, respaldo privado fuera del repo). Queda Miguel (suspendido), 2 QA y 2 cuentas vacías.
+
 ## Decisiones del PO
 1. **Los 9 correos ajenos**: cambiarlos (desde «Editar asesorado») por el correo real de cada persona — o, si no
    tiene, por una dirección del PO (`su_gmail+nombre@gmail.com`), así un «olvidé mi contraseña» le llega a él y

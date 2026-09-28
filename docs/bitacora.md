@@ -4,6 +4,18 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-27 — Datos: los 8 correos ajenos pasaron al Gmail que cada persona ya conectó
+
+- Decisión del PO («Cambia los correos») tras medir que su premisa no se sostenía: **8 de 9 ya tenían Google
+  conectado** (Gmail propio, sin choques) y **6 entrenaron esa semana**. El correo de la CUENTA seguía siendo el
+  inventado (`@avi.com`/`@apex.com`), así que el riesgo de R14 no se cerraba con Google conectado.
+- Hecho por el servidor (admin, `email_confirm:true`: **cero correos enviados**) para Astrid, Claudia, Danilo,
+  Estella, Kathe, Natalia, Nataly y Samuel; `profile.email` igualado (solo esa clave). Respaldo privado en
+  `~/.avi/correos-cuentas-antes-2026-09-27.json` (fuera del repo). Siguen entrando con Google igual; quien use
+  contraseña escribe ahora su Gmail (el último con contraseña fue Danilo, 21-ago).
+- Quedan en esos dominios, sin nadie que entrene: Miguel (suspendido), las 2 cuentas QA y 2 cuentas vacías
+  (registros duplicados de Valery y Diana Pilar, sin ficha).
+
 ## ⏮️ 2026-09-27 — v679 + v680: los arreglos de R14 (cuentas)
 
 - **Pedido:** «continúa» sobre los arreglos 2, 3 y 4 de R14 (`docs/auditoria-cuentas-2026-09-27/README.md`).
