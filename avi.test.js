@@ -22300,6 +22300,39 @@ test('🔒 v683 · la app ya no espera detrás de la marca, y la marca se va al 
 });
 
 // ══════════════════════════════════════════════════════
+// v684 · EL VIDEO DEL LOGIN SOLO SE CARGA CUANDO EL LOGIN SE VE (R16 #2, calidad intacta)
+// ══════════════════════════════════════════════════════
+test('🔴 v684 · el video del login no arranca solo desde el marcado (lo bajaba quien nunca lo veía)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const tag = (html.match(/<video class="cin-vid"[^>]*>/) || [''])[0];
+  assert.ok(tag, 'no encontré el video del login');
+  assert.ok(!/\bautoplay\b/.test(tag), '🔴 el video vuelve a arrancar solo (se baja aunque nadie vea el login)');
+  assert.ok(!/\ssrc=/.test(tag), '🔴 el video vuelve a tener src en el marcado: el navegador lo pide al cargar');
+  assert.ok(/data-src="media\/hero-montage\.mp4"/.test(tag) && /preload="none"/.test(tag), 'el video perdió su origen diferido o su preload="none"');
+  // Mientras no reproduce, se ve la foto (la misma del poster) y el video entra con un fundido.
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/#s-login\.cin\{[^}]*url\('media\/brand\/hero\.jpg'\)/.test(css), 'sin foto de fondo: el login se vería negro mientras carga el video');
+  assert.ok(/\.cin-vid\{[^}]*opacity:0/.test(css) && /\.cin-vid\.on\{opacity:1\}/.test(css), 'el video ya no entra con fundido (salto de la foto al video)');
+});
+
+test('🔒 v684 · el video se carga SOLO con el login a la vista y sin la marca encima', () => {
+  const fs = require('fs'), path = require('path');
+  const i1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const i2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const cuerpo = (src, n) => { const i = src.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const vid = cuerpo(i2, 'function aviLoginVideo(');
+  assert.ok(/!s\.classList\.contains\('on'\)\)return false;/.test(vid), '🔴 el video se carga aunque el login no esté a la vista');
+  assert.ok(/if\(o&&!o\.classList\.contains\('fade'\)\)return false;/.test(vid), '🔴 el video se carga debajo de la marca (quien tiene sesión nunca lo ve)');
+  assert.ok(/prefers-reduced-motion: reduce/.test(vid), 'con «reducir movimiento» igual arranca el video');
+  assert.ok(/if\(!v\.getAttribute\('src'\)\)\{ v\.addEventListener\('playing',\(\)=>v\.classList\.add\('on'\),\{once:true\}\); v\.src=v\.dataset\.src; \}/.test(vid),
+    'el video se vuelve a pedir en cada llamada (o ya no entra con fundido al reproducir)');
+  // Las dos puertas: al mostrar el login y al quitar la marca.
+  assert.ok(/if\(id==='s-login'\)aviLoginVideo\(\);/.test(cuerpo(i2, 'function showScreen(')), 'mostrar el login no arranca su video');
+  assert.ok(/typeof aviLoginVideo==='function'\)aviLoginVideo\(\);/.test(cuerpo(i1, 'function aviHideSplash(')), 'al quitar la marca el video del login no arranca');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

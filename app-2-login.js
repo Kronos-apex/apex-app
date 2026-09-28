@@ -592,7 +592,25 @@ async function saveSettings(){
   document.getElementById('sb-nm').textContent=name;
   cm('m-settings');toast('✅ Configuración guardada');
 }
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on')}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');if(id==='s-login')aviLoginVideo();}
+// v684 · EL VIDEO DEL LOGIN se carga SOLO cuando el login de verdad se ve (R16 #2). Decisión del PO:
+// *«si vas a comprimir el vídeo que no pierda la calidad premium»* — medido, este montaje no baja más de un
+// 30 % sin que se note (VMAF 95), así que no se toca un pixel: lo que se quita es bajarlo cuando NADIE lo
+// va a ver. Hasta v683 arrancaba solo (`autoplay`) desde el marcado, debajo de la marca: lo bajaba también
+// quien ya tenía sesión, y en la primera visita competía con el código. Ahora: foto de fondo (la misma del
+// `poster`), y el video entra con un fundido cuando reproduce. Con «reducir movimiento», solo la foto.
+function aviLoginVideo(){
+  try{
+    const s=document.getElementById('s-login'); const v=s&&s.querySelector('.cin-vid');
+    if(!v||!v.dataset||!v.dataset.src||!s.classList.contains('on'))return false;
+    const o=document.getElementById('avi-loading');
+    if(o&&!o.classList.contains('fade'))return false;          // la marca todavía lo tapa: aviHideSplash lo llama después
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return false;
+    if(!v.getAttribute('src')){ v.addEventListener('playing',()=>v.classList.add('on'),{once:true}); v.src=v.dataset.src; }
+    const p=v.play(); if(p&&typeof p.catch==='function')p.catch(()=>{});
+    return true;
+  }catch(e){ return false; }
+}
 
 // ══════════ TEMPLATES + EXERCISE PROGRESS ══════════
 function renderTemplates(){

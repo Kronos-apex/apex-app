@@ -37,6 +37,10 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
   de que cargaran app-3…7) que la espera fija escondía cuando la red era buena. Control: v682 con 4G lenta
   nunca terminaba de arrancar; v683 sí.
 
+- **#2 (v684):** el video del login solo se carga cuando el login se ve. Comprimir sin perder calidad no daba
+  más de un 30 % (medido con VMAF), así que no se tocó un pixel. Ya no lo baja quien tiene sesión ni compite
+  con el código en la primera visita.
+
 ## Orden recomendado
 1. **Decisiones del PO:** la pantalla de carga (#1) y el video (#2). Son las dos que más se sienten y las
    dos más baratas.

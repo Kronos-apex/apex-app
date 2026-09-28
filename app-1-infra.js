@@ -1757,7 +1757,9 @@ function aviHideSplash(){
   if(_aviSplashGone)return; _aviSplashGone=true;
   const at=(typeof window.__aviSplashAt==='number')?window.__aviSplashAt:0;
   const d=(typeof splashHideDelay==='function')?splashHideDelay(performance.now(),at):0;
-  setTimeout(()=>{ const o=document.getElementById('avi-loading'); if(o){ o.classList.add('fade'); setTimeout(()=>o.remove(),300); } },d);
+  setTimeout(()=>{ const o=document.getElementById('avi-loading'); if(o){ o.classList.add('fade'); setTimeout(()=>o.remove(),300); }
+    // v684 · si lo que queda a la vista es el login, recién ahora arranca su video (antes lo tapaba la marca).
+    if(typeof aviLoginVideo==='function')aviLoginVideo(); },d);
 }
 function _aviArmSplashCap(){
   const at=(typeof window.__aviSplashAt==='number')?window.__aviSplashAt:0;

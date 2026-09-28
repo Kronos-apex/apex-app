@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-28 — v684: el video del login solo se carga cuando el login se ve (R16 #2)
+
+- **Decisión del PO:** *«si vas a comprimir el vídeo que no pierda la calidad premium»*. **Medido primero:**
+  el montaje (720×1280, 30 fps, 11 s, 1.417 KB) ya venía bien codificado. A calidad premium (VMAF 95 contra el
+  original) H.264 recodificado pesa 1.401 KB, HEVC ~1.000 y AV1 1.039: **lo máximo sin que se note es un
+  30 %**, con tres archivos y el riesgo de que AV1 no corra fluido en un Android de gama baja. AV1 a 647 KB ya
+  cae a VMAF 92,6. **No se tocó un pixel.**
+- **Lo que sí se quitó: bajarlo cuando nadie lo va a ver.** Hasta v683 el video arrancaba solo (`autoplay` +
+  `src` en el marcado) debajo de la marca: lo bajaba también quien ya tenía sesión (1,4 MB para nunca verlo;
+  medido en v683 con la cuenta QA al reabrir), y en la primera visita competía con el código.
+- **Ahora:** `data-src` + `preload="none"`; `aviLoginVideo` lo carga SOLO con el login a la vista y sin la marca
+  encima (lo llaman `showScreen('s-login')` y `aviHideSplash`). Mientras, se ve la foto del fondo (la misma del
+  `poster`) y el video entra con un fundido de 0,8 s al reproducir. Con «reducir movimiento», solo la foto.
+- **QA:** suite 1374 → **1376** · `_sabotaje-v684` **9/9** · `_verify-video-v684` **8/8** (el video se pide
+  DESPUÉS de todo el código, reproduce con fundido, no se pide con sesión ni con «reducir movimiento») y su
+  CONTROL contra v683 **2/2** · `_verify-splash-v683` 8/8 sobre v684 · `_verify-arranque-modulos` 6/6.
+
 ## ⏮️ 2026-09-28 — v683: la marca 1 s, y el arranque espera a TODOS los módulos (R16 #1 y H3)
 
 - **Decisión del PO** sobre la auditoría R16 (`docs/auditoria-velocidad-2026-09-28/`): *«1 segundo la marca
