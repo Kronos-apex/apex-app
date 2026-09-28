@@ -1455,6 +1455,89 @@ function estimate1RM(kg, reps) {
   if (reps === 1) return kg;
   return kg * (1 + reps / 30);
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// LA BARRA (v681) — ver docs/plan-barra-rir.md
+// ──────────────────────────────────────────────────────────────────────
+// Se anotan los DISCOS y la app sabe cuánto pesa la barra. Medido el 28-sep-2026 sobre el
+// respaldo: 9 de las 15 personas que usan barra anotan SOLO los discos (el PO incluido, barra
+// de 20; el hip thrust de Astrid, 15), con remos «de 5 kg» que pesan menos que la barra vacía.
+// Pedir el TOTAL partiría el historial en dos: el primer día saldría un récord falso de +20.
+// Así que la barra se SUMA donde hace falta el peso real (el 1RM estimado) y NO en el volumen,
+// los récords, el peso sugerido ni el detector de estancamiento: meterla ahí de golpe fabrica
+// un salto el día del cambio. La lista es de Coach Pro (veredicto del 28-sep, en el plan):
+// «ninguna» = la carga es la pila de la polea, una mancuerna, el cuerpo, o un extremo ANCLADO
+// (landmine, remo en T): sumarle 20 kg a una palanca inventaría un 1RM. Smith/multipower = 0,
+// porque cada máquina tiene su contrapeso; la persona lo ajusta.
+const BAR_KG = { olimpica: 20, z: 10, hexagonal: 25, smith: 0 };
+const BAR_DEFAULTS = {
+  e1: 'olimpica', e110: 'olimpica', e5: 'olimpica', e34: 'olimpica', e50: 'olimpica', e7: 'olimpica',
+  e9: 'olimpica', e13: 'olimpica', e14: 'olimpica', e42: 'olimpica', e46: 'olimpica', e68: 'olimpica',
+  e69: 'olimpica', e127: 'olimpica', e139: 'olimpica', e140: 'olimpica', e206: 'olimpica', e215: 'olimpica',
+  e222: 'olimpica', e246: 'olimpica', e247: 'olimpica', e265: 'olimpica', e268: 'olimpica', e275: 'olimpica',
+  e308: 'olimpica', e309: 'olimpica', e313: 'olimpica', e334: 'olimpica', e335: 'olimpica', e350: 'olimpica',
+  e12: 'z', e266: 'z', e280: 'z', e296: 'z',
+  e338: 'hexagonal',
+  e33: 'smith', e242: 'smith', e243: 'smith', e244: 'smith', e245: 'smith', e251: 'smith', e290: 'smith',
+  e291: 'smith', e320: 'smith', e342: 'smith', e353: 'smith',
+};
+// Las opciones del selector salen del ejercicio (la hexagonal pesa 25: una lista fija de cuatro
+// no la dejaría confirmar — riesgo que marcó Coach Pro). De mayor a menor, «sin barra» al final.
+const BAR_CHOICES_BASE = [20, 15, 10, 0];
+
+// ¿Cuánto pesa la barra de este ejercicio según el catálogo? `null` = no lleva barra.
+function barDefaultKg(ex) {
+  const id = ex && ex.id != null ? String(ex.id) : '';
+  const cat = Object.prototype.hasOwnProperty.call(BAR_DEFAULTS, id) ? BAR_DEFAULTS[id] : null;
+  return cat == null ? null : BAR_KG[cat];
+}
+function barChoices(ex) {
+  const def = barDefaultKg(ex);
+  if (def == null) return [];
+  return [...new Set([def, ...BAR_CHOICES_BASE])].sort((a, b) => b - a);
+}
+// Un peso de barra válido: número finito entre 0 y 50 (sin eso, `null`).
+function _barNum(v) {
+  if (v === '' || v == null || typeof v === 'boolean') return null;
+  const n = Number(v);
+  return isFinite(n) && n >= 0 && n <= 50 ? n : null;
+}
+// ¿Qué barra usa ESTA persona en ESTE ejercicio? PURA. La última `bar` que dejó anotada en su
+// historial para ese ejercicio —por IDENTIDAD, no por nombre (v585: un ejercicio renombrado es el
+// mismo)—; si nunca la anotó, la del catálogo. `null` si el ejercicio no lleva barra.
+// El historial puede venir en cualquier orden: manda la fecha.
+function exerciseBarKg(history, ex) {
+  const idt = exerciseIdentity(history || []);
+  const key = idt.keyOf(ex || {});
+  // Sin id propio, el puente nombre→id de la identidad dice qué ejercicio del catálogo es.
+  const id = ex && ex.id ? String(ex.id) : (/^e\d+$/.test(key) ? key : '');
+  const def = barDefaultKg({ id });
+  if (def == null) return null;
+  let best = null, bt = -Infinity;
+  (history || []).forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    ((s && s.exercises) || []).forEach(x => {
+      if (!x || idt.keyOf(x) !== key) return;
+      const b = _barNum(x.bar);
+      if (b == null) return;
+      const tt = isNaN(t) ? -Infinity : t;   // sin fecha: cuenta, pero pierde contra cualquiera con fecha
+      if (best == null || tt > bt) { best = b; bt = tt; }
+    });
+  });
+  return best != null ? best : def;
+}
+// La elección del día se guarda como «<id del ejercicio>|<kg>» en `barra_<rid>_<ei>`: si el plan
+// cambia y en ese índice queda OTRO ejercicio, la barra vieja no se le pega (clase de v538).
+function barSessionEncode(ex, kg) {
+  const n = _barNum(kg);
+  return n == null || !ex || !ex.id ? '' : String(ex.id) + '|' + n;
+}
+function barSessionValue(raw, ex) {
+  if (typeof raw !== 'string' || !ex || !ex.id) return null;
+  const i = raw.lastIndexOf('|');
+  if (i <= 0 || raw.slice(0, i) !== String(ex.id)) return null;
+  return _barNum(raw.slice(i + 1));
+}
 // Inversa de Epley: peso para un objetivo de reps, con factor conservador (default
 // 0.95 — es sugerencia de trabajo, no reto) y redondeo a discos reales (step 2.5kg).
 function suggestLoad(e1rm, targetReps, opts) {
@@ -11704,7 +11787,8 @@ function shareSiteLabel(site) {
 // El tope total existe porque todo viaja en el `#` de la dirección.
 const MV_ITEM_MAX = 4000;
 const MV_TOTAL_MAX = 100000;
-const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
+// v681: `barra_` (la barra elegida del día, por ejercicio) viaja como `lastre_`: es del entreno a medias.
+const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|barra_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
 const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpending_|ax_udirty_|ax_udbase_)/;
 // La MISMA regla del lado que envía y del que recibe (una sola definición).
 function mudanzaKeyAllowed(k) {
@@ -12097,6 +12181,13 @@ if (typeof module !== 'undefined' && module.exports) {
     shareBannerEligible,
     isInAdaptation,
     estimate1RM,
+    BAR_KG,
+    BAR_DEFAULTS,
+    barDefaultKg,
+    barChoices,
+    exerciseBarKg,
+    barSessionEncode,
+    barSessionValue,
     suggestLoad,
     loadStep,
     suggestFromPR,

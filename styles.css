@@ -1697,6 +1697,14 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-sinput:focus{outline:none;border-color:var(--g2)}
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
 .gm-sinput-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;margin-top:2px}
+/* v681 · la barra: una línea que dice cuál se suma, y sus opciones (≥36px, tokens en los dos temas) */
+.gm-bar{display:flex;flex-direction:column;gap:6px;margin:0 0 4px}
+.gm-bar-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;width:100%;padding:6px 10px;border-radius:10px;border:1px dashed var(--br2);background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer}
+.gm-bar-edit{flex-shrink:0;color:var(--gt);font-weight:800}
+.gm-bar-opts{display:flex;flex-wrap:wrap;gap:6px}
+.gm-bar-opt{flex:1 1 60px;min-height:40px;padding:6px 8px;border-radius:10px;border:1.5px solid var(--br2);background:var(--w);color:var(--t1);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.gm-bar-opt.on{background:var(--gl);border-color:var(--g2);color:var(--gt)}
+.gm-bar-btn:focus-visible,.gm-bar-opt:focus-visible{outline:2px solid var(--g2);outline-offset:2px}
 .gm-check{position:relative;width:38px;height:38px;border-radius:10px;border:2px solid var(--br2);background:transparent;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background var(--dur) var(--ease-out),border-color var(--dur) var(--ease-out),color var(--dur) var(--ease-out);flex-shrink:0}
 /* Área táctil 44px efectiva sin agrandar el cuadro visual (mín. móvil recomendado). */
 .gm-check::after{content:'';position:absolute;inset:-3px;border-radius:12px}

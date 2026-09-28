@@ -881,6 +881,11 @@ function gmRender(){
       tg.querySelector('button').onclick=()=>{toggleLastre(GM.routine,ei);_gmKeepAnchor('gm-ex-'+ei,gmRender);};
       setsEl.appendChild(tg);
     }
+    // v681 · LA BARRA. Se anotan los discos y la app suma la barra (docs/plan-barra-rir.md). Una
+    // línea que dice cuál asume, y «Cambiar» abre las opciones de ESE ejercicio (la hexagonal pesa 25).
+    if(gmTrack==='peso_reps'&&typeof sessionBarKg==='function'&&barDefaultKg(ex)!=null){
+      setsEl.appendChild(gmBarLine(ei,ex));
+    }
     // 🔥 Sets de calentamiento (aproximación) — solo peso: ENCABEZADO con Mostrar/Ocultar
     // (paridad con la clásica buildWarmupSection) + la fila cuando está visible. Antes el guiado
     // solo pintaba la fila si YA estaba activada, sin el botón para activarla → el usuario no
@@ -1006,6 +1011,30 @@ function gmResetSession(){
   gmUpdateProgress();
   gmRender();
   gmScrollToCurrent();
+}
+
+// v681 · la línea de la barra de UN ejercicio (y sus opciones, si están abiertas). `GM.barOpen`
+// vive en memoria y no en el DOM: el guiado repinta entero con cada toque.
+function gmBarLine(ei,ex){
+  const bk=sessionBarKg(GM.routine,ei,ex);
+  const open=GM.barOpen===ei;
+  const el=document.createElement('div');
+  el.className='gm-bar';
+  const txt=bk>0?`Barra de ${bk} kg · se suma a los discos`:'Sin barra · solo cuentan los discos';
+  el.innerHTML=`<button type="button" class="gm-bar-btn" aria-expanded="${open}" aria-controls="gm-bar-opts-${ei}"><span>${txt}</span><span class="gm-bar-edit">${open?'Listo':'Cambiar'}</span></button>`
+    +(open?`<div class="gm-bar-opts" id="gm-bar-opts-${ei}" role="group" aria-label="¿Cuánto pesa la barra?">`
+      +barChoices(ex).map(k=>`<button type="button" class="gm-bar-opt${k===bk?' on':''}" aria-pressed="${k===bk}" onclick="gmPickBar(${ei},${k})">${k>0?k+' kg':'Sin barra'}</button>`).join('')
+      +`</div>`:'');
+  el.querySelector('.gm-bar-btn').onclick=()=>{ GM.barOpen=open?null:ei; _gmKeepAnchor('gm-ex-'+ei,gmRender); };
+  return el;
+}
+function gmPickBar(ei,kg){
+  const ex=GM.exercises[ei]; if(!ex) return;
+  setSessionBar(GM.routine,ei,ex,kg);
+  GM.barOpen=null;
+  // Si ya marcó series, el entreno guardado se rehace para que lleve la barra nueva.
+  if(typeof resaveSessionPartial==='function') resaveSessionPartial(GM.routine);
+  _gmKeepAnchor('gm-ex-'+ei,gmRender);
 }
 
 // Mostrar/ocultar los "Sets de calentamiento" (aproximación) de UN ejercicio desde el guiado.
@@ -1175,7 +1204,9 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
     +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
   if(track==='cardio') return cell('min','type="number" min="0"','min',g('min')||ex.reps,'MIN',false)+cell('dist','type="number" min="0" step="0.1"','km',g('dist'),'KM',false);
-  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
+  // v681: con barra, lo que se escribe son los DISCOS — la casilla lo dice.
+  const KL=(typeof barDefaultKg==='function'&&barDefaultKg(ex)!=null)?'DISCOS':'KG';
+  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),KL,false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
 }
 
 // Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.

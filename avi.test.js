@@ -22055,6 +22055,128 @@ test('🔒 v680 · la app: eliminar pasa por el servidor, y sin servidor no borr
 });
 
 // ══════════════════════════════════════════════════════
+// v681 · LA BARRA: se anotan los discos y la app suma la barra (docs/plan-barra-rir.md)
+// ══════════════════════════════════════════════════════
+const _catDefs = () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  const out = new Map(); const re = /\{id:'(e\d+)',name:'([^']*)'/g; let m;
+  while ((m = re.exec(src))) out.set(m[1], m[2]);
+  return out;
+};
+
+test('🔴 v681 · cada ejercicio sabe cuánto pesa SU barra (lista de Coach Pro)', () => {
+  const { barDefaultKg, barChoices } = core;
+  assert.strictEqual(barDefaultKg({ id: 'e42' }), 20, 'hip thrust con barra = olímpica');
+  assert.strictEqual(barDefaultKg({ id: 'e1' }), 20);
+  assert.strictEqual(barDefaultKg({ id: 'e222' }), 20, 'press de banca agarre cerrado es con barra olímpica');
+  assert.strictEqual(barDefaultKg({ id: 'e12' }), 10, 'barra Z');
+  assert.strictEqual(barDefaultKg({ id: 'e338' }), 25, 'hexagonal');
+  assert.strictEqual(barDefaultKg({ id: 'e33' }), 0, 'Smith: 0, cada máquina tiene su contrapeso');
+  // «ninguna»: la carga es la polea, una mancuerna o una PALANCA anclada (sumarle 20 inventa un 1RM).
+  for (const id of ['e256', 'e269', 'e95', 'e306', 'e230', 'e323', 'e146', 'e211', 'e191', 'e43', 'e36']) {
+    assert.strictEqual(barDefaultKg({ id }), null, id + ' no lleva barra suelta y se le sumaría una');
+  }
+  assert.strictEqual(barDefaultKg({}), null); assert.strictEqual(barDefaultKg(null), null);
+  assert.strictEqual(barDefaultKg({ id: 'toString' }), null, 'una clave del prototipo no es un ejercicio');
+  // Las opciones salen del ejercicio: la hexagonal (25) tiene que poder confirmarse.
+  assert.deepStrictEqual(barChoices({ id: 'e338' }), [25, 20, 15, 10, 0]);
+  assert.deepStrictEqual(barChoices({ id: 'e42' }), [20, 15, 10, 0]);
+  assert.deepStrictEqual(barChoices({ id: 'e12' }), [20, 15, 10, 0]);
+  assert.deepStrictEqual(barChoices({ id: 'e256' }), []);
+});
+
+test('🔒 v681 · la lista de barras y el catálogo no se separan', () => {
+  const cat = _catDefs();
+  assert.ok(cat.size >= 300, 'catálogo no leído entero: ' + cat.size);
+  // Todo id de la lista existe (una errata dejaría a un ejercicio sin su barra, en silencio).
+  for (const id of Object.keys(core.BAR_DEFAULTS)) assert.ok(cat.has(id), 'BAR_DEFAULTS nombra un id que no existe: ' + id);
+  // Y todo ejercicio NUEVO del catálogo que diga «con barra» o «multipower/smith» tiene que estar
+  // clasificado — si no, nace sin barra y su 1RM sale corto sin que nadie lo note.
+  const excluidos = /polea|punta|invertido|colgarse|sin peso/i;
+  for (const [id, name] of cat) {
+    if (!/\bbarra\b|multipower|smith/i.test(name) || excluidos.test(name)) continue;
+    assert.ok(Object.prototype.hasOwnProperty.call(core.BAR_DEFAULTS, id), `«${name}» (${id}) lleva barra y no está en BAR_DEFAULTS`);
+  }
+});
+
+test('🔴 v681 · la barra de UNA persona: la última que anotó en ese ejercicio, si no la del catálogo', () => {
+  const { exerciseBarKg } = core;
+  const HT = { id: 'e42', name: 'Hip Thrust con Barra' };
+  assert.strictEqual(exerciseBarKg([], HT), 20, 'sin historial: la del catálogo');
+  const s = (date, ex) => ({ date, exercises: [ex] });
+  // Astrid: su barra es de 15. Manda la FECHA, no el orden en que venga el historial.
+  const hist = [
+    s('2026-09-01T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 20 }),
+    s('2026-09-23T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 15 }),
+    s('2026-09-10T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 20 }),
+  ];
+  assert.strictEqual(exerciseBarKg(hist, HT), 15);
+  assert.strictEqual(exerciseBarKg(hist.slice().reverse(), HT), 15, 'el orden del historial cambió la respuesta');
+  // «Sin barra» es una respuesta, no un dato que falta.
+  assert.strictEqual(exerciseBarKg([s('2026-09-23T10:00:00Z', { id: 'e42', name: 'x', bar: 0 })], HT), 0);
+  // Lo que no es un peso de barra no cuenta (y cae a lo anterior o al catálogo).
+  for (const malo of ['', null, 'abc', 99, -5, true, undefined]) {
+    assert.strictEqual(exerciseBarKg([s('2026-09-23T10:00:00Z', { id: 'e42', name: 'x', bar: malo })], HT), 20, 'bar=' + String(malo));
+  }
+  // La barra de OTRO ejercicio no se le pega.
+  assert.strictEqual(exerciseBarKg([s('2026-09-23T10:00:00Z', { id: 'e13', name: 'Sentadilla con Barra', bar: 15 })], HT), 20);
+  // Renombrado: es el MISMO ejercicio (identidad por id, v585).
+  assert.strictEqual(exerciseBarKg([s('2026-09-23T10:00:00Z', { id: 'e42', name: 'Hip thrust (mi versión)', bar: 15 })], HT), 15);
+  // Sin id, el nombre que el historial ya vio con ese id lo identifica.
+  assert.strictEqual(exerciseBarKg(hist, { name: 'Hip Thrust con Barra' }), 15);
+  // Un ejercicio sin barra no tiene barra aunque alguien le haya colgado una.
+  assert.strictEqual(exerciseBarKg([s('2026-09-23T10:00:00Z', { id: 'e256', name: 'Curl polea', bar: 20 })], { id: 'e256' }), null);
+  assert.strictEqual(exerciseBarKg(null, HT), 20);
+});
+
+test('🔴 v681 · la barra elegida hoy va atada a SU ejercicio (si el plan cambia, no se le pega a otro)', () => {
+  const { barSessionEncode, barSessionValue } = core;
+  const HT = { id: 'e42' }, SQ = { id: 'e13' };
+  assert.strictEqual(barSessionEncode(HT, 15), 'e42|15');
+  assert.strictEqual(barSessionValue('e42|15', HT), 15);
+  assert.strictEqual(barSessionValue('e42|0', HT), 0, '«Sin barra» se lee como 0, no como vacío');
+  assert.strictEqual(barSessionValue('e42|15', SQ), null, '🔴 la barra del hip thrust se le pega a la sentadilla');
+  for (const malo of [null, '', '15', '|15', 'e42|', 'e42|abc', 'e42|99']) assert.strictEqual(barSessionValue(malo, HT), null, String(malo));
+  assert.strictEqual(barSessionEncode({}, 15), '', 'sin id no se guarda');
+  assert.strictEqual(barSessionEncode(HT, 'abc'), '');
+});
+
+test('🔒 v681 · el cableado: la barra viaja, se guarda con el entreno y entra SOLO al 1RM', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const e6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  // La clave del día se mueve con el reorden, se barre y se limpia al sustituir (clase de v538)…
+  assert.ok(/const _SK_EX=\[[^\]]*'barra'[^\]]*\]/.test(e4), '🔴 barra_ no está en _SK_EX: al reordenar se queda en el índice viejo');
+  // …y viaja en la mudanza con el entreno a medias.
+  // (Un valor más largo que MV_ITEM_MAX solo viaja si es IMPRESCINDIBLE: así se distingue de «viajó
+  //  porque cabía», que aprobaría aunque `barra_` no estuviera en la lista.)
+  const largo = 'e42|' + '5'.repeat(core.MV_ITEM_MAX + 10);
+  const r = core.mudanzaPick([['barra_r1_0', largo], ['otra_cosa', largo]]);
+  assert.ok(r.ok && r.carry['barra_r1_0'] === largo, '🔴 la barra elegida hoy no es imprescindible en la mudanza');
+  assert.ok(!('otra_cosa' in r.carry), 'CONTROL: una clave cualquiera de ese tamaño no debería viajar');
+  // El entreno guardado lleva la barra del día.
+  const save = e4.slice(e4.indexOf('function saveSessionToHistory('), e4.indexOf('\nfunction ', e4.indexOf('function saveSessionToHistory(') + 10));
+  assert.ok(/const bar=\(typeof sessionBarKg==='function'\)\?sessionBarKg\(routine,ei,ex\):null;/.test(save) && /\.\.\.\(bar!=null\?\{bar\}:\{\}\)/.test(save),
+    '🔴 el entreno se guarda sin la barra');
+  // El 1RM estimado suma la barra en sus TRES pantallas…
+  const conBarra = (e4.match(/estimate1RM\(\(parseFloat\([^)]*\)\|\|0\)\+_bar,pr\.reps\)/g) || []).length;
+  assert.strictEqual(conBarra, 3, '🔴 alguna pantalla del 1RM no suma la barra (' + conBarra + ' de 3)');
+  assert.ok(!/estimate1RM\(pr\.val!=null\?pr\.val:pr\.kg,pr\.reps\)|estimate1RM\(recVal,pr\.reps\)/.test(e4), 'queda un 1RM sin barra');
+  // …y NO toca el volumen (un salto falso en la gráfica el día del cambio).
+  const prog = e4.slice(e4.indexOf('function updateClientProgress('), e4.indexOf('\nfunction ', e4.indexOf('function updateClientProgress(') + 10));
+  assert.ok(!/_bar|sessionBarKg/.test(prog), '🔴 la barra entró al volumen');
+  // En vivo: la casilla dice DISCOS y cambiar la barra re-guarda SIN volver a celebrar.
+  assert.ok(/barDefaultKg\(ex\)!=null\)\?'DISCOS':'KG'/.test(e6), 'la casilla no dice DISCOS con barra');
+  const pick = e6.slice(e6.indexOf('function gmPickBar('), e6.indexOf('\nfunction ', e6.indexOf('function gmPickBar(') + 10));
+  assert.ok(/resaveSessionPartial\(GM\.routine\)/.test(pick) && !/updateClientProgress/.test(pick),
+    '🔴 cambiar la barra con todo marcado volvería a disparar el cierre');
+  const resave = e4.slice(e4.indexOf('function resaveSessionPartial('), e4.indexOf('\nfunction ', e4.indexOf('function resaveSessionPartial(') + 10));
+  assert.ok(/saveSessionToHistory\(routine,totalVol,done,false,false\)/.test(resave) && !/showWorkoutFinish|checkAndUpdatePRs/.test(resave),
+    'resaveSessionPartial celebra o toca récords');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

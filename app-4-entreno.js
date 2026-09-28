@@ -428,7 +428,9 @@ function _prRowHtml(pr,clientId,exId){
   // 1RM estimado (Epley) solo para récords de peso con >1 rep — si es 1 rep el récord YA
   // es el 1RM, y reps fuera de rango devuelven null (no se muestra). Es una estimación.
   const isKg=(pr.unit||'kg')==='kg';
-  const e1=isKg&&pr.reps>1?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
+  // v681: el récord está en DISCOS (así se anota); el 1RM es del peso REAL, con la barra.
+  const _bar=isKg?(_barFor(clientId,exId||pr.id,pr.name)||0):0;
+  const e1=isKg&&pr.reps>1?estimate1RM((parseFloat(pr.val!=null?pr.val:pr.kg)||0)+_bar,pr.reps):null;
   const tap=clientId?` pr-row-door" onclick="openRecordRoom('${esc(String(clientId))}','${esc(pr.name)}')` :'';
   return `<div class="pr-row${tap}">
     <div class="pr-ex-icon" style="background:${MC[pr.muscle]||'#ccc'}20">${muscleIcon(pr.muscle,20)}</div>
@@ -439,9 +441,17 @@ function _prRowHtml(pr,clientId,exId){
     <div style="text-align:right">
       <div class="pr-ex-val">${fmtMetric(pr.val!=null?pr.val:pr.kg,pr.unit||'kg')}</div>
       <div style="font-size:10px;color:var(--t2)">${isKg?`${pr.reps} ${esc(typeof repsUnitOf==='function'?repsUnitOf(exId||pr.id||''):'reps')}`:'récord'}</div>
-      ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)} kg · 1RM est.</div>`:''}
+      ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)} kg · 1RM est.${_bar>0?' con barra':''}</div>`:''}
     </div>
   </div>`;}
+// v681 · la barra de UNA persona en UN ejercicio, para las pantallas que solo tienen el récord
+// (id o nombre). El id solo se pasa si es de catálogo; si no, decide el nombre (puente de identidad).
+function _barFor(clientId,exId,exName){
+  if(typeof exerciseBarKg!=='function') return null;
+  const hist=(DB.history&&DB.history[clientId])||[];
+  const id=(exId&&/^e\d+$/.test(String(exId)))?String(exId):undefined;
+  return exerciseBarKg(hist,{id,name:exName||''});
+}
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
   const con=document.getElementById('cn-pr-list');if(!con)return;
@@ -1983,6 +1993,19 @@ function migrateEnv(){
 // fmtMetric → avi-core.js (fuente única, testeada)
 function lastreOn(routine,ei){return localStorage.getItem(`lastre_${routine.id}_${ei}`)==='1';}
 function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${ei}`,lastreOn(routine,ei)?'0':'1');}
+// v681 · LA BARRA de este ejercicio en esta sesión: la que eligió hoy (`barra_<rid>_<ei>`, con el id
+// del ejercicio dentro para que no se le pegue a otro si el plan cambia) o, si no tocó nada, la que
+// dice su historial / el catálogo (`exerciseBarKg`, pura). `null` = el ejercicio no lleva barra.
+function sessionBarKg(routine,ei,ex){
+  if(!routine||!ex||typeof exerciseBarKg!=='function'||barDefaultKg(ex)==null) return null;
+  const hoy=barSessionValue(localStorage.getItem(`barra_${routine.id}_${ei}`),ex);
+  if(hoy!=null) return hoy;
+  return exerciseBarKg((DB.history&&DB.history[CUR.clientId])||[],ex);
+}
+function setSessionBar(routine,ei,ex,kg){
+  const v=barSessionEncode(ex,kg); if(!v) return;
+  localStorage.setItem(`barra_${routine.id}_${ei}`,v);
+}
 
 function exMetaText(ex,sets,track){
   if(track==='hiit'){const c=hiitCfg(ex);return `${sets} rondas · ${c.work}s/${c.rest}s`;}
@@ -2337,7 +2360,7 @@ function _sweepOrphanSessionKeys(routine){
 // en memoria (CUR.todayWorking); el plan guardado no se toca hasta confirmar al finalizar.
 // Ver feedback_avi_practicidad_usuario.
 const _SK_SET=['log','done','drop'];   // por-serie: clave `${kind}_${rid}_${ei}_${si}…`
-const _SK_EX=['lastre','wshow'];        // por-ejercicio: clave exacta `${kind}_${rid}_${ei}`
+const _SK_EX=['lastre','wshow','barra']; // por-ejercicio: clave exacta `${kind}_${rid}_${ei}` (v681: barra)
 function _swapSessionKeys(rid,a,b){
   const grab=idx=>{ const out=[];
     _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`;
@@ -2511,6 +2534,24 @@ function updateVolSummary(routine,ei,sets,ex,el){
   el.textContent=`${txt} · ${doneSets}/${sets}`;
 }
 
+// v681/v682 · vuelve a guardar el entreno de hoy tal como está, SIN disparar el cierre: lo usan los
+// datos que se anotan después de marcar una serie (la barra, las reps en reserva). `updateClientProgress`
+// no sirve para eso: con todo marcado vuelve a celebrar. Sin series hechas no hay nada que guardar.
+// Un entreno ya cerrado conserva su `finishedAt` (saveSessionToHistory solo lo pone, nunca lo quita).
+function resaveSessionPartial(routine){
+  if(!routine) return false;
+  let done=0,totalVol=0;
+  (routine.exercises||[]).forEach((ex,ei)=>{
+    const sets=parseInt(ex.sets)||3;
+    for(let si=0;si<sets;si++) if(isDone(routine.id,ei,si)){
+      done++; totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);
+    }
+  });
+  if(!done) return false;
+  saveSessionToHistory(routine,totalVol,done,false,false);
+  return true;
+}
+
 function updateClientProgress(routine){
   let total=0,done=0,totalVol=0;
   (routine.exercises||[]).forEach((ex,ei)=>{
@@ -2568,7 +2609,9 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
   const setsData=(routine.exercises||[]).map((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
     const warm=auxVal(ei,WARM_SI);
-    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
+    // v681: la barra de ese día viaja con el ejercicio (el `kg` de cada serie siguen siendo los DISCOS).
+    const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex):null;
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
   });
   const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   // Evita duplicar DENTRO de una misma sesión (cada serie marcada re-guarda) matcheando por el
@@ -3482,7 +3525,7 @@ function _sessionExercisesHTML(s,clientId){
     return `<div style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"${door}>
           ${muscleIcon(ex.muscle,18)}
-          <div style="font-size:13px;font-weight:700">${esc(ex.name)}</div>
+          <div style="font-size:13px;font-weight:700">${esc(ex.name)}${(typeof ex.bar==='number'&&ex.bar>0)?`<span style="font-size:11px;font-weight:600;color:var(--t3)"> · discos + barra de ${esc(String(ex.bar))} kg</span>`:''}</div>
           ${exVol>0?`<span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gt);font-weight:600">${fmtMiles(Math.round(exVol))} kg</span>`:''}
           ${clientId?`<span style="${exVol>0?'':'margin-left:auto;'}color:var(--t3);font-size:16px;flex-shrink:0">›</span>`:''}
         </div>
@@ -3713,7 +3756,8 @@ function openExerciseRoom(clientId,exId,exName){
   const prs=(DB.prs&&DB.prs[clientId])||{};
   const pr=prs[exId]||prs[name]||null;
   const recordVal=pr?(pr.val!=null?pr.val:pr.kg):(pts.length?Math.max(...pts.map(p=>p.maxKg)):null);
-  const e1=(unit==='kg'&&pr&&pr.reps>1)?estimate1RM(pr.val!=null?pr.val:pr.kg,pr.reps):null;
+  const _bar=unit==='kg'?(_barFor(clientId,exId,exName||name)||0):0;   // v681: 1RM del peso real
+  const e1=(unit==='kg'&&pr&&pr.reps>1)?estimate1RM((parseFloat(pr.val!=null?pr.val:pr.kg)||0)+_bar,pr.reps):null;
   const did=sessions.filter(s=>(s.exercises||[]).some(x=>_key?(_idt.keyOf(x)===_key):((exId&&x.id===exId)||x.name===name)));
   const veces=did.length;
   const lastDate=did.reduce((m,s)=>(!m||new Date(s.date)>new Date(m))?s.date:m,null);
@@ -3749,7 +3793,7 @@ function openExerciseRoom(clientId,exId,exName){
       <div class="sroom-hero-txt">
         <div class="sroom-title" style="margin-top:0">${esc(name)}</div>
         <div class="exroom-tags"><span>${esc(muscleLabel)}</span>${type?`<span>${esc(type)}</span>`:''}</div>
-        ${e1?`<div class="sroom-hero-feel">≈ ${Math.round(e1)} kg · 1RM estimado</div>`:''}
+        ${e1?`<div class="sroom-hero-feel">≈ ${Math.round(e1)} kg · 1RM estimado${_bar>0?' con la barra':''}</div>`:''}
       </div>
     </div>
     <div class="sroom-stats">${statsHTML}</div>
@@ -3878,7 +3922,8 @@ function openRecordRoom(clientId,exName){
   const first=milestones.length?milestones[0]:null;
   const recVal=cur?cur.val:(pr.val!=null?pr.val:pr.kg);
   const isKg=unit==='kg';
-  const e1=isKg&&pr.reps>1?estimate1RM(recVal,pr.reps):null;
+  const _bar=isKg?(_barFor(clientId,pr.id,exName)||0):0;   // v681: 1RM del peso real, con la barra
+  const e1=isKg&&pr.reps>1?estimate1RM((parseFloat(recVal)||0)+_bar,pr.reps):null;
   const beat=Math.max(0,milestones.length-1);
   const gain=(first&&cur)?(cur.val-first.val):0;
   const recDate=pr.date?new Date(pr.date):(cur?new Date(cur.date):null);
@@ -3886,7 +3931,7 @@ function openRecordRoom(clientId,exName){
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${_sroomIc(ic)}</div><div class="sroom-stat-v">${esc(v)}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const stats=[
     stat('🏆','Récord',fmtMetric(recVal,unit),'#e0a72e'),
-    e1?stat('💪','1RM est.','≈ '+Math.round(e1)+' kg','#9b6dd6'):null,
+    e1?stat('💪',_bar>0?'1RM con barra':'1RM est.','≈ '+Math.round(e1)+' kg','#9b6dd6'):null,
     beat>0?stat('📈','Lo superaste',beat+(beat===1?' vez':' veces'),'#10b981'):null,
     (gain>0&&isKg)?stat('⬆️','Desde el inicio','+'+Math.round(gain)+' kg','#0ea5b7'):null,
   ].filter(Boolean).join('');

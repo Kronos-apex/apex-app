@@ -4,6 +4,31 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-28 — v681: la barra se suma sola (se siguen anotando los discos)
+
+- **De dónde sale:** el estudio de progresión que pidió el PO (el techo de Astrid y su propia curva). El
+  punto 1 del lote de 4 lo aprobó con *«dale arranca»*. Plan y veredicto de Coach Pro:
+  `docs/plan-barra-rir.md`.
+- **Medido:** 9 de las 15 personas que usan barra anotan SOLO los discos, el PO incluido (barra de 20).
+  Hay remos «de 5 kg», menos de lo que pesa la barra vacía. La barra del hip thrust de Astrid pesa 15.
+- **La regla:** se sigue anotando lo que se pone y la app sabe la barra de cada ejercicio
+  (`BAR_DEFAULTS`, lista de Coach Pro: olímpica 20, Z 10, hexagonal 25, Smith/multipower 0; landmine,
+  poleas y mancuernas sin barra). La barra de cada persona es la última que dejó anotada en ese
+  ejercicio, por identidad (`exerciseBarKg`, pura), y si nunca la anotó, la del catálogo.
+- **En el guiado:** una línea «Barra de 20 kg · se suma a los discos» y «Cambiar» con las opciones de
+  ESE ejercicio (la hexagonal ofrece 25). La casilla pasa a decir DISCOS. La elección del día vive en
+  `barra_<rid>_<ei>` con el id del ejercicio dentro (si el plan cambia no se le pega a otro). Está en
+  `_SK_EX` (reorden, barrido, sustituir) y en `MV_MUST_RE` (mudanza). Cambiarla con series marcadas
+  re-guarda con `resaveSessionPartial`, que no vuelve a celebrar.
+- **Qué la usa:** el entreno guardado lleva `bar` en el ejercicio, y el **1RM estimado** en sus tres
+  pantallas (récord, habitación del ejercicio, habitación del récord) pasa a ser del peso real, rotulado
+  «con barra». **No la usan, a propósito,** el volumen, los récords, el peso sugerido ni el detector de
+  estancamiento: meterla ahí de golpe fabrica un salto el día del cambio. Entra con la curva.
+- **QA:** suite 1364 → **1369** · `_sabotaje-v681` **12/12** · harness nuevo `_verify-barra-rir` **45/45**
+  (claro y oscuro, 360 px, con controles de discriminación y la barra en vista en la captura) ·
+  `_guiado-suite` TODO OK · `_shot-trained` TODO OK · `_verify-arranque-modulos` 6/6.
+- **AVI_NEWS:** no lleva entrada; la línea se explica sola.
+
 ## ⏮️ 2026-09-27 — Datos: los 8 correos ajenos pasaron al Gmail que cada persona ya conectó
 
 - Decisión del PO («Cambia los correos») tras medir que su premisa no se sostenía: **8 de 9 ya tenían Google
