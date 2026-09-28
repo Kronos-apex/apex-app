@@ -116,7 +116,7 @@ async function borrarTodo(admin: any, uid: string): Promise<{ tarjetasQuitadas: 
       for (let vuelta = 0; vuelta < 50; vuelta++) {
         const { data: files } = await admin.storage.from(bucket).list(uid, { limit: 100 });
         if (!files || !files.length) break;
-        await admin.storage.from(bucket).remove(files.map((f) => `${uid}/${f.name}`));
+        await admin.storage.from(bucket).remove(files.map((f: { name: string }) => `${uid}/${f.name}`));
         if (files.length < 100) break;
       }
     } catch (_e) { /* Storage best-effort */ }
