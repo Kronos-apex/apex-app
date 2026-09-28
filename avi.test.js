@@ -16484,8 +16484,15 @@ const _DEL_SRC = (() => {
   const fs = require('fs'), path = require('path');
   return fs.readFileSync(path.join(__dirname, 'supabase/functions/delete-account/index.ts'), 'utf8');
 })();
-// El camino del borrado COMPLETO (no el del fantasma, que es otro flujo y va antes).
-const _DEL_FULL = _DEL_SRC.slice(_DEL_SRC.indexOf('Borrado COMPLETO self-service'));
+// El borrado COMPLETO (no el del fantasma, que es otro flujo).
+// 🔁 v680 · Re-encuadrado, no aflojado: el borrado completo vive ahora en `borrarTodo`, que usan
+//    «borrar mi cuenta» Y el coach que elimina a un asesorado. Las propiedades de v574 se afirman
+//    sobre ESA función (la única lista de lo que se borra); que los dos caminos la llamen lo afirma
+//    la prueba de v680.
+const _DEL_FULL = (() => {
+  const i = _DEL_SRC.indexOf('async function borrarTodo(');
+  return i < 0 ? '' : _DEL_SRC.slice(i, _DEL_SRC.indexOf('\nfunction json(', i));
+})();
 
 test('🔴 v574 · la cuenta se borra de ÚLTIMA: el único paso irreversible va al final', () => {
   // Antes se borraba `user_data` primero y la cuenta al final, sin transacción: un fallo en
@@ -22004,6 +22011,47 @@ test('🔒 v679 · CABLEADO: el login atiende el correo sin confirmar ANTES de g
   const iLeak = reset.indexOf('resetPassWouldLeak(correo)'), iEnvia = reset.indexOf('AUTH.resetPassword(correo)');
   assert.ok(iLeak > 0 && iEnvia > iLeak, '🔴 el enlace se manda ANTES de mirar si el dominio es ajeno');
   assert.ok(/resetPassWouldLeak\(correo\)\)\{[\s\S]{0,300}return;/.test(reset), '🔴 detecta el dominio ajeno pero no corta');
+});
+
+// ══════════════════════════════════════════════════════
+// v680 · R14: eliminar a un asesorado le quita también el acceso
+// ══════════════════════════════════════════════════════
+test('🔴 v680 · el servidor: el coach elimina SOLO a un asesorado suyo, con el mismo borrado completo', () => {
+  const sinC = _DEL_SRC.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const iServe = sinC.indexOf('Deno.serve(');
+  const handler = sinC.slice(iServe);
+  const iCoach = handler.indexOf('if (body && typeof body.cliente === "string"');
+  const iProteccion = handler.indexOf('if (uid === COACH_UID) {');
+  assert.ok(iCoach > 0 && iProteccion > iCoach, '🔴 el modo coach quedó detrás de la protección de la cuenta del coach (nunca correría)');
+  const modo = handler.slice(iCoach, iProteccion);
+  // 🔒 El permiso es la FICHA: su coach_id tiene que ser quien llama, y se comprueba ANTES de borrar.
+  const iPermiso = modo.indexOf('if (fila.coach_id !== uid) return json({ ok: false, error: "not_your_client" }, 403);');
+  const iBorra = modo.indexOf('await borrarTodo(admin, objetivo)');
+  assert.ok(iPermiso > 0 && iBorra > iPermiso, '🔴 el coach puede borrar sin comprobar que sea SU asesorado');
+  assert.ok(/if \(!fila\) return json\(\{ ok: false, error: "not_found" \}, 404\);/.test(modo), '🔴 sin ficha se borraría una cuenta sin saber de quién es');
+  assert.ok(/objetivo === uid \|\| objetivo === COACH_UID/.test(modo), 'el modo coach puede apuntar a sí mismo o a la cuenta del coach');
+  // Los DOS caminos usan la MISMA lista de borrado.
+  assert.ok(/await borrarTodo\(admin, uid\)/.test(handler), '🔴 «borrar mi cuenta» dejó de usar el borrado común');
+  assert.strictEqual((sinC.match(/auth\.admin\.deleteUser\(/g) || []).length, 2,
+    'hay un borrado de cuenta fuera de borrarTodo (además del del fantasma)');
+});
+
+test('🔒 v680 · la app: eliminar pasa por el servidor, y sin servidor no borra nada', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf(n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const del = cuerpo('async function delClient(');
+  assert.ok(/if\(_isAuthId\(delId\)\)\{ if\(!\(await _delClientServer\(delId\)\)\) return; \}/.test(del),
+    '🔴 eliminar dejó de esperar al servidor o de cortar si falla');
+  const iServ = del.indexOf('_delClientServer(delId)'), iLocal = del.indexOf('DB.clients=DB.clients.filter');
+  assert.ok(iServ > 0 && iLocal > iServ, '🔴 se borra en el teléfono ANTES de saber si el servidor pudo');
+  const serv = cuerpo('async function _delClientServer(');
+  assert.ok(/c\.functions\.invoke\('delete-account',\{body:\{cliente:id\}\}\)/.test(serv), 'no llama al modo coach del servidor');
+  assert.ok(/cloudWriteSealed\(location\.hostname,window\.AVI_ALLOW_CLOUD_WRITE\)\) return true;/.test(serv),
+    '🔴 un harness en localhost podría eliminar a alguien de verdad');
+  assert.ok(/if\(error\|\|!data\|\|!data\.ok\)\{[\s\S]{0,300}return false;/.test(serv), 'un fallo del servidor no corta el borrado');
+  // Y el aviso dice lo que ahora sí pasa.
+  assert.ok(/ya no podrá entrar con su cuenta/.test(del), 'el aviso de eliminar no dice que se le quita el acceso');
 });
 
 // ══════════════════════════════════════════════════════

@@ -186,7 +186,10 @@ function openEditClient(){
 // tienen id de uid() (base36, no-uuid) → aún sin cuenta de acceso.
 function _isAuthId(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||'')); }
 // Crea la CUENTA DE ACCESO real (Supabase Auth, pre-confirmada) del asesorado vía la Edge
-// Function coach-create-client, para que pueda ingresar con su correo+clave (ficticio sirve).
+// Function coach-create-client, para que pueda ingresar con su correo+clave.
+// ⚠️ R14 (27-sep): «un correo ficticio sirve» para ENTRAR, pero un correo inventado en un dominio que
+//    no es tuyo (`avi.com`, `apex.com`) SÍ recibe correo — de un desconocido. Usa el correo real de la
+//    persona o uno tuyo (`tugmail+nombre@gmail.com`). Ver `resetPassWouldLeak` en avi-core.
 // Sube su perfil + rutina ACTUAL tal cual (no regenera). Re-vincula el cliente local a su
 // user_id (así coincide con su fila en la nube y futuras ediciones van por updateClientRow).
 // Devuelve el nuevo user_id o null si no se provisionó. Camilo 2026-06-29.
@@ -2762,12 +2765,36 @@ function togglePlanControl(h){
   if(ch)ch.style.transform=open?'rotate(0deg)':'rotate(180deg)';
 }
 
-function delClient(){
+// ══════ v680 · ELIMINAR A UN ASESORADO LE QUITA TAMBIÉN EL ACCESO (R14, hallazgo H1) ══════
+// Antes solo se borraba su ficha (`user_data`): su cuenta de acceso, sus fotos en el almacenamiento,
+// sus avisos y su tarjeta pública quedaban, y quien se había registrado solo volvía a entrar con su
+// contraseña vieja y la app le fabricaba una ficha nueva sin que el coach se enterara. Ahora lo borra
+// el SERVIDOR (`delete-account` modo coach), que es el único que puede tocar su cuenta.
+// 🔒 SIN SERVIDOR NO SE BORRA NADA: antes, sin señal, la ficha se borraba solo en este teléfono y
+//    reaparecía al volver a entrar — un medio borrado es peor que un «inténtalo de nuevo».
+// 🔒 SELLADO en localhost (v298): un harness jamás elimina a nadie de verdad.
+async function _delClientServer(id){
+  if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)) return true;
+  const c=AUTH.client();
+  if(!c){ toast('⚠️ Para eliminar a alguien necesitas internet. Intenta de nuevo con señal.'); return false; }
+  let data,error;
+  try{ ({data,error}=await c.functions.invoke('delete-account',{body:{cliente:id}})); }catch(e){ error=e; }
+  if(error||!data||!data.ok){
+    warn('AVI: eliminar asesorado en el servidor falló:',(data&&data.error)||(error&&error.message));
+    toast('⚠️ No se pudo eliminar ahora. Revisa tu conexión e intenta de nuevo — no se borró nada.');
+    return false;
+  }
+  return true;
+}
+async function delClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
-  if(!delClientGuard(c,()=>confirm(`¿Eliminar a ${c.name}? Se borrarán sus rutinas, historial, fotos y todos sus datos. Esta acción no se puede deshacer.`)))return;
+  if(!delClientGuard(c,()=>confirm(`¿Eliminar a ${c.name}? Se borrarán sus rutinas, historial, fotos y todos sus datos, y ya no podrá entrar con su cuenta. Esta acción no se puede deshacer.`)))return;
   const delId=CUR.clientId;
-  // Modo auth: borrar la fila del cliente en la nube (si no, reaparece al volver a entrar).
-  if(AUTH_MODE){ UD.deleteClientRow(delId).catch(e=>warn('AVI: borrar fila cliente en nube falló:',e&&e.message)); }
+  if(AUTH_MODE){
+    if(_isAuthId(delId)){ if(!(await _delClientServer(delId))) return; }
+    // Una ficha sin cuenta real (id legacy) no tiene acceso que quitar: basta su fila.
+    else UD.deleteClientRow(delId).catch(e=>warn('AVI: borrar fila cliente en nube falló:',e&&e.message));
+  }
   // 🔒 Y se lleva lo que quedara PENDIENTE para él: esa fila la acaba de mandar borrar, así que
   // ese cambio no se va a poder escribir jamás y el aviso «N sin guardar» se quedaría clavado
   // para siempre (reporte del PO, 14-sep). No es descartar en silencio — acaba de confirmar que

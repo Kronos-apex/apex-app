@@ -64,6 +64,75 @@ const conCors = (h: (req: Request) => Promise<Response>) => async (req: Request)
 // es la cuenta operativa del negocio y arrastraría las filas de sus asesorados.
 const COACH_UID = "0a6484ed-42af-449d-9903-e440ac683ecf";
 
+// ══════ v680 · EL BORRADO COMPLETO, EN UN SOLO SITIO ══════
+// Lo usan DOS caminos: la persona que borra su propia cuenta y el coach que elimina a un
+// asesorado suyo (v680). Una sola lista de lo que se borra, para que no se separen.
+// 🔒 ORDEN: todo lo que NO cascadea va PRIMERO; `auth.users` de último. Ver cabecera.
+// deno-lint-ignore no-explicit-any
+async function borrarTodo(admin: any, uid: string): Promise<{ tarjetasQuitadas: number }> {
+  // 0. Leer lo que hace falta para atar sus rastros ANTES de que desaparezca la fila.
+  //    Su tarjeta pública solo se puede atar por (coach_id, primer nombre): `avi_showcase`
+  //    guarda únicamente el nombre de pila, a propósito, porque es la única tabla que se
+  //    lee sin cuenta.
+  const { data: mio } = await admin
+    .from("user_data").select("coach_id, profile").eq("user_id", uid).maybeSingle();
+  // MISMA derivación que `showcaseFirstName` en avi-core.js: si se separan, la atadura
+  // falla en silencio y la tarjeta se queda publicada.
+  const primerNombre = String((mio?.profile as Record<string, unknown> | null)?.name ?? "")
+    .trim().split(/\s+/)[0] ?? "";
+
+  // 1. Su TARJETA PÚBLICA. Va primero porque es el único dato suyo visible sin cuenta:
+  //    si algo falla después, al menos ya dejó de estar publicada.
+  let tarjetasQuitadas = 0;
+  if (mio?.coach_id && primerNombre) {
+    const { data: quitadas, error: eSc } = await admin
+      .from("avi_showcase").delete()
+      .eq("coach_id", mio.coach_id).eq("nombre", primerNombre)
+      .select("id");
+    if (eSc) throw new Error("avi_showcase: " + eSc.message);
+    tarjetasQuitadas = quitadas?.length ?? 0;
+  }
+
+  // 2. Suscripciones push (client_id = uid en modo auth). Sin FK: no cascadea.
+  const { error: e2 } = await admin
+    .from("push_subscriptions").delete().eq("client_id", uid);
+  if (e2) throw new Error("push_subscriptions: " + e2.message);
+
+  // 3. Sus errores registrados: llevan uid, user-agent y contexto. Sin FK: no cascadea.
+  const { error: e4 } = await admin.from("app_errors").delete().eq("uid", uid);
+  if (e4) throw new Error("app_errors: " + e4.message);
+
+  // 4. Archivos en Storage — los CUATRO buckets. `avatars` va por uuid; `apex-photos` se
+  //    creó antes de auth y sus carpetas usan el id LEGACY (gotcha 2026-07-12), así que
+  //    por uuid puede no encontrar nada: se intenta igual, y lo de hoy vive como base64
+  //    dentro de `user_data` (que sí cascadea). Best-effort: no bloquea el borrado.
+  //    v649 · + `chat-media` (fotos y videos del chat, PRIVADO): todo lo de una pareja
+  //    coach-asesorado vive en la carpeta del asesorado, suba quien suba.
+  //    v650 · + `progress-photos` (fotos de progreso, PRIVADO), mismo modelo de carpeta.
+  //    🔴 `list` devuelve como mucho 100 por llamada: un chat con más fotos dejaba restos.
+  //    Se borra por PÁGINAS hasta que la carpeta quede vacía (tope de vueltas por si acaso).
+  for (const bucket of ["avatars", "apex-photos", "chat-media", "progress-photos"]) {
+    try {
+      for (let vuelta = 0; vuelta < 50; vuelta++) {
+        const { data: files } = await admin.storage.from(bucket).list(uid, { limit: 100 });
+        if (!files || !files.length) break;
+        await admin.storage.from(bucket).remove(files.map((f) => `${uid}/${f.name}`));
+        if (files.length < 100) break;
+      }
+    } catch (_e) { /* Storage best-effort */ }
+  }
+
+  // 5. Rate-limit del resolver de comunidad (sin FK).
+  await admin.from("community_resolve_attempts").delete().eq("uid", uid);
+
+  // 6. LA CUENTA (irreversible, y por eso de última). Aquí cascadean `user_data` y toda
+  //    la comunidad: profiles → posts/comments/reactions/friendships, messages,
+  //    gym_members, moderators, follows; `community_reports` queda anonimizado.
+  const { error: e3 } = await admin.auth.admin.deleteUser(uid);
+  if (e3) throw new Error("auth.deleteUser: " + e3.message);
+  return { tarjetasQuitadas };
+}
+
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -91,6 +160,34 @@ Deno.serve(conCors(async (req) => {
   if (userErr || !user) return json({ error: "Unauthorized" }, 401);
 
   const uid = user.id;
+  const body = await req.json().catch(() => ({}));
+
+  // ── v680 · MODO COACH: el coach elimina a un asesorado SUYO (R14, hallazgo H1) ──
+  // Antes «Eliminar» en el panel solo borraba la ficha: la cuenta de acceso, las fotos, los avisos y
+  // la tarjeta pública quedaban, y quien se había registrado solo volvía a entrar con su contraseña
+  // vieja y la app le fabricaba una ficha nueva. La pantalla del coach ya promete borrar «rutinas,
+  // historial, fotos y todos sus datos»: esto lo cumple.
+  // 🔒 EL PERMISO: quien llama tiene que ser el `coach_id` de la FICHA de esa persona. Esa ficha solo
+  //    la escriben su dueño o su coach (RLS de user_data), así que nadie más puede fabricar el permiso.
+  //    Sin ficha no hay permiso que comprobar → no se borra (no se adivina de quién es una cuenta).
+  if (body && typeof body.cliente === "string" && body.cliente.trim()) {
+    const objetivo = body.cliente.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(objetivo)) {
+      return json({ ok: false, error: "bad_target" }, 400);
+    }
+    if (objetivo === uid || objetivo === COACH_UID) return json({ ok: false, error: "not_allowed" }, 403);
+    try {
+      const { data: fila, error: ef } = await admin
+        .from("user_data").select("coach_id").eq("user_id", objetivo).maybeSingle();
+      if (ef) throw new Error("user_data check: " + ef.message);
+      if (!fila) return json({ ok: false, error: "not_found" }, 404);
+      if (fila.coach_id !== uid) return json({ ok: false, error: "not_your_client" }, 403);
+      const { tarjetasQuitadas } = await borrarTodo(admin, objetivo);
+      return json({ ok: true, deleted: objetivo, porCoach: true, tarjetasQuitadas });
+    } catch (err) {
+      return json({ ok: false, error: String(err) }, 500);
+    }
+  }
 
   // El coach no puede autoborrarse por aquí (protege a sus asesorados).
   if (uid === COACH_UID) {
@@ -105,7 +202,6 @@ Deno.serve(conCors(async (req) => {
     // {ghost:true} justo al rechazar ese ingreso, para matar al fantasma al nacer.
     // CANDADO EN EL SERVIDOR: solo borra si el usuario NO tiene fila user_data —
     // una cuenta con datos JAMÁS se borra por esta vía, diga lo que diga el cliente.
-    const body = await req.json().catch(() => ({}));
     if (body && body.ghost === true) {
       const { data: rows, error: eg } = await admin
         .from("user_data").select("user_id").eq("user_id", uid).limit(1);
@@ -117,69 +213,7 @@ Deno.serve(conCors(async (req) => {
     }
 
     // ── Borrado COMPLETO self-service (flujo original de Play Store) ──
-    // 🔒 ORDEN: todo lo que NO cascadea va PRIMERO; `auth.users` de último. Ver cabecera.
-
-    // 0. Leer lo que hace falta para atar sus rastros ANTES de que desaparezca la fila.
-    //    Su tarjeta pública solo se puede atar por (coach_id, primer nombre): `avi_showcase`
-    //    guarda únicamente el nombre de pila, a propósito, porque es la única tabla que se
-    //    lee sin cuenta.
-    const { data: mio } = await admin
-      .from("user_data").select("coach_id, profile").eq("user_id", uid).maybeSingle();
-    // MISMA derivación que `showcaseFirstName` en avi-core.js: si se separan, la atadura
-    // falla en silencio y la tarjeta se queda publicada.
-    const primerNombre = String((mio?.profile as Record<string, unknown> | null)?.name ?? "")
-      .trim().split(/\s+/)[0] ?? "";
-
-    // 1. Su TARJETA PÚBLICA. Va primero porque es el único dato suyo visible sin cuenta:
-    //    si algo falla después, al menos ya dejó de estar publicada.
-    let tarjetasQuitadas = 0;
-    if (mio?.coach_id && primerNombre) {
-      const { data: quitadas, error: eSc } = await admin
-        .from("avi_showcase").delete()
-        .eq("coach_id", mio.coach_id).eq("nombre", primerNombre)
-        .select("id");
-      if (eSc) throw new Error("avi_showcase: " + eSc.message);
-      tarjetasQuitadas = quitadas?.length ?? 0;
-    }
-
-    // 2. Suscripciones push (client_id = uid en modo auth). Sin FK: no cascadea.
-    const { error: e2 } = await admin
-      .from("push_subscriptions").delete().eq("client_id", uid);
-    if (e2) throw new Error("push_subscriptions: " + e2.message);
-
-    // 3. Sus errores registrados: llevan uid, user-agent y contexto. Sin FK: no cascadea.
-    const { error: e4 } = await admin.from("app_errors").delete().eq("uid", uid);
-    if (e4) throw new Error("app_errors: " + e4.message);
-
-    // 4. Archivos en Storage — los CUATRO buckets. `avatars` va por uuid; `apex-photos` se
-    //    creó antes de auth y sus carpetas usan el id LEGACY (gotcha 2026-07-12), así que
-    //    por uuid puede no encontrar nada: se intenta igual, y lo de hoy vive como base64
-    //    dentro de `user_data` (que sí cascadea). Best-effort: no bloquea el borrado.
-    //    v649 · + `chat-media` (fotos y videos del chat, PRIVADO): todo lo de una pareja
-    //    coach-asesorado vive en la carpeta del asesorado, suba quien suba.
-    //    v650 · + `progress-photos` (fotos de progreso, PRIVADO), mismo modelo de carpeta.
-    //    🔴 `list` devuelve como mucho 100 por llamada: un chat con más fotos dejaba restos.
-    //    Se borra por PÁGINAS hasta que la carpeta quede vacía (tope de vueltas por si acaso).
-    for (const bucket of ["avatars", "apex-photos", "chat-media", "progress-photos"]) {
-      try {
-        for (let vuelta = 0; vuelta < 50; vuelta++) {
-          const { data: files } = await admin.storage.from(bucket).list(uid, { limit: 100 });
-          if (!files || !files.length) break;
-          await admin.storage.from(bucket).remove(files.map((f) => `${uid}/${f.name}`));
-          if (files.length < 100) break;
-        }
-      } catch (_e) { /* Storage best-effort */ }
-    }
-
-    // 5. Rate-limit del resolver de comunidad (sin FK).
-    await admin.from("community_resolve_attempts").delete().eq("uid", uid);
-
-    // 6. LA CUENTA (irreversible, y por eso de última). Aquí cascadean `user_data` y toda
-    //    la comunidad: profiles → posts/comments/reactions/friendships, messages,
-    //    gym_members, moderators, follows; `community_reports` queda anonimizado.
-    const { error: e3 } = await admin.auth.admin.deleteUser(uid);
-    if (e3) throw new Error("auth.deleteUser: " + e3.message);
-
+    const { tarjetasQuitadas } = await borrarTodo(admin, uid);
     return json({ ok: true, deleted: uid, tarjetasQuitadas });
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
