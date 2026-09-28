@@ -4,6 +4,35 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-28 — v682: «¿Cuántas más te salían?» en la última serie (reps en reserva)
+
+- **Punto 2 del lote** (el PO: *«me gusta lo de reps en reserva»* + *«dale arranca»*). Veredicto de Coach
+  Pro en `docs/plan-barra-rir.md`: escala 0·1·2·3+ (3 = «3 o más»), todos los ejercicios de peso, **solo
+  dato: ninguna regla lo lee todavía**. El texto lo revisó Sofía, que agregó la ayuda del 0 y el
+  «todos los discos» de la barra: *«no queda claro si se anota el total o el peso por lado»*.
+- **Dónde:** en el DESCANSO que sigue a la serie que CIERRA un ejercicio de peso (el momento en que la
+  persona está quieta), y en una fila bajo esa serie para verla o cambiarla. Un toque; tocar la marcada la
+  quita. No se pregunta en la última serie de la sesión (se cierra el guiado): sesgo de cobertura
+  estructural aceptado por Coach Pro, que dice que preguntarlo en el cierre daría un dato recordado.
+- **Guardado:** `log_<rid>_<ei>_<últimaSerie>_rir` (0..3, `LOG_MAX.rir`). Viaja con el reorden y la
+  mudanza por ser `log_`. **Se borra en `_wipeSessionFlags`**, porque los `log_` se heredan al día
+  siguiente y la respuesta de ayer quedaría marcada hoy. Va en la serie guardada (`rir`, solo si está
+  hecha) y el detalle de la sesión lo dice («sobraban 2»; sin dato no dice nada).
+- **El mismo recuadro del descanso sirve a la plancha y al cardio:** ahí se esconde la pregunta.
+- 🔴 **Cazado por el harness:** la tarjeta de un ejercicio hecho se atenuaba ENTERA (`opacity:.6`) y
+  dejaba la pregunta a **2,57:1**, justo donde se contesta. Ahora se atenúa por dentro, salvo la fila,
+  con el mismo 60 %. Candado en la suite y fila en la matriz.
+- 🔴 **Tres defectos de MI SONDA de contraste, cada uno cazado por un control:** (1) tomaba el primer
+  fondo no transparente como sólido (el `rgba(255,255,255,.10)` de un botón = blanco, ratio 1); (2) no
+  componía la transparencia del TEXTO (un texto casi invisible aprobaba con 11,4); (3) no veía la
+  opacidad de un ANCESTRO (por eso la fila atenuada aprobaba con 6,0). Arreglada y con control que
+  reprueba un texto casi invisible (1,5).
+- **QA:** suite 1369 → **1372** · `_sabotaje-v682` **17/17** · `_sabotaje-v681` **12/12** (dos anclas
+  quedaron repetidas por el código nuevo y el runner se negó a aplicarlas: hechas únicas) ·
+  `_verify-barra-rir` **87/87** (claro y oscuro, 360×800 y 360×640) · `_guiado-suite` TODO OK (53) ·
+  `_shot-trained` TODO OK · `_verify-arranque-modulos` 6/6.
+- **AVI_NEWS:** no lleva entrada; la pregunta se explica sola y es opcional.
+
 ## ⏮️ 2026-09-28 — v681: la barra se suma sola (se siguen anotando los discos)
 
 - **De dónde sale:** el estudio de progresión que pidió el PO (el techo de Astrid y su propia curva). El

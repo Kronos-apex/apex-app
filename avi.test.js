@@ -22177,6 +22177,76 @@ test('🔒 v681 · el cableado: la barra viaja, se guarda con el entreno y entra
 });
 
 // ══════════════════════════════════════════════════════
+// v682 · LAS REPS EN RESERVA: un toque en la última serie, solo dato (docs/plan-barra-rir.md)
+// ══════════════════════════════════════════════════════
+test('🔴 v682 · las reps en reserva: 0·1·2·3+, y «3+» nunca se lee como «3 exactas»', () => {
+  const { rirValue, rirLabel, rirHistText, RIR_CHOICES, clampLogValue } = core;
+  assert.deepStrictEqual(RIR_CHOICES, [0, 1, 2, 3]);
+  for (const [v, n] of [['0', 0], [0, 0], ['1', 1], [2, 2], ['3', 3]]) assert.strictEqual(rirValue(v), n, String(v));
+  // 0 es una RESPUESTA («no salía ni una»): jamás se confunde con «no se preguntó».
+  for (const malo of ['', null, undefined, true, false, '4', 4, '-1', '1.5', 'abc', NaN]) assert.strictEqual(rirValue(malo), null, String(malo));
+  assert.strictEqual(rirLabel(3), '3+'); assert.strictEqual(rirLabel(0), '0'); assert.strictEqual(rirLabel(''), '');
+  assert.deepStrictEqual([0, 1, 2, 3].map(rirHistText), ['sin reserva', 'sobraba 1', 'sobraban 2', 'sobraban 3+']);
+  assert.strictEqual(rirHistText(null), '', 'sin dato no se dice nada (ni «sin reserva»)');
+  assert.strictEqual(rirHistText(''), '');
+  // El campo tiene tope: nada fuera de 0..3 entra al registro.
+  assert.strictEqual(clampLogValue('rir', '7'), '3');
+  assert.strictEqual(clampLogValue('rir', '-2'), '0');
+  assert.strictEqual(clampLogValue('rir', ''), '', 'quitar la respuesta sigue siendo válido');
+});
+
+test('🔒 v682 · Coach Pro: NINGUNA regla de progresión lee las reps en reserva todavía', () => {
+  // Veredicto del 28-sep: el historial viejo no tiene el dato y un «0 implícito» mezclado con un «0
+  // real» fabrica saltos. Entra cuando haya cobertura MEDIDA — y entonces sin dato = desconocido.
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf(n); assert.ok(i > 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  for (const f of ['function perfIndex(', 'function exercisePerfSeries(', 'function stallReport(', 'function stalledExercises(',
+    'function progressHint(', 'function suggestFromPR(', 'function recentWorkLoad(', 'function computeExerciseProgress(', 'function shockTargets(']) {
+    assert.ok(!/\brir/i.test(cuerpo(f)), '🔴 ' + f + ' lee las reps en reserva (Coach Pro lo prohibió hasta medir cobertura)');
+  }
+});
+
+test('🔒 v682 · el cableado: se pregunta al CERRAR un ejercicio de peso, se borra con el día y se guarda sin celebrar', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const e6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, n) => { const i = src.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  // Los `log_` se heredan al día siguiente: la respuesta de ayer NO puede quedar marcada hoy.
+  const wipe = cuerpo(e4, 'function _wipeSessionFlags(');
+  assert.ok(/k\.indexOf\(lp\)===0&&\/_rir\$\/\.test\(k\)/.test(wipe) && /const lp='log_'\+routine\.id\+'_';/.test(wipe),
+    '🔴 las reps en reserva de ayer quedarían marcadas hoy');
+  // Solo viajan en una serie HECHA.
+  const save = cuerpo(e4, 'function saveSessionToHistory(');
+  assert.ok(/const rir=\(done&&typeof rirValue==='function'\)\?rirValue\(getLog\(routine\.id,ei,si,'rir'\)\):null;/.test(save)
+    && /\.\.\.\(rir!=null\?\{rir\}:\{\}\)/.test(save), '🔴 el entreno se guarda sin las reps en reserva (o de una serie sin hacer)');
+  assert.ok(/function rirSetIndex\(ex\)\{ return Math\.max\(0,\(parseInt\(ex&&ex\.sets\)\|\|3\)-1\); \}/.test(e4), 'la pregunta no va en la ÚLTIMA serie');
+  // El descanso pregunta SOLO si esa serie cerró el ejercicio.
+  const rest = cuerpo(e6, 'function gmRest(');
+  assert.ok(/const rirEi=cerro\?ei:null;/.test(rest) && (rest.match(/rirEi/g) || []).length >= 3, '🔴 el descanso pregunta en cualquier serie (o nunca)');
+  assert.ok(/_gmRestRir\(opts\.rirEi!=null\?opts\.rirEi:null\);/.test(cuerpo(e6, 'function gmShowRest(')), 'el descanso no pinta/esconde la pregunta');
+  assert.ok(/exTrack\(ex\)!=='peso_reps'/.test(cuerpo(e6, 'function _gmRestRir(')), '🔴 se pregunta en ejercicios que no son de peso');
+  // La plancha y el cardio usan el MISMO recuadro: ahí la pregunta de antes no puede seguir pintada.
+  assert.strictEqual((e6.match(/_gmRestRir\(null\);/g) || []).length, 2, '🔴 la pregunta quedaría pintada en la plancha o en el cardio');
+  // Tocar guarda SIN volver a celebrar; tocar la marcada la quita.
+  const pick = cuerpo(e6, 'function gmPickRir(');
+  assert.ok(/resaveSessionPartial\(GM\.routine\)/.test(pick) && !/updateClientProgress/.test(pick), '🔴 responder dispararía otra vez el cierre');
+  assert.ok(/cur===n\?'':String\(n\)/.test(pick), 'un toque de más no se puede deshacer');
+  // La fila del ejercicio: solo de peso, solo una vez hecho.
+  assert.ok(/if\(gmTrack==='peso_reps' && exAllDone && typeof sessionRir==='function'\)\{/.test(e6), 'la fila aparece donde no toca');
+  assert.ok(/<div class="gm-rest-rir" id="gm-rest-rir" hidden><\/div>/.test(html), 'falta el sitio de la pregunta en el descanso');
+  // La pregunta se contesta con el ejercicio HECHO: si la tarjeta hecha se atenúa entera, la pregunta
+  // queda a 2,57:1 (medido por `_verify-barra-rir`). Se atenúa por dentro, salvo la fila.
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(!/\.gm-ex-card\.done\{[^}]*opacity/.test(css), '🔴 la tarjeta hecha vuelve a atenuarse ENTERA y destiñe la pregunta');
+  assert.ok(/\.gm-ex-card\.done \.gm-sets>:not\(\.gm-rir\)\{opacity:\.6\}/.test(css), 'la tarjeta hecha dejó de atenuarse (o atenúa la pregunta)');
+  // El historial lo dice (y sin dato, nada).
+  assert.ok(/rirHistText\(st\.rir\)\)\?`<div class="hist-rir">\$\{esc\(rirHistText\(st\.rir\)\)\}<\/div>`:''/.test(cuerpo(e4, 'function _sessionExercisesHTML(')),
+    'el detalle de la sesión no muestra las reps en reserva');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

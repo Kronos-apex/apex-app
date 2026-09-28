@@ -18,7 +18,8 @@ const SABOTAJES = [
   ['manda la PRIMERA barra que aparece, no la más reciente', 'core',
     'if (best == null || tt > bt) { best = b; bt = tt; }', 'if (best == null) { best = b; bt = tt; }'],
   ['«sin barra» (0) se trata como dato que falta', 'core',
-    "if (v === '' || v == null || typeof v === 'boolean') return null;", "if (!v || typeof v === 'boolean') return null;"],
+    "if (v === '' || v == null || typeof v === 'boolean') return null;\n  const n = Number(v);\n  return isFinite(n) && n >= 0 && n <= 50",
+    "if (!v || typeof v === 'boolean') return null;\n  const n = Number(v);\n  return isFinite(n) && n >= 0 && n <= 50"],
   ['se agrupa por NOMBRE, no por identidad (un renombrado pierde su barra)', 'core',
     'if (!x || idt.keyOf(x) !== key) return;', "if (!x || String(x.name) !== String((ex && ex.name) || '')) return;"],
   ['la barra de hoy se le pega a otro ejercicio', 'core',
@@ -32,7 +33,8 @@ const SABOTAJES = [
     'const e1=isKg&&pr.reps>1?estimate1RM(recVal,pr.reps):null;'],
   ['la casilla vuelve a decir KG con barra', 'e6', "!=null)?'DISCOS':'KG';", "!=null)?'KG':'KG';"],
   ['cambiar la barra vuelve a disparar el cierre', 'e6',
-    "if(typeof resaveSessionPartial==='function') resaveSessionPartial(GM.routine);", 'updateClientProgress(GM.routine);'],
+    "que lleve la barra nueva.\n  if(typeof resaveSessionPartial==='function') resaveSessionPartial(GM.routine);",
+    "que lleve la barra nueva.\n  updateClientProgress(GM.routine);"],
 ];
 
 const orig = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, readFileSync(p, 'utf8')]));

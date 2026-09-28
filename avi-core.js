@@ -1538,6 +1538,28 @@ function barSessionValue(raw, ex) {
   if (i <= 0 || raw.slice(0, i) !== String(ex.id)) return null;
   return _barNum(raw.slice(i + 1));
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// LAS REPS EN RESERVA (v682) — ver docs/plan-barra-rir.md
+// ──────────────────────────────────────────────────────────────────────
+// «¿Cuántas más te salían?» en la ÚLTIMA serie de cada ejercicio de peso, un toque y opcional (la
+// sensación de la sesión se llena en 60 de 550 sesiones: más fricción = cero dato). Veredicto de
+// Coach Pro (28-sep): escala 0·1·2·3+, donde 3 = «3 O MÁS» — jamás «3 exactas» en ninguna pantalla.
+// HOY es solo dato que se junta para la curva: NINGUNA regla lo lee. Si algún día entra al índice de
+// rendimiento, una serie SIN dato es DESCONOCIDA, nunca 0 (0 es una respuesta: «no salía ni una»).
+const RIR_CHOICES = [0, 1, 2, 3];
+function rirValue(v) {
+  if (v === '' || v == null || typeof v === 'boolean') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 3 ? n : null;
+}
+function rirLabel(n) { n = rirValue(n); return n == null ? '' : (n === 3 ? '3+' : String(n)); }
+// Lo que dice el historial bajo la serie (lo leen la persona Y su coach: sin «tú» ni «le»).
+function rirHistText(n) {
+  n = rirValue(n);
+  if (n == null) return '';
+  return n === 0 ? 'sin reserva' : n === 1 ? 'sobraba 1' : n === 2 ? 'sobraban 2' : 'sobraban 3+';
+}
 // Inversa de Epley: peso para un objetivo de reps, con factor conservador (default
 // 0.95 — es sugerencia de trabajo, no reto) y redondeo a discos reales (step 2.5kg).
 function suggestLoad(e1rm, targetReps, opts) {
@@ -3161,7 +3183,7 @@ function planDays(client) {
 // alimenta las medallas (había una sesión con volumen de 12 mil millones).
 // Los topes son generosos a propósito — el récord mundial de peso muerto ronda los 500 kg, así
 // que 1.000 no le estorba a nadie real y sí ataja el error de digitación.
-const LOG_MAX = { kg: 1000, lastre: 1000, reps: 999, min: 600, dist: 999 };
+const LOG_MAX = { kg: 1000, lastre: 1000, reps: 999, min: 600, dist: 999, rir: 3 };   // v682: rir 0..3 (3 = «3 o más»)
 function clampLogValue(field, val) {
   const max = LOG_MAX[field];
   if (max == null) return val;                    // campo sin tope definido → intacto
@@ -12188,6 +12210,10 @@ if (typeof module !== 'undefined' && module.exports) {
     exerciseBarKg,
     barSessionEncode,
     barSessionValue,
+    RIR_CHOICES,
+    rirValue,
+    rirLabel,
+    rirHistText,
     suggestLoad,
     loadStep,
     suggestFromPR,

@@ -44,7 +44,7 @@ const MONTAR = (tema) => `(()=>{try{
   document.documentElement.setAttribute('data-theme','${tema === 'oscuro' ? 'dark' : 'light'}');
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const cat=(id,sets,reps)=>Object.assign({},DB.exercises.find(e=>e.id===id),{sets,reps:String(reps)});
-  const exs=[cat('e42',4,10),cat('e13',3,8),cat('e338',3,6),cat('e256',3,12)];
+  const exs=[cat('e42',4,10),cat('e13',3,8),cat('e338',3,6),cat('e256',3,12),cat('e17',2,30)];
   const client={id:'${CID}',name:'Prueba Barra',sex:'F',level:'Intermedio',goal:'Recomposición',days:3,weight:75,height:163,age:33,
     createdAt:'2026-06-01T10:00:00.000Z',startDate:'2026-06-01',
     routines:[{id:'rb1',name:'Pierna',day:days[new Date().getDay()],restSec:90,reviewed:true,note:'',exercises:exs}],habits:{water:{},steps:{}}};
@@ -159,6 +159,102 @@ for (const tema of ['claro', 'oscuro']) {
   const pr = await ev(`(()=>({ ht:_prRowHtml(DB.prs['${CID}'].e42,'${CID}','e42'), polea:_prRowHtml(DB.prs['${CID}'].e256,'${CID}','e256') }))()`);
   check(`${tema}: el 1RM del récord suma la barra (≈ 187 con barra)`, /≈ 187 kg · 1RM est\. con barra/.test(pr.ht), (pr.ht.match(/≈[^<]*/) || [''])[0]);
   check(`${tema}: CONTROL · sin barra el 1RM no cambia ni dice «con barra»`, /≈ 40 kg · 1RM est\.</.test(pr.polea), (pr.polea.match(/≈[^<]*/) || [''])[0]);
+
+  // ─── v682 · LAS REPS EN RESERVA ───
+  // 🔴 El fondo se COMPONE capa por capa con su transparencia: tomar el primer fondo no transparente
+  //    leía el rgba(255,255,255,.10) de un botón del descanso como blanco sólido y daba ratio 1 (defecto
+  //    de la sonda, no de la app — la clase de [[avi-sondas-falsos-positivos]]).
+  const CONTRASTE = `const col=s=>{const m=(s.match(/[\\d.]+/g)||[]).map(Number);return {r:m[0],g:m[1],b:m[2],a:m.length>3?m[3]:1};};
+    const efectivo=el=>{ const capas=[]; for(let n=el;n;n=n.parentElement){ const c=col(getComputedStyle(n).backgroundColor); if(c.a>0){capas.push(c); if(c.a>=1) break;} }
+      let f={r:255,g:255,b:255}; for(let i=capas.length-1;i>=0;i--){ const c=capas[i]; f={r:c.r*c.a+f.r*(1-c.a),g:c.g*c.a+f.g*(1-c.a),b:c.b*c.a+f.b*(1-c.a)}; } return [f.r,f.g,f.b]; };
+    const lum=c=>{const a=c.map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*a[0]+.7152*a[1]+.0722*a[2];};
+    const opac=el=>{ let o=1; for(let n=el;n;n=n.parentElement){ const v=parseFloat(getComputedStyle(n).opacity); if(!isNaN(v)) o*=v; } return o; };
+    const ratio=el=>{const t=col(getComputedStyle(el).color);const f=efectivo(el);
+      // el TEXTO también puede ser translúcido, y la opacidad de un ANCESTRO lo destiñe (una tarjeta «hecha» va al 60 %)
+      const ta=t.a*opac(el);
+      const tc=[t.r*ta+f[0]*(1-ta),t.g*ta+f[1]*(1-ta),t.b*ta+f[2]*(1-ta)];
+      const x=lum(tc),y=lum(f);return +((Math.max(x,y)+.05)/(Math.min(x,y)+.05)).toFixed(2);};`;
+  const marcar = si => ev(`(()=>{ const row=document.getElementById('gm-set-0-${si}'); row.querySelector('[data-field="kg"]').value='120';
+    row.querySelector('[data-field="reps"]').value='10'; document.getElementById('gm-chk-0-${si}').click();
+    const b=document.getElementById('gm-rest-rir'); const ov=document.getElementById('gm-rest-overlay');
+    return {descanso:!ov.classList.contains('hidden'), pregunta:!!(b&&!b.hidden&&b.offsetHeight>0)}; })()`);
+  // La tarjeta «Cómo respirar» se enciende en el SIGUIENTE cuadro: se cierra después de dejarla salir.
+  const saltar = async () => { await ev(`(()=>{ gmSkipRest(); return 1; })()`); await sleep(350);
+    await ev(`(()=>{ if(typeof closeStartCard==='function') closeStartCard(); return 1; })()`); await sleep(350); };
+  const m1 = await marcar(1); await saltar();
+  check(`${tema}: CONTROL · una serie que NO cierra el ejercicio abre el descanso SIN pregunta`, m1.descanso && !m1.pregunta, JSON.stringify(m1));
+  await marcar(2); await saltar();
+  const m3 = await marcar(3); await sleep(400);
+  check(`${tema}: la ÚLTIMA serie abre el descanso CON la pregunta`, m3.descanso && m3.pregunta, JSON.stringify(m3));
+  const ov = await ev(`(()=>{ ${CONTRASTE}
+    const b=document.getElementById('gm-rest-rir'); const bs=[...b.querySelectorAll('.gm-rest-rir-opt')];
+    return { q:b.querySelector('.gm-rest-rir-q').textContent, ayuda:b.querySelector('.gm-rest-rir-help').textContent,
+      botones:bs.map(x=>x.textContent.trim()), alto:Math.min(...bs.map(x=>x.getBoundingClientRect().height)),
+      der:Math.max(...bs.map(x=>x.getBoundingClientRect().right)), izq:Math.min(...bs.map(x=>x.getBoundingClientRect().left)),
+      ratio:Math.min(...bs.map(ratio), ratio(b.querySelector('.gm-rest-rir-q')), ratio(b.querySelector('.gm-rest-rir-help'))) }; })()`);
+  check(`${tema}: la pregunta dice lo que aprobó Sofía, con la ayuda del 0`, ov.q === '¿Cuántas más te salían en la última?' && /^0 = no te daba ni una más/.test(ov.ayuda), ov.q + ' | ' + ov.ayuda);
+  check(`${tema}: los botones son 0 · 1 · 2 · 3+`, ov.botones.join('|') === '0|1|2|3+', ov.botones.join('|'));
+  check(`${tema}: en el descanso se tocan (≥44 px) y caben a 360`, ov.alto >= 44 && ov.der <= 360 && ov.izq >= 0, `${ov.alto}px · ${ov.izq}-${ov.der}`);
+  check(`${tema}: en el descanso se leen (≥4,5:1)`, ov.ratio >= 4.5, String(ov.ratio));
+  // CONTROL DE LA SONDA: un botón igual con el texto casi invisible TIENE que dar bajo.
+  const malo = await ev(`(()=>{ ${CONTRASTE} const b=document.createElement('button'); b.className='gm-rest-rir-opt'; b.textContent='9';
+    b.style.color='rgba(255,255,255,.14)'; document.querySelector('#gm-rest-rir .gm-rest-rir-opts').appendChild(b); const r=ratio(b); b.remove(); return r; })()`);
+  check(`${tema}: CONTROL · la sonda de contraste reprueba un texto casi invisible`, malo < 2, String(malo));
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/rir-descanso-${tema}.png`, Buffer.from(s.data, 'base64')));
+  // En un teléfono bajito (640) el descanso entero sigue cabiendo con la pregunta.
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 2, mobile: true }); await sleep(400);
+  const bajo = await ev(`(()=>{ const t=document.getElementById('gm-rest-title').getBoundingClientRect(), k=document.querySelector('.gm-rest-skip').getBoundingClientRect(); return {arriba:Math.round(t.top), abajo:Math.round(k.bottom), alto:innerHeight}; })()`);
+  check(`${tema}: a 360×640 el descanso cabe entero (título y «Saltar» visibles)`, bajo.arriba >= 0 && bajo.abajo <= bajo.alto, JSON.stringify(bajo));
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/rir-descanso-640-${tema}.png`, Buffer.from(s.data, 'base64')));
+  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 2, mobile: true }); await sleep(300);
+
+  // Responder «2» en el descanso: queda en la última serie y en el entreno guardado, sin celebrar.
+  const leer = `(()=>{ const h=(DB.history['${CID}']||[]).find(s=>s.routineId==='rb1'&&!/^hb/.test(s.id)); const x=h&&h.exercises.find(e=>e.id==='e42');
+    const wf=document.getElementById('workout-finish');
+    return { clave:localStorage.getItem('log_rb1_0_3_rir'), rir:x&&x.sets.map(t=>t.rir===undefined?'-':t.rir).join(','), celebra:!!(wf&&wf.classList.contains('on')) }; })()`;
+  await ev(`(()=>{ [...document.querySelectorAll('#gm-rest-rir .gm-rest-rir-opt')].find(b=>b.textContent.trim()==='2').click(); return 1; })()`); await sleep(400);
+  let g = await ev(leer);
+  check(`${tema}: responder 2 queda en la ÚLTIMA serie guardada (y solo ahí)`, g.clave === '2' && g.rir === '-,-,-,2', JSON.stringify(g));
+  check(`${tema}: responder no vuelve a celebrar el cierre`, g.celebra === false, JSON.stringify(g));
+  const sel = await ev(`[...document.querySelectorAll('#gm-rest-rir .gm-rest-rir-opt')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent.trim()).join()`);
+  check(`${tema}: en el descanso queda marcada la respuesta`, sel === '2', sel);
+  await saltar();
+  // La fila bajo la última serie: se ve, se toca, se lee; tocar la marcada la quita; «3+» se guarda 3.
+  const fila = await ev(`(()=>{ ${CONTRASTE}
+    const f=document.getElementById('gm-rir-0'); if(!f) return null;
+    f.scrollIntoView({block:'center'});
+    const bs=[...f.querySelectorAll('.gm-rir-opt')];
+    return { marcada:bs.filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent.trim()).join(),
+      alto:Math.min(...bs.map(b=>b.getBoundingClientRect().height)), der:Math.max(...bs.map(b=>b.getBoundingClientRect().right)),
+      ratio:Math.min(...bs.map(ratio), ratio(f.querySelector('.gm-rir-q')), ratio(f.querySelector('.gm-rir-help'))),
+      otra: !!document.getElementById('gm-rir-1') }; })()`);
+  check(`${tema}: bajo la última serie queda la fila con la respuesta marcada`, fila && fila.marcada === '2', JSON.stringify(fila));
+  check(`${tema}: la fila se toca (≥36 px), cabe y se lee`, fila && fila.alto >= 36 && fila.der <= 360 && fila.ratio >= 4.5, JSON.stringify(fila));
+  check(`${tema}: CONTROL · un ejercicio sin terminar NO lleva la fila`, fila && fila.otra === false, JSON.stringify(fila));
+  await sleep(300);
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/rir-fila-${tema}.png`, Buffer.from(s.data, 'base64')));
+  const tocarFila = t => ev(`(()=>{ [...document.querySelectorAll('#gm-rir-0 .gm-rir-opt')].find(b=>b.textContent.trim()===${JSON.stringify(t)}).click(); return 1; })()`);
+  await tocarFila('2'); await sleep(300); g = await ev(leer);
+  check(`${tema}: tocar la marcada la QUITA (un toque de más se deshace)`, g.clave === '' && g.rir === '-,-,-,-', JSON.stringify(g));
+  await tocarFila('3+'); await sleep(300); g = await ev(leer);
+  check(`${tema}: «3+» se guarda como 3`, g.clave === '3' && g.rir === '-,-,-,3', JSON.stringify(g));
+  // El historial lo dice, y se lee.
+  const hist = await ev(`(()=>{ ${CONTRASTE}
+    const h=(DB.history['${CID}']||[]).find(s=>s.routineId==='rb1'&&!/^hb/.test(s.id));
+    const d=document.createElement('div'); d.style.cssText='position:fixed;left:0;top:0;width:360px;background:var(--w);z-index:9999';
+    d.innerHTML=_sessionExercisesHTML(h,'${CID}'); document.body.appendChild(d);
+    const r=[...d.querySelectorAll('.hist-rir')].map(e=>({t:e.textContent, ratio:ratio(e)}));
+    const barra=/discos \\+ barra de 20 kg/.test(d.innerText);
+    d.remove(); return {r, barra}; })()`);
+  check(`${tema}: el historial dice «sobraban 3+» solo en esa serie`, hist.r.length === 1 && hist.r[0].t === 'sobraban 3+', JSON.stringify(hist.r));
+  check(`${tema}: y se lee (≥4,5:1)`, hist.r.length === 1 && hist.r[0].ratio >= 4.5, JSON.stringify(hist.r));
+  check(`${tema}: el historial dice la barra del ejercicio`, hist.barra, String(hist.barra));
+  // La plancha usa el mismo recuadro: ahí la pregunta NO puede seguir pintada.
+  const pl = await ev(`(()=>{ gmHoldTimer(4,0,5); const b=document.getElementById('gm-rest-rir'); const r={abierto:!document.getElementById('gm-rest-overlay').classList.contains('hidden'), pregunta:!!(b&&!b.hidden&&b.offsetHeight>0)}; gmSkipRest(); return r; })()`);
+  check(`${tema}: CONTROL · la plancha abre el recuadro SIN la pregunta`, pl.abierto && !pl.pregunta, JSON.stringify(pl));
+  // Día nuevo: lo de ayer no queda marcado (y el peso sí se conserva como sugerencia).
+  const dia = await ev(`(()=>{ _wipeSessionFlags(GM.routine); return {rir:localStorage.getItem('log_rb1_0_3_rir'), kg:localStorage.getItem('log_rb1_0_3_kg')}; })()`);
+  check(`${tema}: al empezar otro día se borran las reps en reserva y se conserva el peso`, dia.rir === null && dia.kg === '120', JSON.stringify(dia));
 }
 check('cero errores de JS', jsErrors.length === 0, jsErrors.slice(0, 3).join(' | '));
 

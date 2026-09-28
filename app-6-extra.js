@@ -938,6 +938,11 @@ function gmRender(){
         setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop',_gmIco('tridown',12,'🔻'), _dropKg(GM.routine,ex,ei,si), 'fallo'));
       }
     });
+    // v682 · las reps en reserva de la ÚLTIMA serie, una vez hecho el ejercicio: para verlas o
+    // cambiarlas (el momento de preguntar es el descanso; aquí queda a la mano).
+    if(gmTrack==='peso_reps' && exAllDone && typeof sessionRir==='function'){
+      setsEl.insertAdjacentHTML('beforeend', gmRirRowHTML(ei, ex));
+    }
     }
     card.appendChild(setsEl);
     body.appendChild(card);
@@ -1013,6 +1018,40 @@ function gmResetSession(){
   gmScrollToCurrent();
 }
 
+// v682 · LAS REPS EN RESERVA (docs/plan-barra-rir.md). Un toque, opcional, en la última serie de
+// cada ejercicio de peso. Tocar la que ya está marcada la quita (un toque de más se deshace).
+const GM_RIR_Q='¿Cuántas más te salían en la última?';
+const GM_RIR_HELP='0 = no te daba ni una más con buena forma'; // Sofía: sin esto el 0 se lee «no hice ninguna»
+function gmRirButtonsHTML(ei,sel,cls){
+  return RIR_CHOICES.map(n=>`<button type="button" class="${cls}${n===sel?' on':''}" aria-pressed="${n===sel}" aria-label="${n===3?'3 o más':n} en reserva" onclick="gmPickRir(${ei},${n})">${rirLabel(n)}</button>`).join('');
+}
+function gmRirRowHTML(ei,ex){
+  const sel=sessionRir(GM.routine,ei,ex);
+  return `<div class="gm-rir" id="gm-rir-${ei}"><div class="gm-rir-q">${GM_RIR_Q}</div>`
+    +`<div class="gm-rir-opts" role="group" aria-label="${GM_RIR_Q}">${gmRirButtonsHTML(ei,sel,'gm-rir-opt')}</div><div class="gm-rir-help">${GM_RIR_HELP}</div></div>`;
+}
+// Pinta (o esconde) la pregunta DENTRO del descanso. `ei` = el ejercicio que se acaba de terminar.
+function _gmRestRir(ei){
+  const box=document.getElementById('gm-rest-rir'); if(!box) return;
+  const ex=(ei!=null)?GM.exercises[ei]:null;
+  if(!ex||exTrack(ex)!=='peso_reps'||typeof sessionRir!=='function'){ box.hidden=true; box.innerHTML=''; box.dataset.ei=''; return; }
+  const sel=sessionRir(GM.routine,ei,ex);
+  box.dataset.ei=String(ei);
+  box.innerHTML=`<div class="gm-rest-rir-q">${GM_RIR_Q}</div><div class="gm-rest-rir-opts" role="group" aria-label="${GM_RIR_Q}">${gmRirButtonsHTML(ei,sel,'gm-rest-rir-opt')}</div><div class="gm-rest-rir-help">${GM_RIR_HELP}</div>`;
+  box.hidden=false;
+}
+function gmPickRir(ei,n){
+  const ex=GM.exercises[ei]; if(!ex||typeof rirSetIndex!=='function') return;
+  const si=rirSetIndex(ex);
+  const cur=sessionRir(GM.routine,ei,ex);
+  setLog(GM.routine.id,ei,si,'rir',cur===n?'':String(n));
+  // El entreno guardado se rehace para llevar el dato, SIN volver a celebrar (v681).
+  if(typeof resaveSessionPartial==='function') resaveSessionPartial(GM.routine);
+  const box=document.getElementById('gm-rest-rir');
+  if(box&&!box.hidden&&box.dataset.ei===String(ei)) _gmRestRir(ei);
+  _gmKeepAnchor('gm-ex-'+ei,gmRender);
+}
+
 // v681 · la línea de la barra de UN ejercicio (y sus opciones, si están abiertas). `GM.barOpen`
 // vive en memoria y no en el DOM: el guiado repinta entero con cada toque.
 function gmBarLine(ei,ex){
@@ -1020,7 +1059,9 @@ function gmBarLine(ei,ex){
   const open=GM.barOpen===ei;
   const el=document.createElement('div');
   el.className='gm-bar';
-  const txt=bk>0?`Barra de ${bk} kg · se suma a los discos`:'Sin barra · solo cuentan los discos';
+  // Sofía (28-sep): «todos» dice que se anota el TOTAL de discos, no los de un lado (un error de mitad
+  // del peso que nadie notaría).
+  const txt=bk>0?`Barra de ${bk} kg · se suma a todos los discos`:'Sin barra · solo cuentan los discos';
   el.innerHTML=`<button type="button" class="gm-bar-btn" aria-expanded="${open}" aria-controls="gm-bar-opts-${ei}"><span>${txt}</span><span class="gm-bar-edit">${open?'Listo':'Cambiar'}</span></button>`
     +(open?`<div class="gm-bar-opts" id="gm-bar-opts-${ei}" role="group" aria-label="¿Cuánto pesa la barra?">`
       +barChoices(ex).map(k=>`<button type="button" class="gm-bar-opt${k===bk?' on':''}" aria-pressed="${k===bk}" onclick="gmPickBar(${ei},${k})">${k>0?k+' kg':'Sin barra'}</button>`).join('')
@@ -1246,6 +1287,7 @@ function gmHoldTimer(ei, si, secs){
   const lblEl=overlay.querySelector('.gm-rest-lbl');
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
+  _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
   if(breEl) breEl.style.display='none';
   if(nextEl) nextEl.textContent='';
   if(titleEl) titleEl.textContent='💪 ¡Aguanta la posición!';
@@ -1391,6 +1433,7 @@ function gmCardioTimer(ei, mins, sets){
   const lblEl=overlay.querySelector('.gm-rest-lbl');
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
+  _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
   if(breEl)breEl.style.display='none';
   if(nextEl)nextEl.textContent='';
   if(titleEl)titleEl.textContent='🚴 ¡Dale! Cardio en marcha';
@@ -1623,10 +1666,14 @@ function gmRestPlan(ei, si){
 // — reporte recurrente de Camilo, cerrado de raíz el 2026-07-09.
 function gmRest(ei, si, nextStep){
   const plan = gmRestPlan(ei, si);
+  // v682: si esta serie CERRÓ el ejercicio, el descanso pregunta las reps en reserva de la última.
+  const ex=GM.exercises[ei], n=parseInt(ex&&ex.sets)||3;
+  const cerro=!!ex && Array.from({length:n},(_,s)=>isDone(GM.routine.id,ei,s)).every(Boolean);
+  const rirEi=cerro?ei:null;
   if(plan.transition){
-    gmShowRest(BISET_TRANSITION_SEC, nextStep, { title:'🔗 Biserie — ¡sin pausa!', label:'cambia de ejercicio', biset:true });
+    gmShowRest(BISET_TRANSITION_SEC, nextStep, { title:'🔗 Biserie — ¡sin pausa!', label:'cambia de ejercicio', biset:true, rirEi });
   } else {
-    gmShowRest(plan.sec, nextStep);
+    gmShowRest(plan.sec, nextStep, { rirEi });
   }
 }
 const BISET_TRANSITION_SEC = 12; // respiro mínimo para cambiar de estación en una biserie
@@ -1651,6 +1698,7 @@ function gmShowRest(secs, nextStep, opts){
   if(nextStep) nextEl.textContent=`Siguiente: ${esc(nextStep.ex.name)} — Serie ${nextStep.si+1}/${nextStep.sets}`;
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.innerHTML=bc?(_gmIco('wind',12,'💨')+' '+esc(bc.s)):''; breEl.style.display=bc?'block':'none'; }
+  _gmRestRir(opts.rirEi!=null?opts.rirEi:null); // v682 (se esconde en cualquier otro descanso)
   if(GM.restTimer) clearInterval(GM.restTimer);
   // 🔴 EL DESCANSO ENTRE SERIES ERA EL ÚNICO TIMER SIN CANDADO DE PANTALLA. El HIIT, el
   //    isométrico y el cardio ya lo pedían; éste no — y es el que corre en CADA serie de CADA

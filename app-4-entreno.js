@@ -2281,7 +2281,17 @@ function _wipeSessionFlags(routine){
   if(!routine||!routine.id)return;
   const p='done_'+routine.id+'_';
   try{ Object.keys(localStorage).filter(k=>k.indexOf(p)===0).forEach(k=>localStorage.removeItem(k)); }catch(_e){}
+  // v682: las reps en reserva viven en `log_…_rir`, y los `log_` se HEREDAN al día siguiente como
+  // sugerencia. Lo de ayer no puede quedar marcado hoy: se borran con el día (y con «Reiniciar»).
+  const lp='log_'+routine.id+'_';
+  try{ Object.keys(localStorage).filter(k=>k.indexOf(lp)===0&&/_rir$/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(_e){}
   clearWarmup(routine.id);
+}
+// v682 · la serie que lleva las reps en reserva: la ÚLTIMA de trabajo del ejercicio.
+function rirSetIndex(ex){ return Math.max(0,(parseInt(ex&&ex.sets)||3)-1); }
+function sessionRir(routine,ei,ex){
+  if(!routine||!ex||typeof rirValue!=='function') return null;
+  return rirValue(getLog(routine.id,ei,rirSetIndex(ex),'rir'));
 }
 function resetSession(){
   const routine=CUR.activeRoutine;if(!routine)return false;
@@ -2611,7 +2621,11 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     const warm=auxVal(ei,WARM_SI);
     // v681: la barra de ese día viaja con el ejercicio (el `kg` de cada serie siguen siendo los DISCOS).
     const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex):null;
-    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done:isDone(routine.id,ei,si),...(drop?{drop}:{})};})};
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
+      // v682: las reps en reserva solo viajan en una serie HECHA (sin serie no hay «cuántas más»).
+      const done=isDone(routine.id,ei,si);
+      const rir=(done&&typeof rirValue==='function')?rirValue(getLog(routine.id,ei,si,'rir')):null;
+      return {kg:getLog(routine.id,ei,si,'kg'),reps:getLog(routine.id,ei,si,'reps')||ex.reps,secs:getLog(routine.id,ei,si,'secs'),min:getLog(routine.id,ei,si,'min'),dist:getLog(routine.id,ei,si,'dist'),done,...(drop?{drop}:{}),...(rir!=null?{rir}:{})};})};
   });
   const totalSets=(routine.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
   // Evita duplicar DENTRO de una misma sesión (cada serie marcada re-guarda) matcheando por el
@@ -3514,7 +3528,7 @@ function _sessionExercisesHTML(s,clientId){
     ex.sets.forEach((st,si)=>{
       chips.push(`<div style="background:${st.done?'var(--gl)':'var(--bg)'};border:1px solid ${st.done?'var(--g2)':'var(--br)'};border-radius:6px;padding:6px 8px;text-align:center">
           <div style="font-size:10px;color:var(--t3);margin-bottom:2px">Serie ${si+1}</div>
-          ${st.done?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?esc(st.kg)+' kg':'—'}<br>× ${esc(st.reps)}</div>`:`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
+          ${st.done?`<div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--gt)">${st.kg?esc(st.kg)+' kg':'—'}<br>× ${esc(st.reps)}</div>${(typeof rirHistText==='function'&&rirHistText(st.rir))?`<div class="hist-rir">${esc(rirHistText(st.rir))}</div>`:''}`:`<div style="font-size:11px;color:var(--t3)">No completada</div>`}
         </div>`);
       if(st.drop&&(st.drop.kg||st.drop.reps))chips.push(auxChip(typeof aviIcon==='function'?aviIcon('tridown',10):'🔻','Drop','#3B82F6','rgba(59,130,246,.08)',st.drop));
     });
