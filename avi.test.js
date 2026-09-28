@@ -22247,6 +22247,59 @@ test('🔒 v682 · el cableado: se pregunta al CERRAR un ejercicio de peso, se b
 });
 
 // ══════════════════════════════════════════════════════
+// v683 · LA PANTALLA DE CARGA: 1 s de marca y se va cuando la app sabe qué mostrar (R16)
+// ══════════════════════════════════════════════════════
+test('🔴 v683 · la marca se ve al menos 1 s (decisión del PO) y nunca más que el tope', () => {
+  const { splashHideDelay, splashCapDelay, SPLASH_MIN_MS, SPLASH_MAX_MS } = core;
+  assert.strictEqual(SPLASH_MIN_MS, 1000, 'el PO decidió 1 segundo de marca');
+  assert.ok(SPLASH_MAX_MS <= 4000 && SPLASH_MAX_MS > SPLASH_MIN_MS, 'el tope se volvió a alargar (o quedó por debajo del mínimo)');
+  // Apareció a los 100 ms: si la app ya está lista a los 300, espera hasta cumplir el segundo.
+  assert.strictEqual(splashHideDelay(300, 100), 800);
+  assert.strictEqual(splashHideDelay(1100, 100), 0, 'cumplido el segundo, no se espera nada');
+  assert.strictEqual(splashHideDelay(4000, 100), 0, 'si la app tardó más, tampoco se agrega espera');
+  assert.strictEqual(splashHideDelay(500, undefined), 500, 'sin marca de tiempo se cuenta desde el inicio de la página');
+  assert.strictEqual(splashHideDelay(50, 100), 1000, 'un reloj raro nunca pide más de 1 s');
+  assert.strictEqual(splashHideDelay(NaN, 0), 0);
+  // El tope se cuenta desde que apareció la marca.
+  assert.strictEqual(splashCapDelay(300, 100), SPLASH_MAX_MS - 200);
+  assert.strictEqual(splashCapDelay(9000, 0), 0);
+});
+
+test('🔒 v683 · la app ya no espera detrás de la marca, y la marca se va al FINAL del arranque', () => {
+  const fs = require('fs'), path = require('path');
+  const i1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const i2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, n) => { const i = src.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const sync = cuerpo(i1, 'async function syncFromCloud(');
+  assert.ok(!/setTimeout\(r,\s*hasSession/.test(sync) && !/await new Promise\(r=>setTimeout/.test(sync),
+    '🔴 volvió la espera fija detrás de la marca (2,8 s en CADA apertura)');
+  assert.ok(!/getElementById\('avi-loading'\)/.test(sync), '🔴 la marca se quita dentro de syncFromCloud: ANTES de restaurar la sesión (el login se ve un instante)');
+  assert.ok(/if\(_aviSplashGone\)return; _aviSplashGone=true;/.test(cuerpo(i1, 'function aviHideSplash(')), 'la marca podría quitarse dos veces');
+  // 🔴 El arranque ESPERA a que carguen TODOS los módulos (app-3…7 van después de app-2, y la librería
+  // del login va con `defer`). Sin esto, quien ya había entrado se quedaba en el login (medido).
+  assert.ok(/syncFromCloud\(\)\.then\(_aviModulesReady\)\.then\(async \(\)=>\{/.test(i2),
+    '🔴 el arranque corre antes de que existan app-3…7: se salta EN SILENCIO la sesión, initPWA y el tema');
+  const listo = cuerpo(i2, 'function _aviModulesReady(');
+  assert.ok(/document\.readyState==='loading'/.test(listo) && /addEventListener\('DOMContentLoaded'/.test(listo),
+    'la espera de módulos no espera a que se ejecuten TODOS los scripts');
+  // El tope se arma con los módulos ya cargados (si no, deja a la vista un login a medio armar).
+  const iListo = i2.indexOf('syncFromCloud().then(_aviModulesReady).then(async ()=>{');
+  const iCap = i2.indexOf("if(typeof _aviArmSplashCap==='function')_aviArmSplashCap();", iListo);
+  assert.ok(iListo > 0 && iCap > iListo && iCap - iListo < 400, 'sin tope, o armado antes de tener los módulos');
+  assert.ok(!/_aviArmSplashCap\(\)/.test(sync), 'el tope se arma dentro de syncFromCloud, antes de tener los módulos');
+  // Al final de la cadena del arranque: DESPUÉS de restaurar la sesión o decidir el login.
+  const iThen = i2.indexOf('syncFromCloud().then(');
+  const iAuto = i2.indexOf('if(!authEntered&&!_verPagina) tryAutoLogin();', iThen);
+  const iHide = i2.indexOf("if(typeof aviHideSplash==='function')aviHideSplash();", iThen);
+  const iCatch = i2.indexOf('}).catch(e=>{', iThen);
+  assert.ok(iThen > 0 && iAuto > iThen && iHide > iAuto && iCatch > iHide, '🔴 la marca no se quita al final del arranque');
+  // La marca de tiempo se estampa ANTES de que cargue la app.
+  const iStamp = html.indexOf('window.__aviSplashAt = '), iApp = html.indexOf('app-1-infra.js');
+  assert.ok(iStamp > 0 && iApp > iStamp, 'el instante de la marca se estampa tarde (o no se estampa)');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

@@ -30,6 +30,13 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
 - **Con los datos reales de hoy**, Inicio del coach (32-90 ms), la lista de asesorados (11-54 ms) y repintar
   el guiado (21-59 ms) están bien. Las cifras grandes de V2 son el futuro, no el presente.
 
+## ✅ Hecho
+- **#1 (v683):** la marca 1 s (decisión del PO) y el arranque espera a TODOS los módulos. Reabrir la app:
+  4,0-5,0 s → 1,5-1,6 s (medido en local, mismo equipo).
+- **#6 CERRADO (v683):** la causa del «a medio arrancar» era una carrera del arranque (la cadena corría antes
+  de que cargaran app-3…7) que la espera fija escondía cuando la red era buena. Control: v682 con 4G lenta
+  nunca terminaba de arrancar; v683 sí.
+
 ## Orden recomendado
 1. **Decisiones del PO:** la pantalla de carga (#1) y el video (#2). Son las dos que más se sienten y las
    dos más baratas.

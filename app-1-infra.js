@@ -1745,13 +1745,24 @@ async function syncFromCloud(){
   // 🔴 v652 · Aquí corría `migratePhotosToStorage`, que subía fotos de progreso y de PERFIL al bucket
   //    PÚBLICO a los 3 s del arranque (solo no lo lograba porque aún no había sesión). Retirada: las
   //    mudanzas van al bucket privado y las hace el dueño al entrar (`migrateProgressPhotosPrivate`).
-  // Mantener la pantalla de carga unos segundos para que se vea la marca y se lea
-  // el mensaje (antes se quitaba en 100-350ms y no daba tiempo). Un poco menos si ya
-  // hay sesión guardada (no es registro nuevo), pero igual visible.
-  const hasSession = !!ld('ax_session', null);
-  await new Promise(r=>setTimeout(r, hasSession ? 2800 : 3200));
-  const overlay=document.getElementById('avi-loading');
-  if(overlay){overlay.classList.add('fade');setTimeout(()=>overlay.remove(),300);}
+  // v683 · Aquí la marca se quedaba 2,8-3,2 s A PROPÓSITO y todo esperaba detrás. Ya no espera: la
+  // quita `aviHideSplash`, al final del arranque (app-2), cuando la app ya sabe qué pantalla mostrar.
+  // (El tope lo arma el arranque cuando ya cargaron TODOS los módulos: ver `_aviModulesReady`.)
+}
+// v683 · LA PANTALLA DE CARGA se va cuando la app ya sabe qué mostrar: nunca antes de 1 s visible
+// (decisión del PO), nunca después del tope. Una sola vez. `__aviSplashAt` lo estampa index.html
+// en el instante en que la marca aparece.
+let _aviSplashGone=false;
+function aviHideSplash(){
+  if(_aviSplashGone)return; _aviSplashGone=true;
+  const at=(typeof window.__aviSplashAt==='number')?window.__aviSplashAt:0;
+  const d=(typeof splashHideDelay==='function')?splashHideDelay(performance.now(),at):0;
+  setTimeout(()=>{ const o=document.getElementById('avi-loading'); if(o){ o.classList.add('fade'); setTimeout(()=>o.remove(),300); } },d);
+}
+function _aviArmSplashCap(){
+  const at=(typeof window.__aviSplashAt==='number')?window.__aviSplashAt:0;
+  const d=(typeof splashCapDelay==='function')?splashCapDelay(performance.now(),at):0;
+  setTimeout(aviHideSplash,d);
 }
 function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px'}
 let _tt;

@@ -1540,6 +1540,31 @@ function barSessionValue(raw, ex) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// LA PANTALLA DE CARGA (v683) — R16, docs/auditoria-velocidad-2026-09-28/README.md
+// ──────────────────────────────────────────────────────────────────────
+// Hasta v682 la marca se quedaba 2,8-3,2 s A PROPÓSITO («+1 s», 8-jun) y la app esperaba DETRÁS sin
+// hacer nada: el 54 % de cada apertura. Y como se quitaba ANTES de restaurar la sesión, quien ya había
+// entrado veía un instante el LOGIN (con su video arrancando) antes de su plan. Decisión del PO
+// (28-sep): *«1 segundo la marca está bien»*. Ahora la app arranca mientras se ve la marca, y la marca
+// se va cuando la app ya sabe qué pantalla mostrar — nunca antes de 1 s, nunca después del tope (una
+// red colgada no la deja pegada; la red de 12 s de index.html sigue debajo por si todo falla).
+const SPLASH_MIN_MS = 1000;
+const SPLASH_MAX_MS = 4000;
+// ¿Cuánto falta para poder quitar la marca? `shownAt` = cuándo apareció (performance.now()).
+function splashHideDelay(nowMs, shownAtMs) {
+  const now = Number(nowMs), at = Number(shownAtMs);
+  if (!isFinite(now)) return 0;
+  const visto = now - (isFinite(at) ? at : 0);
+  return Math.max(0, Math.min(SPLASH_MIN_MS, SPLASH_MIN_MS - visto));
+}
+// ¿Cuándo salta el tope, contado desde ahora?
+function splashCapDelay(nowMs, shownAtMs) {
+  const now = Number(nowMs), at = Number(shownAtMs);
+  if (!isFinite(now)) return 0;
+  return Math.max(0, SPLASH_MAX_MS - (now - (isFinite(at) ? at : 0)));
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // LAS REPS EN RESERVA (v682) — ver docs/plan-barra-rir.md
 // ──────────────────────────────────────────────────────────────────────
 // «¿Cuántas más te salían?» en la ÚLTIMA serie de cada ejercicio de peso, un toque y opcional (la
@@ -12210,6 +12235,10 @@ if (typeof module !== 'undefined' && module.exports) {
     exerciseBarKg,
     barSessionEncode,
     barSessionValue,
+    SPLASH_MIN_MS,
+    SPLASH_MAX_MS,
+    splashHideDelay,
+    splashCapDelay,
     RIR_CHOICES,
     rirValue,
     rirLabel,

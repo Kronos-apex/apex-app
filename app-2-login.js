@@ -1246,8 +1246,26 @@ function _aviInstallBack(){
   window.addEventListener('popstate',_aviHandleBack);
 }
 
+// v683 · 🔴 EL ARRANQUE ESPERA A QUE ESTÉN TODOS LOS MÓDULOS. Este archivo se ejecuta ANTES de que el
+// navegador cargue app-3…app-7 (van después en index.html) y la librería del login va con `defer`.
+// La cadena de abajo corría en un microtask apenas terminaba este archivo: sin la espera fija de
+// 2,8 s que había en syncFromCloud, NINGÚN módulo posterior existía todavía y las guardas `typeof`
+// (v537) se saltaban EN SILENCIO restaurar la sesión, initPWA, el tema y el botón atrás — medido con
+// `_verify-splash-v683`: quien ya había entrado se quedaba en el login. Y es la causa del H3 de R16:
+// con red lenta en la primera visita, los módulos tardan MÁS que la espera fija y el arranque quedaba
+// «a medio hacer». `DOMContentLoaded` llega cuando ya se ejecutaron TODOS los scripts, los `defer`
+// incluidos (y llega igual si uno falla: las guardas siguen cubriendo ese caso).
+function _aviModulesReady(){
+  return new Promise(r=>{
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>r(),{once:true});
+    else r();
+  });
+}
 // Boot: sync from cloud then show login
-syncFromCloud().then(async ()=>{
+syncFromCloud().then(_aviModulesReady).then(async ()=>{
+  // v683 · el tope de la marca se arma aquí, con los módulos ya cargados: antes de esto, quitarla
+  // dejaría a la vista un login que todavía no tiene detrás lo que necesita.
+  if(typeof _aviArmSplashCap==='function')_aviArmSplashCap();
   // 🔴 GUARDAS DE MÓDULO (v537). Regla del repo desde v375/v393/v403: **todo llamado a una función
   // que vive en OTRO `app-*.js` va con `typeof f==='function'`** — reventó tres veces en Android
   // real. Estas cuatro líneas la incumplían y la auditoría de v417 ya las había marcado; siguen
@@ -1321,6 +1339,9 @@ syncFromCloud().then(async ()=>{
   // La banda de «estás mirando tu página» va SOLO si de verdad se saltó una sesión: a un visitante
   // de verdad —que llega sin cuenta— un botón «Volver a mi panel» no le dice nada.
   if(_verPagina&&_teniaSesion&&typeof renderPreviewBar==='function')renderPreviewBar();
+  // v683 · AHORA sí se sabe qué pantalla va (su plan, su panel o el login): se quita la marca. Antes
+  // se quitaba ANTES de restaurar la sesión y quien ya había entrado veía un instante el login.
+  if(typeof aviHideSplash==='function')aviHideSplash();
 }).catch(e=>{
   // Red de seguridad del arranque: si algo en el boot lanza (migración, auth, DOM), NUNCA
   // dejar la app colgada en el splash ni en blanco — quitar el overlay y mostrar el login.

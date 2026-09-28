@@ -4,6 +4,33 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-28 — v683: la marca 1 s, y el arranque espera a TODOS los módulos (R16 #1 y H3)
+
+- **Decisión del PO** sobre la auditoría R16 (`docs/auditoria-velocidad-2026-09-28/`): *«1 segundo la marca
+  está bien»*. La pantalla de carga se quedaba **2,8-3,2 s a propósito** (`setTimeout` en `syncFromCloud`,
+  «+1 s» del 8-jun) y todo esperaba detrás: el 54 % de cada apertura.
+- **Ahora:** la marca se ve un mínimo de 1 s desde que aparece (`__aviSplashAt`, estampado en
+  `index.html`) y se va cuando la app ya sabe qué pantalla mostrar (`aviHideSplash` al final de la cadena
+  del arranque), con un tope de 4 s armado cuando ya cargaron los módulos (`splashHideDelay`,
+  `splashCapDelay`, puras).
+- 🔴 **Quitar la espera destapó una CARRERA que esa espera escondía:** `app-2-login.js` lanza la cadena del
+  arranque en un microtask apenas termina de ejecutarse, **antes de que el navegador cargue app-3…app-7** y
+  con la librería del login en `defer`. Las guardas `typeof` (v537) se saltaban EN SILENCIO restaurar la
+  sesión, `initPWA`, el tema y el botón atrás. Lo cazó `_verify-splash-v683` en la primera corrida: quien ya
+  había entrado se quedaba en el login. **Y es la causa del H3 de R16:** con red lenta en la primera visita,
+  los módulos tardan más que la espera fija, y el arranque quedaba «a medio hacer» (V1 no había podido
+  cerrar el mecanismo). Arreglo de raíz: `_aviModulesReady` espera a `DOMContentLoaded`, que llega
+  cuando ya se ejecutaron TODOS los scripts, los `defer` incluidos (y llega igual si uno falla).
+- **De paso se acaba el «login fantasma»:** la marca se quitaba ANTES de restaurar la sesión, y quien ya
+  había entrado veía el login (con su video arrancando) antes de su plan. Medido en v682: 275 ms.
+- **Medido en local, mismo equipo, v682 → v683:** reabrir la app (2.ª visita) **4.034 → 1.479 ms** en
+  escritorio y **4.053-5.013 → 1.585-1.607 ms** en teléfono de gama media emulado · con sesión, el plan
+  aparece a los **1.304 ms** (antes 3.922), sin asomarse el login · primera visita con CPU ×4 y 4G lenta:
+  **v682 nunca terminaba de arrancar; v683 sí** (27,8 s en local, sin comprimir).
+- **QA:** suite 1372 → **1374** · `_sabotaje-v683` **11/11** · `_verify-splash-v683` **8/8** y su CONTROL
+  contra v682 **3/3** (detecta los 2,8 s y el login fantasma) · `_verify-arranque-modulos` **6/6** ·
+  `_guiado-suite` TODO OK (53) · `_repro-back-pantallas` **18/18** · `_shot-trained` TODO OK.
+
 ## ⏮️ 2026-09-28 — v682: «¿Cuántas más te salían?» en la última serie (reps en reserva)
 
 - **Punto 2 del lote** (el PO: *«me gusta lo de reps en reserva»* + *«dale arranca»*). Veredicto de Coach
