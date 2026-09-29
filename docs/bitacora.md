@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v689: el aviso de salto (punto 3 del lote de progresión)
+
+- **Qué:** cuando el peso de un ejercicio se duplica o cae a la mitad respecto de la sesión anterior (≤55 % o
+  ≥180 % Y al menos 15 kg, por identidad, ≤90 días), la app pregunta, sin bloquear, si es otro equipo. Medido en
+  el respaldo del 28-sep: **80 saltos en 10 personas** sobre 1.776 pares, casi todos suciedad para la curva (otra
+  máquina, las dos mancuernas sumadas, un dedo). «Sí» deja `corte:true` en el ejercicio guardado: un punto de
+  partida nuevo para la curva del punto 4. **Solo dato**: ninguna regla lo lee (candado en la suite).
+- **Veredicto de Coach Pro y Sofía** (en `docs/plan-barra-rir.md`): umbrales aprobados. `corte` solo para cambio
+  real de equipo, nunca para una descarga o la vuelta de una lesión, y sin tercer botón. La pregunta va por
+  implemento: «¿Son las dos mancuernas?» · «¿Cambiaste de máquina?» · «¿Cambiaste de barra?». El sí ecoa la pregunta
+  y el «Lo corrijo» es igual en las tres.
+- **Lo que decidieron las mediciones:** (1) la **bajada no se pregunta al teclear**: serie a serie cazaba **9
+  rampas** sobre 41 bajadas reales; se pregunta al CERRAR el ejercicio con el tope del día, en el descanso. (2) **7 de
+  80 saltos son de implementos sin pregunta escrita** (sentadilla sumo, zancadas, frontales): se calla. Preguntar por
+  mancuernas a quien usa UNA sería peor. (3) Si ya saltó la confirmación de v417 o el «revisa el número», este sobra.
+- 🔴 **El harness cazó un hueco de mi cableado:** la bajada vivía en `gmRest`, y **el descanso solo se abre al
+  marcar la serie ACTUAL**. Marcando fuera de orden no se preguntaba nunca. Ahora se mira donde se MARCA la serie que
+  cierra el ejercicio (`gmToggleSet`): en orden sale en el descanso; fuera de orden, en la tarjeta.
+- **Clase de v681:** clave nueva `salto_<rid>_<ei>` con el id dentro, en `_SK_EX`, en `MV_MUST_RE` y borrada en
+  `_wipeSessionFlags`.
+- **QA:** suite 1391 → **1399** · `_sabotaje-v689` · `_verify-salto` **53/53** (claro y oscuro, con controles: la
+  rampa, la sumo, el progreso normal, la confirmación de v417, la plancha, y que ignorarla no marca nada).
+- ⚠️ Visto de paso, de Coach Pro: **e295 «Press de Banca Agarre Amplio» no está en `BAR_DEFAULTS`**.
+
 ## ⏮️ 2026-09-29 — v688: quien tiene la sesión guardada entra aunque la red no conteste («necesito internet para entrar»)
 
 - **Reproducido** (`_verify-red-colgada`, cuenta QA, local): con la sesión guardada y **sin red**, quien abría la

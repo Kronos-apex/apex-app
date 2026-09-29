@@ -22243,7 +22243,8 @@ test('🔒 v682 · el cableado: se pregunta al CERRAR un ejercicio de peso, se b
   // queda a 2,57:1 (medido por `_verify-barra-rir`). Se atenúa por dentro, salvo la fila.
   const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
   assert.ok(!/\.gm-ex-card\.done\{[^}]*opacity/.test(css), '🔴 la tarjeta hecha vuelve a atenuarse ENTERA y destiñe la pregunta');
-  assert.ok(/\.gm-ex-card\.done \.gm-sets>:not\(\.gm-rir\)\{opacity:\.6\}/.test(css), 'la tarjeta hecha dejó de atenuarse (o atenúa la pregunta)');
+  // v689: el aviso de salto también queda fuera del atenuado; lo que se vigila es que la pregunta NO se destiña.
+  assert.ok(/\.gm-ex-card\.done \.gm-sets>:not\(\.gm-rir\)(?::not\([^)]*\))*\{opacity:\.6\}/.test(css), 'la tarjeta hecha dejó de atenuarse (o atenúa la pregunta)');
   // El historial lo dice (y sin dato, nada).
   assert.ok(/rirHistText\(st\.rir\)\)\?`<div class="hist-rir">\$\{esc\(rirHistText\(st\.rir\)\)\}<\/div>`:''/.test(cuerpo(e4, 'function _sessionExercisesHTML(')),
     'el detalle de la sesión no muestra las reps en reserva');
@@ -22584,6 +22585,145 @@ test('🔒 v688 · CABLEADO de la entrada: sin copia local se espera a la nube c
   assert.ok(/await _loadCoachClientsIntoDB\(\{arranque:true,sinRed:!!\(opts&&opts\.sinRed\)\}\);/.test(c), 'el arranque del coach no pasa sus opciones');
   // Los demás llamadores esperan como siempre (volver al panel con red lenta no puede mostrar la lista vieja).
   assert.ok(/async function backToCoachPanel\(\)\{[\s\S]*?await _loadCoachClientsIntoDB\(\);/.test(a3), 'volver al panel ya no espera a la nube');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v689 · EL AVISO DE SALTO (punto 3 del lote de progresión, docs/plan-barra-rir.md)
+// ═════════════════════════════════════════════════════════════════════════════
+const { jumpCheck, jumpPrevTop, jumpImplement, jumpText, jumpSessionEncode, jumpSessionValue,
+  JUMP_LOW, JUMP_HIGH, JUMP_MIN_KG, JUMP_WINDOW_DAYS } = core;
+// MV_MUST_RE no se exporta: se lee del archivo (es lo que decide qué viaja en la mudanza).
+const _MV_RE = (() => { const m = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8').match(/const MV_MUST_RE = (\/.*\/);/); return m ? new Function('return ' + m[1])() : null; })();
+
+test('📈 v689 · umbrales de Coach Pro: ≤55 % o ≥180 % Y al menos 15 kg de diferencia', () => {
+  assert.deepStrictEqual([JUMP_LOW, JUMP_HIGH, JUMP_MIN_KG, JUMP_WINDOW_DAYS], [0.55, 1.8, 15, 90], 'los umbrales aprobados cambiaron sin su veredicto');
+  // Los casos reales medidos
+  assert.strictEqual(jumpCheck(25, 60), 'sube', 'curl martillo 25 → 60 (las dos mancuernas)');
+  assert.strictEqual(jumpCheck(200, 90), 'baja', 'prensa 200 → 90 (otra máquina)');
+  assert.strictEqual(jumpCheck(42.5, 4.5), 'baja', 'sentadilla 42,5 → 4,5 (un dedo)');
+  assert.strictEqual(jumpCheck(70, 8), 'baja', 'prensa 70 → 8 (un dedo)');
+  // Lo que NO es un salto
+  assert.strictEqual(jumpCheck(5, 2.5), null, '🔴 una mancuerna de 5 → 2,5 kg salta: sin el piso de 15 kg, ruido');
+  assert.strictEqual(jumpCheck(100, 85), null, '🔴 una semana de descarga (−15 %) se tomó por salto');
+  assert.strictEqual(jumpCheck(100, 110), null, 'progresar no es saltar');
+  assert.strictEqual(jumpCheck(0, 50), null); assert.strictEqual(jumpCheck(50, 0), null); assert.strictEqual(jumpCheck(null, 50), null);
+  // Bordes: se incluyen (≤ y ≥)
+  assert.strictEqual(jumpCheck(100, 55), 'baja'); assert.strictEqual(jumpCheck(100, 180), 'sube');
+  assert.strictEqual(jumpCheck(20, 36), 'sube', 'justo en el borde (36/20 = 1,8 y 16 kg) SÍ salta');
+  assert.strictEqual(jumpCheck(20, 35), null, 'por debajo del borde (1,75) no');
+});
+
+test('📈 v689 · cada momento pregunta UNA dirección (la bajada serie a serie cazaba rampas)', () => {
+  assert.strictEqual(jumpCheck(25, 60, 'sube'), 'sube');
+  assert.strictEqual(jumpCheck(60, 25, 'sube'), null, '🔴 al teclear se preguntó una BAJADA: una primera serie liviana no es un salto (9 rampas medidas)');
+  assert.strictEqual(jumpCheck(60, 25, 'baja'), 'baja');
+  assert.strictEqual(jumpCheck(25, 60, 'baja'), null);
+});
+
+test('📈 v689 · la sesión ANTERIOR: por identidad, sin la de hoy, solo series hechas, 90 días', () => {
+  const now = Date.parse('2026-09-29T15:00:00Z');
+  const d = n => new Date(now - n * 864e5).toISOString();
+  const h = [
+    { sessionId: 'hoy', date: d(0), exercises: [{ id: 'e36', name: 'Prensa', sets: [{ kg: '300', done: true }] }] },
+    // Desordenado a propósito: manda la FECHA
+    { sessionId: 'a', date: d(20), exercises: [{ id: 'e36', name: 'Prensa de Pierna', sets: [{ kg: '100', done: true }] }] },
+    { sessionId: 'b', date: d(5), exercises: [{ id: 'e36', name: 'Prensa (la mía)', sets: [{ kg: '180', done: true }, { kg: '200', done: true }, { kg: '999', done: false }] }] },
+    { sessionId: 'c', date: d(-3), exercises: [{ id: 'e36', sets: [{ kg: '500', done: true }] }] },   // futura: no cuenta
+  ];
+  const p = jumpPrevTop(h, { id: 'e36', name: 'Otro nombre' }, { now, excludeSessionId: 'hoy' });
+  assert.ok(p, 'no encontró la sesión anterior');
+  assert.strictEqual(p.kg, 200, '🔴 el tope no es la serie más pesada HECHA de la sesión más reciente (renombrada: por identidad)');
+  assert.strictEqual(jumpPrevTop(h, { id: 'e36' }, { now }).kg, 300, 'sin excluir la sesión en curso, la de hoy es la más reciente');
+  assert.strictEqual(jumpPrevTop([{ date: d(100), exercises: [{ id: 'e36', sets: [{ kg: '100', done: true }] }] }], { id: 'e36' }, { now }), null,
+    '🔴 comparó contra hace más de 90 días: quien vuelve de un receso no es un salto');
+  assert.strictEqual(jumpPrevTop([{ date: d(2), exercises: [{ id: 'e36', sets: [{ kg: '100', done: false }] }] }], { id: 'e36' }, { now }), null,
+    'una sugerencia heredada que no se hizo no es «lo que anotaste»');
+});
+
+test('🗣️ v689 · la pregunta depende del implemento (Sofía), y el sí ECOA lo que se preguntó', () => {
+  const lib = [{ id: 'e10', name: 'Curl Martillo con Mancuernas' }];
+  assert.strictEqual(jumpImplement({ id: 'e10', name: 'Curl Martillo con Mancuernas' }), 'mancuerna');
+  assert.strictEqual(jumpImplement({ id: 'e10', name: 'Martillo' }, lib), 'mancuerna', '🔴 con el nombre renombrado en la rutina no reconoce el implemento: se lee el del catálogo (v546)');
+  assert.strictEqual(jumpImplement({ id: 'e10', name: 'Martillo' }), null, 'control: sin el catálogo, ese nombre no dice nada');
+  assert.strictEqual(jumpImplement({ id: 'e36', name: 'Prensa de Pierna' }), 'maquina');
+  assert.strictEqual(jumpImplement({ id: 'e44', name: 'Patada de Glúteo en Polea' }), 'maquina');
+  assert.strictEqual(jumpImplement({ id: 'e13', name: 'Sentadilla con Barra' }), 'barra');
+  assert.strictEqual(jumpImplement({ id: 'e33', name: 'Sentadilla en Smith' }), 'maquina', 'el multipower lleva barra, pero cada máquina pesa distinto');
+  assert.strictEqual(jumpImplement({ id: 'e61', name: 'Sentadilla Sumo' }), null, '🔴 se le preguntó por mancuernas a quien la hace con UNA: sin pregunta escrita, se calla');
+  assert.strictEqual(jumpImplement({ id: 'e89', name: 'Clamshell con Banda (Concha)' }), null);
+  const t = jumpText('mancuerna', 25);
+  assert.deepStrictEqual(t, { lead: 'La vez pasada anotaste 25 kg aquí.', q: '¿Son las dos mancuernas?', si: 'Sí, las dos', no: 'Lo corrijo' });
+  assert.strictEqual(jumpText('maquina', 42.5).lead, 'La vez pasada anotaste 42,5 kg aquí.', 'el peso sale como en el resto de la app (es-CO)');
+  assert.deepStrictEqual([jumpText('maquina', 90).q, jumpText('maquina', 90).si], ['¿Cambiaste de máquina?', 'Es otra máquina']);
+  assert.deepStrictEqual([jumpText('barra', 60).q, jumpText('barra', 60).si], ['¿Cambiaste de barra?', 'Es otra barra']);
+  ['mancuerna', 'maquina', 'barra'].forEach(k => assert.strictEqual(jumpText(k, 10).no, 'Lo corrijo', '«Lo corrijo» es el mismo en las tres'));
+  assert.strictEqual(jumpText(null, 10), null); assert.strictEqual(jumpText('maquina', 0), null);
+  ['mancuerna', 'maquina', 'barra'].forEach(k => { const x = jumpText(k, 10); assert.ok(!/\p{Extended_Pictographic}/u.test(x.lead + x.q + x.si + x.no), 'Sofía: sin emoji, es una pregunta neutral'); });
+});
+
+test('🔑 v689 · la respuesta del día lleva el id del ejercicio dentro (clase de v681)', () => {
+  const v = jumpSessionEncode({ id: 'e36' }, 'pregunta', 200, 2);
+  assert.deepStrictEqual(jumpSessionValue(v, { id: 'e36' }), { estado: 'pregunta', prevKg: 200, si: 2 });
+  assert.strictEqual(jumpSessionValue(v, { id: 'e37' }), null, '🔴 la respuesta de un ejercicio se le pegó a OTRO que quedó en ese índice');
+  assert.deepStrictEqual(jumpSessionValue(jumpSessionEncode({ id: 'e36' }, 'corte', 200, 0), { id: 'e36' }).estado, 'corte');
+  assert.strictEqual(jumpSessionEncode({ id: 'e36' }, 'otro', 200, 0), '', 'un estado inventado no se guarda');
+  assert.strictEqual(jumpSessionEncode({ id: 'a|b' }, 'pregunta', 1, 0), '', 'un id con el separador rompería la lectura');
+  assert.strictEqual(jumpSessionValue('basura', { id: 'e36' }), null);
+  assert.strictEqual(jumpSessionValue(null, { id: 'e36' }), null);
+});
+
+test('🔒 v689 · CABLEADO: la clave nueva en TODAS las listas, se borra con el día y el «sí» viaja al historial', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/const _SK_EX=\[[^\]]*'salto'[^\]]*\]/.test(e4), '🔴 `salto` no está en _SK_EX: al reordenar la pregunta se queda en el ejercicio equivocado');
+  assert.ok(_MV_RE && _MV_RE.test('barra_r1_0'), 'no pude leer MV_MUST_RE (control: barra_ sí viaja)');
+  assert.ok(_MV_RE.test('salto_r1_0'), '🔴 `salto_` no viaja en la mudanza con el entreno a medias');
+  const i = e4.indexOf('function _wipeSessionFlags('); const w = e4.slice(i, e4.indexOf('\n}', i));
+  assert.ok(/const sp='salto_'\+routine\.id\+'_';/.test(w) && /k\.indexOf\(sp\)===0/.test(w), '🔴 la respuesta de ayer se hereda hoy: tiene que borrarse con el día');
+  const j = e4.indexOf('function saveSessionToHistory('); const sv = e4.slice(j, e4.indexOf('\nfunction ', j + 10));
+  assert.ok(/const corte=!!\(_salto&&_salto\.estado==='corte'\);/.test(sv), 'el guardado ya no lee la respuesta');
+  assert.ok(/\.\.\.\(corte\?\{corte:true\}:\{\}\)/.test(sv), '🔴 «Es otra máquina» ya no llega al historial: la curva no sabría que es un punto de partida nuevo');
+});
+
+test('🔒 v689 · CABLEADO del guiado: la subida al teclear, la bajada al cerrar, y nunca encima de otro aviso', () => {
+  const fs = require('fs'), path = require('path');
+  const e6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const i = e6.indexOf('function kgSanityHint('); const k = e6.slice(i, e6.indexOf('\n}', i));
+  assert.ok(k.indexOf('if(kgConfirmGuard(rid,ei,si,el)) return;') >= 0 && k.indexOf('if(kgConfirmGuard') < k.indexOf('gmSaltoAlAnotar('),
+    '🔴 el aviso de salto sale aunque ya saltó la confirmación de un peso fuera de rango (v417)');
+  assert.ok(/toast\('¿'\+v\+' kg\? Revisa el número[^;]*;\s*return;/.test(k), '🔴 con el aviso de «revisa el número» puesto, sale además el del salto');
+  assert.ok(/^\s*gmSaltoAlAnotar\(rid,ei,si\);\s*$/m.test(k), 'la subida ya no se pregunta al teclear');
+  const a = e6.indexOf('function gmSaltoAlAnotar('); const an = e6.slice(a, e6.indexOf('\n}', a));
+  assert.ok(/jumpCheck\(prev\.kg,parseFloat\(getLog\(rid,ei,si,'kg'\)\),'sube'\)!=='sube'/.test(an), '🔴 al teclear se pregunta también la bajada (rampas)');
+  assert.ok(/if\(sessionJump\(r,ei,ex\)\) return;/.test(an), '🔴 se pregunta más de una vez por ejercicio y por sesión');
+  assert.ok(/if\(!jumpImplement\(ex,DB\.exercises\)\) return;/.test(an), 'sin pregunta escrita para ese implemento, igual pregunta');
+  const c = e6.indexOf('function gmSaltoAlCerrar('); const ce = e6.slice(c, e6.indexOf('\n}', c));
+  assert.ok(/if\(!isDone\(r\.id,ei,s\)\) continue;/.test(ce) && /jumpCheck\(prev\.kg,top,'baja'\)!=='baja'/.test(ce), '🔴 la bajada no se mide con el TOPE de las series hechas');
+  // La bajada se mira donde se MARCA la serie que cierra el ejercicio, en orden o no: el descanso solo se
+  // abre en orden, y ahí vivía al principio (lo cazó el harness: marcando fuera de orden nunca se preguntaba).
+  const g = e6.indexOf('function gmToggleSet('); const gr = e6.slice(g, e6.indexOf('\n}', g));
+  assert.ok(/const _cierra=exTrack\(ex\)==='peso_reps'&&Array\.from\(\{length:parseInt\(ex\.sets\)\|\|3\},\(_,s\)=>isDone\(GM\.routine\.id,ei,s\)\)\.every\(Boolean\);/.test(gr),
+    'la bajada ya no se mira al cerrar el ejercicio');
+  assert.ok(/if\(_cierra&&gmSaltoAlCerrar\(ei\)&&!_enOrden\) _gmKeepAnchor\('gm-ex-'\+ei,gmRender\);/.test(gr),
+    '🔴 marcando fuera de orden la bajada no se pregunta (no hay descanso donde mostrarla)');
+  assert.ok(gr.indexOf('setDone(GM.routine.id,ei,si,true);') >= 0 && gr.indexOf('setDone(GM.routine.id,ei,si,true);') < gr.indexOf('const _cierra='),
+    'se mira antes de marcar la serie: el tope del día no la contaría');
+  assert.ok(/const _enOrden=stepIdx===GM\.currentStep;/.test(gr) && gr.indexOf('const _enOrden=') < gr.indexOf('GM.currentStep=next;'),
+    '«en orden» se mide DESPUÉS de avanzar el paso: nunca lo sería');
+  assert.ok(/_gmRestSalto\(opts\.rirEi!=null\?opts\.rirEi:null\);/.test(e6), 'el descanso ya no muestra el aviso');
+  assert.strictEqual((e6.match(/^\s*_gmRestSalto\(null\);\s*$/gm) || []).length, 2, 'la plancha y el cardio deben esconder el aviso (usan el mismo recuadro)');
+  const r = e6.indexOf('function gmSaltoResp('); const rs = e6.slice(r, e6.indexOf('\n}', r));
+  assert.ok(/setSessionJump\(R,ei,ex,r==='si'\?'corte':'visto',st\.prevKg,st\.si\);/.test(rs), 'las respuestas ya no se guardan como corte / visto');
+  assert.ok(/if\(r==='si'&&typeof resaveSessionPartial==='function'\) resaveSessionPartial\(R\);/.test(rs), '🔴 el «sí» no se lleva al entreno guardado');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/<div class="gm-rest-salto" id="gm-rest-salto" hidden><\/div>/.test(html), 'falta el recuadro del aviso en el descanso');
+});
+
+test('🔒 v689 · el corte es SOLO DATO: ninguna regla lo lee todavía (Coach Pro)', () => {
+  const fs = require('fs'), path = require('path');
+  const archivos = ['avi-core.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'];
+  const lectores = archivos.filter(f => /\.corte\b/.test(sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'))));
+  assert.deepStrictEqual(lectores, [], '🔴 una regla ya lee `corte`: eso es el punto 4 (la curva) y necesita su propio veredicto');
 });
 
 // ══════════════════════════════════════════════════════

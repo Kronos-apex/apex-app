@@ -75,6 +75,59 @@ quedaría partido en dos.
 5. ¿Alguna regla actual debe leer las reps en reserva ya (estancamiento, «sube»), o solo se junta el dato?
 6. ¿Es aceptable no preguntar en la última serie de la sesión?
 
+## Punto 3 del lote — el aviso de salto (29-sep · construido en v689)
+
+**Medido** (respaldo del 27-sep, 1.647 pares de sesiones seguidas persona × ejercicio, top de las series de
+trabajo): caen a ≤55 % o suben a ≥180 % **205** veces, pero muchas son legítimas con pesos chicos (mancuerna de
+5 → 2,5 kg). Exigiendo además **≥15 kg de diferencia** quedan **73 saltos en 10 personas (4,4 %)**, y son casi todos
+suciedad para la curva: par contra una mancuerna (curl martillo 25 ↔ 60), otra máquina (prensa 200 → 90), tipeo
+(sentadilla 42,5 → 4,5 → 45; prensa 70 → 8) y máquinas que se alternan (abducción 20 ↔ 40 varias veces).
+
+**Propuesta:**
+- **Cuándo:** al anotar el peso de una serie de trabajo de un ejercicio de peso, si comparado con el tope de la
+  sesión ANTERIOR de ese ejercicio (por identidad, ≤90 días) queda en ≤55 % o ≥180 % Y la diferencia es ≥15 kg.
+  **Una vez por ejercicio y por sesión.** Si ya salta la confirmación de v417 (peso muy por encima del récord),
+  no sale este.
+- **Qué:** un aviso SUAVE dentro de la tarjeta, sin bloquear: «La vez pasada anotaste 60 kg aquí. ¿Cambiaste de
+  máquina, o son las dos mancuernas?» · [Es otra máquina] [Lo corrijo]. Si lo ignora, no pasa nada.
+- **«Lo corrijo»:** lleva al campo del peso. **«Es otra máquina»:** el ejercicio de esa sesión queda marcado
+  `corte:true` en el historial = **punto de partida nuevo** para la curva (punto 4). Solo dato: ninguna regla lo
+  lee todavía.
+- **Clase de v681:** la respuesta del día vive en una clave de sesión nueva (`salto_<rid>_<ei>`, con el id del
+  ejercicio dentro) → `_SK_EX` y `MV_MUST_RE`.
+
+### Veredicto de Coach Pro y Sofía (29-sep-2026) — APROBADO CON CAMBIOS
+
+- **Coach Pro:** los umbrales se quedan (el piso de 15 kg filtra las mancuernas chicas; una descarga del 10-15 %
+  nunca llega). **«Es otra máquina» = `corte:true` SOLO para cambio real de equipo o de forma de anotar**, nunca para
+  una descarga ni para la vuelta tras una lesión: ahí es el MISMO ejercicio con carga baja por un tiempo. **No hay
+  tercer botón** — «ignorar» es la respuesta correcta. **Restricción para el punto 4:** la curva tiene que absorber
+  esos valles con una ventana de varias sesiones (precedente: v610 ancla a lo mejor de las últimas 3), no con un
+  corte manual. Una vez por ejercicio y por sesión: aprobado.
+- **Sofía:** «¿Son las dos mancuernas?» no tiene sentido en una prensa. La pregunta va por implemento, sin emoji, y
+  el sí ECOA lo que se preguntó:
+  - mancuernas: «La vez pasada anotaste {kg} kg aquí. ¿Son las dos mancuernas?» · [Sí, las dos] · [Lo corrijo]
+  - máquina o polea: «… ¿Cambiaste de máquina?» · [Es otra máquina] · [Lo corrijo]
+  - barra: «… ¿Cambiaste de barra?» · [Es otra barra] · [Lo corrijo]
+
+### Lo que decidieron las mediciones al construirlo (v689)
+
+- **La bajada NO se pregunta al teclear.** Respaldo del 28-sep, 1.776 pares: comparando serie a serie salían 50
+  bajadas contra 41 comparando el tope de cada sesión — **9 eran RAMPAS** (una primera serie liviana). La subida da
+  igual de las dos formas (39 = 39). Así que: la subida, al teclear el peso; la bajada, al CERRAR el ejercicio con el
+  tope del día — en el descanso si se marca en orden, en la tarjeta si no (el descanso solo se abre en orden).
+- **Implementos sin pregunta escrita se callan.** De los 80 saltos del respaldo: máquina 47 · barra 13 · mancuernas
+  13 · **otros 7** (zancada búlgara, sentadilla sumo, desplantes, elevación frontal). Preguntar «¿son las dos
+  mancuernas?» a quien hace sentadilla sumo con UNA sería peor que callar. Si se quiere cubrir, Sofía escribe esa
+  variante. El implemento sale del nombre del CATÁLOGO (v546) y, para la barra, de `BAR_DEFAULTS`; Smith y multipower
+  preguntan por la máquina.
+- **Si ya saltó otro aviso, este sobra:** la confirmación de un peso fuera de rango (v417) y el «revisa el número»
+  de las series del mismo día.
+- **La última serie de la sesión** cierra el guiado sin descanso: ahí no se pregunta (mismo hueco que las reps en
+  reserva).
+- ⚠️ Hueco del catálogo visto de paso: **e295 «Press de Banca Agarre Amplio» no está en `BAR_DEFAULTS`** (es con
+  barra). Es de Coach Pro, no se tocó.
+
 ## Veredicto de Coach Pro (28-sep-2026) — APROBADO CON CAMBIOS
 
 1. **Escala 0 · 1 · 2 · 3+: basta.** Con ~1 rep de error en el autorreporte (Halperin 2022), separar

@@ -2006,6 +2006,21 @@ function setSessionBar(routine,ei,ex,kg){
   const v=barSessionEncode(ex,kg); if(!v) return;
   localStorage.setItem(`barra_${routine.id}_${ei}`,v);
 }
+// v689 · EL AVISO DE SALTO (docs/plan-barra-rir.md, punto 3). La respuesta del día vive en `salto_<rid>_<ei>`
+// con el id del ejercicio dentro; una vez por ejercicio y por sesión (se borra con el día).
+function sessionJump(routine,ei,ex){
+  if(!routine||!ex||typeof jumpSessionValue!=='function') return null;
+  try{ return jumpSessionValue(localStorage.getItem(`salto_${routine.id}_${ei}`),ex); }catch(_e){ return null; }
+}
+function setSessionJump(routine,ei,ex,estado,prevKg,si){
+  const v=(typeof jumpSessionEncode==='function')?jumpSessionEncode(ex,estado,prevKg,si):''; if(!v) return false;
+  try{ localStorage.setItem(`salto_${routine.id}_${ei}`,v); return true; }catch(_e){ return false; }
+}
+// El tope de la sesión ANTERIOR de ese ejercicio (la en curso se guarda serie a serie y no cuenta).
+function sessionJumpPrev(routine,ex){
+  if(!routine||!ex||typeof jumpPrevTop!=='function') return null;
+  return jumpPrevTop((DB.history&&DB.history[CUR.clientId])||[],ex,{excludeSessionId:currentSessionId(routine.id)});
+}
 
 function exMetaText(ex,sets,track){
   if(track==='hiit'){const c=hiitCfg(ex);return `${sets} rondas · ${c.work}s/${c.rest}s`;}
@@ -2285,6 +2300,9 @@ function _wipeSessionFlags(routine){
   // sugerencia. Lo de ayer no puede quedar marcado hoy: se borran con el día (y con «Reiniciar»).
   const lp='log_'+routine.id+'_';
   try{ Object.keys(localStorage).filter(k=>k.indexOf(lp)===0&&/_rir$/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(_e){}
+  // v689: la pregunta del salto es de ESTA sesión: mañana se compara de nuevo.
+  const sp='salto_'+routine.id+'_';
+  try{ Object.keys(localStorage).filter(k=>k.indexOf(sp)===0).forEach(k=>localStorage.removeItem(k)); }catch(_e){}
   clearWarmup(routine.id);
 }
 // v682 · la serie que lleva las reps en reserva: la ÚLTIMA de trabajo del ejercicio.
@@ -2370,7 +2388,7 @@ function _sweepOrphanSessionKeys(routine){
 // en memoria (CUR.todayWorking); el plan guardado no se toca hasta confirmar al finalizar.
 // Ver feedback_avi_practicidad_usuario.
 const _SK_SET=['log','done','drop'];   // por-serie: clave `${kind}_${rid}_${ei}_${si}…`
-const _SK_EX=['lastre','wshow','barra']; // por-ejercicio: clave exacta `${kind}_${rid}_${ei}` (v681: barra)
+const _SK_EX=['lastre','wshow','barra','salto']; // por-ejercicio: clave exacta `${kind}_${rid}_${ei}` (v681: barra · v689: salto)
 function _swapSessionKeys(rid,a,b){
   const grab=idx=>{ const out=[];
     _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`;
@@ -2625,7 +2643,11 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     const warm=auxVal(ei,WARM_SI);
     // v681: la barra de ese día viaja con el ejercicio (el `kg` de cada serie siguen siendo los DISCOS).
     const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex,_barIdt):null;
-    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
+    // v689: «es otra máquina / otra barra / las dos mancuernas» = punto de partida NUEVO para la curva
+    // (punto 4). Solo dato: ninguna regla lo lee todavía (Coach Pro, 29-sep).
+    const _salto=sessionJump(routine,ei,ex);
+    const corte=!!(_salto&&_salto.estado==='corte');
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),...(corte?{corte:true}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
       // v682: las reps en reserva solo viajan en una serie HECHA (sin serie no hay «cuántas más»).
       const done=isDone(routine.id,ei,si);
       const rir=(done&&typeof rirValue==='function')?rirValue(getLog(routine.id,ei,si,'rir')):null;

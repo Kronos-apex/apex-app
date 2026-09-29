@@ -937,6 +937,9 @@ function gmRender(){
       if(gmTrack==='peso_reps' && dropSetOn(GM.routine,ei,si)){
         setsEl.insertAdjacentHTML('beforeend', gmAuxRowHTML(ei,ex,dropTok(si),'drop',_gmIco('tridown',12,'🔻'), _dropKg(GM.routine,ex,ei,si), 'fallo'));
       }
+      // v689 · el aviso de salto, bajo la serie donde se anotó (sin responder: si lo ignora, no pasa nada)
+      if(gmTrack==='peso_reps' && typeof sessionJump==='function'){ const _sj=sessionJump(GM.routine,ei,ex);
+        if(_sj&&_sj.estado==='pregunta'&&_sj.si===si) setsEl.insertAdjacentHTML('beforeend', gmSaltoNoteHTML(ei,ex,'gm-salto')); }
     });
     // v682 · las reps en reserva de la ÚLTIMA serie, una vez hecho el ejercicio: para verlas o
     // cambiarlas (el momento de preguntar es el descanso; aquí queda a la mano).
@@ -1050,6 +1053,70 @@ function gmPickRir(ei,n){
   const box=document.getElementById('gm-rest-rir');
   if(box&&!box.hidden&&box.dataset.ei===String(ei)) _gmRestRir(ei);
   _gmKeepAnchor('gm-ex-'+ei,gmRender);
+}
+
+// v689 · EL AVISO DE SALTO (docs/plan-barra-rir.md, punto 3; veredicto de Coach Pro y texto de Sofía, 29-sep).
+// Suave y sin bloquear: si lo ignora, no pasa nada. La SUBIDA se pregunta al teclear el peso; la BAJADA
+// al cerrar el ejercicio, con el tope del día (una primera serie liviana no es un salto: medido, 9 rampas).
+// Una vez por ejercicio y por sesión. No sale si ya saltó la confirmación de un peso fuera de rango (v417).
+function gmSaltoNoteHTML(ei,ex,cls){
+  const st=sessionJump(GM.routine,ei,ex);
+  const t=(st&&st.estado==='pregunta'&&typeof jumpText==='function')?jumpText(jumpImplement(ex,DB.exercises),st.prevKg):null;
+  if(!t) return '';
+  return `<div class="${cls}" id="${cls}-${ei}" role="group" aria-label="${esc(t.q)}">`
+    +`<div class="${cls}-q">${esc(t.lead)} <b>${esc(t.q)}</b></div>`
+    +`<div class="${cls}-opts"><button type="button" class="${cls}-opt" onclick="gmSaltoResp(${ei},'si')">${esc(t.si)}</button>`
+    +`<button type="button" class="${cls}-opt ${cls}-fix" onclick="gmSaltoResp(${ei},'no')">${esc(t.no)}</button></div></div>`;
+}
+// La subida, al anotar el peso de una serie (lo llama `kgSanityHint` si no saltó otro aviso antes).
+function gmSaltoAlAnotar(rid,ei,si){
+  try{
+    const r=GM.routine, ex=(GM.exercises||[])[ei];
+    if(!r||r.id!==rid||!ex||exTrack(ex)!=='peso_reps') return;
+    if(sessionJump(r,ei,ex)) return;                          // una vez por ejercicio y por sesión
+    const prev=sessionJumpPrev(r,ex); if(!prev) return;
+    if(jumpCheck(prev.kg,parseFloat(getLog(rid,ei,si,'kg')),'sube')!=='sube') return;
+    if(!jumpImplement(ex,DB.exercises)) return;               // implemento sin pregunta escrita: se calla
+    if(setSessionJump(r,ei,ex,'pregunta',prev.kg,si)) _gmKeepAnchor('gm-ex-'+ei,gmRender);
+  }catch(_e){}
+}
+// La bajada, al cerrar el ejercicio: se compara el TOPE del día (la serie más pesada hecha). La llama
+// `gmToggleSet` al marcar la serie que lo cierra, en orden o no (el descanso solo se abre en orden).
+// Devuelve si quedó una pregunta nueva.
+function gmSaltoAlCerrar(ei){
+  try{
+    const r=GM.routine, ex=(GM.exercises||[])[ei];
+    if(!r||!ex||exTrack(ex)!=='peso_reps') return;
+    if(sessionJump(r,ei,ex)) return;
+    const n=parseInt(ex.sets)||3; let top=0, topSi=0;
+    for(let s=0;s<n;s++){ if(!isDone(r.id,ei,s)) continue; const k=parseFloat(getLog(r.id,ei,s,'kg')); if(isFinite(k)&&k>top){ top=k; topSi=s; } }
+    const prev=sessionJumpPrev(r,ex); if(!prev) return;
+    if(jumpCheck(prev.kg,top,'baja')!=='baja') return;
+    if(!jumpImplement(ex,DB.exercises)) return;
+    return setSessionJump(r,ei,ex,'pregunta',prev.kg,topSi);
+  }catch(_e){}
+}
+// La misma pregunta DENTRO del descanso (es donde está quieta y mirando, como las reps en reserva).
+function _gmRestSalto(ei){
+  const box=document.getElementById('gm-rest-salto'); if(!box) return;
+  const ex=(ei!=null)?(GM.exercises||[])[ei]:null;
+  const h=ex?gmSaltoNoteHTML(ei,ex,'gm-rest-salto-in'):'';
+  if(!h){ box.hidden=true; box.innerHTML=''; box.dataset.ei=''; return; }
+  box.dataset.ei=String(ei); box.innerHTML=h; box.hidden=false;
+}
+function gmSaltoResp(ei,r){
+  const R=GM.routine, ex=(GM.exercises||[])[ei]; if(!R||!ex) return;
+  const st=sessionJump(R,ei,ex); if(!st) return;
+  setSessionJump(R,ei,ex,r==='si'?'corte':'visto',st.prevKg,st.si);
+  // «Es otra máquina» viaja al entreno guardado, SIN volver a celebrar (v681).
+  if(r==='si'&&typeof resaveSessionPartial==='function') resaveSessionPartial(R);
+  const box=document.getElementById('gm-rest-salto');
+  const enRest=!!(box&&!box.hidden&&box.dataset.ei===String(ei));
+  if(enRest) _gmRestSalto(ei);
+  // «Lo corrijo» lleva al campo del peso: desde el descanso hay que salir de él para verlo.
+  if(r==='no'&&enRest&&typeof gmSkipRest==='function') gmSkipRest();
+  _gmKeepAnchor('gm-ex-'+ei,gmRender);
+  if(r==='no'&&st.si!=null) setTimeout(()=>{ const f=document.querySelector(`#gm-set-${ei}-${st.si} .gm-sinput[data-field="kg"]`); if(f){ try{ f.focus(); f.select&&f.select(); }catch(_e){} } },enRest?260:40);
 }
 
 // v681 · la línea de la barra de UN ejercicio (y sus opciones, si están abiertas). `GM.barOpen`
@@ -1197,7 +1264,9 @@ function kgSanityHint(rid, ei, si, el){
     if(kgOutlier(kgs,mio)){
       const v=getLog(rid,ei,si,'kg');
       toast('¿'+v+' kg? Revisa el número — tus otras series de hoy van mucho más abajo');
+      return;   // v689: con ese aviso ya puesto, el del salto sobra
     }
+    gmSaltoAlAnotar(rid,ei,si);
   }catch(_e){}
 }
 
@@ -1288,6 +1357,7 @@ function gmHoldTimer(ei, si, secs){
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
   _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
+  _gmRestSalto(null);
   if(breEl) breEl.style.display='none';
   if(nextEl) nextEl.textContent='';
   if(titleEl) titleEl.textContent='💪 ¡Aguanta la posición!';
@@ -1434,6 +1504,7 @@ function gmCardioTimer(ei, mins, sets){
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
   _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
+  _gmRestSalto(null);
   if(breEl)breEl.style.display='none';
   if(nextEl)nextEl.textContent='';
   if(titleEl)titleEl.textContent='🚴 ¡Dale! Cardio en marcha';
@@ -1558,6 +1629,11 @@ function gmToggleSet(ei, si, stepIdx){
   if(!done){
     gmLogRow(ei,si); // registra los inputs de la modalidad y los bloquea
     setDone(GM.routine.id,ei,si,true);
+    // v689 · la serie que CIERRA un ejercicio de peso mira la bajada contra la sesión anterior. En orden, la
+    // pregunta sale en el descanso (`_gmRestSalto`); fuera de orden no hay descanso: se pinta en la tarjeta.
+    const _enOrden=stepIdx===GM.currentStep;
+    const _cierra=exTrack(ex)==='peso_reps'&&Array.from({length:parseInt(ex.sets)||3},(_,s)=>isDone(GM.routine.id,ei,s)).every(Boolean);
+    if(_cierra&&gmSaltoAlCerrar(ei)&&!_enOrden) _gmKeepAnchor('gm-ex-'+ei,gmRender);
     if(row){row.classList.add('set-done');row.classList.remove('active-set');}
     if(chk){chk.classList.add('checked');chk.textContent='✓';_gmPop(chk);}
     if(num) num.textContent='✓';
@@ -1699,6 +1775,7 @@ function gmShowRest(secs, nextStep, opts){
   const breEl=document.getElementById('gm-rest-breath');
   if(breEl){ const bc=nextStep&&breathCue(nextStep.ex); breEl.innerHTML=bc?(_gmIco('wind',12,'💨')+' '+esc(bc.s)):''; breEl.style.display=bc?'block':'none'; }
   _gmRestRir(opts.rirEi!=null?opts.rirEi:null); // v682 (se esconde en cualquier otro descanso)
+  _gmRestSalto(opts.rirEi!=null?opts.rirEi:null); // v689: el aviso de salto del ejercicio que se acaba de cerrar
   if(GM.restTimer) clearInterval(GM.restTimer);
   // 🔴 EL DESCANSO ENTRE SERIES ERA EL ÚNICO TIMER SIN CANDADO DE PANTALLA. El HIIT, el
   //    isométrico y el cardio ya lo pedían; éste no — y es el que corre en CADA serie de CADA

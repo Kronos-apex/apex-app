@@ -1607,6 +1607,97 @@ function bootAuthDecision(r) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// EL AVISO DE SALTO (v689) — punto 3 del lote de progresión, docs/plan-barra-rir.md
+// ──────────────────────────────────────────────────────────────────────
+// Cuando el peso de un ejercicio se duplica o cae a la mitad respecto de la sesión anterior, casi
+// siempre NO es progreso: es otra máquina, las dos mancuernas sumadas, o un dedo (42,5 → 4,5).
+// Medido (respaldo del 28-sep, 1.776 pares de sesiones persona × ejercicio): 80 saltos en 10 personas.
+// Para la curva de cada asesorado (punto 4) eso es suciedad, y solo la persona sabe cuál de las tres.
+// Umbrales aprobados por Coach Pro (29-sep): ≤55 % o ≥180 % Y al menos 15 kg de diferencia (sin el
+// piso, una mancuerna de 5 → 2,5 kg saltaría). Una semana de descarga (−10/15 %) nunca llega.
+const JUMP_LOW = 0.55, JUMP_HIGH = 1.8, JUMP_MIN_KG = 15, JUMP_WINDOW_DAYS = 90;
+
+// El tope (la serie más pesada HECHA) de la sesión anterior de ese ejercicio, por IDENTIDAD (v585).
+// `opts.excludeSessionId` = la sesión en curso (se guarda serie a serie y no es «la anterior»).
+// Más de JUMP_WINDOW_DAYS atrás no hay con qué comparar: quien vuelve de un receso no es un salto.
+function jumpPrevTop(history, ex, opts) {
+  opts = opts || {};
+  const now = Number(opts.now) || Date.now();
+  const idt = (opts.idt && typeof opts.idt.keyOf === 'function') ? opts.idt : exerciseIdentity(history || []);
+  const key = idt.keyOf(ex || {});
+  let best = null;
+  (history || []).forEach(s => {
+    if (!s || !s.date) return;
+    if (opts.excludeSessionId && s.sessionId === opts.excludeSessionId) return;
+    const t = new Date(s.date).getTime();
+    if (isNaN(t) || t > now || now - t > JUMP_WINDOW_DAYS * 864e5) return;
+    (s.exercises || []).forEach(x => {
+      if (!x || idt.keyOf(x) !== key) return;
+      let top = 0;
+      (x.sets || []).forEach(st => { if (!st || !st.done) return; const k = parseFloat(st.kg); if (isFinite(k) && k > top) top = k; });
+      if (top > 0 && (!best || t > best.t)) best = { kg: top, t };
+    });
+  });
+  return best ? { kg: best.kg, date: new Date(best.t).toISOString() } : null;
+}
+// ¿Es un salto? 'sube' | 'baja' | null. `dir` limita a una sola dirección: la SUBIDA se pregunta al
+// teclear el peso; la BAJADA solo al cerrar el ejercicio y con el tope del día — medido, preguntarla
+// serie a serie cazaba 9 RAMPAS (una primera serie liviana) sobre 41 bajadas de verdad.
+function jumpCheck(prevKg, kg, dir) {
+  const p = Number(prevKg), k = Number(kg);
+  if (!(p > 0) || !(k > 0)) return null;
+  if (dir !== 'baja' && k / p >= JUMP_HIGH && k - p >= JUMP_MIN_KG) return 'sube';
+  if (dir !== 'sube' && k / p <= JUMP_LOW && p - k >= JUMP_MIN_KG) return 'baja';
+  return null;
+}
+// ¿Con qué se hace? Decide QUÉ se pregunta (Sofía: «¿son las dos mancuernas?» no tiene sentido en
+// una prensa). 'barra' | 'mancuerna' | 'maquina' | null. Por el NOMBRE DEL CATÁLOGO (el de la rutina
+// puede estar renombrado, v546) y el de la rutina. `null` = no hay pregunta escrita para ese
+// implemento (bandas, pesa rusa, disco, trineo, objetos de casa…): medido, 7 de 80 saltos, y NO se
+// pregunta — preguntarle por mancuernas a quien hace sentadilla sumo con UNA sería peor que callar.
+const _JUMP_MAQ_RE = /maquina|polea|cable|prensa|hack|pendular|contractora|jalon|pec deck/;
+function jumpImplement(ex, lib) {
+  if (!ex) return null;
+  const nn = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const canon = (Array.isArray(lib) ? lib : []).find(x => x && ex.id != null && x.id === ex.id);
+  const nombres = nn((canon && canon.name) || '') + ' | ' + nn(ex.name);
+  if (/smith|multipower/.test(nombres)) return 'maquina';   // lleva barra, pero cada máquina pesa distinto
+  if (barDefaultKg(canon || ex) != null) return 'barra';
+  if (/mancuerna/.test(nombres)) return 'mancuerna';
+  if (_JUMP_MAQ_RE.test(nombres)) return 'maquina';
+  return null;
+}
+// El texto (Sofía, 29-sep): sin emoji, tutea, cabe en dos líneas a 360 px. «Lo corrijo» es igual en las
+// tres; el sí ECOA lo que se preguntó (no se le dice «es otra máquina» a quien respondió por una barra).
+const JUMP_TEXTS = {
+  mancuerna: { q: '¿Son las dos mancuernas?', si: 'Sí, las dos' },
+  maquina: { q: '¿Cambiaste de máquina?', si: 'Es otra máquina' },
+  barra: { q: '¿Cambiaste de barra?', si: 'Es otra barra' },
+};
+const JUMP_FIX = 'Lo corrijo';
+function jumpText(impl, prevKg) {
+  const t = JUMP_TEXTS[impl];
+  if (!t || !(Number(prevKg) > 0)) return null;
+  return { lead: 'La vez pasada anotaste ' + fmtMiles(prevKg) + ' kg aquí.', q: t.q, si: t.si, no: JUMP_FIX };
+}
+// La respuesta del día vive en `salto_<rid>_<ei>` = «<id del ejercicio>|<estado>|<kg anterior>|<serie>».
+// Con el id DENTRO (clase de v681): si el plan cambia y en ese índice queda otro ejercicio, no se le pega.
+// Estados: 'pregunta' (sin responder) · 'corte' (dijo que sí: punto de partida nuevo) · 'visto' (lo corrige).
+const JUMP_ESTADOS = ['pregunta', 'corte', 'visto'];
+function jumpSessionEncode(ex, estado, prevKg, si) {
+  if (!ex || ex.id == null || String(ex.id).indexOf('|') >= 0 || JUMP_ESTADOS.indexOf(estado) < 0) return '';
+  const p = Number(prevKg), s = parseInt(si, 10);
+  return String(ex.id) + '|' + estado + '|' + (p > 0 ? p : '') + '|' + (s >= 0 ? s : '');
+}
+function jumpSessionValue(raw, ex) {
+  if (typeof raw !== 'string' || !ex || ex.id == null) return null;
+  const p = raw.split('|');
+  if (p.length !== 4 || p[0] !== String(ex.id) || JUMP_ESTADOS.indexOf(p[1]) < 0) return null;
+  const kg = Number(p[2]), si = parseInt(p[3], 10);
+  return { estado: p[1], prevKg: kg > 0 ? kg : null, si: si >= 0 ? si : null };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // LAS REPS EN RESERVA (v682) — ver docs/plan-barra-rir.md
 // ──────────────────────────────────────────────────────────────────────
 // «¿Cuántas más te salían?» en la ÚLTIMA serie de cada ejercicio de peso, un toque y opcional (la
@@ -11877,7 +11968,7 @@ function shareSiteLabel(site) {
 const MV_ITEM_MAX = 4000;
 const MV_TOTAL_MAX = 100000;
 // v681: `barra_` (la barra elegida del día, por ejercicio) viaja como `lastre_`: es del entreno a medias.
-const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|barra_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
+const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|barra_|salto_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
 const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpending_|ax_udirty_|ax_udbase_)/;
 // La MISMA regla del lado que envía y del que recibe (una sola definición).
 function mudanzaKeyAllowed(k) {
@@ -12289,6 +12380,17 @@ if (typeof module !== 'undefined' && module.exports) {
     rirValue,
     rirLabel,
     rirHistText,
+    JUMP_LOW,
+    JUMP_HIGH,
+    JUMP_MIN_KG,
+    JUMP_WINDOW_DAYS,
+    jumpPrevTop,
+    jumpCheck,
+    jumpImplement,
+    jumpText,
+    JUMP_TEXTS,
+    jumpSessionEncode,
+    jumpSessionValue,
     suggestLoad,
     loadStep,
     suggestFromPR,
