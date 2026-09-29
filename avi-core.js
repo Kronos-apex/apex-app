@@ -11847,22 +11847,45 @@ function showcaseFirstName(name) {
   // MISMA derivación que `clientProgressStory` — si se separan, la atadura falla en silencio.
   return String(name || '').trim().split(/\s+/)[0] || '';
 }
-function showcaseAudit(cards, clients, historyByClient, now) {
+// 🔴 v691 · DE QUIÉN ES UNA TARJETA: primero por su ATADURA, y solo si no la tiene, por el nombre.
+//    Desde v691 cada tarjeta nueva queda atada a su persona en `avi_showcase_dueno` (privada: la
+//    tabla pública no cambia) y la app se la trae como `card.dueno`. Sin eso, con dos personas que se
+//    llaman igual, la ficha de una mostraba (y dejaba QUITAR) la tarjeta de la otra, y borrar la
+//    cuenta de una se llevaba la de la otra. Una tarjeta atada a alguien que ya no está en la lista
+//    es huérfana: su dueño se fue, aunque otra persona se llame igual.
+// → { estado: 'duena', cliente } · { estado: 'huerfana' } · { estado: 'ambigua', cuantos }
+function showcaseOwner(card, clients) {
   const cls = (clients || []).filter(c => c && c.id);
-  const hist = historyByClient || {};
+  if (!card) return { estado: 'huerfana' };
+  if (card.dueno) {
+    const c = cls.find(x => x.id === card.dueno);
+    return c ? { estado: 'duena', cliente: c } : { estado: 'huerfana' };
+  }
   const norm = (s) => showcaseFirstName(s).toLocaleLowerCase('es');
+  const cand = cls.filter(c => norm(c.name) === norm(card.nombre));
+  if (!cand.length) return { estado: 'huerfana' };
+  // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Elegir una sería decidir
+  //    sobre la tarjeta equivocada; se muestra el caso y decide quien sí sabe de quién es.
+  if (cand.length > 1) return { estado: 'ambigua', cuantos: cand.length };
+  return { estado: 'duena', cliente: cand[0] };
+}
+// La tarjeta de ESTA persona (para su ficha), o null. Una tarjeta ambigua no es de nadie hasta que el
+// coach la resuelva desde el Inicio: mostrarla en las dos fichas dejaba quitar la del otro.
+function showcaseCardFor(clientId, cards, clients) {
+  return (cards || []).filter(Boolean).find(card => {
+    const o = showcaseOwner(card, clients);
+    return o.estado === 'duena' && o.cliente.id === clientId;
+  }) || null;
+}
+function showcaseAudit(cards, clients, historyByClient, now) {
+  const hist = historyByClient || {};
   return (cards || []).filter(Boolean).map(card => {
     const nombre = String(card.nombre || '');
-    const cand = cls.filter(c => norm(c.name) === norm(nombre));
     const base = { id: card.id, nombre };
-    if (!cand.length) return Object.assign(base, { estado: 'huerfana' });
-    // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy mismo hay dos
-    //    Dora en la lista. Elegir una sería decidir sobre la tarjeta equivocada; se muestra
-    //    el caso y decide quien sí sabe de quién es.
-    if (cand.length > 1) {
-      return Object.assign(base, { estado: 'ambigua', cuantos: cand.length });
-    }
-    const c = cand[0];
+    const o = showcaseOwner(card, clients);
+    if (o.estado === 'huerfana') return Object.assign(base, { estado: 'huerfana' });
+    if (o.estado === 'ambigua') return Object.assign(base, { estado: 'ambigua', cuantos: o.cuantos });
+    const c = o.cliente;
     const st = clientProgressStory(c, hist[c.id] || [], now);
     if (st && st.ok) return Object.assign(base, { estado: 'ok', clienteId: c.id });
     return Object.assign(base, {
@@ -12083,6 +12106,8 @@ if (typeof module !== 'undefined' && module.exports) {
     showcaseFirstName,
     showcaseAudit,
     showcasePendientes,
+    showcaseOwner,
+    showcaseCardFor,
     SHOWCASE_OBJETIVOS,
     normalizeGoal,
     STORY_MIN_SESSIONS,

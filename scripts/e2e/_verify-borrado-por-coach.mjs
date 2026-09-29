@@ -61,6 +61,8 @@ try {
   const B = await crear('coach'); creados.push(B.uid);
   const A = await crear('asesorado'); creados.push(A.uid);
   const S = await crear('extrano'); creados.push(S.uid);
+  // v691 · OTRA asesorada del mismo coach con el MISMO primer nombre: su tarjeta tiene que sobrevivir.
+  const A2 = await crear('tocaya'); creados.push(A2.uid);
   const NOMBRE = 'PruebaR14 Borrado';
   let r = await sb('user_data', { method: 'POST', body: JSON.stringify({ user_id: B.uid, coach_id: B.uid, role: 'coach', profile: { name: 'Coach R14' } }) });
   afirma(r.ok, 'ficha del coach desechable', 'status=' + r.status);
@@ -68,8 +70,13 @@ try {
   afirma(r.ok, 'ficha del asesorado (su coach_id es B)', 'status=' + r.status);
   r = await sb('user_data', { method: 'POST', body: JSON.stringify({ user_id: S.uid, coach_id: S.uid, role: 'client', profile: { name: 'Extraño R14' } }) });
   afirma(r.ok, 'ficha del extraño (no es coach de A)', 'status=' + r.status);
-  r = await sb('avi_showcase', { method: 'POST', body: JSON.stringify({ coach_id: B.uid, nombre: NOMBRE.split(/\s+/)[0], entrenos: 9, meses: 1, subidas: [{ ejercicio: 'Prensa de Pierna', de: 40, a: 60 }], subieron: 1, con_carga: 1 }) });
-  afirma(r.ok, 'su tarjeta pública', 'status=' + r.status);
+  r = await sb('user_data', { method: 'POST', body: JSON.stringify({ user_id: A2.uid, coach_id: B.uid, role: 'client', profile: { name: NOMBRE.split(/\s+/)[0] + ' Tocaya', age: 30 }, routines: [], history: [] }) });
+  afirma(r.ok, 'ficha de la TOCAYA (mismo primer nombre, mismo coach)', 'status=' + r.status);
+  const tarjeta = async () => { const t = await sb('avi_showcase', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ coach_id: B.uid, nombre: NOMBRE.split(/\s+/)[0], entrenos: 9, meses: 1, subidas: [{ ejercicio: 'Prensa de Pierna', de: 40, a: 60 }], subieron: 1, con_carga: 1 }) }); const j = await t.json(); return Array.isArray(j) && j[0] ? j[0].id : null; };
+  const tA = await tarjeta(), tA2 = await tarjeta(), tVieja = await tarjeta();
+  afirma(tA && tA2 && tVieja, 'tres tarjetas con el mismo nombre: la suya, la de la tocaya y una vieja sin atar');
+  r = await sb('avi_showcase_dueno', { method: 'POST', body: JSON.stringify([{ showcase_id: tA, user_id: A.uid, coach_id: B.uid }, { showcase_id: tA2, user_id: A2.uid, coach_id: B.uid }]) });
+  afirma(r.ok, 'la suya y la de la tocaya quedan ATADAS a cada una', 'status=' + r.status);
   r = await sb('push_subscriptions', { method: 'POST', body: JSON.stringify({ client_id: A.uid, subscription: { endpoint: 'https://ejemplo.invalido/r14', keys: {} } }) });
   afirma(r.ok, 'su suscripción de avisos', 'status=' + r.status);
   r = await sb('app_errors', { method: 'POST', body: JSON.stringify({ uid: A.uid, kind: 'error', msg: 'prueba r14', src: 'harness', build: 'avi-v680', ua: 'harness' }) });
@@ -93,15 +100,18 @@ try {
   // ── 3 · SU coach sí, y se va TODO ──────────────────────────────────────────
   const ok = await pedir(tB, { cliente: A.uid });
   afirma(ok.status === 200 && ok.ok === true && ok.porCoach === true, 'su coach lo elimina', JSON.stringify(ok).slice(0, 110));
-  afirma(ok.tarjetasQuitadas === 1, 'y dice que quitó su tarjeta pública', 'tarjetasQuitadas=' + ok.tarjetasQuitadas);
+  afirma(ok.tarjetasQuitadas === 2, 'quitó su tarjeta y la vieja sin atar (v574: primero la privacidad de quien se va)', 'tarjetasQuitadas=' + ok.tarjetasQuitadas);
+  afirma(ok.tarjetasDudosas === 1, 'y DICE que la vieja podía ser de otra persona con su nombre', 'tarjetasDudosas=' + ok.tarjetasDudosas);
   afirma(!(await existeCuenta(A.uid)), '🔴 su CUENTA DE ACCESO ya no existe (no puede volver a entrar)');
   afirma(await cuenta(`user_data?user_id=eq.${A.uid}&select=user_id`) === 0, 'su ficha ya no está');
-  afirma(await cuenta(`avi_showcase?coach_id=eq.${B.uid}&select=id`) === 0, 'su tarjeta pública ya no está');
+  afirma(await cuenta(`avi_showcase?id=eq.${tA}&select=id`) === 0, 'su tarjeta pública ya no está');
+  afirma(await cuenta(`avi_showcase?id=eq.${tA2}&select=id`) === 1, '🔴 v691 · la tarjeta ATADA a la tocaya SIGUE publicada (antes se la llevaba)');
+  afirma(await cuenta(`avi_showcase_dueno?showcase_id=eq.${tA2}&select=showcase_id`) === 1, 'y su atadura sigue ahí');
   afirma(await cuenta(`push_subscriptions?client_id=eq.${A.uid}&select=id`) === 0, 'sus avisos ya no están');
   afirma(await cuenta(`app_errors?uid=eq.${A.uid}&select=id`) === 0, 'sus errores registrados ya no están');
   afirma(await archivos('progress-photos', A.uid) === 0, 'sus fotos de progreso ya no están');
   afirma(await archivos('chat-media', A.uid) === 0, 'sus fotos del chat ya no están');
-  afirma(await existeCuenta(B.uid) && await existeCuenta(S.uid), '🔒 el coach y el extraño siguen vivos');
+  afirma(await existeCuenta(B.uid) && await existeCuenta(S.uid) && await existeCuenta(A2.uid), '🔒 el coach, el extraño y la tocaya siguen vivos');
 } catch (e) {
   afirma(false, 'la prueba se cayó', String(e).slice(0, 160));
 } finally {

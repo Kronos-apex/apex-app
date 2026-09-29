@@ -23,11 +23,14 @@
 // cuenta, perfil, rutinas, progreso, medidas y fotos»— :
 //   · `avi_showcase`: su tarjeta seguía PUBLICADA en la página del coach. Es lo más grave,
 //     porque es el único dato suyo que se lee SIN cuenta. La tabla guarda solo el primer
-//     nombre (decisión correcta: es pública), así que se ata por (coach_id, nombre).
-//     ⚠️ Si dos asesorados del mismo coach comparten primer nombre, se borran las dos
-//     tarjetas. Es deliberado: dejar publicado el nombre y los kilos de quien ejerció su
-//     derecho de supresión no es una opción, y una tarjeta se vuelve a publicar en un toque.
-//     La respuesta dice cuántas se quitaron para que la app pueda avisarle al coach.
+//     nombre (decisión correcta: es pública), así que se ataba por (coach_id, nombre).
+//     🔴 v691 · con dos asesorados que se llaman igual eso se llevaba la tarjeta del OTRO. Desde
+//     v691 cada tarjeta nueva queda atada a su persona en `avi_showcase_dueno` (privada, s3) y se
+//     borra por esa atadura: una tarjeta atada a otra persona JAMÁS se toca. Solo las viejas sin
+//     atar siguen yendo por el nombre, y ahí se mantiene la decisión de v574: si otra persona se
+//     llama igual se quita igual (dejar publicado el nombre y los kilos de quien ejerció su
+//     derecho de supresión no es una opción; una tarjeta se vuelve a publicar en un toque), y la
+//     respuesta lo DICE (`tarjetasDudosas`) para que la app le avise al coach.
 //   · `app_errors`: guarda `uid`, el user-agent y el contexto de sus errores.
 //   · `apex-photos`: se limpiaba `avatars` pero no este bucket.
 //
@@ -69,26 +72,53 @@ const COACH_UID = "0a6484ed-42af-449d-9903-e440ac683ecf";
 // asesorado suyo (v680). Una sola lista de lo que se borra, para que no se separen.
 // 🔒 ORDEN: todo lo que NO cascadea va PRIMERO; `auth.users` de último. Ver cabecera.
 // deno-lint-ignore no-explicit-any
-async function borrarTodo(admin: any, uid: string): Promise<{ tarjetasQuitadas: number }> {
+async function borrarTodo(admin: any, uid: string): Promise<{ tarjetasQuitadas: number; tarjetasDudosas: number }> {
   // 0. Leer lo que hace falta para atar sus rastros ANTES de que desaparezca la fila.
-  //    Su tarjeta pública solo se puede atar por (coach_id, primer nombre): `avi_showcase`
-  //    guarda únicamente el nombre de pila, a propósito, porque es la única tabla que se
-  //    lee sin cuenta.
   const { data: mio } = await admin
     .from("user_data").select("coach_id, profile").eq("user_id", uid).maybeSingle();
   // MISMA derivación que `showcaseFirstName` en avi-core.js: si se separan, la atadura
   // falla en silencio y la tarjeta se queda publicada.
-  const primerNombre = String((mio?.profile as Record<string, unknown> | null)?.name ?? "")
-    .trim().split(/\s+/)[0] ?? "";
+  const primero = (s: unknown) => String(s ?? "").trim().split(/\s+/)[0] ?? "";
+  const primerNombre = primero((mio?.profile as Record<string, unknown> | null)?.name);
 
   // 1. Su TARJETA PÚBLICA. Va primero porque es el único dato suyo visible sin cuenta:
   //    si algo falla después, al menos ya dejó de estar publicada.
-  let tarjetasQuitadas = 0;
+  //    1a · v691 · las ATADAS a esta persona (`avi_showcase_dueno`, privada): exacto.
+  const { data: suyas, error: eA } = await admin
+    .from("avi_showcase_dueno").select("showcase_id").eq("user_id", uid);
+  if (eA) throw new Error("avi_showcase_dueno: " + eA.message);
+  const ids = new Set<string>((suyas ?? []).map((x: { showcase_id: string }) => x.showcase_id));
+  //    1b · las VIEJAS sin atar con su primer nombre. Una tarjeta atada a OTRA persona no se toca
+  //         nunca: ese era el defecto (con dos que se llaman igual, se llevaba la del otro).
+  let tarjetasDudosas = 0;
   if (mio?.coach_id && primerNombre) {
+    const { data: mismas, error: eM } = await admin
+      .from("avi_showcase").select("id").eq("coach_id", mio.coach_id).eq("nombre", primerNombre);
+    if (eM) throw new Error("avi_showcase: " + eM.message);
+    const cand = (mismas ?? []).map((x: { id: string }) => x.id).filter((id: string) => !ids.has(id));
+    if (cand.length) {
+      const { data: atadas, error: eT } = await admin
+        .from("avi_showcase_dueno").select("showcase_id").in("showcase_id", cand);
+      if (eT) throw new Error("avi_showcase_dueno: " + eT.message);
+      const deOtro = new Set((atadas ?? []).map((x: { showcase_id: string }) => x.showcase_id));
+      const sinAtar = cand.filter((id: string) => !deOtro.has(id));
+      if (sinAtar.length) {
+        // ¿Otra persona de ese coach se llama igual? Entonces la tarjeta sin atar PUEDE ser suya:
+        // se quita igual (v574) y se DICE, para que el coach la vuelva a publicar si era de ella.
+        const { data: gente, error: eG } = await admin
+          .from("user_data").select("user_id, nombre:profile->>name").eq("coach_id", mio.coach_id).neq("user_id", uid);
+        if (eG) throw new Error("user_data: " + eG.message);
+        const otros = (gente ?? []).filter((g: { nombre: unknown }) =>
+          primero(g.nombre).toLowerCase() === primerNombre.toLowerCase()).length;
+        if (otros > 0) tarjetasDudosas = sinAtar.length;
+        sinAtar.forEach((id: string) => ids.add(id));
+      }
+    }
+  }
+  let tarjetasQuitadas = 0;
+  if (ids.size) {
     const { data: quitadas, error: eSc } = await admin
-      .from("avi_showcase").delete()
-      .eq("coach_id", mio.coach_id).eq("nombre", primerNombre)
-      .select("id");
+      .from("avi_showcase").delete().in("id", [...ids]).select("id");
     if (eSc) throw new Error("avi_showcase: " + eSc.message);
     tarjetasQuitadas = quitadas?.length ?? 0;
   }
@@ -130,7 +160,7 @@ async function borrarTodo(admin: any, uid: string): Promise<{ tarjetasQuitadas: 
   //    gym_members, moderators, follows; `community_reports` queda anonimizado.
   const { error: e3 } = await admin.auth.admin.deleteUser(uid);
   if (e3) throw new Error("auth.deleteUser: " + e3.message);
-  return { tarjetasQuitadas };
+  return { tarjetasQuitadas, tarjetasDudosas };
 }
 
 function json(obj: unknown, status = 200) {
@@ -182,8 +212,8 @@ Deno.serve(conCors(async (req) => {
       if (ef) throw new Error("user_data check: " + ef.message);
       if (!fila) return json({ ok: false, error: "not_found" }, 404);
       if (fila.coach_id !== uid) return json({ ok: false, error: "not_your_client" }, 403);
-      const { tarjetasQuitadas } = await borrarTodo(admin, objetivo);
-      return json({ ok: true, deleted: objetivo, porCoach: true, tarjetasQuitadas });
+      const { tarjetasQuitadas, tarjetasDudosas } = await borrarTodo(admin, objetivo);
+      return json({ ok: true, deleted: objetivo, porCoach: true, tarjetasQuitadas, tarjetasDudosas });
     } catch (err) {
       return json({ ok: false, error: String(err) }, 500);
     }
@@ -213,8 +243,8 @@ Deno.serve(conCors(async (req) => {
     }
 
     // ── Borrado COMPLETO self-service (flujo original de Play Store) ──
-    const { tarjetasQuitadas } = await borrarTodo(admin, uid);
-    return json({ ok: true, deleted: uid, tarjetasQuitadas });
+    const { tarjetasQuitadas, tarjetasDudosas } = await borrarTodo(admin, uid);
+    return json({ ok: true, deleted: uid, tarjetasQuitadas, tarjetasDudosas });
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
   }

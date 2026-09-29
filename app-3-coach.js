@@ -2449,14 +2449,23 @@ async function _loadShowcase(force){
     const {data,error}=await c.from('avi_showcase').select('id,nombre,created_at')
       .eq('coach_id',u.id).order('created_at',{ascending:false});
     if(error){warn('AVI showcase:',error.message);return (_pubCache=[]);}
-    return (_pubCache=data||[]);
+    // v691 · de quién es cada una, por su ATADURA privada (`avi_showcase_dueno`): con dos personas
+    // que se llaman igual, la ficha de una mostraba (y dejaba quitar) la tarjeta de la otra. Sin
+    // respuesta de esa tabla se sigue sin `dueno` y manda el nombre, como antes (showcaseOwner).
+    const filas=data||[];
+    try{
+      const {data:dd,error:ed}=await c.from('avi_showcase_dueno').select('showcase_id,user_id').eq('coach_id',u.id);
+      if(!ed&&Array.isArray(dd)){ const m={}; dd.forEach(x=>{ m[x.showcase_id]=x.user_id; }); filas.forEach(f=>{ if(m[f.id])f.dueno=m[f.id]; }); }
+    }catch(_e){}
+    return (_pubCache=filas);
   }catch(e){ warn('AVI showcase:',e&&e.message); return (_pubCache=[]); }
 }
 async function _renderStoryPub(st){
   const el=document.getElementById('d-story-pub'); if(!el)return;
   const filas=await _loadShowcase();
   const el2=document.getElementById('d-story-pub'); if(!el2)return;  // cambió de ficha mientras cargaba
-  const ya=filas.find(f=>f.nombre===st.nombre);
+  // v691 · la tarjeta de ESTA persona, no la primera que se llame igual (showcaseCardFor, avi-core).
+  const ya=(typeof showcaseCardFor==='function')?showcaseCardFor(CUR.clientId,filas,DB.clients):filas.find(f=>f.nombre===st.nombre);
   if(ya){
     // «Ver» va aquí y no solo en el Inicio (v542): es el momento en que quiere comprobar cómo
     // quedó — publicar a ciegas y tener que buscar la puerta en otra pantalla es lo que reportó.
@@ -2503,8 +2512,20 @@ async function publishProgress(){
   try{
     const c=AUTH.client(); const u=await AUTH.getUser();
     if(!c||!u){toast('Necesitas conexión para publicar');return;}
-    const {error}=await c.from('avi_showcase').insert({...row,coach_id:u.id});
+    const {data:nueva,error}=await c.from('avi_showcase').insert({...row,coach_id:u.id}).select('id').single();
     if(error){ toast(/6 tarjetas/.test(error.message)?'Tu web ya tiene el tope de tarjetas':'No se pudo publicar'); return; }
+    // 🔒 v691 · LA TARJETA NACE ATADA A SU PERSONA (privado, `avi_showcase_dueno`). Sin la atadura, con
+    //    dos asesorados que se llaman igual, borrar la cuenta de uno se llevaba la tarjeta del otro. Si la
+    //    atadura no se puede escribir, la tarjeta se quita: una a medias no se deja publicada.
+    const _cid=CUR.clientId;
+    if(nueva&&nueva.id&&typeof _isAuthId==='function'&&_isAuthId(_cid)){
+      const {error:eD}=await c.from('avi_showcase_dueno').insert({showcase_id:nueva.id,user_id:_cid,coach_id:u.id});
+      if(eD){
+        warn('AVI showcase: no se pudo atar la tarjeta a su persona:',eD.message);
+        try{ await c.from('avi_showcase').delete().eq('id',nueva.id); }catch(_e){}
+        await _loadShowcase(true); toast('No se pudo publicar. Intenta de nuevo con señal.'); return;
+      }
+    }
     await _loadShowcase(true);
     toast('🌐 Publicada en tu web');
     const cl=DB.clients.find(x=>x.id===CUR.clientId); if(cl)renderStoryCard(cl);
@@ -2801,12 +2822,17 @@ async function _delClientServer(id){
     toast('⚠️ No se pudo eliminar ahora. Revisa tu conexión e intenta de nuevo — no se borró nada.');
     return false;
   }
+  // v691 · una tarjeta VIEJA (sin atar) con el mismo primer nombre que otro asesorado se quita igual
+  // (decisión de v574: primero la privacidad de quien se va), pero se DICE: puede ser de la otra persona.
+  if(data.tarjetasDudosas>0) _delTarjetaDudosa=true;
   return true;
 }
+let _delTarjetaDudosa=false;
 async function delClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   if(!delClientGuard(c,()=>confirm(`¿Eliminar a ${c.name}? Se borrarán sus rutinas, historial, fotos y todos sus datos, y ya no podrá entrar con su cuenta. Esta acción no se puede deshacer.`)))return;
   const delId=CUR.clientId;
+  _delTarjetaDudosa=false;
   if(AUTH_MODE){
     if(_isAuthId(delId)){ if(!(await _delClientServer(delId))) return; }
     // Una ficha sin cuenta real (id legacy) no tiene acceso que quitar: basta su fila.
@@ -2824,7 +2850,10 @@ async function delClient(){
   if(DB.nutrition)delete DB.nutrition[CUR.clientId];
   if(DB.medidas)delete DB.medidas[CUR.clientId];
   if(DB.photos)delete DB.photos[CUR.clientId];
-  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});sv('ax_nut',DB.nutrition||{});sv('ax_med',DB.medidas||{});sv('ax_photos',DB.photos||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);toast(`🗑️ ${c.name} eliminado`);
+  sv('ax_c',DB.clients);sv('ax_m',DB.msgs);sv('ax_hist',DB.history||{});sv('ax_pr',DB.prs||{});sv('ax_bw',DB.bodyweight||{});sv('ax_nut',DB.nutrition||{});sv('ax_med',DB.medidas||{});sv('ax_photos',DB.photos||{});renderAll();gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
+  toast(_delTarjetaDudosa
+    ? `🗑️ ${c.name} eliminado. Se quitó también una tarjeta de tu web con su mismo nombre: si era de otra persona, vuelve a publicarla desde su ficha.`
+    : `🗑️ ${c.name} eliminado`, _delTarjetaDudosa?7000:undefined);
 }
 
 // ══════════════════════ ROUTINES ══════════════════════

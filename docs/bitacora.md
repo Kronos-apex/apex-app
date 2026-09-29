@@ -4,6 +4,25 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v691: cada tarjeta pública atada a su persona (sin publicarlo)
+
+- **El defecto** (visto al borrar las 6 cuentas inactivas): `avi_showcase` guarda solo el primer nombre (a propósito:
+  es la única tabla que se lee sin cuenta), así que todo se ataba por nombre. Con dos asesorados del mismo coach que se
+  llaman igual — ya pasó —, **borrar la cuenta de uno se llevaba la tarjeta del otro**, y **la ficha de uno mostraba y
+  dejaba QUITAR la tarjeta del otro**.
+- **El arreglo:** tabla PRIVADA `avi_showcase_dueno` (migración `s3`): sin anon, sin UPDATE, solo el coach dueño la
+  escribe y solo hacia un asesorado suyo; quitar la tarjeta se lleva la atadura. Las 4 tarjetas que había se ataron
+  (ningún nombre se repetía). **Publicar** ata la tarjeta a su persona (y si la atadura falla, la tarjeta se quita: no
+  queda a medias). **La ficha y el Inicio** deciden de quién es cada tarjeta por la atadura (`showcaseOwner`,
+  `showcaseCardFor`): una atada a alguien que se fue es huérfana aunque otra persona se llame igual.
+- **`delete-account` v10:** borra las tarjetas ATADAS a la persona y jamás una atada a otra. Las viejas sin atar
+  siguen yendo por el nombre y ahí se mantiene la decisión de v574 (se quitan igual: primero la privacidad de quien
+  se va), pero ahora se DICE (`tarjetasDudosas`) y la app le avisa al coach para que la vuelva a publicar.
+- **Verificado:** reglas de la tabla con usuario simulado en transacción deshecha (7 de 7) · en producción con
+  cuentas desechables (`_verify-borrado-por-coach --si-borrar`): la tarjeta de la tocaya SOBREVIVE, la vieja sin atar
+  se quita y se avisa, y las 4 tarjetas reales y las 24 fichas quedan intactas.
+- **QA:** suite 1399 → **1405** · `_sabotaje-v691`.
+
 ## ⏮️ 2026-09-29 — v690: el repo deja de exponer a los asesorados (seudónimos) + 6 cuentas inactivas borradas
 
 - **Por qué:** el repo es PÚBLICO desde mayo y traía nombres reales cientos de veces, **correos personales**, pesos,

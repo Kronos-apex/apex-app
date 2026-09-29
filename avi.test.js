@@ -13702,7 +13702,9 @@ test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se
   // justamente como entró `objetivo`. Cada migración que toque esta tabla necesita su línea aquí.
   const migraciones = require('fs').readdirSync(require('path').join(__dirname, 'supabase/community'))
     .filter(f => /^s\d+_/.test(f) && f !== 's1_showcase.sql');
-  assert.deepStrictEqual(migraciones, ['s2_showcase_objetivo.sql'],
+  // s3 (v691) no añade topes a la vitrina: es la atadura PRIVADA tarjeta → persona. Sus candados van en su
+  // propio test («v691 · la atadura de las tarjetas…»).
+  assert.deepStrictEqual(migraciones, ['s2_showcase_objetivo.sql', 's3_showcase_dueno.sql'],
     'apareció una migración nueva de la vitrina sin espejo en este test: ' + migraciones.join(', '));
   // y la tabla NO puede ganar un grant de UPDATE (lección c13c: el INSERT restringe y el
   // UPDATE amplio deja editar la fila hasta el estado prohibido)
@@ -22725,6 +22727,95 @@ test('🔒 v689 · el corte es SOLO DATO: ninguna regla lo lee todavía (Coach P
   const archivos = ['avi-core.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'];
   const lectores = archivos.filter(f => /\.corte\b/.test(sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'))));
   assert.deepStrictEqual(lectores, [], '🔴 una regla ya lee `corte`: eso es el punto 4 (la curva) y necesita su propio veredicto');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v691 · CADA TARJETA PÚBLICA ATADA A SU PERSONA (sin publicarlo)
+// ═════════════════════════════════════════════════════════════════════════════
+// Con dos asesorados del mismo primer nombre, borrar la cuenta de uno se llevaba la tarjeta del otro, y la
+// ficha de uno mostraba (y dejaba QUITAR) la del otro. Ahora la atadura vive en `avi_showcase_dueno`
+// (privada) y la app la trae como `card.dueno`.
+const { showcaseOwner, showcaseCardFor, showcaseAudit: _showcaseAudit } = core;
+const _dos = [{ id: 'u-a', name: 'Dora Paola' }, { id: 'u-b', name: 'Dora Pilar' }, { id: 'u-c', name: 'Karen B' }];
+
+test('🔴 v691 · una tarjeta ATADA es de su dueña aunque otra persona se llame igual', () => {
+  const o = showcaseOwner({ id: 't1', nombre: 'Dora', dueno: 'u-b' }, _dos);
+  assert.strictEqual(o.estado, 'duena'); assert.strictEqual(o.cliente.id, 'u-b');
+  // CONTROL: la misma tarjeta SIN atar, con dos Doras, no es de nadie (no se desempata a dedo).
+  assert.deepStrictEqual(showcaseOwner({ id: 't1', nombre: 'Dora' }, _dos), { estado: 'ambigua', cuantos: 2 });
+  // Sin atar y con un nombre único: manda el nombre, como antes.
+  assert.strictEqual(showcaseOwner({ id: 't2', nombre: 'Karen' }, _dos).cliente.id, 'u-c');
+  // Atada a alguien que ya no está: huérfana, AUNQUE otra persona se llame igual.
+  assert.strictEqual(showcaseOwner({ id: 't3', nombre: 'Dora', dueno: 'u-borrada' }, _dos).estado, 'huerfana',
+    '🔴 la tarjeta de quien se fue se le asignó a otra persona con el mismo nombre');
+  assert.strictEqual(showcaseOwner({ id: 't4', nombre: 'Nadie' }, _dos).estado, 'huerfana');
+  assert.strictEqual(showcaseOwner(null, _dos).estado, 'huerfana');
+});
+
+test('🔴 v691 · la ficha muestra SOLO su tarjeta: la de la otra Dora no aparece (ni se puede quitar) ahí', () => {
+  const cards = [{ id: 't1', nombre: 'Dora', dueno: 'u-b' }];
+  assert.strictEqual(showcaseCardFor('u-a', cards, _dos), null, '🔴 la ficha de una mostraba la tarjeta de la otra');
+  assert.strictEqual(showcaseCardFor('u-b', cards, _dos).id, 't1');
+  // Sin atar y ambigua: no es de ninguna de las dos hasta que el coach la resuelva desde el Inicio.
+  assert.strictEqual(showcaseCardFor('u-a', [{ id: 't9', nombre: 'Dora' }], _dos), null);
+  assert.strictEqual(showcaseCardFor('u-b', [{ id: 't9', nombre: 'Dora' }], _dos), null);
+  // CONTROL: con un nombre único y sin atar, la ficha SÍ la encuentra (las viejas no se pierden).
+  assert.strictEqual(showcaseCardFor('u-c', [{ id: 't2', nombre: 'Karen' }], _dos).id, 't2');
+});
+
+test('v691 · el Inicio (showcaseAudit) usa la misma atadura', () => {
+  const a = _showcaseAudit([{ id: 't1', nombre: 'Dora', dueno: 'u-b' }, { id: 't9', nombre: 'Dora' }, { id: 't3', nombre: 'Dora', dueno: 'u-x' }], _dos, {}, new Date('2026-09-29T12:00:00Z'));
+  assert.strictEqual(a[0].clienteId, 'u-b', 'la atada va a su dueña');
+  assert.strictEqual(a[1].estado, 'ambigua');
+  assert.strictEqual(a[2].estado, 'huerfana', 'la de quien se fue aparece para quitarla');
+});
+
+test('🔒 v691 · la atadura es PRIVADA: sin anon, sin UPDATE, y solo el coach dueño la escribe', () => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase/community/s3_showcase_dueno.sql'), 'utf8')
+    .split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
+  assert.ok(/alter table public\.avi_showcase_dueno enable row level security/.test(sql), 'sin RLS');
+  assert.ok(/revoke all on public\.avi_showcase_dueno from public, anon, authenticated/.test(sql), 'no se revocó todo primero');
+  assert.ok(/grant select, insert, delete on public\.avi_showcase_dueno to authenticated;/.test(sql), 'los permisos no son exactamente leer, escribir y borrar');
+  assert.ok(!/grant[^;]*update[^;]*avi_showcase_dueno/i.test(sql), '🔴 hay UPDATE: corregir = quitar y volver a publicar');
+  assert.ok(!/grant[^;]*avi_showcase_dueno[^;]*\banon\b/i.test(sql), '🔴 la atadura se puede leer sin cuenta: eso publicaría de quién es cada tarjeta');
+  assert.ok(/showcase_id uuid primary key references public\.avi_showcase\(id\) on delete cascade/.test(sql), 'quitar la tarjeta no se lleva la atadura');
+  const ins = (sql.match(/create policy showcase_dueno_ins[\s\S]*?;/) || [''])[0];
+  assert.ok(/coach_id = auth\.uid\(\)/.test(ins) && /s\.coach_id = auth\.uid\(\)/.test(ins) && /u\.coach_id = auth\.uid\(\)/.test(ins),
+    '🔴 la atadura no exige que la tarjeta y la persona sean del coach que la escribe');
+  assert.ok(/for select to authenticated using \(coach_id = auth\.uid\(\)\)/.test(sql), 'otro puede leer las ataduras del coach');
+  // Las viejas se atan SOLO si el nombre no se repite (si se repite, no se adivina).
+  assert.ok(/\) = 1\s*\non conflict/.test(sql.replace(/\r/g, '')), '🔴 el relleno ata tarjetas aunque el nombre se repita');
+});
+
+test('🔒 v691 · borrar una cuenta quita SUS tarjetas por la atadura, y jamás una atada a otra persona', () => {
+  const fs = require('fs'), path = require('path');
+  const ts = fs.readFileSync(path.join(__dirname, 'supabase/functions/delete-account/index.ts'), 'utf8')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const i = ts.indexOf('async function borrarTodo('); const b = ts.slice(i, ts.indexOf('\n}', i));
+  assert.ok(/from\("avi_showcase_dueno"\)\.select\("showcase_id"\)\.eq\("user_id", uid\)/.test(b), 'no busca las tarjetas atadas a esa persona');
+  assert.ok(/const deOtro = new Set/.test(b) && /cand\.filter\(\(id: string\) => !deOtro\.has\(id\)\)/.test(b),
+    '🔴 una tarjeta vieja con el mismo nombre pero ATADA a otra persona se borraría');
+  // El borrado de tarjetas va por ID. El viejo `.delete()...eq("nombre", …)` se llevaba cualquiera con ese nombre.
+  assert.ok(/from\("avi_showcase"\)\.delete\(\)\.in\("id", \[\.\.\.ids\]\)/.test(b), 'las tarjetas ya no se borran por id');
+  assert.ok(!/from\("avi_showcase"\)\.delete\(\)[^;]*eq\("nombre"/.test(b), '🔴 volvió el borrado de tarjetas por NOMBRE');
+  assert.ok(/if \(otros > 0\) tarjetasDudosas = sinAtar\.length;/.test(b), 'no dice cuándo quitó una vieja que puede ser de otra persona');
+  assert.strictEqual((ts.match(/tarjetasQuitadas, tarjetasDudosas \}\);/g) || []).length, 2, 'las dos puertas (coach y la propia persona) deben devolver las dos cifras');
+});
+
+test('🔒 v691 · CABLEADO de la app: la ficha, el Inicio y publicar usan la atadura', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const l = a3.slice(a3.indexOf('async function _loadShowcase('), a3.indexOf('\nasync function _renderStoryPub('));
+  assert.ok(/from\('avi_showcase_dueno'\)\.select\('showcase_id,user_id'\)\.eq\('coach_id',u\.id\)/.test(l) && /f\.dueno=m\[f\.id\]/.test(l),
+    '🔴 la app no trae de quién es cada tarjeta: la ficha y el Inicio vuelven a decidir por el nombre');
+  const r = a3.slice(a3.indexOf('async function _renderStoryPub('), a3.indexOf('\nasync function publishProgress('));
+  assert.ok(/showcaseCardFor\(CUR\.clientId,filas,DB\.clients\)/.test(r), '🔴 la ficha elige la tarjeta por el nombre (la de la otra persona se podía quitar ahí)');
+  const p = a3.slice(a3.indexOf('async function publishProgress('), a3.indexOf('\nasync function unpublishProgress('));
+  assert.ok(/insert\(\{showcase_id:nueva\.id,user_id:_cid,coach_id:u\.id\}\)/.test(p), '🔴 publicar no ata la tarjeta a su persona');
+  assert.ok(/if\(eD\)\{[\s\S]*?from\('avi_showcase'\)\.delete\(\)\.eq\('id',nueva\.id\)/.test(p), '🔴 si la atadura falla, la tarjeta queda publicada a medias');
+  assert.ok(/if\(data\.tarjetasDudosas>0\) _delTarjetaDudosa=true;/.test(a3) && /_delTarjetaDudosa\s*\?\s*`🗑️/.test(a3),
+    'al eliminar no se le avisa al coach que se quitó una tarjeta que puede ser de otra persona');
 });
 
 // ══════════════════════════════════════════════════════
