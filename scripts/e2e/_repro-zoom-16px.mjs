@@ -3,7 +3,7 @@
 //
 // EL DEFECTO: Safari en iPhone hace ZOOM automático al enfocar un campo cuyo `font-size` es menor
 // que 16 px. La pantalla se agranda, se descoloca, y la persona queda escribiendo dentro de una
-// vista ampliada de la que no sabe salir. Es de la misma familia que el reporte de Kathe: la app
+// vista ampliada de la que no sabe salir. Es de la misma familia que el reporte de Karen: la app
 // no está rota, pero la persona no puede usarla.
 //
 // 🔴 POR QUÉ ESTE HARNESS Y NO EL CANDADO DE v526: en v526 puse en `avi.test.js` un candado que

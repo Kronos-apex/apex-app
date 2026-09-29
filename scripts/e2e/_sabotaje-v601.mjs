@@ -3,7 +3,7 @@
 //
 // Por qué hace falta versionada: esta tarjeta se PUBLICA con el nombre de una persona real. Un
 // número inflado aquí no da ningún error — sale bonito, se comparte, y afirma algo que el dato no
-// sostiene. Medido el 10-sep-2026: con el máximo en vez de la mediana, la tarjeta de Nataly diría
+// sostiene. Medido el 10-sep-2026: con el máximo en vez de la mediana, la tarjeta de Nayla diría
 // «+650%» (una polea de 2 → 15 kg) mientras su volumen por sesión CAYÓ un 42%.
 //
 // Corre: node scripts/e2e/_sabotaje-v601.mjs

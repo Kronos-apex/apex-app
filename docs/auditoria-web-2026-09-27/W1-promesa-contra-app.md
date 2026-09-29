@@ -13,7 +13,7 @@ La web promete lo que la app hoy cumple: los planes, el FAQ, la vitrina y las 6 
 
 2. **La vitrina es honesta y hoy está limpia — pero depende ENTERAMENTE del candado de la app, no tiene el suyo.**
    Qué es: `avi-web/lib/showcase.ts` lee `avi_showcase` sin volver a preguntar edad ni nada — el candado de menores vive en `clientProgressStory` del lado de `apex-app`, río arriba.
-   A quién le pasa: a nadie hoy (verificado en vivo: los 4 registros son Astrid, Nataly, Claudia, Kathe — ninguno es el caso Samuel de v570).
+   A quién le pasa: a nadie hoy (verificado en vivo: los 4 registros son Andrea, Nayla, Carla, Karen — ninguno es el caso Salomón de v570).
    Evidencia: `SELECT` en vivo a `avi_showcase` con la llave pública (mismo método que usa la web) — 4 filas, primer nombre + kilos + objetivo, sin edad/peso/id.
    Cómo lo intenté tumbar: pedí la tabla completa filtrando por el `coach_id` del PO — coincide con lo que la web publica; no hay fila huérfana ni de menor.
    Costaría: nada que arreglar hoy; es una dependencia a vigilar, no un defecto.
@@ -39,7 +39,7 @@ La web promete lo que la app hoy cumple: los planes, el FAQ, la vitrina y las 6 
 
 **Q2 · FAQ vs. app real:** CIERTA en todo lo verificable. «Vuelves a AVI FREE, tu historial sigue ahí» = exacto a `premiumLocked`+`MS.canLogin` post-v564 (`overdue` entra, cae a free, `inactive` es el único bloqueado). «Por debajo de 16 no manda carga axial con barra» = exacto a `_genMakeExcluder`, `avi-core.js:2171` (`/sentadilla|peso muerto|militar con barra/`). «Fórmula de un cuerpo en crecimiento» = Schofield para menores (gotcha v448). «Funciona sin internet» = shell precacheado por `sw.js`, offline-first. «Nadie más ve tus datos» / vitrina sin apellido/edad/peso = confirmado con el SELECT en vivo (4 filas, campos exactos: nombre, entrenos, meses, subidas, objetivo). Las promesas de proceso humano (cancelación por WhatsApp, «te responde una persona», Bre-B) no son verificables por código — correctamente fuera del comportamiento de la app, no contradichas por ella.
 
-**Q3 · Vitrina:** CIERTA y SANA hoy. 4 tarjetas reales (Astrid, Nataly, Claudia, Kathe), leídas en vivo con la misma llave pública que usa la web. «Datos tomados de la app de cada persona» es literal. Sin apellido/edad/peso/foto/id — coincide con el diseño de `avi_showcase`. El candado de menores vive río arriba en `apex-app` (`clientProgressStory`); la web no repite el chequeo, así que una tarjeta de un menor mal publicada llegaría a la web tal cual — hoy no ocurre (verificado), pero es una dependencia sin segunda capa.
+**Q3 · Vitrina:** CIERTA y SANA hoy. 4 tarjetas reales (Andrea, Nayla, Carla, Karen), leídas en vivo con la misma llave pública que usa la web. «Datos tomados de la app de cada persona» es literal. Sin apellido/edad/peso/foto/id — coincide con el diseño de `avi_showcase`. El candado de menores vive río arriba en `apex-app` (`clientProgressStory`); la web no repite el chequeo, así que una tarjeta de un menor mal publicada llegaría a la web tal cual — hoy no ocurre (verificado), pero es una dependencia sin segunda capa.
 
 **Q4 · Las 6 capturas:** CIERTA. Las 6 imágenes (generadas 23-sep, 4 días antes de esta auditoría) muestran UI vigente en v680: ánimo con 6 iconos de marca (v666), ancla de carga «Consolidaste X kg… hoy toca Y» (v610), modal de respiración/técnica, peso y medidas sin color por dirección (v668), 6 pestañas de navegación inferior correctas. Ningún texto de la web las describe mal.
 

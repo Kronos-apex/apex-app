@@ -58,13 +58,13 @@ real de Supabase (correo+contraseña y Google) + RLS por dueño en `user_data` (
 
 | uid (8) | correo (enmascarado) | proveedor | creada | último ingreso | confirmada | trae datos del asistente |
 |---|---|---|---|---|---|---|
-| bdf86cb0 | ste…@gmail.com | google | 2026-06-09 | 2026-06-09 | sí | no |
-| a4db261a | jos…@gmail.com | google | 2026-06-23 | 2026-06-23 | sí | no |
-| 7ee81fa1 | val…@avi.com | email | 2026-07-02 | 2026-07-07 | sí | no |
-| 45195e9d | her…@gmail.com | google | 2026-07-06 | 2026-07-06 | sí | no |
-| 306e3bc9 | pin…@gmail.com | email | 2026-07-25 | nunca | **no** | sí |
-| a2d906ee | dia…@avi.com | email | 2026-09-11 | nunca | sí | no |
-| a76bba97 | lau…@hotmail.com | email | 2026-09-15 | nunca | **no** | sí |
+| bdf86cb0 | oculto@gmail.com | google | 2026-06-09 | 2026-06-09 | sí | no |
+| a4db261a | oculto@gmail.com | google | 2026-06-23 | 2026-06-23 | sí | no |
+| 7ee81fa1 | oculto@avi.com | email | 2026-07-02 | 2026-07-07 | sí | no |
+| 45195e9d | oculto@gmail.com | google | 2026-07-06 | 2026-07-06 | sí | no |
+| 306e3bc9 | oculto@gmail.com | email | 2026-07-25 | nunca | **no** | sí |
+| a2d906ee | oculto@avi.com | email | 2026-09-11 | nunca | sí | no |
+| a76bba97 | oculto@hotmail.com | email | 2026-09-15 | nunca | **no** | sí |
 
 ### Dominios de correo (unidad: cuentas de acceso)
 | dominio | cuentas | con ficha | entraron en 30 días | por correo |
@@ -127,7 +127,7 @@ orquestador son hipótesis: en rondas anteriores varias las tumbaron los agentes
    hay que correrlo, escríbelo en tu informe y lo corre el orquestador.
 4. 🔒 **NO toques el código del repo.** Cero ediciones fuera de tu informe. Scripts de medición en `%TEMP%`.
 5. 🔒 Cada hallazgo lleva `archivo:línea`, la consulta con su resultado o la salida del comando. Correos
-   SIEMPRE enmascarados en el informe (`dia…@avi.com`); nombres de asesorados sí (el PO los conoce).
+   SIEMPRE enmascarados en el informe (`oculto@avi.com`); nombres de asesorados sí (el PO los conoce).
 6. ⚠️ **Toda medición lleva control de discriminación y de cobertura.** Un cero sin control no vale
    (recuerda: la tabla de auditoría de auth está vacía por diseño). Nombra la UNIDAD de cada cifra.
 7. ⚠️ **El navegador es SOLO de H2** (puertos 8890-8899 / 9440-9449). H1 trabaja por código, SQL y DNS. No

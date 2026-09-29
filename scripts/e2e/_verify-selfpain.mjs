@@ -101,7 +101,7 @@ A.ok(/abductores/i.test(enPanel.txt || '') && /izquierda/i.test(enPanel.txt || '
 // la feature en vez de arreglarla.
 const real = await ev(`(()=>{try{
   COACH_SELF=false; CUR.loggedAs='client';
-  DB.clients=[{id:'cReal',name:'Nataly',tier:'premium'}];
+  DB.clients=[{id:'cReal',name:'Nayla',tier:'premium'}];
   CUR.clientId='cReal'; DB.msgs={}; window._pushSpy=0;
   GM.exercises=[{id:'e45',name:'Abducción de Cadera en Máquina',muscle:'gluteo'}];
   gmReportPain(0); painPick('area','rodilla'); painPick('side','derecha'); painPick('limita','cambia'); painPick('inicio','progresivo'); painFlag('_none'); painSubmit();

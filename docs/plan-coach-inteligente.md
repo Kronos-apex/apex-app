@@ -667,7 +667,7 @@ en producción (avi-v353).** Restan como futuro opcional: capa LLM y push (adopc
 ## 17. 📋 PLAN DE EJECUCIÓN ESTIPULADO — FASE 4: PLAN DE CHOQUE (Opus ejecuta, Fable verifica)
 
 > **Feedback de Camilo (2026-07-15, tras probar v353):** *"ya vi el pulso pero no es nada
-> especial — me dice 'Astrid se estancó en jalón al pecho', le doy clic y me manda al perfil,
+> especial — me dice 'Andrea se estancó en jalón al pecho', le doy clic y me manda al perfil,
 > nada especial. Bien que me diga los estancamientos, pero necesito MÁS de un coach
 > inteligente: si ya encontró un estancamiento, que proponga al asesorado o a mí un PLAN DE
 > CHOQUE."* Tiene razón: detectar sin proponer es medio producto. La promesa completa es
@@ -770,7 +770,7 @@ con su desc y botón **«Aplicar»** (≥36px) + botón global **«✍️ Escrib
 `scrollIntoView` suave de `#d-shock` al llegar. No tocar el ✕ ni el orden del pulso.
 
 **Harness `_verify-shock.mjs`** (patrón inyección de `_shot-coach`, sin login real; DB en
-memoria — el sello v298 protege la nube): fixture «Astrid» estancada en «Jalón al Pecho»
+memoria — el sello v298 protege la nube): fixture «Andrea» estancada en «Jalón al Pecho»
 (6 puntos planos) → S1 tarjeta aparece con análisis y 3 opciones · S2 con `painCare` activo →
 2 opciones (sin 5×5) + warning · S3 «Aplicar» 5×5 → TODAS las entradas de ese nombre quedan
 sets=5/reps=5/restSec+30 y el original NO mutó · S4 variante → swap conserva sets/reps · S5
@@ -831,7 +831,7 @@ Protocolo §12 con línea base `e0dd00a` y v354, más:
 - [x] **Brecha de verificación CAZADA y CERRADA:** el checkbox «pulso→detalle enfocado» estaba
   marcado pero ningún harness lo ejercitaba con un click real (solo el check estático del hook).
   Check one-off de Fable: click REAL en la fila `estancado` del pulso → `p-detail` activo +
-  `#d-shock` visible + ficha de Astrid + cero jsErrors → **PULSEGO OK**.
+  `#d-shock` visible + ficha de Andrea + cero jsErrors → **PULSEGO OK**.
 - [x] **Greps limpios:** `shockmute_` fuera de SB_KEYS · `esc()`×6 en la tarjeta · onclick por
   índice (ningún dato de usuario en atributos) · `_levelGate(client.level||'Principiante')` =
   default al nivel MÁS restrictivo (seguridad por defecto).
@@ -1005,7 +1005,7 @@ con 2 targets. → **ACEPTADAS**: cohesión visual y claridad de copy, no scope 
 
 ## 23. FASE 4.2 — GATE DE CONSTANCIA (avi-v356, refinamiento de producto de Camilo)
 
-**Origen (caso real, 2026-07-16):** Camilo probó la Fase 4.1 con su asesorada **Astrid**, que tiene
+**Origen (caso real, 2026-07-16):** Camilo probó la Fase 4.1 con su asesorada **Andrea**, que tiene
 varios estancamientos — pero **por faltas de trabajo, no por fatiga**. Detectó el punto ciego: la
 regla «3+ estancados = semana de descarga» asume que la persona viene entrenando duro y parejo
 (fatiga de tanto exigir). Para quien se estancó **sub-entrenando**, una descarga es el consejo

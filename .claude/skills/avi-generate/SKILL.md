@@ -9,7 +9,7 @@ description: Genera rutina personalizada + plan nutricional para un asesorado le
 ```
 /avi-generate [nombre del asesorado]
 ```
-El nombre puede ser parcial ("Miguel", "Kathe") — se busca el match más cercano en `ax_c`.
+El nombre puede ser parcial ("Mario", "Karen") — se busca el match más cercano en `ax_c`.
 
 ---
 
@@ -202,7 +202,7 @@ e20 Carrera / Caminata · e64 Bicicleta Estática · e65 Remo Ergómetro · e66 
 }
 ```
 
-- `id`: prefijo de 2 letras del nombre del cliente + 4 caracteres aleatorios (ej: "mi7k2pxq" para Miguel)
+- `id`: prefijo de 2 letras del nombre del cliente + 4 caracteres aleatorios (ej: "mi7k2pxq" para Mario)
 - `day`: nombre del día en español con mayúscula inicial
 
 ---

@@ -44,7 +44,7 @@ const FIXTURE = `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const ex=(id,n,m,lbl,t)=>{const e={id:id,name:n,muscle:m,type:t,sets:3,reps:'10'};if(lbl)e.muscleLabel=lbl;return e;};
-  const cli={id:'cA',name:'Santiago',goal:'Ganar músculo',level:'Intermedio',days:3,weight:78,height:176,age:29,sex:'M',tier:'premium',
+  const cli={id:'cA',name:'Sebastián',goal:'Ganar músculo',level:'Intermedio',days:3,weight:78,height:176,age:29,sex:'M',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:'2026-08-05',amount:120000}],
     routines:[{id:'r1',name:'Full body A',day:days[new Date().getDay()],restSec:90,exercises:[
       ex('e1','Sentadilla','piernas','Cuádriceps y glúteo','Compuesto'),

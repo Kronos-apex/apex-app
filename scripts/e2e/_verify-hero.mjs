@@ -41,7 +41,7 @@ const MONTAR = `((exN, nombreRutina, conHistorial) => {try{
             'Extensión de Tríceps con Cuerda en Polea','Abducción de Cadera en Máquina',
             'Curl Femoral','Zancadas con Mancuernas'];
   const exs=[];for(let i=0;i<exN;i++)exs.push({id:'e'+i,name:EJ[i%EJ.length],muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'});
-  const client={id:'hero',name:'Nataly Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
+  const client={id:'hero',name:'Nayla Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
     createdAt:'2026-05-01T10:00:00.000Z',
     routines:[
       {id:'r1',name:nombreRutina,day:hoy,restSec:90,exercises:exs},

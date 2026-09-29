@@ -1,4 +1,4 @@
-// Verificación avi-v244 — retorno de "Conectar mi Google" (caso Luz 2026-07-02):
+// Verificación avi-v244 — retorno de "Conectar mi Google" (caso Luisa 2026-07-02):
 //   G1  volver de Google con #error= en el hash → toast en español (antes se PERDÍA en silencio)
 //       + flag ax_glink_pending consumido + hash limpiado de la URL
 //   G2  retorno exitoso (identidad google presente) → toast de éxito + hint fuera de standalone
@@ -70,9 +70,9 @@ try {
     const dbg = await ev(`JSON.stringify({lerr:(document.getElementById('lerr')||{}).textContent||'', loginOn:(()=>{const e=document.getElementById('s-login');return e?getComputedStyle(e).display:'?'})(), splash:!!document.getElementById('avi-loading'), authReady:(typeof AUTH!=='undefined')?AUTH.ready():'?'})`);
     log('  DEBUG setup: ' + dbg);
   }
-  check('setup: sesión samuel entrada', logged);
+  check('setup: sesión salomon entrada', logged);
 
-  // ── G1: recarga CON flag + hash de error de GoTrue (lo que Luz habría visto si fallaba) ──
+  // ── G1: recarga CON flag + hash de error de GoTrue (lo que Luisa habría visto si fallaba) ──
   log('\n=== G1: boot con ax_glink_pending + #error_code=identity_already_exists ===');
   await ev(`localStorage.setItem('ax_glink_pending',String(Date.now()))`);
   // OJO: navegar de APP a APP#hash es same-document (no recarga, no re-parsea _OAUTH_RET).

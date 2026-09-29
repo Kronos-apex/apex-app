@@ -17,9 +17,9 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 ### 🔴 1. Nueve asesorados entran con correos de dominios AJENOS que sí reciben correo
 - `avi.com` → MX `avi-com.mail.protection.outlook.com`; `apex.com` → MX `apex-com.mail.protection.outlook.com`
   (Microsoft 365 de terceros, `nslookup` 27-sep). `avientrena.com` no tiene correo configurado.
-- Asesorados reales (unidad: personas con ficha): **Astrid, Kathe, Natalia, Samuel (15 años)** en `apex.com`;
-  **Claudia, Danilo, Estella** en `avi.com`; **Miguel y Nataly** (suspendidos). Más las 2 cuentas QA y 2 cuentas
-  sin ficha (Valery y Diana Pilar, `@avi.com`).
+- Asesorados reales (unidad: personas con ficha): **Andrea, Karen, Nadia, Salomón (15 años)** en `apex.com`;
+  **Carla, Darío, Elena** en `avi.com`; **Mario y Nayla** (suspendidos). Más las 2 cuentas QA y 2 cuentas
+  sin ficha (Valery y Dora Pilar, `@avi.com`).
 - «Olvidé mi contraseña» manda el enlace al correo registrado sin mirar el dominio (`AUTH.resetPassword` →
   `resetPasswordForEmail`), y cualquiera puede pedirlo para una dirección que adivine (`nombre@avi.com`): el
   enlace —que abre la cuenta— llegaría al dueño de ese dominio. No se pudo probar que exista el buzón concreto
@@ -33,9 +33,9 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 - Ni `app-2-login.js` ni ningún módulo reconocen `email_not_confirmed`: cae en «Email o contraseña
   incorrectos» (`app-2-login.js:361`) y cuenta para el bloqueo de 5 intentos / 30 s. No hay botón de
   reenviar la confirmación en ninguna parte.
-- Víctimas (unidad: personas): **Edwin Ávila** (registro por correo del 25-jul, nunca confirmó, no volvió) y
-  **Laura Ramírez** (15-sep, se atascó con su correo y 76 s después se registró con Google: hoy tiene una
-  cuenta viva y una fantasma). Diana Pilar hizo lo mismo (correo → Google en minutos).
+- Víctimas (unidad: personas): **Elías A.** (registro por correo del 25-jul, nunca confirmó, no volvió) y
+  **Lucía Ríos** (15-sep, se atascó con su correo y 76 s después se registró con Google: hoy tiene una
+  cuenta viva y una fantasma). Dora Pilar hizo lo mismo (correo → Google en minutos).
 
 ### 🟡 3. Eliminar un asesorado desde el panel no le quita el acceso
 - `delClient` (`app-3-coach.js:2765`) solo borra la ficha (`UD.deleteClientRow` → `user_data`); la cuenta de
@@ -52,8 +52,8 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 ## Lo que se TUMBÓ o se CORRIGIÓ
 - ⚪ **«Las 3 cuentas de Google sin ficha quedan en un limbo»**: no. El self-heal (`delete-account` modo
   `ghost`) las borra en cuanto esa persona vuelva a intentar; solo siguen porque nunca volvieron.
-- ⚠️ **El orquestador se equivocó**: dijo que H1 confundió a Luz con Estella — son la MISMA persona («Luz Estela
-  Rodríguez Jiménez» en la cuenta, «Estella Rodríguez» en la ficha). Y el briefing repitió la frase falsa de
+- ⚠️ **El orquestador se equivocó**: dijo que H1 confundió a Luisa con Elena — son la MISMA persona («Luisa Estela
+  Rodríguez Jiménez» en la cuenta, «Elena Romero» en la ficha). Y el briefing repitió la frase falsa de
   CLAUDE.md sobre la contraseña.
 
 ## Lo que está SANO (con números)
@@ -67,12 +67,12 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 ## ✅ Ejecutado el 27-sep
 - v679 (correo sin confirmar + dominios ajenos) y v680 (eliminar = quitar acceso) en producción.
 - Los 8 asesorados con correo ajeno ya tenían Google conectado: su correo de acceso pasó a ese Gmail (decisión
-  del PO, cero correos enviados, respaldo privado fuera del repo). Queda Miguel (suspendido), 2 QA y 2 cuentas vacías.
+  del PO, cero correos enviados, respaldo privado fuera del repo). Queda Mario (suspendido), 2 QA y 2 cuentas vacías.
 
 ## Decisiones del PO
 1. **Los 9 correos ajenos**: cambiarlos (desde «Editar asesorado») por el correo real de cada persona — o, si no
    tiene, por una dirección del PO (`su_gmail+nombre@gmail.com`), así un «olvidé mi contraseña» le llega a él y
-   nunca a un tercero. Cada asesorado entra después con el correo nuevo: hay que avisarle. Samuel primero (menor).
+   nunca a un tercero. Cada asesorado entra después con el correo nuevo: hay que avisarle. Salomón primero (menor).
 2. **Login con correo sin confirmar** (propuesta de H2): decirlo, no gastar el intento y ofrecer «Reenviar
    correo».
 3. **Que eliminar a un asesorado le quite también el acceso** (cuenta, fotos y avisos), no solo la ficha.
@@ -84,5 +84,5 @@ reciben correo, y el login le dice «contraseña incorrecta» a quien solo no co
 
 ## Qué NO se miró
 - Ningún teléfono real (como en las rondas anteriores).
-- Si el buzón concreto (`samuel@…`) existe en esos dominios: solo se puede saber mandando el correo.
+- Si el buzón concreto (`salomon@…`) existe en esos dominios: solo se puede saber mandando el correo.
 - El flujo de «vincular Google» a una cuenta de correo ya abierta.

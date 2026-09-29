@@ -1,4 +1,4 @@
-// Segunda mitad de la pregunta de Claudia: una cosa es ABRIR la app sin internet (eso ya
+// Segunda mitad de la pregunta de Carla: una cosa es ABRIR la app sin internet (eso ya
 // esta probado que funciona, `_repro-sin-internet.mjs`) y otra muy distinta es INICIAR
 // SESION sin internet — que es lo que le toca a quien cerro sesion, se le vencio, o entra
 // desde otro telefono.

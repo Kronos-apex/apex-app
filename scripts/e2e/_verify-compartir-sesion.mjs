@@ -54,7 +54,7 @@ try {
   // ── MONTAJE: un asesorado con DOS sesiones, una reciente y una VIEJA (sin duración ni kcal) ──
   const montaje = await ev(`(()=>{
     CUR.loggedAs='client'; CUR.clientId='c1';
-    DB.clients=[{id:'c1',name:'Astrid Beltran',sex:'F',age:33}];
+    DB.clients=[{id:'c1',name:'Andrea Bernal',sex:'F',age:33}];
     DB.history={c1:[
       {id:'s-nueva',date:'2026-09-15T16:30:00.000Z',routineName:'Tren inferior',doneSets:18,totalSets:18,
        totalVol:4320,durationSec:2880,kcal:412,

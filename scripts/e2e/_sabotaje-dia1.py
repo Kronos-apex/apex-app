@@ -2,7 +2,7 @@
 #
 # Hallazgo H1 de la auditoría de experiencia: el plan cae de lunes a viernes, así que quien se
 # registra sábado, domingo o festivo —el 43 % de los días— abría la app y su PRIMERA pantalla era
-# «hoy es tu día de descanso». Le pasó a Chema el 22-ago con plan de pago y cero sesiones.
+# «hoy es tu día de descanso». Le pasó a Chucho el 22-ago con plan de pago y cero sesiones.
 #
 # Cada sabotaje rompe una pieza y exige que algo se ponga ROJO. La columna «capa» dice quién lo
 # caza: el motor lo cubre la suite, la pantalla el harness (lección v520: un verde explicado con

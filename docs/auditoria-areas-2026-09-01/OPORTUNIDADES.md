@@ -10,7 +10,7 @@ Todo lo de la sección 0 se hace **sin escribir una línea de código**.
 ### 🔴 La app obliga a una menor de edad a mentir para registrarse
 Casilla **obligatoria** «Declaro que soy mayor de 18 años» (`index.html:366`), sin alternativa de
 acudiente y **sin cruzar contra la edad que la propia app acaba de pedirle** dos pasos antes
-(`index.html:313` pide 12-99). Valery (15) y Sharith Sofía (16) tienen `consent.adulto:true`
+(`index.html:313` pide 12-99). Valery (15) y Sonia Sofía (16) tienen `consent.adulto:true`
 guardado en producción. Y la evidencia que quedó registrada dice, literalmente,
 `v:"2026-07-26-borrador"`.
 
@@ -24,13 +24,13 @@ pendiente de revisión de abogado». Detalle en `A7-legal.md`.
 
 ### 🔴 7 personas llevan semanas leyendo, dentro de su propia rutina, una nota que es para ti
 «Borrador generado automáticamente. Revisa y ajusta antes de asignar.» Verificado en producción:
-Cristian, Daniel, diana ramirez, jhojan, Nicolás, Santiago Santos y Sofía Vega la tienen **en
+César, David, dora rincón, jairo, Nelson, Sebastián Suárez y Sara Vélez la tienen **en
 todas sus rutinas**, la más antigua desde el 28-jun, con **0 sesiones**. Se arregla revisando y
 asignando esas rutinas desde tu panel — o quitando el texto de la vista del asesorado, que ya es
 código. La misma frase sale en **2 de las capturas de la web de venta**.
 
 ### 🟠 El canal de auto-registro no cobra
-De 13 auto-registrados, **12 nunca han pagado un peso** y solo uno (Yeison) pagó alguna vez.
+De 13 auto-registrados, **12 nunca han pagado un peso** y solo uno (Yamid) pagó alguna vez.
 Contraste: de los 9 que creaste tú, **pagaron los 9**. Y **0 de 13 tienen notificaciones activas**
 (1 tiene teléfono), así que no hay forma de alcanzarlos. Es una decisión de negocio, no un defecto:
 o se les cobra, o se asume que ese canal es vitrina. Detalle en `A6-negocio.md`.
@@ -50,7 +50,7 @@ entreno**. Si la limitación la escribiste tú al darlo de alta, no filtra. `A4-
 vía por la que una serie entra al historial. Si esa escritura falla, «✓ Completar serie» no hace
 nada: no avanza, no arranca el descanso, no avisa.
 **Medí el disparador antes de alarmar:** las fotos viven en ese mismo cupo y la más pesada es la de
-Samuel con 273 kB, sobre un cupo de varios megas — **en Android hoy no le pasa a nadie**. Donde es
+Salomón con 273 kB, sobre un cupo de varios megas — **en Android hoy no le pasa a nadie**. Donde es
 inmediato es en un iPhone en modo privado, el aparato que nadie ha probado. Arreglo de 2 líneas.
 
 ### 🔴 La pantalla se apaga en el descanso entre series
@@ -58,14 +58,14 @@ El temporizador más usado de la app **nunca pide mantener la pantalla encendida
 isométrico, el HIIT y el cardio sí lo hacen (`app-6-extra.js:1098`, `:1155`, `:1243`). Arreglo de
 una línea, en el hermano olvidado de tres que ya lo hacen bien.
 
-### 🟠 Nadie ve si un dato quedó sin subir — y esto apunta al reporte de Claudia
+### 🟠 Nadie ve si un dato quedó sin subir — y esto apunta al reporte de Carla
 La app sabe qué quedó pendiente y al volver con red fusiona sin perder nada, pero **eso no se pinta
 en ninguna parte** del flujo de entreno. Refuerza la hipótesis abierta: lo que le falla no es
 *entrar*, es *sincronizar*, y no tiene cómo saberlo. `A3-movil.md`.
 
 ### 🟠 El suspendido no tiene salida
 Desde v564 el vencido entra y ve cómo volver. **El suspendido sigue viendo solo el formulario de
-login**, sin tu contacto ni WhatsApp. Hoy son Nataly y Miguel Pulido.
+login**, sin tu contacto ni WhatsApp. Hoy son Nayla y Mario Parra.
 
 ---
 

@@ -5,7 +5,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 const APP = 'https://kronos-apex.github.io/apex-app/';
 import { EMAIL, PASS } from './_creds.mjs';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const PROFILE = process.env.TEMP + '/cdp-samuel-' + Date.now();
+const PROFILE = process.env.TEMP + '/cdp-salomon-' + Date.now();
 const OUT = 'C:/Users/KRONOS/AppData/Local/Temp/claude/C--Windows-system32/fae26a46-b053-491e-a1f0-e7a28f9db92e/scratchpad/shots';
 mkdirSync(OUT, { recursive: true });
 

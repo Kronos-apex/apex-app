@@ -5,7 +5,7 @@
 // el mundo, y `whatsappNudge` cae a «elige el contacto» cuando no hay número plausible. Medido
 // el 6-sep-2026 sobre las fichas reales: **de 14 dormidos, 12 sin ninguna vía** — 5 de los 6
 // botones visibles no llevaban a nadie. Y el daño mayor era el ORDEN: los «nunca empezó» van
-// primero y son justo los que no dejaron teléfono, así que el único caso accionable (Nataly)
+// primero y son justo los que no dejaron teléfono, así que el único caso accionable (Nayla)
 // quedaba enterrado bajo «y 8 más…». Nada de esto lo veía la suite.
 //
 // Corre: node scripts/e2e/_sabotaje-empujar.mjs

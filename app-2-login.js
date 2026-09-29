@@ -65,7 +65,7 @@ function dedupeExercises(){
   })));
   // 🔴 v484 — LOS RÉCORDS TAMBIÉN SE REMAPEAN. Hasta aquí se movían el catálogo y las RUTINAS, y
   // el récord se quedaba en el id muerto: la rutina pasaba a `e15` y su marca seguía en `e38`, así
-  // que la app dejaba de encontrarla. Medido el 14-ago: 3 récords varados y Miguel sin peso
+  // que la app dejaba de encontrarla. Medido el 14-ago: 3 récords varados y Mario sin peso
   // sugerido en un ejercicio donde tiene 30 kg. Puerta cerrada, ventana abierta (clase de v424).
   let _prMoved=0;
   if(typeof prsRemapRetired==='function'){
@@ -218,7 +218,7 @@ async function loginWithGoogle(){
 // Vincular Google a la cuenta YA logueada (linkIdentity) → luego puede entrar con Google
 // sin la clave temporal. Requiere "Manual linking" habilitado en Supabase Auth.
 // Traduce los errores de linkIdentity a mensajes accionables en español. El caso real
-// (Claudia/Luz/Nataly, auditoría 2026-07-01): la asesorada tocó antes "Continuar con
+// (Carla/Luisa/Nayla, auditoría 2026-07-01): la asesorada tocó antes "Continuar con
 // Google" en el login → Supabase auto-creó una cuenta vacía con su Gmail → al vincular
 // aquí, GoTrue responde identity_already_exists y el toast crudo en inglés (2,5s) no
 // dejaba diagnosticar nada.
@@ -248,7 +248,7 @@ async function linkGoogle(){
 
 // Al VOLVER de Google tras linkIdentity: GoTrue devuelve el resultado en la URL
 // (#error=... si falló; tokens si funcionó) y supabase-js consume el hash al crear el
-// cliente (detectSessionInUrl) → sin esto el error se PERDÍA en silencio (caso Luz
+// cliente (detectSessionInUrl) → sin esto el error se PERDÍA en silencio (caso Luisa
 // 2026-07-02: el vínculo sí quedó pero nadie se lo dijo). _OAUTH_RET (app-1-infra) captura
 // el hash/search en parse-time, antes de que el cliente lo consuma.
 async function _handleGoogleLinkReturn(){
@@ -317,7 +317,7 @@ async function doLogin(){
     // Todas las cuentas viven en auth.users; entra por aquí (modo user_data + RLS).
     // ¿Fallo por RED o por credenciales? Son cosas distintas y hasta v563 se trataban igual:
     // sin señal la app decia «Email o contraseña incorrectos» y gastaba un intento (reporte
-    // de Claudia, 31-ago). Un THROW aqui es que la peticion no llego; un error DEVUELTO con
+    // de Carla, 31-ago). Un THROW aqui es que la peticion no llego; un error DEVUELTO con
     // status 4xx es que el servidor juzgo las credenciales. Ver `loginFailIsNetwork`.
     let _falloDeRed=false, _sinConfirmar=false;
     if(AUTH.ready()){
@@ -516,7 +516,7 @@ function logout(){
   // P0 (bug reportado por el PO, 2026-07-25): MISMA clase, un módulo más. El objeto CMTY guarda
   // el perfil, el código, los amigos y la BANDEJA DE MENSAJES de quien acaba de salir, y como
   // `renderCommunity()` corta con `if(!CMTY.loaded) cmtyLoad()`, la siguiente cuenta de esta
-  // pestaña NO recargaba: veía la identidad de la anterior («en el perfil de Astrid aparecía el
+  // pestaña NO recargaba: veía la identidad de la anterior («en el perfil de Andrea aparecía el
   // mío»). Aquí no se recarga la página, así que el estado hay que devolverlo a cero a mano.
   try{ if(typeof cmtyResetIdentity==='function') cmtyResetIdentity(); }catch(_e){}
   // El uid de la sesión también es identidad: si sobrevive, las claves namespacadas de la
@@ -637,7 +637,7 @@ function renderTemplates(){
     // y crudo en el de al lado es como se ve un descuido, no una decision.
     const tagHtml=tpl.tag?`<span class="tag tb" style="font-size:10px">${esc(tpl.tag)}</span>`:'';
     // v590 · el aviso va DONDE SE DECIDE aplicarla, no solo al guardar: así el hueco se ve antes
-    // de que llegue al plan de una persona, que es como Kathe se quedó sin hombros.
+    // de que llegue al plan de una persona, que es como Karen se quedó sin hombros.
     const _gapTpl=(typeof routinePromiseGap==='function')?routinePromiseGap(tpl.name,tpl.exercises):[];
     div.innerHTML=`
       <div class="rch" onclick="this.closest('.rc').classList.toggle('open')">

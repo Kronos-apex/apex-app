@@ -3,7 +3,7 @@
 // _sabotaje-showcase-objetivo.mjs — matriz VERSIONADA de los candados de v555.
 //
 // Qué protege: el OBJETIVO en la tarjeta de vitrina. Pedido del PO (30-ago) y no es decoración:
-// sin él la MISMA cifra dice cosas opuestas — Nataly subió de 54 a 59,5 kg y es un éxito porque
+// sin él la MISMA cifra dice cosas opuestas — Nayla subió de 54 a 59,5 kg y es un éxito porque
 // busca ganar músculo, pero en una tarjeta muda ese «+5,5 kg» en una página de VENTA se lee como
 // que engordó. El objetivo es la lente con la que se leen los kilos que ya estaban ahí.
 //

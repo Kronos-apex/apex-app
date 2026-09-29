@@ -85,14 +85,14 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
 
   | nombre | msgs | del coach | último del coach | sesiones | suscripciones push |
   |---|---|---|---|---|---|
-  | **Nataly** | 11 | **9** | **2026-07-31 19:39** (hoy) | 15 | **0** |
-  | Natalia Martinez | 6 | 5 | 2026-05-25 | 10 | 2 |
-  | Miguel Pulido | 8 | 4 | 2026-05-29 | 14 | **0** |
-  | Hernán Camacho | 2 | 1 | 2026-07-08 | 0 | **0** |
-  | Cristian S. Luna | 2 | 1 | 2026-07-11 | 0 | **0** |
+  | **Nayla** | 11 | **9** | **2026-07-31 19:39** (hoy) | 15 | **0** |
+  | Nadia Mejía | 6 | 5 | 2026-05-25 | 10 | 2 |
+  | Mario Parra | 8 | 4 | 2026-05-29 | 14 | **0** |
+  | Hugo C. | 2 | 1 | 2026-07-08 | 0 | **0** |
+  | César S. Luna | 2 | 1 | 2026-07-11 | 0 | **0** |
 
   **20 mensajes del coach detrás de un candado.** Y 4 de las 5 tienen **cero** suscripciones push
-  (`push_subscriptions`), así que tampoco los leen por notificación. Nataly es una usuaria
+  (`push_subscriptions`), así que tampoco los leen por notificación. Nayla es una usuaria
   **activa** (15 sesiones) a la que el coach le escribió **hoy**.
 - **Intenté tumbarlo así:**
   1. *¿Hay otra pantalla donde el asesorado lea el hilo?* `grep cn-msg-thread` → **un solo**
@@ -106,9 +106,9 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
      reciente recibió mensaje hoy.
   - Lo único que **no puedo** afirmar es si alguna leyó los mensajes *antes* de que el coach le
     cambiara el plan (la fecha del cambio de tier no se guarda). Da igual para el veredicto: el
-    mensaje de **hoy** a Nataly no es legible hoy.
-- **A quién le pasa:** a Nataly, Natalia, Miguel, Hernán y Cristian. Y al coach, que cree que está
-  conversando. Los dos que pidieron coach (Hernán, Cristian) fueron respondidos —en 11 minutos y
+    mensaje de **hoy** a Nayla no es legible hoy.
+- **A quién le pasa:** a Nayla, Nadia, Mario, Hugo y César. Y al coach, que cree que está
+  conversando. Los dos que pidieron coach (Hugo, César) fueron respondidos —en 11 minutos y
   en 2 días— y **ninguno ha entrenado nunca**: pidieron ayuda, se les respondió, y la respuesta
   quedó tras un candado que les vende lo que acababan de pedir.
 - **Costo del arreglo:** *pequeño y de producto, no de ingeniería.* Tres opciones, en orden de
@@ -184,18 +184,18 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
   from auth.users u left join user_data d on d.user_id=u.id where d.user_id is null;
   ```
   ```
-  josegutierrezpe19@gmail.com   google  23-jun 13:56   entró 1 vez (al crearse)
-  claudiavalbuena94@gmail.com   google  19-jul 23:08   entró 1 vez (al crearse)
-  pinzonedwin121@gmail.com      email   25-jul 18:59   NUNCA entró, correo sin confirmar
+  oculto@gmail.com   google  23-jun 13:56   entró 1 vez (al crearse)
+  oculto@gmail.com   google  19-jul 23:08   entró 1 vez (al crearse)
+  oculto@gmail.com      email   25-jul 18:59   NUNCA entró, correo sin confirmar
   ```
-- **Evidencia adicional:** el de correo (`pinzonedwin121`) tiene `confirmation_sent_at` puesto y
+- **Evidencia adicional:** el de correo (`oculto`) tiene `confirmation_sent_at` puesto y
   `email_confirmed_at` **null** → se quedó exactamente en el toast de `app-3-coach.js:1046`
   («Te enviamos un correo para confirmar tu cuenta»). Los dos de Google encajan con la rama de
   `_enterAuthSession:513-544`: entraron por «Entrar con Google» sin haberse registrado, la app los
   expulsó con un mensaje, y la limpieza de la cuenta fantasma (`delete-account` en modo ghost,
   línea 528) **no se aplicó** — la cuenta sigue viva, y según el propio comentario del código eso
   les **bloquea para siempre** conectar ese Google a su cuenta real (`identity_already_exists`).
-  **Una de ellas se llama Claudia Valbuena — y «escribirle a Claudia» lleva semanas en los
+  **Una de ellas se llama Carla Vargas — y «escribirle a Carla» lleva semanas en los
   pendientes del PO.** Se cayó por la puerta el 19-jul.
 - **Intenté tumbarlo así:**
   1. *¿Serán cuentas de QA?* No: los tres son gmails de persona, y la cuenta QA
@@ -205,7 +205,7 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
      `_provisionFreeClient:419-420` el fallo de `UD.createFromClient` se traga con un `warn()`, y
      `warn()` es no-op en producción (hallazgo A1). Busqué telemetría en las tres ventanas horarias
      exactas → **0 filas en `app_errors`**. Nadie puede saber por dónde se cayeron.
-- **A quién le pasa:** a José, a Claudia y a Edwin. Y a cualquiera que repita el gesto.
+- **A quién le pasa:** a Jorge, a Carla y a Elías. Y a cualquiera que repita el gesto.
 - **Costo del arreglo:** (a) **rescate hoy, 0 código**: son 3 correos; el coach les escribe.
   (b) **que se vean**: una consulta mensual de «cuentas sin fila» o un aviso en el panel
   (~20 líneas). (c) **que no vuelva a pasar en silencio**: subir esos dos `warn` a `errReport`
@@ -288,7 +288,7 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
 
 ### H6 · 🟠 Alguien con un plan de pago lleva 3 semanas viendo «Tu coach está personalizando tu rutina»
 
-- **Qué pasa:** **Hernán Camacho** — se auto-registró el 6-jul, pidió coach ese mismo día, el
+- **Qué pasa:** **Hugo C.** — se auto-registró el 6-jul, pidió coach ese mismo día, el
   coach le respondió el 8-jul, lo subió a `tier='app'` (plan de pago) — **tiene 0 rutinas y 0
   sesiones**. Lo que ve en «Hoy» desde entonces es el estado vacío: *«Tu plan aún está en
   preparación. Tu coach está personalizando tu rutina. Mientras tanto, puedes enviarle un
@@ -302,7 +302,7 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
          jsonb_array_length(coalesce(history,'[]')) sesiones, updated_at
   from user_data where role is distinct from 'coach'
     and jsonb_array_length(coalesce(routines,'[]'))=0;
-  → Hernan Camacho | app | 0 rutinas | 0 sesiones | updated_at 2026-07-10
+  → Hugo C. | app | 0 rutinas | 0 sesiones | updated_at 2026-07-10
   ```
   Es el **único** con cero rutinas, y es de pago. Pidió 6 días, «Ganar músculo», Intermedio, gym:
   el generador tenía todo para producirle un plan (`_autoGenerateWeek` corre siempre en
@@ -314,9 +314,9 @@ El motor de exclusiones por limitación y el único canal que de verdad alcanza 
   o miente por omisión. *¿Se le avisa al coach?* No: no hay ninguna señal de «asesorado sin
   rutina» en el panel (grepeé `coachPulse`/`clientAttentionRank`: sus niveles son dolor, vencido,
   mensaje sin leer y lead — **rutina vacía no es ninguno**).
-- **A quién le pasa:** hoy a Hernán. Mañana a cualquiera cuyo `_autoGenerateWeek` falle en
+- **A quién le pasa:** hoy a Hugo. Mañana a cualquiera cuyo `_autoGenerateWeek` falle en
   silencio, porque nadie se entera.
-- **Costo del arreglo:** (a) **hoy**: generarle la semana a Hernán (0 código). (b) fila
+- **Costo del arreglo:** (a) **hoy**: generarle la semana a Hugo (0 código). (b) fila
   «sin rutina asignada» en los prioritarios del coach: ~20 líneas reusando `clientAttentionRank`.
   (c) que el estado vacío no prometa lo que no puede: si el asesorado es libre, el texto debe
   ofrecer **«✨ Generar mi semana»** (`clientSelfGenerate` ya existe, `app-3-coach.js:1081`) en vez

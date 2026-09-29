@@ -1,6 +1,6 @@
 # Plan — la barra y las reps en reserva (v681 + v682)
 
-> **Origen:** estudio de progresión del 28-sep-2026. Primero se hizo el techo de Astrid y después
+> **Origen:** estudio de progresión del 28-sep-2026. Primero se hizo el techo de Andrea y después
 > la curva con el historial del PO. Decisión del PO: *«dale arranca»* al lote de 4 puntos. Este plan
 > cubre los dos primeros; la curva en la ficha (punto 4) necesita estos datos antes.
 > Informe del estudio (privado): https://claude.ai/artifact/173Ds6vXjpqLYuxyf4aRpF · prototipo de la
@@ -10,7 +10,7 @@
 
 - **9 de las 15 personas que usan barra anotan SOLO LOS DISCOS**: el PO y 8 asesorados. Hay remos con
   barra anotados con 5 kg y sentadillas con 4,5, menos que una barra vacía. El PO lo confirmó: anota
-  discos y su barra pesa 20. La barra del hip thrust de Astrid pesa 15.
+  discos y su barra pesa 20. La barra del hip thrust de Andrea pesa 15.
 - **La sensación de la sesión (`feeling`) se llena en 60 de 550 sesiones (11 %)**: cualquier pregunta
   nueva tiene que costar un toque y poder saltarse.
 - **Los `log_` se conservan de un día para otro** (el peso y las reps de ayer quedan como sugerencia).

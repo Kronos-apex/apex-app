@@ -191,9 +191,9 @@ Todos los que existen. «¿Puede fallar?» = ¿hay algo real que lo ponga rojo?
     DEFINIDO; `openGuidedMode`/`startClientRest`/`showPanel` → NO EXISTE.
   - Estados de membresía calculados con la función REAL (`MS.getStatus`, hoy 2026-08-22):
     ```
-    overdue  2026-08-01   c1 Samuel
+    overdue  2026-08-01   c1 Salomón
     overdue  2026-07-14   c2 Andrés
-    overdue  2026-06-30   c3 Astrid
+    overdue  2026-06-30   c3 Andrea
     CONTROL: 2027-01-01 → active · sin pagos → pending
     ```
     Las capturas de diseño 04/05 llevan desde el 1-ago mostrando tres «Vencido» donde debían salir

@@ -33,11 +33,11 @@ const INSTALL = `(()=>{try{
   if(typeof setTheme==='function')setTheme('light');
   showScreen('s-coach');
   DB.clients=[
-    {id:'u-sam',name:'Samuel Cifuentes',phone:'3001234567'},
-    {id:'u-nat',name:'Natalia Martinez',phone:'+57 310 000 1111'},
-    {id:'u-luz',name:'Luz Rodríguez',phone:'3009998877'},
+    {id:'u-sam',name:'Salomón Cárdenas',phone:'3001234567'},
+    {id:'u-nat',name:'Nadia Mejía',phone:'+57 310 000 1111'},
+    {id:'u-luz',name:'Luisa R.',phone:'3009998877'},
     {id:'u-out',name:'<img src=x onerror=window.__xss=1>',phone:''},
-    {id:'u-kat',name:'Kathe Beltran',phone:'3005556677'}
+    {id:'u-kat',name:'Karen Bernal',phone:'3005556677'}
   ];
   window.__xss=0; window.__opened=null; window.__profErr=false; window.__calls=[];
   window.__gymRows=[{member_id:'${COACH}'},{member_id:'u-sam'},{member_id:'u-nat'},{member_id:'u-luz'}];
@@ -81,7 +81,7 @@ check('G1 el modal dice «3 de 4 ya crearon su perfil» y qué hacer con el rest
 const g2 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
   const row=n=>[...b.children].find(d=>d.innerText&&d.innerText.indexOf(n)>=0);
   const st=n=>{const r=row(n);return r?{chip:/Ya está/.test(r.innerText),inv:[...r.querySelectorAll('button')].some(x=>/Invitar/.test(x.textContent))}:null;};
-  return {sam:st('Samuel'),luz:st('Luz'),fuera:st('onerror')};})()`);
+  return {sam:st('Salomón'),luz:st('Luisa'),fuera:st('onerror')};})()`);
 check('G2 quien YA activó muestra «✓ Ya está» y NO botón de invitar', !!(g2.sam && g2.sam.chip && !g2.sam.inv), JSON.stringify(g2.sam));
 check('G3 quien está en el gym SIN perfil muestra «Invitar»', !!(g2.luz && g2.luz.inv && !g2.luz.chip), JSON.stringify(g2.luz));
 check('G4 a quien NO está en el gym no se le invita (vería un cuarto vacío)', !!(g2.fuera && !g2.fuera.inv && !g2.fuera.chip), JSON.stringify(g2.fuera));
@@ -104,7 +104,7 @@ check('G6 «Invitar» abre WhatsApp con el móvil normalizado a 57…', g6.url =
 
 // G7: el mensaje es honesto, en texto plano y con el enlace de AVI.
 check('G7 el mensaje dice qué se ve y qué NO, en texto plano y con el enlace',
-  /^Hola Luz 👋/.test(g6.msg) && /apodo y tu constancia/.test(g6.msg) && /nunca tu peso, tus fotos ni tus kilos/.test(g6.msg) &&
+  /^Hola Luisa 👋/.test(g6.msg) && /apodo y tu constancia/.test(g6.msg) && /nunca tu peso, tus fotos ni tus kilos/.test(g6.msg) &&
   /kronos-apex\.github\.io\/apex-app/.test(g6.msg) && !/[<>]/.test(g6.msg), JSON.stringify({ msg: g6.msg.slice(0, 90) }));
 
 // G7-bis: el conteo del mensaje sale de la realidad (3 con perfil), no de un número inventado.
@@ -132,7 +132,7 @@ await ev(`(()=>{window.__profErr=false;})()`);
 await ev(`openGymMgr()`); await sleep(700);
 await ev(`toggleGymMember('u-kat')`); await sleep(600);
 const g10 = await ev(`(()=>{const b=document.getElementById('gym-mgr-body');
-  const r=[...b.children].find(d=>d.innerText&&d.innerText.indexOf('Kathe')>=0);
+  const r=[...b.children].find(d=>d.innerText&&d.innerText.indexOf('Karen')>=0);
   return r?{chip:/Ya está/.test(r.innerText),inv:[...r.querySelectorAll('button')].some(x=>/Invitar/.test(x.textContent))}:null;})()`);
 check('G10 (F4) al agregar al gym a quien YA tiene perfil, se marca «Ya está» (no «Invitar»)',
   !!(g10 && g10.chip && !g10.inv), JSON.stringify(g10));

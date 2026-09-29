@@ -58,7 +58,7 @@ const montaje = await ev(`(()=>{try{
       // 1) ATASCADO: sesión posterior, serie MARCADA, 70 kg.
       {id:'h1',date:'2026-06-24T00:00:00Z',routineId:'rr1',exercises:[
         {id:'e6',name:'Jalón al Pecho',track:'peso_reps',sets:[{kg:70,reps:9,done:true}]}]},
-      // 2) NO MARCADO: 90 kg escritos y sin marcar → no es un récord (caso real de Nataly).
+      // 2) NO MARCADO: 90 kg escritos y sin marcar → no es un récord (caso real de Nayla).
       {id:'h2',date:'2026-07-01T00:00:00Z',routineId:'rr1',exercises:[
         {id:'e7',name:'Press Militar',track:'peso_reps',sets:[{kg:90,reps:12,done:false}]}]},
       // 3) SIN RÉCORD GUARDADO: el coach pudo haberlo borrado a mano → no se crea (v483).
@@ -82,7 +82,7 @@ const est = await ev(`(()=>{const p=DB.prs['rc1']||{};
     subidas:(window.__subidas||[]).slice()};})()`);
 check('R1 el récord atascado se pone al día solo al entrar (50 → 70)', est && est.e6 === 70, JSON.stringify(est));
 check('R2 y guarda de dónde venía: la app no cambia un dato en silencio', est && est.e6from === 50, 'healedFrom=' + (est && est.e6from));
-check('R3 CONTROL el peso ANOTADO y no marcado NO se vuelve récord (caso Nataly)', est && est.e7 === 40, 'e7=' + (est && est.e7));
+check('R3 CONTROL el peso ANOTADO y no marcado NO se vuelve récord (caso Nayla)', est && est.e7 === 40, 'e7=' + (est && est.e7));
 check('R4 CONTROL no se CREA el récord que no existe (pudo borrarlo el coach a mano, v483)',
   est && est.e30 === '(no existe)' && est.claves === 3, JSON.stringify({ e30: est && est.e30, claves: est && est.claves }));
 check('R5 CONTROL el que ya estaba al día no se toca', est && est.e9 === 60, 'e9=' + (est && est.e9));

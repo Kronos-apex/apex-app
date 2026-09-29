@@ -41,7 +41,7 @@ Ordenada por riesgo MEDIDO, no por lo que se ve más.
 ### F1.1 · UN AMBIENTE DE PRUEBAS · 🔴 lo primero que marca cualquier auditoría
 **Hoy existe UN proyecto de Supabase y es PRODUCCIÓN**, con los datos de 24 personas. Los harness
 tienen que estar SELLADOS para no escribir ahí (`cloudWriteSealed`, v298) — y ese sello existe
-porque el 8-jul-2026 una prueba **borró las 4 rutinas reales de Samuel**. Hoy hay cosas que
+porque el 8-jul-2026 una prueba **borró las 4 rutinas reales de Salomón**. Hoy hay cosas que
 literalmente NO se pueden probar de verdad (escritura a la nube, sincronización entre dos
 aparatos: el harness de v623 tiene que SIMULAR la nube).
 - Segundo proyecto Supabase (plan gratis) con el MISMO esquema, aplicado desde las migraciones

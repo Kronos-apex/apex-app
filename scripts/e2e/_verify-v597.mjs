@@ -297,7 +297,7 @@ try {
   const FOTO_NARANJA = await ev(`(()=>{const c=document.createElement('canvas');c.width=400;c.height=700;
     const g=c.getContext('2d');g.fillStyle='#FF7A1A';g.fillRect(0,0,400,700);
     g.fillStyle='#FFFFFF';g.fillRect(60,60,120,120);return c.toDataURL('image/jpeg',0.9)})()`);
-  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.sex='F';c.name='Luz Rodriguez';
+  await ev(`(()=>{const c=DB.clients.find(x=>x.id===CUR.clientId);c.sex='F';c.name='Luisa Rodriguez';
     c.avatar=${JSON.stringify(String(FOTO_NARANJA))};
     const press={...DB.exercises.find(e=>e.id==='e83'),sets:2,reps:12};
     const rt={id:'rV605',name:'Cierre v605',day:'Lunes',exercises:[press]};
@@ -387,7 +387,7 @@ try {
   // Y se GUARDA la tarjeta de una mujer: esto se aprueba mirandola, no solo midiendola.
   await fotoDe('F');
   await ev(`(async()=>{
-    _wfShareData=Object.assign({},_wfShareData,{name:'Luz',fullName:'Luz Rodriguez',
+    _wfShareData=Object.assign({},_wfShareData,{name:'Luisa',fullName:'Luisa Rodriguez',
       chips:[['Duracion','52:30'],['Calorias','388 kcal'],['Series','21/21'],['Volumen','4.120 kg']],
       prs:[{name:'Prensa de Pierna',val:70,unit:'kg',reps:12}]});
     const o=HTMLCanvasElement.prototype.toBlob;

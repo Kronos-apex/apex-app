@@ -8,7 +8,7 @@
 // copia solo se reescribe cuando el navegador cambia de endpoint. Cuando cambia, la fila vieja
 // queda HUÉRFANA: ningún aparato la vuelve a tocar jamás, pero la ronda diaria le sigue enviando
 // con el plan congelado de aquel día.
-//   Natalia Martínez: fila del 7-ago con `["Lunes","Lunes","Martes"]` + fila de hoy con su plan
+//   Nadia Mejía: fila del 7-ago con `["Lunes","Lunes","Martes"]` + fila de hoy con su plan
 //   real de 4 días. Los logs de la edge del jueves 28-ago, turno de la tarde, imprimieron para su
 //   client_id «(entreno) ✅» y «(descanso) ✅» con 14 segundos de diferencia.
 //

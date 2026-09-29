@@ -9,7 +9,7 @@
 //   · S12/S16 (flag + interruptor) quedaron obsoletos — los cubre _verify-f5a.mjs
 //   · S20b: el throw del embebido cae a la TARJETA DE ERROR "Recargar la app" (la
 //     clásica de respaldo murió en F5b). Sigue siendo el escenario final destructivo.
-// Igual que el original: login real (samuel), server local, Chrome headless por CDP.
+// Igual que el original: login real (salomon), server local, Chrome headless por CDP.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';

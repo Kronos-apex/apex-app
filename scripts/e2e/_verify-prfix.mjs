@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // _verify-prfix.mjs — EL COACH PUEDE CORREGIR UN RÉCORD MAL ANOTADO
 //
-// Nace de un caso REAL: Nataly tenía «Patada de Glúteo en Polea 30 kg» y de verdad levantaba 15
+// Nace de un caso REAL: Nayla tenía «Patada de Glúteo en Polea 30 kg» y de verdad levantaba 15
 // (anotó el número de la placa de la máquina, no la carga). Hasta v456 **no había forma de
 // corregirlo**: los récords solo se escriben solos cuando alguien supera su marca. Y un récord
 // falso hace daño por tres lados — nadie puede volver a superarlo, infla la gráfica, y **envenena
@@ -42,7 +42,7 @@ await send('Page.navigate', { url: APP }); await sleep(900);
 const listo = await waitFor(`typeof renderCoachPRsCard==='function' && typeof coachEditPR==='function' && typeof prfixSave==='function' && typeof suggestFromPR==='function'`);
 A.ok(listo, 'las funciones de corrección existen (módulos cargados)');
 
-// Montaje: un asesorado con el récord MAL anotado, tal como estaba el de Nataly.
+// Montaje: un asesorado con el récord MAL anotado, tal como estaba el de Nayla.
 const FECHA = '2026-06-01T10:00:00.000Z';
 const montaje = await ev(`(()=>{try{
   CUR.loggedAs='coach'; showScreen('s-coach');

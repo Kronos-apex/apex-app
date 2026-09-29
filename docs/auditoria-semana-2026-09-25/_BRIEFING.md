@@ -27,7 +27,7 @@ mismo, un hallazgo sin víctima medida vale poco aquí.
 
 | Área | Qué cubre | Quién |
 |---|---|---|
-| **F1** | **La mudanza y las dos direcciones**: el salto de `kronos-apex.github.io/apex-app/` a `app.avientrena.com`, qué viaja y qué se queda, la sesión en la dirección, el service worker en los dos orígenes, los avisos (push) por dominio, el iPhone instalado que NO salta, el CORS de las edge functions y el despliegue en dos sitios. | Samuel (Android/PWA/TWA) + Tomás (iOS/Safari) |
+| **F1** | **La mudanza y las dos direcciones**: el salto de `kronos-apex.github.io/apex-app/` a `app.avientrena.com`, qué viaja y qué se queda, la sesión en la dirección, el service worker en los dos orígenes, los avisos (push) por dominio, el iPhone instalado que NO salta, el CORS de las edge functions y el despliegue en dos sitios. | Salomón (Android/PWA/TWA) + Tomás (iOS/Safari) |
 | **F2** | **Fotos privadas y lo que sale de la app**: los buckets y sus políticas, los enlaces firmados, qué pasa con las fotos al borrar una cuenta, las 3 imágenes compartibles con foto, el candado de menores en todo lo que sale, la vitrina pública y las capturas de la web. | Andrés Q. (DBA/Storage/RLS) + Sofía Castaño (CS: qué entiende la persona) |
 | **F3** | **El chat nuevo**: eliminar la conversación (una marca por lado), «esperando respuesta» (`h-await`), «visto», respuestas guardadas, contexto del entreno y fotos/videos, contra las conversaciones REALES. | Lucas Ortega (QA funcional) + Mateo Sanín (Data) |
 
@@ -140,13 +140,13 @@ producción. **Cada cifra nombra su unidad.** Filtro «no-QA» = `profile->>'nam
 
 ### F1 · Teléfonos, errores y avisos
 - **Versión por teléfono** (`node scripts/versiones-telefonos.mjs`, unidad = PERSONAS con sello
-  de versión): **6 en v668** · **3 en v665** (Astrid, Diana Paola, Yovan) · **10 por debajo de
-  v662** (Chema v644, Danilo v661, diana ramirez v544, jhojan hernandez v608, Laura v661, Natalia
-  v654, Nataly v563, Nicolás v571, Samuel v657, Valery v619) · **9 sin datos**. O sea **9 personas
+  de versión): **6 en v668** · **3 en v665** (Andrea, Dora Paola, Yesid) · **10 por debajo de
+  v662** (Chucho v644, Darío v661, dora rincón v544, jairo herrera v608, Laura v661, Nadia
+  v654, Nayla v563, Nelson v571, Salomón v657, Valery v619) · **9 sin datos**. O sea **9 personas
   con una versión que salta** (v662 en adelante).
 - 🔴 **El sello de versión NO guarda el ORIGEN.** Hoy nadie puede decir cuántos se mudaron de
   verdad. No inventes el número; si importa saberlo, di POR QUÉ y a quién.
-- **Laura y Kathe** usan iPhone con la app instalada: por diseño NO saltan (`navigator.standalone`)
+- **Lucía y Karen** usan iPhone con la app instalada: por diseño NO saltan (`navigator.standalone`)
   y siguen en github.io hasta reinstalar desde Safari.
 - `app_errors` desde el 22-sep: **7 filas**, todas `kind='promise'` del service worker: 5 «Failed
   to update a ServiceWorker…» (3 con alcance github.io, builds v653/v661; 2 con alcance
@@ -168,11 +168,11 @@ producción. **Cada cifra nombra su unidad.** Filtro «no-QA» = `profile->>'nam
   se mudan solas cuando su dueño abre la app) · **0 con enlace público**.
 - **Fotos de perfil**: **9 personas con `avatarPath`**, 0 en base64, 0 con enlace http.
   Cuadra: 12 + 9 = 21 = los objetos de `progress-photos`.
-- **Menores por edad declarada** (`profile.age` < 18): **4** — Sharith sofia (16), Santiago Santos
-  (17), Samuel Cifuentes (15), Valery (15). **Ninguno tiene foto de perfil hoy.** ⚠️ La edad es
-  AUTODECLARADA: Samuel se registró con 28 y tiene 15 (v570).
+- **Menores por edad declarada** (`profile.age` < 18): **4** — Sonia (16), Sebastián Suárez
+  (17), Salomón Cárdenas (15), Valery (15). **Ninguno tiene foto de perfil hoy.** ⚠️ La edad es
+  AUTODECLARADA: Salomón se registró con 28 y tiene 15 (v570).
 - **Vitrina pública** (`avi_showcase`, la única tabla que se lee sin cuenta): **4 tarjetas** —
-  Kathe, Claudia, Nataly, Astrid. Ninguna es de un menor. La de Samuel ya no está.
+  Karen, Carla, Nayla, Andrea. Ninguna es de un menor. La de Salomón ya no está.
 
 ### F3 · El chat
 - **15 conversaciones** (filas no-QA con `msgs` no vacío) · **153 mensajes** en total: **68 de

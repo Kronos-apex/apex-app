@@ -67,7 +67,7 @@ sola señal de si lo que se guardó ya llegó a la nube o sigue pendiente.
      `grep -n visibilitychange app-*.js`, sin ningún listener que llame a `reqWake`).
 
 3. 🔴 **En todo el flujo de entreno no hay UNA sola señal de "esto no se ha subido todavía" —
-   confirma la hipótesis abierta sobre Claudia.** `_persistAuthUser` (`app-1-infra.js:912-959`)
+   confirma la hipótesis abierta sobre Carla.** `_persistAuthUser` (`app-1-infra.js:912-959`)
    guarda siempre en local primero (seguro) y reintenta a la nube con `sv()`/`svNow()`; si la
    subida falla marca `_udFailedKeys[k]=true` y `_setAuthDirty(true)` — pero el `catch` solo hace
    `warn(...)` a la consola (`app-1-infra.js:955`). Recorrí el entreno completo (marcar series,
@@ -211,7 +211,7 @@ sola señal de si lo que se guardó ya llegó a la nube o sigue pendiente.
   si `setItem` llegara a lanzar, no que hoy lo haga en un iPhone real).
 - **Entrega real de push** (que el mensaje llegue al teléfono, con la pantalla bloqueada, en
   Android real e iOS real). Solo miré el código del lado del cliente y la tabla de suscripciones.
-- **TWA/Play Store** (assetlinks, empaquetado, ícono maskable) — es territorio de Samuel/A-área
+- **TWA/Play Store** (assetlinks, empaquetado, ícono maskable) — es territorio de Salomón/A-área
   Android nativo y el roadmap dice "Play Store: retirado"; no vi motivo para reabrirlo.
 - **El resto de los ~150 usos de `localStorage.setItem` del repo, uno por uno** — solo confirmé que
   la gran mayoría SÍ tiene `try/catch` y aislé por lectura de contexto los que no lo tenían

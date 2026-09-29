@@ -90,18 +90,18 @@ y testeado en el mismo repo.
 
 ---
 
-### 3 · Nataly (95% sin cerrar) no tiene un plan más largo que nadie — abandona sistemáticamente el mismo tramo del final
+### 3 · Nayla (95% sin cerrar) no tiene un plan más largo que nadie — abandona sistemáticamente el mismo tramo del final
 **Qué es:** medido ejercicio por ejercicio dentro de sus propias sesiones, el % de series que
 completa CAE con la posición en la rutina: ejercicio 1-2 ≈ 90-100% completado, ejercicio 5-8 cae
-hasta 0-33%. El control (Claudia Valbuena, 10% sin cerrar) NO muestra ese patrón: su ratio se
-mantiene plano entre 93% y 100% en las 8 posiciones de su rutina. Y no es que Nataly tenga rutinas
-más largas para justificar el abandono: las 5 personas comparadas (Nataly, Claudia, Luz, Astrid,
-Kathe) tienen en promedio **la misma estructura — 4 rutinas de ~6-7 ejercicios cada una**.
+hasta 0-33%. El control (Carla Vargas, 10% sin cerrar) NO muestra ese patrón: su ratio se
+mantiene plano entre 93% y 100% en las 8 posiciones de su rutina. Y no es que Nayla tenga rutinas
+más largas para justificar el abandono: las 5 personas comparadas (Nayla, Carla, Luisa, Andrea,
+Karen) tienen en promedio **la misma estructura — 4 rutinas de ~6-7 ejercicios cada una**.
 
-**A quién le pasa HOY:** Nataly, con nombre — es el caso que ancla la ronda (20 de 21 sesiones
+**A quién le pasa HOY:** Nayla, con nombre — es el caso que ancla la ronda (20 de 21 sesiones
 sin cerrar).
 
-**Evidencia (SQL contra producción, historial completo de Nataly, agrupado por posición del
+**Evidencia (SQL contra producción, historial completo de Nayla, agrupado por posición del
 ejercicio dentro de la rutina):**
 | posición | ratio promedio completado |
 |---|---|
@@ -113,7 +113,7 @@ ejercicio dentro de la rutina):**
 | 6ª–7ª | 0.00–0.29 |
 | último (plancha/russian twist/dead bug) | **0.00** |
 
-Control (Claudia, misma consulta): 1.00 · 0.96 · 0.96 · 0.94 · 0.93 · 0.96 · 0.86 · 0.86 — sin
+Control (Carla, misma consulta): 1.00 · 0.96 · 0.96 · 0.94 · 0.93 · 0.96 · 0.86 · 0.86 — sin
 declive. Sus sesiones empiezan siempre entre 9:00 y 9:56am y duran de 21 a 65 minutos (10
 sesiones más recientes revisadas una por una) — consistente con que llega con un tiempo fijo
 disponible y se va cuando se le acaba, sin importar cuánto le falte.
@@ -126,7 +126,7 @@ ella (piernas, tren superior), así que es la POSICIÓN en el flujo, no un ejerc
 
 **Qué costaría arreglarlo (no es un bug de código, es una señal de coaching):** no hay nada que
 "arreglar" en el software — es información para el coach: los últimos 2-3 ejercicios del plan de
-Nataly (glúteo en polea, aductor/abductor, core) casi nunca se hacen. O se reordenan al principio,
+Nayla (glúteo en polea, aductor/abductor, core) casi nunca se hacen. O se reordenan al principio,
 o se acorta la rutina, o se le cambia el horario. Gratis, y accionable hoy.
 
 ## Todos los hallazgos
@@ -136,7 +136,7 @@ o se acorta la rutina, o se le cambia el horario. Gratis, y accionable hoy.
 | 🔴 | `showWorkoutFinish` (duración, kcal, PRs, subida de nivel, pedir push) solo corre al llegar al 100%; "Finalizar temprano" no la llama nunca | `app-4-entreno.js:2244-2254` vs `2328-2348`, `app-6-extra.js:935-938` | Sí — todo el que finaliza antes del 100% o deja la sesión abierta |
 | 🔴 | `finishSessionEarly` usa `confirm()` nativo, clase de fallo ya diagnosticada y arreglada en otro botón del mismo repo (v568) | `app-4-entreno.js:2341` | Probable, sin reproducir en Android real |
 | 🟡 | Solo 4 de 213 sesiones cerradas en toda la historia (desde 13-jul) usaron "Finalizar temprano" con éxito; 92% de las que no llegan al 100% simplemente quedan abiertas | SQL contra producción | Es el síntoma de #1+#2 |
-| 🟡 | Nataly: abandono sistemático del tramo final de la rutina (declive medible por posición), sin que su plan sea más largo que el de otros | SQL, historial de Nataly vs control | Sí, Nataly — señal de coaching, no de código |
+| 🟡 | Nayla: abandono sistemático del tramo final de la rutina (declive medible por posición), sin que su plan sea más largo que el de otros | SQL, historial de Nayla vs control | Sí, Nayla — señal de coaching, no de código |
 | 🟢 | `offerKeepReorder` puede encadenar un SEGUNDO `confirm()` justo después del de "Finalizar temprano" si hubo reorden/sustitución ese día | `app-4-entreno.js:2192`, `2347` | Baja frecuencia (requiere reorden + cierre parcial el mismo día) |
 | 🟢 | `mood`/`feeling` aparecen mucho más en sesiones cerradas (38%/11%) que en abiertas (2%/1%) | SQL | Probable correlación (compromiso), no causalidad — ver «sospechas sin medir» |
 
@@ -180,9 +180,9 @@ o se acorta la rutina, o se le cambia el horario. Gratis, y accionable hoy.
   ninguna: puede que declarar ánimo simplemente sea una señal de mayor compromiso, el mismo rasgo
   que hace que alguien también llegue al 100%. No medí si mostrar el selector de ánimo cambia la
   tasa de cierre.
-- No medí si el patrón de Nataly (declive por posición) se repite en las otras 8-9 personas con
-  sesiones sin cerrar (Andres/coach 26%, Natalia Martinez 32%, Astrid 16%) — solo comparé Nataly
-  contra un control (Claudia). Es plausible que el mismo patrón "siempre se hace lo primero,
+- No medí si el patrón de Nayla (declive por posición) se repite en las otras 8-9 personas con
+  sesiones sin cerrar (Andres/coach 26%, Nadia Mejía 32%, Andrea 16%) — solo comparé Nayla
+  contra un control (Carla). Es plausible que el mismo patrón "siempre se hace lo primero,
   nunca lo último" sea general y no exclusivo de ella, pero no lo verifiqué persona por persona.
 
 ## Qué NO miré y por qué
@@ -195,5 +195,5 @@ o se acorta la rutina, o se le cambia el horario. Gratis, y accionable hoy.
   — no hay banco de pruebas físico disponible, mismo límite que el equipo ya declaró para el
   zoom de iOS (v526).
 - No recorrí las 8-9 personas restantes con sesiones sin cerrar una por una con el mismo detalle
-  que a Nataly y Claudia — prioricé profundidad en el caso ancla (Nataly) y un control (Claudia)
+  que a Nayla y Carla — prioricé profundidad en el caso ancla (Nayla) y un control (Carla)
   sobre amplitud en las demás, dado el presupuesto de la ronda.

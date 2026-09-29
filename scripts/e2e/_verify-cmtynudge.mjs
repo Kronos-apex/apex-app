@@ -75,7 +75,7 @@ const gymConFoto = (h) => ({ handle: h, avatar_url: AV, is_private: true, gym: t
 const gymPublico = (h) => ({ handle: h, avatar_url: null, is_private: false, gym: true });
 const extranoPublico = (h) => ({ handle: h, avatar_url: null, is_private: false });
 const FRESH = list => ({ hasProfile: false, peers: list.length, list, at: Date.now() });
-const PEERS3 = FRESH([gym('Samuel'), gym('Astrid'), gym('Natalia')]);
+const PEERS3 = FRESH([gym('Salomón'), gym('Andrea'), gym('Nadia')]);
 
 const results = [];
 const check = (n, c, x = '') => { results.push((c ? '✅' : '❌') + ' ' + n + (x ? ' — ' + x : '')); };
@@ -93,7 +93,7 @@ check('N1 con 2 sesiones finalizadas la tarjeta NO sale', n1.disp === 'none' && 
 console.log('  setup(3, 3 peers):', await ev(RESET(3, PEERS3))); await sleep(400);
 const n2 = await ev(cardState);
 check('N2 con 3 sesiones y 3 personas → tarjeta con nombres del gym + «Ver a mi gente» + «Ahora no»',
-  n2.disp === 'block' && /Astrid/.test(n2.txt) && /de tu gym ya están aquí/.test(n2.txt) &&
+  n2.disp === 'block' && /Andrea/.test(n2.txt) && /de tu gym ya están aquí/.test(n2.txt) &&
   n2.btns.some(b => /Ver a mi gente/.test(b)) && n2.btns.some(b => /Ahora no/.test(b)) && n2.nudgeOn === true, JSON.stringify(n2));
 
 // N2-bis: con la puerta abierta, el banner «Comparte AVI» CEDE el turno (no se apilan 2 pedidos).
@@ -147,7 +147,7 @@ const n6c = await ev(cardState);
 check('N6-bis el silencio persiste al repintar y vence solo al expirar', n6b.disp === 'none' && n6c.disp === 'block', JSON.stringify({ silencio: n6b.disp, vencido: n6c.disp }));
 
 // N7: apodo hostil → texto ESCAPADO, sin ejecutar nada (mismo candado que A1).
-const XSS = FRESH([gym('<img src=x onerror=window.__xss=1>'), gym('Samuel')]);
+const XSS = FRESH([gym('<img src=x onerror=window.__xss=1>'), gym('Salomón')]);
 console.log('  setup(9, xss):', await ev(RESET(9, XSS))); await sleep(400);
 const n7 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');return {html:el?el.innerHTML:'',xss:!!window.__xss,imgs:el?el.querySelectorAll('img[onerror]').length:-1};})()`);
 check('N7 un apodo hostil se escapa (sin <img onerror> inyectado ni ejecución)',
@@ -200,10 +200,10 @@ check('N11 el banner «Instalar app» no tapa «Ver a mi gente» (hit-test real,
 // REAL: el único perfil público del gimnasio es el coach, y la línea lo escondía. Y un público que
 // NO es del gym sigue sin colarse.
 console.log('  setup(9, publico del gym + privado + extraño):',
-  await ev(RESET(9, FRESH([gymPublico('Andres'), gym('Samuel'), extranoPublico('Desconocido')])))); await sleep(400);
+  await ev(RESET(9, FRESH([gymPublico('Andres'), gym('Salomón'), extranoPublico('Desconocido')])))); await sleep(400);
 const n12 = await ev(cardState);
 check('N12 el compañero PÚBLICO del gym cuenta, y el desconocido público no se cuela',
-  n12.disp === 'block' && /Andres/.test(n12.txt) && /Samuel/.test(n12.txt) &&
+  n12.disp === 'block' && /Andres/.test(n12.txt) && /Salomón/.test(n12.txt) &&
   !/Desconocido/.test(n12.txt) && /de tu gym ya están aquí/.test(n12.txt), JSON.stringify(n12));
 
 // ── N13 (F7): la puerta se CIERRA al cruzarla. Antes, tras crear el perfil la tarjeta seguía en
@@ -269,10 +269,10 @@ check('N15 (F9) con la sonda corrupta el ENTRENO se pinta igual y la tarjeta sim
 // N16 (decisión del PO 2026-07-26): la tarjeta de «Hoy» la ve alguien que todavía NO creó su
 // perfil → apodos sí, CARAS no (6 de los 7 perfiles reales se tratan como menores). Los datos
 // TRAEN foto a propósito: si alguien quita el candado, este check lo canta.
-console.log('  setup(9, con foto):', await ev(RESET(9, FRESH([gymConFoto('Samuel'), gymConFoto('Astrid')])))); await sleep(400);
+console.log('  setup(9, con foto):', await ev(RESET(9, FRESH([gymConFoto('Salomón'), gymConFoto('Andrea')])))); await sleep(400);
 const n16 = await ev(`(()=>{const el=document.getElementById('cn-cmty-nudge');
   const fotos=[...el.querySelectorAll('img')].filter(i=>(i.getAttribute('src')||'').indexOf('/object/public/avatars')>=0).length;
-  return {disp:el.style.display,nombra:/Astrid/.test(el.innerText),fotos:fotos,iniciales:/AS|SA/.test(el.innerText)};})()`);
+  return {disp:el.style.display,nombra:/Andrea/.test(el.innerText),fotos:fotos,iniciales:/AS|SA/.test(el.innerText)};})()`);
 check('N16 (PO) la tarjeta de «Hoy» nombra sin pintar caras (aunque las tengan)',
   n16.disp === 'block' && n16.nombra === true && n16.fotos === 0 && n16.iniciales === true, JSON.stringify(n16));
 

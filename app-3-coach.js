@@ -344,7 +344,7 @@ async function saveClient(){
   sv('ax_c',DB.clients);
   // ── Crear/asegurar la CUENTA DE ACCESO real del asesorado (Supabase Auth, pre-confirmada),
   // para que pueda ingresar con su correo+clave. Solo si hay credenciales y aún no está
-  // vinculado. Re-vincula su id al de la cuenta. Camilo 2026-06-29 (Claudia no podía entrar
+  // vinculado. Re-vincula su id al de la cuenta. Camilo 2026-06-29 (Carla no podía entrar
   // porque el form creaba un cliente LOCAL sin cuenta de acceso).
   const _target=DB.clients.find(x=>x.id===(CUR.editClientId||clientId));
   // Mi propia fila NO lleva cuenta de acceso de asesorado: ya entro como coach.
@@ -485,12 +485,12 @@ function _applyAuthClientDB(client, coll){
   // probarla, ninguna visible leyendo el código:
   //  1. **Las sesiones viejas no traen `id` de ejercicio** (`{id: undefined, name:'Jalón al
   //     Pecho'}`), así que el récord derivado cae bajo el NOMBRE mientras el que ya existe está
-  //     bajo `e6` → DOS récords del mismo ejercicio. De los 26 que «recuperaba» en Kathe, casi
+  //     bajo `e6` → DOS récords del mismo ejercicio. De los 26 que «recuperaba» en Karen, casi
   //     todos eran duplicados de los que ya tenía.
   //  2. **Resucitaría lo que el coach curó a mano.** `coachEditPR` permite BORRAR un récord falso
   //     («si vuelve a levantar ese peso, se vuelve a crear solo en la siguiente sesión»), y el
   //     historial que lo originó sigue ahí: el borrado volvería en el siguiente arranque. El caso
-  //     que motivó esa función —Nataly, «Patada de Glúteo en Polea 30 kg» cuando levanta 15— está
+  //     que motivó esa función —Nayla, «Patada de Glúteo en Polea 30 kg» cuando levanta 15— está
   //     vivo en los datos de hoy.
   // Y el premio era mínimo: la cobertura del peso sugerido pasaba de 34,2% a 35,1%.
   // La causa raíz se arregló donde de verdad estaba: el récord se escribe al GUARDAR la sesión
@@ -781,7 +781,7 @@ async function _enterAuthSession(authUser,opts){
       // MATA AL FANTASMA AL NACER (auditoría 2026-07-01): este "Continuar con Google"
       // ya AUTO-CREÓ una cuenta auth vacía con su Gmail; si queda viva, bloquea para
       // siempre el "Conectar mi Google" de su cuenta real (identity_already_exists —
-      // caso Luz/Nataly). La edge delete-account en modo ghost la borra SOLO si no
+      // caso Luisa/Nayla). La edge delete-account en modo ghost la borra SOLO si no
       // tiene fila de datos (candado en el SERVIDOR — una cuenta con datos es intocable
       // por esta vía). Si falla (red caída), no bloquea: el mensaje de abajo guía y el
       // próximo intento con Google vuelve a pasar por aquí y la limpia (self-healing).
@@ -1879,8 +1879,8 @@ function setClientPlan(cid,plan){
   const labels={libre:'Libre (gratis)',app:'Premium app (sin coach)',coach:'Premium + Coach'};
   if(!confirm(`¿Cambiar a ${c.name.split(' ')[0]} al nivel "${labels[plan]}"?`))return;
   c.tier = plan==='coach' ? 'premium' : plan;
-  // Cambiar el plan ES atender la solicitud, sea cual sea el plan elegido (el bug de Hernán y
-  // Cristian: se los pasó a "Premium app" y la marca quedó encendida para siempre porque solo
+  // Cambiar el plan ES atender la solicitud, sea cual sea el plan elegido (el bug de Hugo y
+  // César: se los pasó a "Premium app" y la marca quedó encendida para siempre porque solo
   // la rama 'coach' la apagaba). El registro del coach es el que manda; el flag del asesorado se
   // apaga además en su fila cuando aplica, pero ya no es quien decide.
   if(_leadPending(c)){ const d=_leadsDone(); d[cid]=new Date().toISOString(); sv('ax_leadsdone',d); }
@@ -2338,7 +2338,7 @@ function shareClientProgress(){
   x.strokeStyle='rgba(16,224,160,.75)';x.lineWidth=9;x.stroke();
   x.restore();
   // El nombre se ENCOGE hasta no chocar con el retrato: en un canvas no hay reflow que avise, y
-  // «Nicolás» a 120 px se metería dentro del círculo sin que nada lo impida.
+  // «Nelson» a 120 px se metería dentro del círculo sin que nada lo impida.
   x.fillStyle='#FFFFFF';
   let _fn=120; x.font=_cf(_fn,'900',true);
   while(_fn>52&&x.measureText(d.nombre).width>660){_fn-=6;x.font=_cf(_fn,'900',true);}
@@ -2346,7 +2346,7 @@ function shareClientProgress(){
 
   // ── EL TITULAR ─────────────────────────────────────────────────────────────────────────
   // 🔴 Es la MEDIANA de sus subidas, no el máximo, y dice CARGA, no FUERZA. Ver la nota de
-  // `STORY_VOL_MIN_RATIO` en avi-core: con el máximo, la tarjeta de Nataly gritaría «+650%»
+  // `STORY_VOL_MIN_RATIO` en avi-core: con el máximo, la tarjeta de Nayla gritaría «+650%»
   // (una polea de 2 → 15 kg) mientras su volumen por sesión CAYÓ un 42%.
   // v602 · 728 y no 700: Anton tiene una caja MUCHO mas alta que la fuente del sistema, asi que
   // al cambiar la tipografia el «+133%» subio y casi toca el nombre. Se vio mirando la imagen,
@@ -2532,7 +2532,7 @@ async function unpublishProgress(id){
 // ⚖️ EL PESO QUE MANDA ES EL ÚLTIMO REGISTRADO, NO EL DE LA FICHA.
 // `profile.weight` se escribe UNA VEZ al dar de alta y nadie vuelve a tocarlo; la persona sí se
 // sigue pesando. Medido el 2026-08-21: **5 de las 14 con peso registrado tenían la ficha
-// desfasada** — Samuel decía 78 kg pesando 86 (su ficha nunca se corrigió desde el alta, y el
+// desfasada** — Salomón decía 78 kg pesando 86 (su ficha nunca se corrigió desde el alta, y el
 // MISMO día él registró 88), y el propio coach apareciía con IMC 29,4 estando en 30,0.
 // Quién es «el último» lo decide `nutWeightFor` (avi-core) POR FECHA, y es la MISMA función que
 // usa nutrición (`_nutPesoDe` en app-5): una sola definición, dos envoltorios que le dan su lista.
@@ -2888,7 +2888,7 @@ function renderNutReviewCard(c){
     const peso=nutWeightFor(c,(DB.bodyweight||{})[c.id]);
     const _nut=(DB.nutrition||{})[c.id];
     // v435: el titular escrito y la suma de SUS PROPIOS macros pueden no cuadrar (medido
-    // 2026-08-04: 6 de 10 planes; el de Nataly por 240 kcal/día). El plato se arma con los MACROS,
+    // 2026-08-04: 6 de 10 planes; el de Nayla por 240 kcal/día). El plato se arma con los MACROS,
     // así que el asesorado come lo que suman ellos — y el coach tiene que enterarse de que el
     // número que escribió no es el que se está entregando.
     // 🔴 …pero «come lo que suman sus macros» dejó de ser cierto para un MENOR: la banda de v493
@@ -2900,7 +2900,7 @@ function renderNutReviewCard(c){
     const _banda=!!(_b&&(_b.minorCap||_b.minorFloor));
     // 🔴 EL DESFASE YA NO CORTA CON `return`. Esta tarjeta cortaba antes de llamar al revisor, así
     // que en cuanto un plan tenía las DOS cosas mal, la app hablaba de la de MENOS peso: medido con
-    // Luz (39 años, «Perder grasa»), 45 kcal de descuadre entre titular y macros TAPABAN que su
+    // Luisa (39 años, «Perder grasa»), 45 kcal de descuadre entre titular y macros TAPABAN que su
     // plan le da ~600 kcal por encima de lo que le corresponde — y la tarjeta la mandaba a
     // «ajustar el número para que digan lo mismo», que no es lo que hay que arreglar.
     // Es la MISMA clase que v496 ya cerró dentro de `nutPlanReview` (el rótulo dejó de ir antes que
@@ -2993,7 +2993,7 @@ function renderNutReviewCard(c){
       cuerpo=`Tiene <b>${fmtMiles(r.actual)} kcal</b> y le corresponden <b>${r.sugerido}</b>.${riesgo}`;
       if(r.riesgo){ tono='--rdl'; tinta='--rdt'; }
     }
-    // 🔒 LA PROTEÍNA VIAJA CON CUALQUIER TARJETA, no solo con la suya. Kathe y Luz tienen el rótulo
+    // 🔒 LA PROTEÍNA VIAJA CON CUALQUIER TARJETA, no solo con la suya. Karen y Luisa tienen el rótulo
     // mal Y la proteína corta, y el consejo de Andrés para ellas es literalmente «no toques el
     // total: mueve carbohidrato a proteína» — si el aviso de proteína solo saliera cuando es el
     // ÚNICO problema, justo a ellas no les llegaría nunca.
@@ -3082,7 +3082,7 @@ function renderDeloadPanel(c){
 // ── MODAL DE DESCARGA (v532) ─────────────────────────────────────────────────────────────────
 // Pedido del PO: elegir CUÁNDO empieza, CUÁNTO dura y hacerlo a VARIOS de una pasada. Antes era un
 // `confirm()` que arrancaba hoy y duraba 7 días fijos.
-// El aviso de `deloadWarnings` sigue AVISANDO sin bloquear: la decisión es suya («Claudia y Luz,
+// El aviso de `deloadWarnings` sigue AVISANDO sin bloquear: la decisión es suya («Carla y Luisa,
 // que se están recuperando de una gripa» no es una señal que la app pueda ver en los datos).
 function _dlFechaHoy(){ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function startDeloadFor(cid){
@@ -3308,7 +3308,7 @@ function _flDesvioChip(et,pct,unidad,prom,meta){
   </div>`;
 }
 // ── Corregir un récord (pedido del PO, 2026-08-08) ───────────────────────────────────────────
-// NACE DE UN CASO REAL: Nataly tenía «Patada de Glúteo en Polea 30 kg» y de verdad levantaba 15
+// NACE DE UN CASO REAL: Nayla tenía «Patada de Glúteo en Polea 30 kg» y de verdad levantaba 15
 // (anotó el número de la placa de la máquina, no la carga). Hasta hoy NO HABÍA forma de corregir
 // un récord: solo se escriben solos cuando alguien supera su marca. Y un récord falso hace daño
 // por tres lados — nadie puede volver a superarlo, infla la gráfica de progreso y **envenena el
@@ -3582,7 +3582,7 @@ function renderDetailRoutines(c){
 // nombre, nota y ejercicios y dejaban puesto lo que quedó de la rutina anterior: el
 // CALENTAMIENTO personalizado (`CUR.routineWarmup`) y el «por qué de la rutina» (`#r-why`), que
 // es texto que LEE el asesorado. Como la rutina anterior suele ser de OTRA persona, aplicarle una
-// plantilla a Kathe podía escribirle el calentamiento y la explicación de Astrid.
+// plantilla a Karen podía escribirle el calentamiento y la explicación de Andrea.
 // Vaciar en una función y que las tres puertas la llamen es lo único que impide que la cuarta
 // puerta que alguien abra mañana nazca con el mismo defecto.
 function rfBlank(){

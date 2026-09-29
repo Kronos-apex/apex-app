@@ -42,7 +42,7 @@ borra a mano lo que ya se habría cascadeado, y deja el borrado que de verdad cu
 las 5 una por una: las 5 tienen **cero filas en `push_subscriptions`**, y 4 de las 5 tienen
 `created_at` y `last_sign_in_at` con la MISMA marca de tiempo al segundo — la firma exacta del
 "modo fantasma" ya documentado (alguien tocó "Continuar con Google" sin haberse registrado antes),
-no de un borrado a medias. La quinta (`valery@avi.com`, creada 2026-07-02, con un inicio de sesión
+no de un borrado a medias. La quinta (`oculto@avi.com`, creada 2026-07-02, con un inicio de sesión
 5 días después) tampoco tiene rastro de haber usado la app. **No encontré una víctima confirmada
 hoy** — el hueco es real y reproducible LEYENDO el código, pero no until ahora se ha materializado
 (o si se materializó, el propio "modo fantasma" —que SÍ se auto-repara la próxima vez que esa

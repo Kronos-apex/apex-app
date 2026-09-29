@@ -34,7 +34,7 @@ Corridos de a uno, nunca en paralelo. Única anotación de `_audit-pantallas`: `
 
 **Qué esperaba.** Que la portada del día 1 desapareciera: ya entrenó, ya no es día 1.
 
-**Qué pasó.** Se queda entera y visible: **933 caracteres de HTML, `display:block`, 326 px de alto**, con su titular *«Nataly, tu plan está listo — Hoy empiezas con el primero»*, su tarjeta *«TU PRIMER ENTRENO»*, la promesa **«Lo demás aparece cuando termines este»** (falsa: todo lo demás ya está debajo) y el botón **«Empezar mi primer entreno →» vivo y recibiendo el toque** (`onclick="firstRunGo()"`, hit-test: «ese mismo botón»). La tarjeta *«¡Ya entrenaste hoy!»* sí se pinta, pero queda **debajo del plan de comida** (orden de `_todayOrder(false)`), o sea fuera de la primera pantalla.
+**Qué pasó.** Se queda entera y visible: **933 caracteres de HTML, `display:block`, 326 px de alto**, con su titular *«Nayla, tu plan está listo — Hoy empiezas con el primero»*, su tarjeta *«TU PRIMER ENTRENO»*, la promesa **«Lo demás aparece cuando termines este»** (falsa: todo lo demás ya está debajo) y el botón **«Empezar mi primer entreno →» vivo y recibiendo el toque** (`onclick="firstRunGo()"`, hit-test: «ese mismo botón»). La tarjeta *«¡Ya entrenaste hoy!»* sí se pinta, pero queda **debajo del plan de comida** (orden de `_todayOrder(false)`), o sea fuera de la primera pantalla.
 
 **Captura (tamaño real):** `avi-lucas-v507/R1b-primer-entreno-terminado.png`
 
@@ -128,7 +128,7 @@ En los 5 casos se imprimió el tramo antes/después y el cambio de tamaño del a
 **Qué pasó.** `openNutritionRoom` corta con un `return` propio (`app-5:620`) antes del `body.innerHTML` que contiene `${_foodLogDoorHtml(c)}`. Resultado: una pantalla con el héroe, una nota de dos líneas y **nada más** (captura `E6-sindatos-nutricion.png`, mirada a tamaño real). Sin puerta.
 
 **¿Debería estar?** En mi opinión sí, y con una medición detrás: esa misma persona **sí puede registrar** — en su «Hoy» la fila del plato existe con su «+» y dice *«Anota lo que comes y llévalo claro»* (`filaPlato:true, botonMas:true`). O sea que el registro no necesita peso/talla/edad, y la habitación donde más espacio sobra es justo donde se le niega la puerta.
-**Exposición:** baja y no medida contra los perfiles reales — hace falta Premium **sin plan escrito** *y* con datos corporales incompletos (el caso conocido de Astrid, «peso sin talla», sí tiene plan del coach, así que entra por la otra rama y sí ve la puerta). Eso lo puede contar Mateo, no yo.
+**Exposición:** baja y no medida contra los perfiles reales — hace falta Premium **sin plan escrito** *y* con datos corporales incompletos (el caso conocido de Andrea, «peso sin talla», sí tiene plan del coach, así que entra por la otra rama y sí ve la puerta). Eso lo puede contar Mateo, no yo.
 
 ---
 

@@ -40,7 +40,7 @@ const setup = await ev(`(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const D=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date().getDay()];
   const mkEx=(nm,mus,ty)=>({id:nm,name:nm,muscle:mus,type:ty,track:'peso_reps',sets:3,reps:'10'});
-  const c={id:'cH',name:'Samuel Cifuentes',email:'samuel@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,sex:'M',tier:'premium',
+  const c={id:'cH',name:'Salomón Cárdenas',email:'salomon@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,sex:'M',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:'2026-08-01',amount:120000}],
     routines:[
       {id:'r1',name:'Empuje — Pecho y Hombro',day:D,note:'Calienta bien el manguito antes de press.',exercises:[mkEx('Press banca','Pecho','Compuesto'),mkEx('Press militar','Hombro','Compuesto'),mkEx('Aperturas','Pecho','Aislamiento'),mkEx('Fondos','Tríceps','Compuesto')]},

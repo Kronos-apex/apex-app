@@ -19,7 +19,7 @@ sumar un vaso de agua, disponible desde el 9 de julio— da esto:
 |---|---|
 | Personas que la han usado alguna vez | **6 de 24** |
 | Personas que nunca la usaron | **18** |
-| Mejor adherencia individual (Luz) | **10 días de 27 = 37%** |
+| Mejor adherencia individual (Luisa) | **10 días de 27 = 37%** |
 | Pasos (desde el 17-jul) | máximo **7 días**, 5 personas |
 | Actividad semanal | 3-6 personas, 4-13 registros |
 
@@ -336,7 +336,7 @@ aplicados (merge de un solo lado · poda sin resumen) que tumbaron 4 tests, `_pr
 | Peor caso, todo de código de barras | 106,6 KB | 35,5 KB |
 | Tras **un año** de uso diario | — | **27,8 KB** (37,6 peor caso), estable |
 
-Contraste con producción: **los perfiles reales pesan ~600 bytes** (Luz 600, Kathe 619) y el
+Contraste con producción: **los perfiles reales pesan ~600 bytes** (Luisa 600, Karen 619) y el
 historial completo de meses de entreno, 10-18 KB. A 90 días el registro multiplicaría el perfil por
 más de 100 y sería, de lejos, lo más pesado de la fila — re-subido entero 3-5 veces al día.
 A 30 días (misma retención que agua y pasos) queda proporcionado y **el coach conserva un mes

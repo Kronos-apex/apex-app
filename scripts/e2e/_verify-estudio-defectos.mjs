@@ -41,7 +41,7 @@ const SETUP = `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const hoy=days[new Date().getDay()];
-  const client={id:'nuevo',name:'Santiago',sex:'M',level:'Principiante',goal:'Bajar de peso',days:3,
+  const client={id:'nuevo',name:'Sebastián',sex:'M',level:'Principiante',goal:'Bajar de peso',days:3,
     createdAt:new Date().toISOString(),
     routines:[{id:'r1',name:'Full body A',day:hoy,restSec:90,exercises:[
       {id:'e1',name:'Sentadilla',muscle:'piernas',muscleLabel:'Cuádriceps y glúteo',type:'Compuesto',sets:3,reps:'12'},

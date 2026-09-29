@@ -1,4 +1,4 @@
-// Repro reporte Camilo 2026-07-07: a Claudia NO le apareció la pantalla de fin
+// Repro reporte Camilo 2026-07-07: a Carla NO le apareció la pantalla de fin
 // (#workout-finish) al completar su entreno (19/19 guardado OK en la nube). A Camilo sí.
 // Barrido de caminos de finalización en el guiado embebido post-F5:
 //   W1 en orden (última serie con el check normal)   W2 fuera de orden (se devuelve a una saltada)
@@ -205,11 +205,11 @@ try {
   await ev(`(()=>{try{clearTodayMood(CUR.clientId);}catch(e){}Object.keys(localStorage).filter(k=>k.includes('rTest')).forEach(k=>localStorage.removeItem(k));})()`);
 
   // ── W8: BLINDAJE — si checkAndUpdatePRs LANZA, la celebración sale igual (fix v293) ──
-  // Es el modo de falla que calza con el caso Claudia: historial guardado, pantalla muerta.
+  // Es el modo de falla que calza con el caso Carla: historial guardado, pantalla muerta.
   log('\n=== W8: throw en checkAndUpdatePRs → la celebración sobrevive ===');
   await setR('WF Blindaje', `({byTrack})=>{const r=byTrack('reps');r.sets=1;return [r];}`);
   await sleep(500); await resetWf();
-  await ev(`(()=>{window._realPRs=checkAndUpdatePRs;checkAndUpdatePRs=()=>{throw new Error('repro-claudia');};window._logCount=0;window._realLog=_logAppError;_logAppError=(k,m,s)=>{window._logCount++;window._lastLog=m;};})()`);
+  await ev(`(()=>{window._realPRs=checkAndUpdatePRs;checkAndUpdatePRs=()=>{throw new Error('repro-carla');};window._logCount=0;window._realLog=_logAppError;_logAppError=(k,m,s)=>{window._logCount++;window._lastLog=m;};})()`);
   await ev(`document.getElementById('gm-chk-0-0').click()`);
   await sleep(900);
   s = await wf();

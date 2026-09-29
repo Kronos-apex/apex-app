@@ -33,7 +33,7 @@ await theme('light');
 // 2) CIERRE DE ENTRENO (pico de diseño / celebración) — datos fake
 await ev(`(()=>{ ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
   window._pushCtx={clientId:'cX',days:[],shifts:null};
-  document.getElementById('wf-title').textContent='¡Lo lograste, Samuel!';
+  document.getElementById('wf-title').textContent='¡Lo lograste, Salomón!';
   document.getElementById('wf-sub').textContent='Full Body · lunes, 12 de julio';
   document.getElementById('wf-stats').innerHTML='<div class="wf-stat"><div class="wf-stat-val">42 min</div><div class="wf-stat-lbl">Duración</div></div><div class="wf-stat"><div class="wf-stat-val">320 kcal</div><div class="wf-stat-lbl">Calorías</div></div><div class="wf-stat"><div class="wf-stat-val">8/8</div><div class="wf-stat-lbl">Series</div></div><div class="wf-stat"><div class="wf-stat-val">4.850 kg</div><div class="wf-stat-lbl">Volumen</div></div>';
   if(typeof WF_FEELINGS!=='undefined')document.getElementById('wf-faces').innerHTML=WF_FEELINGS.map(f=>'<button class="wf-face">'+f.e+'</button>').join('');
@@ -46,7 +46,7 @@ await ev(`document.getElementById('workout-finish').classList.remove('on')`);
 const coachOK = await ev(`(()=>{try{
   if(typeof DB==='undefined'||typeof showScreen!=='function')return false;
   const mk=(id,name,d)=>({id,name,goal:'Ganar músculo',level:'Intermedio',days:4,payments:[{date:'2026-06-15',dueDate:d,amount:120000}],routines:[{id:'r1',name:'Pierna',day:'Lunes',exercises:[{id:'e1',name:'Sentadilla',muscle:'Cuádriceps',type:'Compuesto',sets:4,reps:10}]}]});
-  DB.clients=[mk('c1','Samuel Cifuentes','2026-08-01'),mk('c2','Andrés Martínez','2026-07-14'),mk('c3','Astrid Beltran','2026-06-30')];
+  DB.clients=[mk('c1','Salomón Cárdenas','2026-08-01'),mk('c2','Andrés Martínez','2026-07-14'),mk('c3','Andrea Bernal','2026-06-30')];
   showScreen('s-coach'); if(typeof renderHome==='function')renderHome(); if(typeof showPanel==='function')showPanel('p-home');
   return true;
 }catch(e){return 'err:'+e.message;}})()`);

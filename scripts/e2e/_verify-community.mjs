@@ -225,8 +225,8 @@ await ev(`(()=>{
   window.__profileRow = null;                     // NO tengo perfil todavía (el caso de los 17)
   window.__frRows = []; window.__rxRows = [];
   window.__allProfiles = [
-    {user_id:'${P1}',handle:'Samuel',avatar_url:null,is_private:true},
-    {user_id:'${P2}',handle:'<img src=x onerror="window.__xss=1">Astrid',avatar_url:'https://evil.example.com/t.png',is_private:true}
+    {user_id:'${P1}',handle:'Salomón',avatar_url:null,is_private:true},
+    {user_id:'${P2}',handle:'<img src=x onerror="window.__xss=1">Andrea',avatar_url:'https://evil.example.com/t.png',is_private:true}
   ];
   window.__xss=0; CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false;
   return 'ok';
@@ -239,7 +239,7 @@ const cm15 = await ev(`(()=>{
   const h=document.getElementById('cn-community'); const t=h.innerText.replace(/\\s+/g,' ');
   // 2 compañeros → ambos nombrados, sin «y N más». El handle hostil ordena antes (empieza por '<')
   // y por eso aparece primero: lo que importa es que salga como TEXTO, no como etiqueta.
-  return {linea:/de tu gym ya están aquí/.test(t) && /Samuel/.test(t) && /onerror/.test(t) && !/y 1 más/.test(t),
+  return {linea:/de tu gym ya están aquí/.test(t) && /Salomón/.test(t) && /onerror/.test(t) && !/y 1 más/.test(t),
           optin:!!document.getElementById('cmty-optin-btn'),
           xss:window.__xss, badImg:!!h.querySelector('img[src="x"]'),
           ext:[...h.querySelectorAll('img')].some(i=>/evil\\.example\\.com/.test(i.getAttribute('src')||''))};
@@ -253,15 +253,15 @@ check('CM15 (A1) la bienvenida nombra a la gente del gym, sin perder el opt-in y
 // foto es el dato más identificable y aparece solo cuando la persona entra a la comunidad.
 await ev(`(()=>{
   window.__allProfiles = [
-    {user_id:'${P1}',handle:'Samuel',avatar_url:'${PREFIX}${P1}/avatar.jpg',is_private:true},
-    {user_id:'${P2}',handle:'Astrid',avatar_url:'${PREFIX}${P2}/avatar.jpg',is_private:true}
+    {user_id:'${P1}',handle:'Salomón',avatar_url:'${PREFIX}${P1}/avatar.jpg',is_private:true},
+    {user_id:'${P2}',handle:'Andrea',avatar_url:'${PREFIX}${P2}/avatar.jpg',is_private:true}
   ];
   window.__gymPeers = []; CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false; return 'ok';
 })()`);
 await ev(`cmtyLoad()`); await sleep(600);
 const cm19 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=h.innerText.replace(/\\s+/g,' ');
   const conFoto=[...h.querySelectorAll('img')].filter(i=>(i.getAttribute('src')||'').indexOf('/object/public/avatars')>=0);
-  return {nombra:/Astrid/.test(t)&&/Samuel/.test(t), fotos:conFoto.length,
+  return {nombra:/Andrea/.test(t)&&/Salomón/.test(t), fotos:conFoto.length,
           iniciales:/AS|SA/.test(h.innerText), avatarUrlEnDatos:(CMTY.peers||[]).filter(p=>p.avatar_url).length};})()`);
 check('CM19 (PO) la bienvenida nombra a la gente pero NO pinta sus fotos (aunque las tengan)',
   cm19.nombra === true && cm19.avatarUrlEnDatos === 2 && cm19.fotos === 0, JSON.stringify(cm19));
@@ -273,11 +273,11 @@ const P3 = '00000000-0000-0000-0000-0000000000c3';
 const P4 = '00000000-0000-0000-0000-0000000000c4';
 await ev(`(()=>{
   window.__allProfiles = [
-    {user_id:'${P1}',handle:'Samuel',avatar_url:null,is_private:true},
+    {user_id:'${P1}',handle:'Salomón',avatar_url:null,is_private:true},
     {user_id:'${P3}',handle:'AndresCoach',avatar_url:null,is_private:false},
     {user_id:'${P4}',handle:'Desconocido',avatar_url:null,is_private:false}
   ];
-  window.__gymPeers = ['${P1}','${P3}'];   // el servidor dice: Samuel y el coach son de mi gym
+  window.__gymPeers = ['${P1}','${P3}'];   // el servidor dice: Salomón y el coach son de mi gym
   CMTY.busy=false; CMTY.loaded=false; CMTY.profile=null; CMTY.offline=false; return 'ok';
 })()`);
 await ev(`cmtyLoad()`); await sleep(600);
@@ -295,7 +295,7 @@ const cm18b = await ev(`(()=>{const l=(typeof communityPeersLine==='function')?c
   const marcados=(CMTY.peers||[]).filter(p=>p.gym).map(p=>p.handle);
   return {total:l&&l.total,scope:l&&l.scope,marcados:marcados};})()`);
 check('CM18-bis con la RPC caída se conserva la conducta de siempre (el privado sigue siendo del gym)',
-  cm18b.total === 1 && cm18b.scope === 'gym' && cm18b.marcados.length === 1 && cm18b.marcados[0] === 'Samuel',
+  cm18b.total === 1 && cm18b.scope === 'gym' && cm18b.marcados.length === 1 && cm18b.marcados[0] === 'Salomón',
   JSON.stringify(cm18b));
 await ev(`(()=>{ window.__gymPeersErr=null; window.__gymPeers=[]; return 'ok'; })()`);
 

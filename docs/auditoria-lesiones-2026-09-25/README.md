@@ -16,14 +16,14 @@ asesorados han reportado dolor **cero veces** (los 2 reportes son del PO).
 
 ## Los hallazgos que quedan en pie (medidos)
 
-### 🔴 1. Laura Ramírez Rueda entrena saltos, zancadas y extensiones con «rodillas desgastadas», y nada lo marca
+### 🔴 1. Lucía Ríos entrena saltos, zancadas y extensiones con «rodillas desgastadas», y nada lo marca
 - Notas del coach: *«Rodillas desgastadas, dolor en la espalda alta, dolor en los codos»*.
 - Su plan real (SQL, 27-sep), creado a mano por el coach el 15 y el 23-sep:
   - **Pierna (lunes):** `e80` Sentadilla de Peso Corporal · `e35` Desplantes / Zancada · `e37`
     Extensión de Cuádriceps. Las tres son ❌ para rodilla en el dictamen de Laura (§3.2: la extensión
     terminal bajo carga es «el pico de estrés femoropatelar»).
   - **Glúteo (jueves):** `e61` Sentadilla Sumo · `e37` otra vez.
-  - **Full body funcional (lunes, aplicada el 23-sep desde la MISMA plantilla que tiene Danilo):**
+  - **Full body funcional (lunes, aplicada el 23-sep desde la MISMA plantilla que tiene Darío):**
     `e69` Clean & Press ⚠️ AVANZADO · `e184` Sentadilla con Salto · `e81` Escaladores · `e75` Burpees.
   - **Codos:** `e11` Extensión de Tríceps con Cuerda en Polea (viernes) — el mismo ejercicio con el
     que el PO reportó su codo el 17-ago.
@@ -73,7 +73,7 @@ al generador).
 ## Lo que se TUMBÓ (no llevar al PO)
 
 - ❌ **G2 #3, «el pool colapsa a 1: Clamshell al 100% para Laura R., Press Pallof al 100% para
-  Danilo».** No es un pool: `e89` es el correctivo de RODILLA y `e133` el de LUMBAR en
+  Darío».** No es un pool: `e89` es el correctivo de RODILLA y `e133` el de LUMBAR en
   `GEN_CORRECTIVE` (`avi-core.js:647`). Aparecen todos los días **porque se prescriben a propósito**.
   Su control (0% sin la limitación) es exactamente lo que produce un correctivo.
 - ❌ **G1 #4, «con dolor de pecho ascienden las lagartijas y `wa1` sigue en el calentamiento».** La
@@ -105,7 +105,7 @@ al generador).
    → reglas de cuello es una aproximación que juzga Laura.
 3. **Wall-sit y sit-to-stand fuera de la regla de rodilla**: ya lo dictó Laura por escrito; se
    ejecuta por id. `e70` Goblet (🟡 «rango corto») lo decide ella.
-4. **Acto del PO, sin código:** revisar hoy el plan de Laura Ramírez (Pierna, Glúteo, Full body
+4. **Acto del PO, sin código:** revisar hoy el plan de Lucía Ríos (Pierna, Glúteo, Full body
    funcional y `e11`).
 
 ## Qué NO se miró

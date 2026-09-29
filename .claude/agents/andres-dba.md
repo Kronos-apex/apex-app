@@ -52,7 +52,7 @@ Ambas tablas tienen RLS habilitado con política `FOR ALL USING (true) WITH CHEC
 ```
 PUBLIC:  BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8
 PRIVATE: eyWkxzCg-TcFFnXIP3jCuiY-vDNud4Stts-r_4RRGVU
-SUBJECT: mailto:camiloandres861987@gmail.com
+SUBJECT: mailto:oculto@gmail.com
 ```
 
 ## Tu proceso

@@ -25,14 +25,14 @@ Medido el 2026-08-04 sobre los 26 registros vivos de `user_data` (16 personas co
 
 Los tres casos que lo retratan:
 
-- 🔴 **Astrid** subió el hip thrust **90 → 100 kg el 18-jul**, lo consolidó a 4×12 y está en su
+- 🔴 **Andrea** subió el hip thrust **90 → 100 kg el 18-jul**, lo consolidó a 4×12 y está en su
   **volumen máximo histórico** — y la app le dice que se estancó. Su récord cayó **dentro de la
   ventana `prior`** (punto 10 de 14) → `recent(100) <= prior(100)`. **El detector castiga terminar
   bien una progresión:** cualquiera que suba el peso y lo afiance queda marcado a las 4 sesiones.
   Falso positivo ESTRUCTURAL, no un caso raro.
-- **Nataly** lleva el hip thrust en 80 kg fijos **subiendo de 40 a 57 repeticiones totales**
+- **Nayla** lleva el hip thrust en 80 kg fijos **subiendo de 40 a 57 repeticiones totales**
   (+42% de volumen). La app: «se estancó».
-- **Luz**, principiante con 5 semanas en la app, también sale estancada.
+- **Luisa**, principiante con 5 semanas en la app, también sale estancada.
 
 ## 2. EL DETECTOR NUEVO (spec)
 
@@ -58,11 +58,11 @@ ejercicios dejaban de marcarse por no alcanzar los 6 puntos**, no por haber mejo
 semanal cada ejercicio sale ~1 vez por semana, así que en 5 semanas se juntan 4-5 puntos y los
 grandes básicos quedaban **invisibles para siempre**. Eso no es un detector más listo, es un
 detector mudo — la cara opuesta del mismo error. La ventana elástica evalúa **9 de 22** ejercicios
-de Astrid y **23 de 27** de Andrés, en vez de 0.
+de Andrea y **23 de 27** de Andrés, en vez de 0.
 
 ### 2.3 La referencia es lo de ANTES de la ventana
 `estancado ⟺ mejor índice DENTRO de la ventana ≤ mejor índice ANTES de la ventana`,
-con **≥1 punto antes** como base. Este es el arreglo del caso Astrid: su récord de 100 kg cae
+con **≥1 punto antes** como base. Este es el arreglo del caso Andrea: su récord de 100 kg cae
 dentro de la ventana, no en la referencia, así que lee **+11%** en vez de «estancada».
 
 ### 2.4 Compuertas (Andrés)
@@ -88,17 +88,17 @@ Los 5 controles, todos correctos:
 
 | caso | qué debe pasar | resultado |
 |---|---|---|
-| Astrid · Hip Thrust con Barra | consolidó 90→100 → **NO** estancada | ✅ lee **+11%** |
-| Astrid · Remo con Barra | 10 kg quieto 2 meses → **SÍ** (el real de Valery) | ✅ estancado |
-| Nataly · Hip Thrust con Barra | las reps subieron → **NO** | ✅ no evaluable hoy (6 puntos); con un dato más lee **+12%**, nunca estancada |
-| Samuel · Curl de Bíceps | 20 kg quieto → **SÍ** | ✅ estancado |
-| Luz · Curl Femoral Tumbado | principiante de 5 sem → **JAMÁS** | ✅ compuerta |
+| Andrea · Hip Thrust con Barra | consolidó 90→100 → **NO** estancada | ✅ lee **+11%** |
+| Andrea · Remo con Barra | 10 kg quieto 2 meses → **SÍ** (el real de Valery) | ✅ estancado |
+| Nayla · Hip Thrust con Barra | las reps subieron → **NO** | ✅ no evaluable hoy (6 puntos); con un dato más lee **+12%**, nunca estancada |
+| Salomón · Curl de Bíceps | 20 kg quieto → **SÍ** | ✅ estancado |
+| Luisa · Curl Femoral Tumbado | principiante de 5 sem → **JAMÁS** | ✅ compuerta |
 
 ## 3. LA DESCARGA
 
 ### 3.1 Criterio de disparo (Andrés)
 Hoy `shockTargets` dispara con **≥3 ejercicios estancados**. Es incorrecto por dos razones
-medidas: (a) es un conteo ABSOLUTO que ignora cuántos van mejorando —Astrid tiene **3 planos y 7
+medidas: (a) es un conteo ABSOLUTO que ignora cuántos van mejorando —Andrea tiene **3 planos y 7
 subiendo**, eso no es fatiga sistémica, es progreso—; (b) una **meseta** no es una **regresión**.
 
 Criterio nuevo: **REGRESIÓN ≥5% del índice en ≥3 ejercicios**, más los pisos:
@@ -140,7 +140,7 @@ el CTA «hablar con tu coach»): la tarjeta desaparece en lugar de suavizarse.
 - **Asesorada:** nada. Se elimina el candidato `estancado` de `coachInsight`.
 - **Coach:** lo ve en el pulso (`coachPulse`) y en la ficha (`shockTargets`/`shockPlan`), **siempre
   con la ACCIÓN concreta** (Valery), no con el diagnóstico a secas.
-- El detector **NO se borra**: con Astrid encontró un estancamiento REAL (remo 10 kg quieto 2
+- El detector **NO se borra**: con Andrea encontró un estancamiento REAL (remo 10 kg quieto 2
   meses) que su coach no había visto.
 
 ## 5. LO QUE LOS DATOS DICEN Y NADIE SABÍA
@@ -177,7 +177,7 @@ razón en el dato y **midiendo salió peor: el 10% casi nunca llegaba**. Dos cau
    personas no recibían la bajada en NI UN ejercicio**.
 2. El factor caía **encima del escalón de progresión** de `suggestFromPR` → la sugerencia «de
    descarga» quedaba **por encima del propio récord en 130 de 148 casos** (mediana **+6,7%**,
-   hasta +25%). Caso real: Natalia, récord 25 kg ×15 → la app le «descargaba» a 25 kg.
+   hasta +25%). Caso real: Nadia, récord 25 kg ×15 → la app le «descargaba» a 25 kg.
 
 | medido, 148 casos comparables | v481 | v482 |
 |---|---|---|
@@ -208,13 +208,13 @@ reciben recorte— son **2 de 544**.
 (texto de Andrés, anclado a un objeto y con comprobación por sensación, sin RIR ni RPE). **Se calla
 en fase de adaptación**: ahí el peso ES la referencia técnica y «usa menos» es la peor instrucción.
 
-Medido sobre planes reales: **Kathe 91 → 54 series (−41%)**, **Astrid 113 → 64 (−43%)**.
+Medido sobre planes reales: **Karen 91 → 54 series (−41%)**, **Andrea 113 → 64 (−43%)**.
 
 - **La vuelta:** `startDeload` guarda las series originales por posición, con el id y el nombre como
   testigo. `endDeload` las devuelve exactas — y si el coach cambió un ejercicio durante la semana,
   **se respeta SU cambio** en vez de pisarlo.
 - **No se quita sola** (decisión del PO: sin temporizador). La contrapartida es `deloadOverdue` →
-  aviso en el Inicio del coach: «Kathe · terminó hace 3 días — devuélvele el plan completo».
+  aviso en el Inicio del coach: «Karen · terminó hace 3 días — devuélvele el plan completo».
 - **La asesorada lo ve explicado** (`deloadCardText` → `#cn-deload`, ARRIBA del entreno): «Esta
   semana bajamos revoluciones… Quedan 7 días». Sin jerga. Si no se explica, se lee como un error de
   la app o como que la están descuidando.

@@ -6,8 +6,8 @@ ni una fila de la base.
 | # | Área | Quién | Su hallazgo más grande |
 |---|---|---|---|
 | A1 | Código y deuda técnica | Julián (QA) | 🔴 El gate que existe para que nadie se quede mirando una pantalla pegada **aprueba justo ese caso** |
-| A2 | Base de datos y seguridad | Andrés (DBA) | 🟠 Un mismo teléfono acumula filas de notificación: **a Nataly cada recordatorio le llega 8 veces** |
-| A3 | Móvil y PWA | Julián (QA) | 🟠 **8 campos más** daban el zoom de iPhone que reportó Kathe → **cerrado en v527** |
+| A2 | Base de datos y seguridad | Andrés (DBA) | 🟠 Un mismo teléfono acumula filas de notificación: **a Nayla cada recordatorio le llega 8 veces** |
+| A3 | Móvil y PWA | Julián (QA) | 🟠 **8 campos más** daban el zoom de iPhone que reportó Karen → **cerrado en v527** |
 | A4 | Motor deportivo y nutrición | Diego R. (NSCA-CSCS) | 🟠 El nivel se corrige hacia adelante y **nunca cura los planes ya escritos** |
 | A5 | Experiencia y fricción | Sofía (CS) | 🔴 **El rediseño de «Hoy» no le llega a quien nunca ha entrenado** |
 | A6 | Negocio y producto | Camilo (Growth) | 🔴 **El 2 de septiembre se vencen cuatro asesorados el mismo día: 560.000 COP** |
@@ -23,8 +23,8 @@ reportara.
 ### Verificado por el orquestador (no heredado)
 
 - **A6 · agosto son 890.000 COP de 9 personas** (julio 746.000). Reproduce exacto.
-- **A6 · el 2 de septiembre vencen Astrid, Claudia, Kathe y Luz — 560.000 COP.** ⚠️ **A6 lo puso el
-  1-sep y son 4, no 5.** Antes: Nataly el 31-ago. Después: Miguel el 3, Samuel el 5.
+- **A6 · el 2 de septiembre vencen Andrea, Carla, Karen y Luisa — 560.000 COP.** ⚠️ **A6 lo puso el
+  1-sep y son 4, no 5.** Antes: Nayla el 31-ago. Después: Mario el 3, Salomón el 5.
 - **A6 · el escáner de códigos de barras tiene 0 filas.** Nunca se ha usado. Coincide con A2.
 - **A6 · la vitrina tiene 1 tarjeta de 6 huecos.** Comunidad, 44 publicaciones.
 - **A6 · Valery** (auto-registrada, 8 sesiones) está en `premium` y **no ha pagado nunca**.
@@ -37,7 +37,7 @@ reportara.
 ### 🔴 Corregido: un titular de área que NO se sostiene
 
 **A3 dice que el fallo del Service Worker puede impedir que v525/v527 lleguen al teléfono de
-Kathe. Lo medí y no es así.** Los 11 casos son de teléfonos **Android** (Kathe tiene iPhone) y cada
+Karen. Lo medí y no es así.** Los 11 casos son de teléfonos **Android** (Karen tiene iPhone) y cada
 uno estaba corriendo **la versión de ese mismo día**: el reintento funciona, son tropiezos de red.
 Tampoco quema la cuota de errores — nadie pasa de 3 errores al día. Sigue siendo una línea mal
 escrita, pero **no es una urgencia y no explica nada sobre la entrega de versiones**.
@@ -57,7 +57,7 @@ Cuando dos auditores que no se hablan llegan a lo mismo por vías distintas, el 
 1. **La app promete una duración que no cumple.** A4 lo midió desde el motor (promete ~43 min, la
    sesión real dura 56, el 44 % pasa de la hora); A5 lo midió desde las sesiones reales (mediana
    62,2 min contra 40 prometidos, 70 de 81 más largas). **Es el texto menos cierto de la app.**
-2. **Las notificaciones duplicadas de Nataly.** A2 lo vio en la tabla (8 filas para un endpoint);
+2. **Las notificaciones duplicadas de Nayla.** A2 lo vio en la tabla (8 filas para un endpoint);
    A3 lo vio desde el lado del teléfono. Mismo defecto, dos ángulos.
 
 ---

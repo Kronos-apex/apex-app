@@ -44,15 +44,15 @@ deciden trabajo, de forma independiente:
    historia usaron ese botón.**
 2. 🟡 Ese botón usa `confirm()` nativo — la clase que v568 ya corrigió en el borrado de fotos y
    que en la app instalada se come el sistema. Sin reproducir en Android real.
-3. 🟢 Nataly (95% sin cerrar) **no es un bug**: abandona sistemáticamente el tramo final de su
-   rutina (1.00 en el primer ejercicio → 0.00 en el último; control: Claudia, plana 93-100%). Es
+3. 🟢 Nayla (95% sin cerrar) **no es un bug**: abandona sistemáticamente el tramo final de su
+   rutina (1.00 en el primer ejercicio → 0.00 en el último; control: Carla, plana 93-100%). Es
    decisión de coaching: reordenar o acortar.
 
 **C2 · de la cuenta al primer entreno**
 4. 🔴 **No existe «olvidé mi contraseña»** en la app. Explica el `recovery_sent_at` NULL en las 33
    cuentas. Única salida hoy: que el coach cambie la clave a mano.
 5. 🔴 `coach-create-client` puede fallar entre crear el usuario y sembrar sus datos, y el reintento
-   vive SOLO en el `localStorage` del coach. **Caso real: Valery Valbuena** (`valery@avi.com`),
+   vive SOLO en el `localStorage` del coach. **Caso real: Vanesa Vargas** (`oculto@avi.com`),
    entró 2 veces en 5 días leyendo un error que habla de Google en una cuenta de correo; se
    resolvió sola registrándose con su Gmail.
 6. 🟡 Los **8 que nunca entrenaron son los 8 auto-registrados**, todos con rutina lista y **7 de 8

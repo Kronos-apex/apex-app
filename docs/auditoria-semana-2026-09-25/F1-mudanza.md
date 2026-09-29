@@ -1,4 +1,4 @@
-# F1 · La mudanza y las dos direcciones — Samuel (Android/PWA) + Tomás (iOS/Safari)
+# F1 · La mudanza y las dos direcciones — Salomón (Android/PWA) + Tomás (iOS/Safari)
 
 **Estado: CERRADO.** Retomado tras un corte por límite de cuenta (lo ya investigado se guardó en
 este archivo antes de continuar). Las 8 preguntas del orquestador están respondidas; lo que no se
@@ -67,19 +67,19 @@ desincronizadas.
 - **Qué es:** `subscribePush` (`app-1-infra.js:696-760`) debería borrar la fila de
   `push_subscriptions` del endpoint anterior DE ESE MISMO APARATO justo después de guardar el
   nuevo (comentario propio: "un fallo aquí no cambia nada: queda la poda de v577 de respaldo").
-- **A quién le pasa HOY, con nombre:** **Diana Paola Diaz** (`user_id 2452449f-…`). Tiene DOS filas
+- **A quién le pasa HOY, con nombre:** **Dora P.** (`user_id 2452449f-…`). Tiene DOS filas
   vivas en `push_subscriptions`, las dos FCM (Android/Chrome), con endpoints DISTINTOS:
   `updated_at 2026-09-21 23:07:41` y `updated_at 2026-09-23 22:46:27` — esta última a **5 segundos**
   de su propio `deviceStamp` (`profile.dev.at = 2026-09-23T22:46:22.686Z`, build 665). Es decir: el
   mismo instante en que su teléfono se actualiza a la versión con la mudanza encendida, aparece una
   fila NUEVA de push — y la VIEJA no se borró.
 - **Qué significa en la práctica:** `daily-notifs` no distingue origen, le manda a TODAS las filas
-  de ese `client_id`. Mientras las dos filas sigan vivas, a Diana Paola cada aviso diario
+  de ese `client_id`. Mientras las dos filas sigan vivas, a Dora Paola cada aviso diario
   (mañana/media mañana/tarde) le suena **DOS VECES** — el mismo síntoma que el propio commit de
   v662 dice que existe para prevenir.
 - **Evidencia:** SQL contra producción (solo `SELECT`):
   `select id, client_id, updated_at, subscription->>'endpoint' from push_subscriptions` — 13 filas,
-  Diana Paola con 2 (`24544b84…`/`a9e0a840…` no, corrijo: sus dos ids son `1a7692a3-…` del 23-sep y
+  Dora Paola con 2 (`24544b84…`/`a9e0a840…` no, corrijo: sus dos ids son `1a7692a3-…` del 23-sep y
   `a9e0a840-…` del 21-sep). El coach (`_coach`) TAMBIÉN tiene 2 filas FCM con endpoints distintos
   (`04cc7506…` 25-sep y `171e45a3…` 22-sep) — con la salvedad de que el coach ya se sabía que usa 2
   aparatos reales de antes (gotcha existente), así que ese caso NO se puede atribuir a la mudanza
@@ -92,7 +92,7 @@ desincronizadas.
   nueva es una señal fuerte de que el evento fue precisamente ESE arranque post-mudanza. **No pude
   confirmar la causa raíz exacta** (¿la clave `apex_push:<clientId>` no viajó en el `#avimv=`? ¿el
   DELETE falló por otra razón y se tragó el error?) sin poder inspeccionar el dispositivo real de
-  Diana Paola — dejo esto explícitamente como "medido pero sin causa raíz cerrada".
+  Dora Paola — dejo esto explícitamente como "medido pero sin causa raíz cerrada".
 - **Qué costaría arreglarlo:** confirmar con un log adicional (temporal) en el propio `catch` del
   DELETE de `subscribePush`, o simplemente esperar: la poda "hermana 21+ días" ya existe como
   respaldo — pero desde el 23-sep hasta que se cumplan esos 21 días (~14-oct), sigue duplicando.
@@ -106,7 +106,7 @@ desincronizadas.
   script dice al final "Verifica: node scripts/e2e/_prodcheck.mjs vNNN https://app.avientrena.com/"
   como un paso MANUAL que depende de que alguien se acuerde.
 - **A quién le pasa HOY, con nombre:** a cualquiera de las 27 personas que salte desde github.io
-  (todas, salvo Laura y Kathe con iPhone instalado) durante la ventana en la que las direcciones
+  (todas, salvo Lucía y Karen con iPhone instalado) durante la ventana en la que las direcciones
   estén desincronizadas — no hay un nombre concreto porque no até esto a un incidente YA ocurrido,
   pero el propio historial del repo (comentario en `publicar-hogar.mjs`) dice que **ya pasó una
   vez** con el enlace del proyecto de Vercel en v659 ("si se borra con el resto, el deploy se va a
@@ -135,9 +135,9 @@ desincronizadas.
 | Sev | Qué | Dónde | ¿Víctima hoy? |
 |---|---|---|---|
 | 🔴 | Enlace `#avimv=` fabricado planta `avi_auth` ajeno en navegador virgen | `app-1-infra.js:98-120`, `avi-core.js:11553` | Potencial — no hay evidencia de que se haya EXPLOTADO, pero la puerta está abierta a TODOS los que aún no visitaron el hogar nuevo |
-| 🟡 | Endpoint de push viejo no se retira de forma confiable al re-suscribirse en el hogar nuevo | `app-1-infra.js:744-755` (`subscribePush`) | SÍ — Diana Paola Diaz recibe avisos duplicados desde el 23-sep; posiblemente el coach también (con reserva, ya usa 2 aparatos de antes) |
+| 🟡 | Endpoint de push viejo no se retira de forma confiable al re-suscribirse en el hogar nuevo | `app-1-infra.js:744-755` (`subscribePush`) | SÍ — Dora P. recibe avisos duplicados desde el 23-sep; posiblemente el coach también (con reserva, ya usa 2 aparatos de antes) |
 | 🟡 | Nada (ni CI ni un hook) impide que un `git push` normal deje las dos direcciones en versiones distintas | `.github/workflows/ci.yml`, `scripts/publicar-hogar.mjs` | No hoy medido, pero ya pasó una vez con el enlace del proyecto Vercel (v659, según el propio comentario del script) |
-| 🟢 | Reinstalar desde Safari no lleva nada del localStorage viejo (sin mecanismo de mudanza) | `app-1-infra.js:98-100` | Laura y Kathe, SOLO si reinstalan a mitad de un entreno/con snoozes pendientes — hoy no hay evidencia de que haya pasado |
+| 🟢 | Reinstalar desde Safari no lleva nada del localStorage viejo (sin mecanismo de mudanza) | `app-1-infra.js:98-100` | Lucía y Karen, SOLO si reinstalan a mitad de un entreno/con snoozes pendientes — hoy no hay evidencia de que haya pasado |
 | 🟢 (verificado SANO) | `avi_auth` viaja SOLO en el `#` — nunca en `Referer` (garantía de spec, no de la app) ni en `app_errors.ctx` (no captura href/hash) | `app-1-infra.js:469-490` | No aplica |
 | 🟢 (verificado SANO) | Un enlace fabricado NO puede plantar la cola del coach (`ax_cwq_`/`ax_coachpending_`) ni el flag `ax_udirty_` | `avi-core.js:11551` (`MV_SKIP_RE`) | No aplica — cubierto por `_verify-mudanza.mjs` M5 |
 | 🟢 (verificado SANO) | Datos no confirmados en la nube (incl. fotos base64 sin subir) BLOQUEAN el salto entero (`_mvHasPending`), no viajan a medias | `app-1-infra.js:39-54` | No aplica |
@@ -167,7 +167,7 @@ base64 sin red (que se guarda dentro de `ax_photos`, sincronizado) no se pierde:
 migración hasta que se resuelva.
 **El agujero real no es de PÉRDIDA silenciosa en el salto normal, es el de REINSTALAR** (hallazgo
 3 arriba): ahí sí se pierde todo lo local-only, porque no pasa por `mudanzaPick` en absoluto.
-Víctima: Laura/Kathe, solo si reinstalan con algo pendiente.
+Víctima: Laura/Karen, solo si reinstalan con algo pendiente.
 Sospecha sin cerrar: si `done_`/`log_` de rutinas MUY viejas (nunca limpiadas porque esa rutina no
 se ha vuelto a abrir) se acumulan sin límite, podrían en teoría empujar lo imprescindible sobre el
 tope de 100.000 y bloquear el salto de alguien con mucho historial — hay limpieza real
@@ -214,8 +214,8 @@ VARIAS versiones (si esto pasara repetidamente sin que nadie lo note, algo plaus
 pasó una vez con el enlace del proyecto Vercel en v659, según el propio comentario del script) sí
 podría, dependiendo de qué cambió. **No até esto a un incidente real ya ocurrido** — es un riesgo
 de proceso confirmado (ausencia de candado), no un hallazgo con víctima medida hoy.
-**(b) PARCIALMENTE CIERTA.** Los 10 rezagados (Chema v644, Danilo v661, diana ramirez v544, jhojan
-hernandez v608, Laura v661, Natalia v654, Nataly v563, Nicolás v571, Samuel v657, Valery v619)
+**(b) PARCIALMENTE CIERTA.** Los 10 rezagados (Chucho v644, Darío v661, dora rincón v544, jairo
+hernandez v608, Laura v661, Nadia v654, Nayla v563, Nelson v571, Salomón v657, Valery v619)
 siguen funcionando en github.io — confirmado que el dominio NO redirige a nivel de servidor (a
 propósito, ver falso positivo #2 del briefing) y que las 5 edge functions activas (send-push,
 delete-account, coach-create-client, refresh_snapshot, activate_public_profile) siguen aceptando
@@ -227,19 +227,19 @@ público fallaría en silencio y caería a base64 (ya es el comportamiento de re
 que no sería catastrófico, pero sí ineficiente). **NO SE PUDO MEDIR a fondo** cuál build exacto de
 cada rezagado antecede a cada migración de buckets — dejo la lista de fechas para que alguien la
 cruce: buckets movidos a privado en v649-v652 (chat-media, progress-photos) y v652 (avatares/fotos
-de perfil). De los 10 rezagados, **Nataly (v563), Nicolás (v571), diana ramirez (v544) y jhojan
+de perfil). De los 10 rezagados, **Nayla (v563), Nelson (v571), dora rincón (v544) y jairo
 hernandez (v608)** están en builds ANTERIORES a v649 — ellos son los candidatos reales a sufrir
 esto si suben una foto de progreso hoy.
 
-**4. El iPhone instalado (Laura, Kathe), que NO salta por diseño**
-Confirmado por SQL: Laura (`profile.dev.b=661`, iPhone, `push:granted`) y Kathe (`b=668`, iPhone,
+**4. El iPhone instalado (Lucía, Karen), que NO salta por diseño**
+Confirmado por SQL: Laura (`profile.dev.b=661`, iPhone, `push:granted`) y Karen (`b=668`, iPhone,
 `push:granted`) — las dos con push YA concedido, así que si algo las empujara a re-otorgar
 permiso en el dominio nuevo sin saberlo sería confuso, pero no hay evidencia de que eso pase.
 **¿Algo de la app de HOY las manda al dominio nuevo fuera de su app instalada?** CIERTA, con
 matices: `AVI_SHARE_URL`/`CMTY_INVITE_URL` (`app-4-entreno.js:1725`, `avi-core.js:9442`) apuntan a
 `https://app.avientrena.com/` — si ELLAS comparten un logro o invitan a alguien desde su app vieja
 (instalada en github.io), el enlace que se genera y se manda por WhatsApp apunta al hogar NUEVO.
-Si la propia Laura o Kathe tocaran ese enlace (por accidente, revisando qué mandaron), se abriría
+Si la propia Laura o Karen tocaran ese enlace (por accidente, revisando qué mandaron), se abriría
 en un navegador superpuesto de iOS sobre el dominio nuevo, SIN sesión — verían la pantalla de
 login/registro de AVI como si fueran una persona nueva. No es autodestructivo (no las saca de su
 app instalada), pero si el coach las invita a "abrir la app" vía el flujo `coachInviteOpenApp`
@@ -256,14 +256,14 @@ local-only — ver hallazgo 3 arriba.
 borrar la suscripción de OTRO teléfono de la misma persona porque los endpoints de push son
 cadenas únicas por suscripción (criptográficamente improbable que coincidan) y el DELETE filtra
 por el endpoint EXACTO leído de storage local, nunca por client_id solo. **PERO el candado no se
-está aplicando de forma confiable en la práctica** — ver hallazgo 2 (Diana Paola Diaz con avisos
+está aplicando de forma confiable en la práctica** — ver hallazgo 2 (Dora P. con avisos
 duplicados). **(b) FALSA que haya confusión de destino** — confirmado por `sw.js:161-173`
 (`notificationclick`): abre `self.registration.scope`, que es el scope PROPIO del service worker
 que recibió ESE push — el de github.io abre github.io, el de app.avientrena.com abre el nuevo. No
 hay forma de que una notificación vieja abra el dominio nuevo o viceversa. **(c) CIERTA que el
 coach está cubierto por el MISMO código** (`subscribePush` no distingue `_coach` de un asesorado
 salvo en el `client_id` que usa) — pero el coach también tiene 2 filas de push con endpoints
-distintos y fechas recientes (25-sep y 22-sep), el mismo patrón ambiguo de Diana Paola, con la
+distintos y fechas recientes (25-sep y 22-sep), el mismo patrón ambiguo de Dora Paola, con la
 salvedad de que YA se sabía que el coach usa 2 aparatos reales de antes de la mudanza (gotcha
 existente) — **NO SE PUDO DISTINGUIR con los datos disponibles** si sus 2 filas son 2 aparatos
 reales (normal) o el mismo síntoma de duplicado.
@@ -319,7 +319,7 @@ encontré es justo el hallazgo 2 (avisos duplicados) — para diagnosticar POR Q
 suena dos veces, ayudaría saber si las dos filas de `push_subscriptions` corresponden a dos
 orígenes distintos o a dos aparatos reales, y hoy eso solo se puede intentar inferir mirando el
 `user-agent` del deviceStamp contra el patrón de endpoints (frágil, no concluyente, como se vio
-con Diana Paola y con el coach). **No propongo guardar el origen para perseguir a nadie** (el PO
+con Dora Paola y con el coach). **No propongo guardar el origen para perseguir a nadie** (el PO
 lo prohibió) — el caso de uso es puramente de DIAGNÓSTICO técnico de un síntoma (avisos
 duplicados), no de seguimiento de personas.
 
@@ -350,7 +350,7 @@ duplicados), no de seguimiento de personas.
   imprescindible por encima del tope de 100.000 caracteres en alguien con mucho historial y
   bloquear su salto entero — sin víctima medida, sin acceso a un dispositivo real para confirmarlo.
 - El caso del coach con 2 filas de push (hallazgo 2): no pude distinguir "2 aparatos reales de
-  siempre" de "el mismo síntoma de Diana Paola" con los datos disponibles.
+  siempre" de "el mismo síntoma de Dora Paola" con los datos disponibles.
 - Despliegue asimétrico (pregunta 3a): confirmado que NO hay candado automático (CI no lo
   verifica), pero no até esto a un incidente real ya ocurrido — es un riesgo de proceso, no un
   hallazgo con víctima medida hoy.

@@ -48,7 +48,7 @@ const setup = await ev(`(()=>{try{
   const mkC=(id,name,due,sex,goal)=>({id,name,email:name.toLowerCase().replace(/ /g,'.')+'@gmail.com',goal,level:'Intermedio',days:4,weight:75,height:178,age:32,sex,phone:'3001234567',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:due,amount:120000}],routines:[rout('Empuje','Lunes'),rout('Tracción','Martes'),rout('Pierna','Jueves')]});
   DB.clients=[
-    mkC('c1','Samuel Cifuentes','2026-08-05','M','Ganar músculo'),
+    mkC('c1','Salomón Cárdenas','2026-08-05','M','Ganar músculo'),
     mkC('c2','Andrea Molina','2026-07-16','F','Bajar de peso'),
     mkC('c3','Julián Restrepo','2026-07-02','M','Fuerza'),
     mkC('c4','Valery Gómez','2026-08-20','F','Tonificar')
@@ -88,7 +88,7 @@ const setup = await ev(`(()=>{try{
   else if(panel==='msgs'){
     const mkM=(from,text,hAgo)=>{const d=new Date();d.setHours(d.getHours()-hAgo);return{from,text,date:d.toISOString()};};
     DB.msgs={
-      c1:[mkM('coach','¡Buen trabajo hoy Samuel!',5),mkM('client','Gracias coach, me sentí fuerte 💪',3)],
+      c1:[mkM('coach','¡Buen trabajo hoy Salomón!',5),mkM('client','Gracias coach, me sentí fuerte 💪',3)],
       c2:[mkM('client','Coach, me dolió un poco la rodilla en la sentadilla',2)],
       c4:[mkM('coach','Valery, subí tu nueva rutina de pierna',20)]
     };

@@ -64,11 +64,11 @@ puede apagar sin escribir, aunque el mensaje que lo dispara no pida nada.
   persona deja de tener mensajes visibles, así que sale del aviso. Pero eso es una acción MUCHO más
   grande (esconde toda la conversación) y no se presenta como un «descartar este aviso».
 - **A quién le pasa HOY:** corrí `chatAwaiting(clients, msgsById, coachClears, now, 24)` (la función
-  REAL) sobre los 15 hilos reales (SQL, 25-sep-2026 ~12:11 UTC). Sale **1 persona: Claudia
-  Valbuena**, esperando desde `2026-09-24T12:06:31.779Z` (24 h), 2 mensajes sin responder. Su
+  REAL) sobre los 15 hilos reales (SQL, 25-sep-2026 ~12:11 UTC). Sale **1 persona: Carla
+  Vargas**, esperando desde `2026-09-24T12:06:31.779Z` (24 h), 2 mensajes sin responder. Su
   último mensaje visible es **"💪 ¡Entrenamiento hecho!"** — uno de los 4 botones de respuesta
   rápida (`index.html` :799-802), que no pide nada (junto con "🙏 ¡Gracias, coach!"; los otros 2,
-  "🙋 Tengo una duda" y "🤕 Algo me dolió", sí piden algo). Diana Pilar Rodriguez Salazar está a
+  "🙋 Tengo una duda" y "🤕 Algo me dolió", sí piden algo). Dora R. está a
   **1 minuto** de entrar también (su último mensaje, "Buen día bien", es de hace 23h 59min).
 - **Evidencia:** avi-core.js :2537-2561 (`chatAwaiting`, con el comentario propio: «incluye los
   avisos automáticos de dolor: también piden respuesta» — es decir, el diseño NO distingue tipos de
@@ -101,7 +101,7 @@ puede apagar sin escribir, aunque el mensaje que lo dispara no pida nada.
   (confirmado: si `_chatMediaUpload` falla, la función corta con `return` ANTES de crear el mensaje
   — no hay riesgo de mensaje sin archivo). Verifiqué el estado real de `chat-media`: **1 objeto**
   (`78ea069c…/chat-mubm8k2wnyxgfb1hvjh.jpg`, 90.264 B, creado 21-sep 19:06:00 UTC) que **coincide
-  exactamente** con el único mensaje con `media` en los 15 hilos (Natalia Martinez, coach envía foto,
+  exactamente** con el único mensaje con `media` en los 15 hilos (Nadia Mejía, coach envía foto,
   19:05:59.509Z) — hoy no hay huérfanos, ni mensajes sin archivo.
 - **Evidencia:** app-3-coach.js :4164-4189 (patrón correcto, texto) vs :4193-4211 (sin ese patrón,
   foto); app-4-entreno.js :4422-4440 (mismo hueco, cliente); SQL `storage.objects` (arriba).
@@ -122,7 +122,7 @@ puede apagar sin escribir, aunque el mensaje que lo dispara no pida nada.
 | Sev | Qué | Dónde | ¿Víctima hoy? |
 |---|---|---|---|
 | 🔴 | Cola de reintentos retenida por cualquier escritura posterior a la fila (no solo la que falló) | avi-core.js :11048-11067, app-1-infra.js :652-659, :1565-1588 | No medible (estado local del coach) |
-| 🟡 | `h-await` no se puede silenciar sin escribir ni sin borrar la conversación entera | app-3-coach.js :4015-4029 | Sí — Claudia Valbuena hoy, N=1 |
+| 🟡 | `h-await` no se puede silenciar sin escribir ni sin borrar la conversación entera | app-3-coach.js :4015-4029 | Sí — Carla Vargas hoy, N=1 |
 | 🟡 | Fotos/videos sin marcador «pendiente»/«sin enviar» (v588 solo cubrió texto) | app-3-coach.js :4193-4211, app-4-entreno.js :4422-4440 | No observado hoy (0 huérfanos); riesgo de código |
 | 🟡 | Solo 1 de 4 generadores de mensajes automáticos marca `system:true`; el campo no lo lee NINGUNA función de la app (es solo forense/para análisis) | app-4-entreno.js :1495 (sí) vs app-6-extra.js ~:530-534, app-3-coach.js :416-418/:439-441 (no) | No observado hoy en los 15 hilos (los 5 automáticos presentes sí están bien marcados); riesgo para análisis futuros |
 | 🟢 | `_pollAuthCoach`/`_pollAuthClient` notifican sobre mensajes RAW (no filtrados por `_coachMsgs`/`_clientMsgs`) — en teoría un mensaje viejo que llega tarde por sync podría notificar algo ya «visto» en otro aparato | app-1-infra.js :1118-1167 | No medido, hipotético, baja probabilidad |
@@ -145,11 +145,11 @@ ni «búsqueda» que toquen mensajes (grep sin resultados para ambos).
 
 **2. «Esperando respuesta» (h-await).**
 (a) **CIERTA con matices** — corrido HOY con la función real sobre los 15 hilos reales: sale 1
-persona (Claudia Valbuena, desde 2026-09-24T12:06:31Z, 24h, 2 msgs). Ver hallazgo #2 para el detalle.
+persona (Carla Vargas, desde 2026-09-24T12:06:31Z, 24h, 2 msgs). Ver hallazgo #2 para el detalle.
 (b) **CIERTA** — un «gracias»/«listo» SÍ deja a la persona esperando (el código no distingue tipos de
 mensaje) y el coach NO puede apagar el aviso sin escribir (solo existe «Eliminar conversación», una
 acción mucho más grande). De los 4 mensajes de respuesta rápida, 2 no piden nada («💪 Entrenamiento
-hecho», «🙏 Gracias»); el caso de hoy (Claudia) es exactamente ese tipo.
+hecho», «🙏 Gracias»); el caso de hoy (Carla) es exactamente ese tipo.
 (c) **CIERTA** — los `system:true` entran igual que cualquier mensaje humano (el código no filtra
 por esa marca en `chatAwaiting`), que es lo correcto por diseño (comentario explícito: «los avisos
 automáticos de dolor también piden respuesta»). Pero ver el hallazgo 🟡 de abajo: solo 1 de 4
@@ -208,14 +208,14 @@ Ejecutado en Node contra la función real, dos casos de control, los dos pasan.
 **7. Con datos (lado Mateo).** **NO SE PUDO MEDIR — N insuficiente y confundido.** Desde que existe
 `h-await` (v647, 21-sep) hasta hoy (25-sep) hay solo 4 días. De los 153 mensajes totales, 54 caen en
 esa ventana, pero forman apenas **4 situaciones independientes**: 10 de los 13 pares
-pregunta-respuesta que caen en esa ventana son de UNA SOLA conversación en vivo (Laura Ramirez
+pregunta-respuesta que caen en esa ventana son de UNA SOLA conversación en vivo (Lucía Ríos
 Rueda, 21-sep, chat mientras los dos estaban en el gimnasio a la vez — tiempos de 0.0 a 1.6 h,
-evidentemente presencial y no comparable). Los otros 3 casos: Danilo (1.5h), Laura otra vez (24.4h,
-el caso que factualmente `h-await` habría mostrado), Claudia (0.2h). Mediana histórica (antes del
+evidentemente presencial y no comparable). Los otros 3 casos: Darío (1.5h), Laura otra vez (24.4h,
+el caso que factualmente `h-await` habría mostrado), Carla (0.2h). Mediana histórica (antes del
 21-sep, N=26 rachas): 4.6h. No hay forma honesta de separar «mejoró la respuesta por `h-await`» de
 «el coach tuvo una conversación en vivo con Laura ese día» — y con N=4 situaciones reales, cualquier
 conclusión de tendencia sería inventada. Dato adicional: el racimo de «Buenos días !!» que 6
-personas recibieron el 24-sep entre 12:04 y 12:21 (Laura, Astrid, Kathe, Estella, Diana, Claudia)
+personas recibieron el 24-sep entre 12:04 y 12:21 (Laura, Andrea, Karen, Elena, Dora, Carla)
 parece una ronda MANUAL del coach saludando a varios a la vez, no una reacción dirigida por
 `h-await` a un caso puntual.
 

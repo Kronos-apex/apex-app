@@ -147,7 +147,7 @@ function genDayIdxFromDate(d) { const n = (d instanceof Date ? d : new Date(d)).
 // 3. 🔴 **SOLO DÍAS HÁBILES** (2026-08-22, regla de Camilo): *«mi horario laboral en el gym es
 //    solo entre semana, no trabajo sábados ni domingos ni festivos»*. El coach ACOMPAÑA las
 //    sesiones en su gimnasio, así que programar un entreno un domingo es programarlo sin él.
-//    Medido sobre los planes reales antes del cambio: a Danilo le tocaba el DOMINGO y a Felipe
+//    Medido sobre los planes reales antes del cambio: a Darío le tocaba el DOMINGO y a Fabio
 //    el SÁBADO. Los festivos son otra cosa —son FECHAS, no días de la semana— y se resuelven
 //    aparte (ver `esFestivoCO`): aquí solo vive el patrón semanal.
 //
@@ -184,7 +184,7 @@ function genWeekDays(n, startIdx) {
 // y nadie se entera hasta que alguien entrena un festivo. Tres reglas:
 //  1. FIJOS que nunca se mueven: 1-ene, 1-may, 20-jul, 7-ago, 8-dic, 25-dic.
 //  2. LEY EMILIANI (Ley 51 de 1983): estos siete se corren al LUNES siguiente si no caen lunes
-//     — Reyes (6-ene), San José (19-mar), San Pedro y San Pablo (29-jun), Asunción (15-ago),
+//     — Reyes (6-ene), San Jorge (19-mar), San Pedro y San Pablo (29-jun), Asunción (15-ago),
 //     Día de la Raza (12-oct), Todos los Santos (1-nov), Independencia de Cartagena (11-nov).
 //  3. MÓVILES por Pascua: Jueves y Viernes Santo NO se mueven (Pascua −3 y −2); Ascensión,
 //     Corpus Christi y Sagrado Corazón sí, y por eso su desplazamiento ya cae en lunes
@@ -220,7 +220,7 @@ function _festivosDelAnio(anio) {
     ...[[[0, 1], 'Año Nuevo'], [[4, 1], 'Día del Trabajo'], [[6, 20], 'Día de la Independencia'],
         [[7, 7], 'Batalla de Boyacá'], [[11, 8], 'Inmaculada Concepción'], [[11, 25], 'Navidad']]
       .map(([[m, d], n]) => [Date.UTC(anio, m, d), n]),
-    ...[[[0, 6], 'Reyes Magos'], [[2, 19], 'Día de San José'], [[5, 29], 'San Pedro y San Pablo'],
+    ...[[[0, 6], 'Reyes Magos'], [[2, 19], 'Día de San Jorge'], [[5, 29], 'San Pedro y San Pablo'],
         [[7, 15], 'La Asunción'], [[9, 12], 'Día de la Raza'], [[10, 1], 'Todos los Santos'],
         [[10, 11], 'Independencia de Cartagena']]
       .map(([[m, d], n]) => [_aLunes(Date.UTC(anio, m, d)), n]),
@@ -281,7 +281,7 @@ function esDiaLaboralCO(fecha) {
 // El plan cae de lunes a viernes (v514), así que quien se registra un sábado, un domingo o un
 // festivo abre la app y su primera pantalla dice «hoy es tu día de descanso» — medido por la
 // auditoría de experiencia: **la puerta del día 1 está cerrada el 43 % de los días**, y le pasó a
-// Chema el sábado 22-ago con plan de pago y cero sesiones. Para poder decirle CUÁNDO empieza en
+// Chucho el sábado 22-ago con plan de pago y cero sesiones. Para poder decirle CUÁNDO empieza en
 // vez de solo que hoy no, hace falta saber cuál es el próximo día de su plan.
 // PURA y determinista (recibe `now`). Salta los festivos, porque un festivo tampoco hay entreno.
 // Devuelve `null` si no hay ninguno en la ventana — quien llame decide qué decir entonces.
@@ -362,7 +362,7 @@ const GEN_SPLITS = {
 // protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1). Nota de Laura sobre
 // `hernia`: atrapa también la inguinal y NO se corrige — también desaconseja Valsalva y carga
 // axial alta, así que el error va hacia el lado seguro.
-// 🔴 v676 · LAS NOTAS SOLO RECONOCÍAN 3 ZONAS DE 11 (R13, 27-sep). Laura Ramírez tiene escrito
+// 🔴 v676 · LAS NOTAS SOLO RECONOCÍAN 3 ZONAS DE 11 (R13, 27-sep). Lucía Ríos tiene escrito
 // «Rodillas desgastadas, dolor en la espalda alta, dolor en los codos» y el lector devolvía SOLO
 // `rodilla`: las reglas de codo y cuello existían y no le llegaban. Las zonas nuevas NO traen
 // reglas nuevas: cada entrada apunta a un ÁREA del cuestionario de dolor y hereda sus reglas de
@@ -884,7 +884,7 @@ function warmupWarnZones(wu, limKeys) {
 // casa dice «lo que arma el algoritmo se FILTRA, lo que arma una persona se MARCA», y el selector
 // del constructor lo repetía en su comentario — pero la única marca real era la 🩹 del entreno, que
 // sale SOLO con un reporte de dolor. Lo que el coach escribe en las NOTAS no marcaba nada en el
-// editor, al aplicar una plantilla ni en la ficha. Medido: Laura Ramírez («rodillas desgastadas…
+// editor, al aplicar una plantilla ni en la ficha. Medido: Lucía Ríos («rodillas desgastadas…
 // codos») hizo el 23-sep una plantilla con saltos y escaladores sin que ninguna pantalla lo dijera.
 // 🔒 MARCA, NO QUITA NI BLOQUEA: el plan lo decide el coach (el PO, 27-sep: «los ejercicios los
 // decidí yo y no presenta dolor»). La marca solo le recuerda lo que él mismo escribió.
@@ -1370,9 +1370,9 @@ const REMOVED_EXERCISES = { 'e38': 'e15', 'e32': 'e19', 'e181': 'e81', 'e208': '
 // y las RUTINAS… y dejaba los RÉCORDS apuntando al id muerto. La rutina pasaba a `e15` y el récord
 // se quedaba en `e38`, así que la app dejaba de encontrarlo. Puerta cerrada, ventana abierta — la
 // misma clase que el filtro de lesiones y el calentamiento (v424).
-// Medido contra producción el 14-ago: **3 récords varados en `e38`** (Kathe, Nataly, Miguel; ningún
+// Medido contra producción el 14-ago: **3 récords varados en `e38`** (Karen, Nayla, Mario; ningún
 // otro id retirado tiene récords, y ni las rutinas ni el historial quedaron con huérfanos), y la
-// consecuencia real es **Miguel sin peso sugerido** en un ejercicio donde tiene marca de 30 kg.
+// consecuencia real es **Mario sin peso sugerido** en un ejercicio donde tiene marca de 30 kg.
 // 🔒 Cuando el id bueno YA tiene récord, se funden con `isBetterPR` — la ÚNICA definición de
 // récord de la app. Inventar aquí otra regla («se queda el más reciente») sería una segunda
 // definición de lo mismo, que es la forma exacta del bug de v435/v444.
@@ -1461,7 +1461,7 @@ function estimate1RM(kg, reps) {
 // ──────────────────────────────────────────────────────────────────────
 // Se anotan los DISCOS y la app sabe cuánto pesa la barra. Medido el 28-sep-2026 sobre el
 // respaldo: 9 de las 15 personas que usan barra anotan SOLO los discos (el PO incluido, barra
-// de 20; el hip thrust de Astrid, 15), con remos «de 5 kg» que pesan menos que la barra vacía.
+// de 20; el hip thrust de Andrea, 15), con remos «de 5 kg» que pesan menos que la barra vacía.
 // Pedir el TOTAL partiría el historial en dos: el primer día saldría un récord falso de +20.
 // Así que la barra se SUMA donde hace falta el peso real (el 1RM estimado) y NO en el volumen,
 // los récords, el peso sugerido ni el detector de estancamiento: meterla ahí de golpe fabrica
@@ -1574,7 +1574,7 @@ function splashCapDelay(nowMs, shownAtMs) {
 //    app más de una hora después de usarla veía EL LOGIN. El token de acceso dura una hora; al
 //    vencer, la librería intenta renovarlo, sin red no puede, y `getSession()` responde «no hay
 //    sesión» aunque la sesión siga guardada. Con la sesión fresca (lo que midió septiembre) sí
-//    entraba: por eso el reporte de Claudia («necesito internet para entrar») no se reproducía.
+//    entraba: por eso el reporte de Carla («necesito internet para entrar») no se reproducía.
 //    Con la WiFi colgada pasaba lo mismo con cualquier sesión: el arranque esperaba a la nube sin
 //    límite y a los 12 s la red de seguridad mostraba el login.
 // Lo que decide es esto: con respuesta de la nube, manda la nube. Sin ella, se entra con la sesión
@@ -1858,7 +1858,7 @@ function suggestFromPR(pr, targetReps, opts) {
 // 🔴 LA VENTANA ES DE VARIAS SESIONES, Y ESO LO DECIDIÓ LA MEDICIÓN. Mirar solo la ÚLTIMA sesión
 //    —que es lo que hacía la guarda de v595— es demasiado frágil: **27 de los 59 casos que marcaba
 //    eran FALSOS** (un día flojo suelto, con el récord perfectamente vigente en las sesiones de al
-//    lado: la Patada de Glúteo de Nataly, los Desplantes de Samuel…). A esas 27 la app les quitaba
+//    lado: la Patada de Glúteo de Nayla, los Desplantes de Salomón…). A esas 27 la app les quitaba
 //    la instrucción sin motivo. Con la mejor carga de las últimas 3 sesiones, esos 27 la recuperan.
 const LOAD_ANCHOR_SESSIONS = 3;
 // 🔒 Piso para que el RÉCORD siga siendo el ancla. Por debajo de esto el récord ya no describe su
@@ -2218,7 +2218,7 @@ function restoreWorkOrder(guardado, baseExercises, catalogo, hoyStr) {
 // planes YA escritos**: quedan en la fila de cada persona con el nivel que tenía el catálogo el
 // día que se generaron. Medido en producción (24-ago, cruzando los 18 ids de nivel `A` contra
 // `user_data.routines`): **4 ejercicios avanzados vivos en planes de principiante e intermedio** —
-// Felipe con Pike Push-up (×2) y Rueda Abdominal, y Sofía con el Hip Thrust Unilateral, que entró
+// Fabio con Pike Push-up (×2) y Rueda Abdominal, y Sofía con el Hip Thrust Unilateral, que entró
 // ahí **por la propia corrección de v513** al re-etiquetar `e92` de `'I'` a `'A'`.
 // Las cuatro rutinas están marcadas `generated:true`; **ninguna hecha a mano por el coach viola el
 // gate**, y por eso esta cura NO las toca: lo que arma el algoritmo se filtra, lo que arma el
@@ -2451,7 +2451,7 @@ function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
 // Resuelve la lista de bloques (split). NIVEL manda, no la edad: un menor INTERMEDIO/AVANZADO sin
 // condiciones recibe su split de gym (PPL hombre / glúteo-pierna+tren mujer); la seguridad de
 // menores es de SELECCIÓN de ejercicios (sin carga axial con barra, ver _genMakeExcluder), no de
-// estructura. Antes `minor` forzaba Full Body toda la semana y un joven intermedio (Samuel, 14)
+// estructura. Antes `minor` forzaba Full Body toda la semana y un joven intermedio (Salomón, 14)
 // quedaba como principiante — corregido 2026-06-23 por pedido de Camilo.
 //
 // El SITIO también manda (2026-08-22, decisión de Camilo tras ver la rutina de un alta nueva):
@@ -2652,7 +2652,7 @@ function inferExerciseEnv(ex) {
 // El historial es APPEND-ONLY: cada entreno completado se agrega. El sync
 // guardaba el bloque completo (last-write-wins), así que un dispositivo con
 // datos viejos podía PISAR sesiones recién registradas por otro → se perdían
-// entrenos (Nataly y Andrés Martínez, 2026-06-01).
+// entrenos (Nayla y Andrés Martínez, 2026-06-01).
 //
 // mergeHistory une nube + local SIN PERDER NADA: dedupe por id de sesión
 // (fallback rutina+día para sesiones viejas sin id), en conflicto conserva la
@@ -2714,7 +2714,7 @@ function mergeHistory(local, cloud, cap) {
 //    **una corrección explícita es un HECHO con fecha**, así que cuando alguno de los dos lados
 //    la trae, gana el que se estableció después — la corrección, o un récord NUEVO posterior a
 //    ella. Esa segunda mitad es obligatoria: sin ella la corrección bloquearía para siempre, y
-//    está medido que la gente vuelve a levantar el peso (Samuel, e24, 6-ago) y el récord se
+//    está medido que la gente vuelve a levantar el peso (Salomón, e24, 6-ago) y el récord se
 //    re-crea solo, que es exactamente lo que le promete el botón de borrar.
 function mergePRs(local, cloud) {
   local = local && typeof local === 'object' ? local : {};
@@ -2744,7 +2744,7 @@ function mergePRs(local, cloud) {
           // 🔒 `corregidoDe` dice EXACTAMENTE qué número rechazó el coach, así que la corrección
           //    solo tapa ese número y todo lo demás sigue compitiendo como un récord normal.
           //    Y solo mientras el candidato no sea POSTERIOR a la corrección: si lo es, es que
-          //    volvió a levantarlo (caso medido: Samuel el 6-ago, el PO el 27-ago).
+          //    volvió a levantarlo (caso medido: Salomón el 6-ago, el PO el 27-ago).
           // 🔒 Dos CORRECCIONES del mismo récord (el coach lo tocó en dos aparatos): manda la más
           //    reciente. Sin esta rama ninguna rechaza a la otra —cada una habla de un número
           //    distinto— y caían a «gana el mayor», o sea que ganaba la corrección MÁS VIEJA.
@@ -2885,7 +2885,7 @@ function chatCtxExLine(e) {
 const CHAT_WAIT_HOURS = 24;
 // v675 · Lo que NO pide respuesta no cuenta como espera (decisión del PO, 25-sep, auditoría F3-2). Dos de
 // las cuatro respuestas rápidas del asesorado —«💪 ¡Entrenamiento hecho!» y «🙏 ¡Gracias, coach!»— no
-// preguntan nada, y el aviso no se podía apagar sin escribir: el 25-sep marcaba a Claudia por un
+// preguntan nada, y el aviso no se podía apagar sin escribir: el 25-sep marcaba a Carla por un
 // «Entrenamiento hecho». Las otras dos (duda, dolor), los avisos automáticos y lo escrito a mano SÍ
 // cuentan. El texto es el de los botones de `index.html` EXACTO: un test lo compara contra el marcado.
 const CHAT_NO_REPLY_TEXTS = ['💪 ¡Entrenamiento hecho!', '🙏 ¡Gracias, coach!'];
@@ -3181,7 +3181,7 @@ function mergeAuthRow(localRow, cloudRow) {
 // URL de redirect (#error=…&error_code=…&error_description=…), NO en el valor de
 // retorno de linkIdentity/signInWithOAuth — y supabase-js (detectSessionInUrl)
 // consume el hash al crear el cliente. Sin parsear esto ANTES, la app tiraba los
-// errores a la basura y "Conectar mi Google" fallaba en silencio (caso Luz
+// errores a la basura y "Conectar mi Google" fallaba en silencio (caso Luisa
 // 2026-07-02). Pura y testeable: recibe hash y search crudos.
 function parseOAuthReturn(hash, search) {
   const out = { error: '', code: '', desc: '' };
@@ -3553,17 +3553,17 @@ function wuTake(pool, n, rot) {
 // ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────
 // El candado de v431 vigila los KILOS. Auditando los entrenamientos rápidos (8-sep) apareció que
 // las REPETICIONES no tienen ninguno, y que ya hay daño real:
-//   · **Luz, Dead Bug, 28-ago y 2-sep: series `10 / 110`** con su plan diciendo 2×10 — y ese 110
+//   · **Luisa, Dead Bug, 28-ago y 2-sep: series `10 / 110`** con su plan diciendo 2×10 — y ese 110
 //     **es su récord**, así que ese ejercicio le queda imposible de superar (el detector de
 //     estancamiento lo leerá como plantado para siempre) y su gráfica de reps va inflada ×11.
-//   · **Astrid, Prensa, 2-sep: `10r×110kg | 110r×0kg | 10r | 8r`** — ahí el 110 es el PESO tecleado
+//   · **Andrea, Prensa, 2-sep: `10r×110kg | 110r×0kg | 10r | 8r`** — ahí el 110 es el PESO tecleado
 //     en la casilla de repeticiones. Misma firma, otro origen.
 //
 // 🔬 EL UMBRAL SE ELIGIÓ BARRIENDO EL DATO REAL, no copiando el de los kilos — y menos mal, porque
 // copiarlo habría dejado fuera el único caso con récord corrupto: `_SANE_REL_MIN_SETS` vale 3 y
-// **Luz solo tiene 2 series**. Barrido sobre las 7.116 series con repeticiones de toda la base:
+// **Luisa solo tiene 2 series**. Barrido sobre las 7.116 series con repeticiones de toda la base:
 //     mín. 2 series → 3 marcadas (las 3 reales) con CUALQUIER factor entre 2,5× y 5×
-//     mín. 3 series → 1 marcada (se pierde Luz, que es la del récord)
+//     mín. 3 series → 1 marcada (se pierde Luisa, que es la del récord)
 // Por eso aquí el mínimo es 2. El factor se queda en el mismo 4× de los kilos: la separación real
 // es de 11×, así que no hace falta apretar, y una constante compartida es una decisión menos.
 //
@@ -3673,7 +3673,7 @@ function sanitizePrs(prs, history) {
     const kgPR = p && parseFloat(p.kg);
     const tope = mejor[k];
     let fantasma = !malo && isFinite(kgPR) && kgPR > 0 && tope > 0 && kgPR >= _SANE_REL_FACTOR * tope;
-    // v593 · y el mismo fantasma en REPETICIONES: el récord de Luz (110 reps de Dead Bug) sobrevive
+    // v593 · y el mismo fantasma en REPETICIONES: el récord de Luisa (110 reps de Dead Bug) sobrevive
     // aunque el historial ya esté limpio, y mientras siga ahí ese ejercicio le queda imposible de
     // superar. `mejorReps` se calcula del historial YA saneado, así que el 110 ya no está.
     if (!malo && !fantasma && p && (p.unit === 'reps')) {
@@ -4485,8 +4485,8 @@ function habitPct(n, goal) {
 // habrían cambiado en silencio lo que la gente ya tenía registrado).
 // E3 — RETENCIÓN DEL DETALLE. Fable estipuló 90 días con el número «a confirmar midiendo, no de
 // memoria». Medido el 2026-08-05 y la medición manda: 90 días × 5 comidas pesan 78 KB (106 KB si
-// todo viene de código de barras), y los perfiles REALES de producción pesan ~600 bytes (Luz 600,
-// Kathe 619) con el historial completo de meses de entreno en 10-18 KB. A 90 días el registro de
+// todo viene de código de barras), y los perfiles REALES de producción pesan ~600 bytes (Luisa 600,
+// Karen 619) con el historial completo de meses de entreno en 10-18 KB. A 90 días el registro de
 // comida multiplicaría el perfil por más de 100 y sería, de lejos, lo más pesado de la fila — y
 // ese objeto se re-sube ENTERO en cada una de las 3-5 anotaciones del día.
 // A 30 días (la misma retención que ya usan agua y pasos) el detalle pesa ~26 KB, proporcionado
@@ -4677,7 +4677,7 @@ function foodLogProgress(totals, target) {
 // como % de lo que promete: min 94,7% · mediana 102,8% · max 110,2%.
 //   franja ±5%  → 28 de 119 días-plan quedan fuera (10 personas)
 //   franja ±8%  →  6 de 119 (4 personas)
-//   franja ±10% →  1 de 119 (**Nataly**, cuyo plato entrega 110,2%)
+//   franja ±10% →  1 de 119 (**Nayla**, cuyo plato entrega 110,2%)
 //   franja ±12% →  0 de 119   ← ELEGIDA
 // 🔒 La restricción es dura y no es de gusto: **una franja más estrecha de lo que el plato
 // entrega le diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó** — la misma
@@ -4938,7 +4938,7 @@ function newsToShow(list, seenV, opts) {
 // ── LA APP YA NO OBLIGA A UN MENOR A MENTIR (v565) ──────────────────────────────────────
 // Hasta v564 la casilla «Declaro que soy mayor de 18 anios» era OBLIGATORIA, no habia
 // alternativa de acudiente, y **nadie la cruzaba contra la edad que el propio formulario
-// acababa de pedir** dos pasos antes. Medido en produccion el 2-sep: Valery (15) y Sharith
+// acababa de pedir** dos pasos antes. Medido en produccion el 2-sep: Valery (15) y Sonia
 // Sofia (16) tienen `consent:{adulto:true}` guardado — o sea que la unica forma de entrar
 // era declarar algo falso, y encima esa mentira quedaba archivada como PRUEBA de que se
 // autorizo siendo adulta, que es exactamente lo contrario de lo que la evidencia sirve.
@@ -5679,9 +5679,9 @@ function chatDeliveryBlock(client) {
 // El chat es SOLO-COACH, pero el candado se estaba comiendo TAMBIÉN la conversación que esa
 // persona YA tuvo: al bajar de nivel, `renderClientMsgs` reemplazaba el hilo entero por el
 // upsell. Medido 2026-09-07 en producción: **68 de los 95 mensajes que existen** viven en las
-// 5 conversaciones que hoy están bajo candado; la más larga es la de Samuel Cifuentes, 40
+// 5 conversaciones que hoy están bajo candado; la más larga es la de Salomón Cárdenas, 40
 // mensajes en 5 meses, invisibles para él desde que pasó a 'libre'.
-// Misma clase que el caso Samuel de v573: PODER QUITAR (o releer) algo no puede depender de
+// Misma clase que el caso Salomón de v573: PODER QUITAR (o releer) algo no puede depender de
 // seguir cumpliendo el requisito para ponerlo. Lo que ya se dijo es suyo.
 // Escribir SIGUE siendo premium — eso no cambia. Puro: la UI solo pinta lo que esto devuelva.
 //   'open'    → hilo + caja de escribir (tiene coach)
@@ -6043,9 +6043,9 @@ function applyMood(routine, mood, opts) {
 // Hasta v527 el plan vencía y la app se apagaba **el mismo día**. La auditoría de negocio del
 // 24-ago midió qué hizo eso de verdad, dos meses seguidos, y el resultado va en las dos
 // direcciones: **cobra de quien iba a pagar igual y expulsa al que dudaba.**
-//   · Claudia y Luz vencieron el 31-jul, **entrenaron el 1-ago con el plan vencido** y pagaron
+//   · Carla y Luisa vencieron el 31-jul, **entrenaron el 1-ago con el plan vencido** y pagaron
 //     el día 3 — a ellas el bloqueo no las empujó a nada, solo llegó tarde.
-//   · Yeison y Valery Valbuena vencieron el 31-jul y el 1-ago: llevan **24 días bloqueados,
+//   · Yamid y Vanesa Vargas vencieron el 31-jul y el 1-ago: llevan **24 días bloqueados,
 //     no han vuelto y no han pagado.** Son las dos únicas bajas del delta.
 //   · Y en 23 días de operación se acumularon **≈66 días-persona** de app apagada.
 // 🔴 Y el dato que decide: **el bloqueo NUNCA fue una barrera real.** `payments` vive en
@@ -6076,10 +6076,10 @@ const MS_GRACE_DAYS = 7;
 // excluía `overdue` y la persona no entraba a NADA — leía «Tu plan venció. Habla con tu coach
 // para continuar entrenando» y su historial quedaba del otro lado de la puerta. No volvía a
 // AVI FREE: quedaba afuera hasta que el coach la tocara a mano.
-// 🔴 Medido el 2-sep contra producción: **1 persona bloqueada por esto hoy** (Yeison Valbuena,
+// 🔴 Medido el 2-sep contra producción: **1 persona bloqueada por esto hoy** (Yamid Vargas,
 //    vencido el 31-jul, 33 días) — precisamente una de las dos bajas que el bloque de v528 ya
 //    había nombrado como «llevan 24 días bloqueados, no han vuelto y no han pagado». Y **4 más
-//    vencen hoy** (Astrid, Luz, Claudia, Kathe): sin esto, el día 10 caen en el mismo hueco.
+//    vencen hoy** (Andrea, Luisa, Carla, Karen): sin esto, el día 10 caen en el mismo hueco.
 // 🔒 Esto NO afloja ninguna seguridad, por el mismo argumento ya escrito en v528: `payments`
 //    vive en `profile`, que el propio teléfono del asesorado escribe (gotcha F7). El bloqueo
 //    nunca fue un candado — era un empujón. Lo que sí es un candado de verdad, `suspended`,
@@ -6109,10 +6109,10 @@ function premiumLocked(client, now) {
 // 🔴 POR QUÉ EXISTE, y es lo contrario de lo que decía la auditoría del 6-sep. Ese informe dijo
 // que «Ingresos mes» y «Activos» medían *la cadencia con que el coach teclea los pagos*. Medido
 // contra los 26 pagos reales de la nube: **es falso**. Las fechas son reales y espaciadas, cada
-// una encadenada con su propio vencimiento (Samuel 3-may → 7-jun → 6-jul → 6-ago, ~30 días).
+// una encadenada con su propio vencimiento (Salomón 3-may → 7-jun → 6-jul → 6-ago, ~30 días).
 // Lo que pasa de verdad es un artefacto del CICLO: casi todos renuevan en los primeros días del
 // mes, así que dos días de retraso mueven la plata al mes siguiente —junio se ve hundido ($155k
-// contra $890k de agosto) porque Astrid y Kathe renovaron el 2-jul— y el día 6 de cada mes el
+// contra $890k de agosto) porque Andrea y Karen renovaron el 2-jul— y el día 6 de cada mes el
 // tablero muestra la caja casi en cero y «Activos» en mínimos **por diseño**, con la mitad de la
 // gente en período de gracia. Es un problema de LECTURA, no de cálculo.
 // 🔒 Por eso esto NO cambia ninguna definición (decisión del PO, 6-sep): la cifra grande sigue
@@ -6263,7 +6263,7 @@ const LANDING_SHARE_MSG = 'Así entrena mi gente 💪 Mira sus resultados reales
 //
 // 🔴 EL PROBLEMA, TAL CUAL: hoy la app **solo registra su versión cuando hay un ERROR**
 // (`app_errors.build`, v282). Así que después de desplegar un arreglo no hay forma de saber si
-// le llegó a alguien — y esa fue exactamente la duda del reporte de Kathe: se sospechó del
+// le llegó a alguien — y esa fue exactamente la duda del reporte de Karen: se sospechó del
 // Service Worker, se midió, se descartó… y quedó sin respuesta porque **no había dato**. Un
 // teléfono sano es hoy invisible; solo se sabe de los que fallan.
 //
@@ -6657,9 +6657,9 @@ function nutWhyKey(nut, client, weightKg) {
 //
 // Esta función contesta la OTRA pregunta: qué texto se le PINTA a ella. Y la regla es una sola:
 // **la app no le afirma una dirección calórica que sus propios números contradicen.**
-// Medido en producción el 2026-08-21: **2 de 10 planes**. Kathe (28) leía «estás comiendo en
+// Medido en producción el 2026-08-21: **2 de 10 planes**. Karen (28) leía «estás comiendo en
 // balance: lo que gastas» encima de un déficit REAL de 500 kcal —su plan es correcto, el rótulo se
-// quedó de una plantilla vieja— y Samuel al revés, ganando músculo mientras leía «balance».
+// quedó de una plantilla vieja— y Salomón al revés, ganando músculo mientras leía «balance».
 // Es la clase de v437 y v486, en la superficie que faltaba: la pantalla de la persona.
 //
 // Con la contradicción detectada, el texto sale de lo que los números HACEN, no de la etiqueta que
@@ -6889,7 +6889,7 @@ function nutKcalFloor(tmb, sex) {
 // `ideal + 0,25 × exceso`, con el ideal en IMC 22,5.
 // 🔴 Ese ajuste NO puede entrar de golpe en un umbral. Verificado el 2026-08-05: con el corte
 // seco en IMC 30, **200 gramos de báscula cambiaban 30 g de proteína** — una mujer de 156 cm a
-// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y muerde al revés de como debería: Claudia está en
+// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y muerde al revés de como debería: Carla está en
 // IMC 30,4, y si baja 1,1 kg —que es el propósito de su plan— su proteína SALTA de 131 a 160 sin
 // ninguna razón que ella pueda ver. Al PO ya le pasó cruzando de 90 a 92 kg en julio.
 // La rampa lo hace CONTINUO entre IMC 28 y 32 (146→145 al cruzar, en vez de 160→130). Es
@@ -6961,8 +6961,8 @@ function calcMacrosFromKcal(kcalObj, weightKg, goal, heightCm) {
 // (app-4-entreno.js), así que el último elemento del arreglo es el registro MÁS VIEJO. Medido
 // contra producción el 2026-08-06: los 5 historiales con más de un registro están en orden
 // descendente y 4 personas recibían un plan calculado sobre un peso que ya no era el suyo —
-// Nataly con 54 kg cuando pesa 59,5 (85 kcal y 12 g de proteína de diferencia), Kathe con los
-// 85 kg de mayo cuando ya bajó a 83, Samuel con 88 en vez de 86. O sea: **pesarse no movía el
+// Nayla con 54 kg cuando pesa 59,5 (85 kcal y 12 g de proteína de diferencia), Karen con los
+// 85 kg de mayo cuando ya bajó a 83, Salomón con 88 en vez de 86. O sea: **pesarse no movía el
 // plan**, que es justo lo que el plan promete. La app leía el primer peso de la persona, para
 // siempre. Quinta superficie de la familia v435/v444/v448.
 // Se decide por FECHA, no por posición, para no depender del orden en que llegue el arreglo.
@@ -7004,7 +7004,7 @@ function nutWeightFor(client, bwList) {
 //   · **12 de 18 tienen UNA sola toma**, o sea que no hay tendencia que leer.
 //
 // 🔬 El UMBRAL se eligió midiendo la deriva REAL de esta gente (`/tmp` → 7 tramos entre tomas
-// consecutivas): mediana **1,43 kg/mes**, p75 **4,29**, máximo **8,25** (Nataly, 54 → 59,5 kg en
+// consecutivas): mediana **1,43 kg/mes**, p75 **4,29**, máximo **8,25** (Nayla, 54 → 59,5 kg en
 // 20 días). Con ~15 kcal de TDEE por kg, a los 60 días la deriva MEDIANA son ~43 kcal/día
 // —dentro de la tolerancia del 5% que la app ya usa para juzgar dirección— pero a la tasa p75
 // son ~129 kcal, o sea fuera. 60 días es donde la cola empieza a importar, y de ahí sale
@@ -7199,7 +7199,7 @@ const NUT_FOODS = [
   // 🔒 `maxG: 200` = 4 huevos (v495). Era el ÚNICO proteico sin tope de ración, y el tope se pone
   // donde lo ponen sus pares por densidad: la clara también lo tiene en 200 g. Sin él, medido sobre
   // las 17 personas reales, **17 de las 117 comidas con huevo servían más de 4** — cinco huevos en
-  // una sentada a Miguel, Samuel, Cristian, Yeison y Sharith, y **seis (300 g) en un desayuno**.
+  // una sentada a Mario, Salomón, César, Yamid y Sonia, y **seis (300 g) en un desayuno**.
   // Cuesta CERO: comidas por debajo del 85% de su proteína 0 → 0, comidas pasadas del 130% 3 → 3,
   // variedad 44 → 44, ración proteica mínima 50 g. Solo desaparecen las raciones de 5 y 6.
   // ⚠️ Y lo que este tope NO hace, medido antes de ponerlo: **no cierra la esquina** del barrido
@@ -7798,7 +7798,7 @@ function nutPortionText(food, grams) {
 // aguacate aporta carbohidrato. Un reparto ingenuo —tanta carne para la proteína,
 // tanto arroz para el carbohidrato— IGNORA esos aportes cruzados y el plato se pasa.
 // Medido 2026-08-01 con las 3 personas reales: los platos salían entre +12% y +17%
-// por encima del objetivo, y la proteína de Nataly llegaba a 176 g cuando su meta
+// por encima del objetivo, y la proteína de Nayla llegaba a 176 g cuando su meta
 // eran 123 g (+43%). Un plan que se pasa un 15% todos los días es un plan que no
 // cumple el objetivo, y nadie lo habría notado mirando la pantalla.
 //
@@ -8038,7 +8038,7 @@ const NUT_MENUS = {
     { pick: { prot: 'atun', carb: 'pan_integral', fat: null }, acomp: ['guayaba'] },      // era queso_campesino (17 g grasa/100 g → 1)
     { pick: { prot: 'clara', carb: 'avena', fat: 'mani' }, acomp: ['mandarina'] },        // era huevo entero (9,9 g grasa/100 g → 0,2)
     { pick: { prot: 'yogur_griego', carb: 'avena', fat: 'crema_mani' }, acomp: ['pina'] },
-    // 🔴 Y LA MERIENDA ESTABA IGUAL DE ESTRECHA (Andrés, dictamen v471). Luz no era un caso
+    // 🔴 Y LA MERIENDA ESTABA IGUAL DE ESTRECHA (Andrés, dictamen v471). Luisa no era un caso
     // aislado: medido sobre los 154 presupuestos reales, **37 se quedaban con UNA sola opción**.
     // Con estos dos bajan a 22 y el promedio sube de 2,55 a 3,68.
     // ⚠️ Queda un hueco CONOCIDO y sin cerrar: **10 presupuestos no tienen NINGÚN menú factible**
@@ -8086,7 +8086,7 @@ const NUT_MEALS_5 = [
 // pintarlos ("con guayaba, tomate") y sus macros no entraban ni en el presupuesto de la
 // comida ni en la cuenta del día → el plan SERVÍA hasta un 22% más de lo que PROMETÍA en
 // su propia tarjeta, y el error pegaba más fuerte justo en quien está en déficit: medido
-// sobre perfiles reales, +22,1% en Luz (perder grasa) y +11,4% en Samuel (ganar músculo).
+// sobre perfiles reales, +22,1% en Luisa (perder grasa) y +11,4% en Salomón (ganar músculo).
 // A ella el motor le calculó 500 kcal de déficit y el plato escrito se lo dejaba en ~110.
 // Varios acompañantes son FRUTA (guayaba 61 kcal, banano 105), no lechuga.
 // Un id que no esté en la tabla (p.ej. 'ensalada', que no es un alimento) aporta 0 — no se
@@ -8154,7 +8154,7 @@ function nutAcompMacros(ids) {
 //  ▶ 15% → peor +12,1% · prom +5,9% · mejoran 17, empeoran 3             · 2/5/3   ← ELEGIDO
 //    10% → peor  +8,0% · prom +3,7% · mejoran 21, empeoran 0             · 1/3/2
 // 🔴 Y por eso NO se apretó más, aunque al 10% mejoren las 21 sin excepción: ahí alguien
-// (Hernán Camacho, medido) comería **EL MISMO DESAYUNO LOS 7 DÍAS**. Un plan que repite es un
+// (Hugo C., medido) comería **EL MISMO DESAYUNO LOS 7 DÍAS**. Un plan que repite es un
 // plan que se abandona — el defecto del banco de UNO que ya costó una versión en el generador de
 // rutinas, y un plan abandonado sirve 0% de lo que promete, no el 96%.
 // ⚠️ Que 3 personas empeoren 1-2 puntos es real y va dicho: la elección es POR COMIDA contra el
@@ -8196,7 +8196,7 @@ function nutPickMenu(banco, start, meta, evitar) {
   //     de −12,9% a −22,9%. **El total del día TAPA la comida rota** — la misma lección del
   //     promedio que escondía el carbohidrato, y la razón de que su test sea por comida.
   //  2. Sin mirar los MACROS, un menú que cuadra en calorías y entrega 20 g menos de proteína
-  //     «cabía». **A Kathe le quitaba 22 g de proteína en su peor día** — y Kathe es exactamente
+  //     «cabía». **A Karen le quitaba 22 g de proteína en su peor día** — y Karen es exactamente
   //     la persona por la que Andrés peleó +26 g (119→145) en `dictamen-andres-macros-2026-08-05`.
   //     Las personas bajo −20% de proteína pasaron de 116 a 1.482.
   // 🔒 LA PROTEÍNA NO SE NEGOCIA (dictamen de Andrés §1): tiene su propio mínimo y es más estrecho
@@ -8248,7 +8248,7 @@ function nutPickMenu(banco, start, meta, evitar) {
   // 🔴 TODOS LOS QUE CABEN YA SE SIRVIERON HOY. Antes se repetía uno, y ahí seguía viva la mitad
   // del P0 que reportaron las dos auditorías: a quien el presupuesto le deja UN SOLO menú de
   // merienda factible, `evitar` no tiene nada que evitar y le caía **la misma merienda a media
-  // mañana y a media tarde, los 7 días**. Le pasa a gente real (Luz, medida en el respaldo del
+  // mañana y a media tarde, los 7 días**. Le pasa a gente real (Luisa, medida en el respaldo del
   // 9-ago), no a un perfil sintético.
   // Se prefiere un menú DISTINTO que se sale un poco antes que el MISMO plato dos veces el mismo
   // día. Medido sobre las 21 personas reales: **merienda repetida 27,2% → 0,0%**, pagando peor
@@ -8460,7 +8460,7 @@ function nutMinorFloorBase(base, client, weightKg) {
   // se MARCA, para que el coach vea que a esta persona el candado no la está cubriendo. Fallar en
   // silencio era el hallazgo L3 de Lucas: las dos puertas degradaban al revés (la calculadora se
   // cierra y pide datos; el plan escrito se abría y servía). Un candado que falla mudo no es un
-  // candado. Hoy le toca a Santiago, 17 años, que no declara sexo.
+  // candado. Hoy le toca a Sebastián, 17 años, que no declara sexo.
   if (!tdee) return Object.assign({}, base, { minorFloorUnknown: true });
   if (!(base.kcalObj > 0)) return base;
   // El piso NO es el gasto pelado: es gasto × 1,05. No por el crecimiento (son 1-2%, FAO/WHO/UNU
@@ -8552,7 +8552,7 @@ function nutBaseFor(client, nut, weightKg) {
   const f = parseFloat(nut && nut.fat);
   if (k > 0 && p > 0 && c > 0 && f > 0) {
     // 🔴 El titular que escribió el coach y la suma de SUS PROPIOS macros no siempre cuadran
-    // (medido 2026-08-04: 6 de 10 planes, y el de Nataly por 240 kcal/día). El plato se arma con
+    // (medido 2026-08-04: 6 de 10 planes, y el de Nayla por 240 kcal/día). El plato se arma con
     // los MACROS, así que el titular escrito es el número que miente: se muestra el DERIVADO y el
     // desfase viaja para que el coach lo vea y arregle uno de los dos. Cambiar el número y dejar
     // el titular viejo sería el mismo error de v428 (anunciar un déficit mientras se sirve otra cosa).
@@ -8589,7 +8589,7 @@ function nutBaseFor(client, nut, weightKg) {
 // ──────────────────────────────────────────────────────────────────────
 // El PO reportó «hay dos planes de nutrición y son diferentes». Medido el 2026-08-04 sobre los 21
 // asesorados: el kcal BASE sí coincide, pero «Hoy» muestra el objetivo DEL DÍA (que se mueve con
-// el tipo de entreno) y «Perfil» muestra el número FIJO de la semana. A Kathe le salían 2.227 el
+// el tipo de entreno) y «Perfil» muestra el número FIJO de la semana. A Karen le salían 2.227 el
 // domingo, 2.395 el martes y 2.507 el lunes contra los 2.400 del perfil: hasta 173 kcal de
 // diferencia, sin una sola línea que explicara por qué. Está bien calculado y aun así, en pantalla,
 // son dos números que se contradicen.
@@ -8780,11 +8780,11 @@ function nutPlanReview(client, currentPlan, weightKg) {
   const actual = parseFloat(currentPlan && currentPlan.kcal);
   if (!actual) return { status: 'sin_plan', sugerido: base.kcalObj, base };
   // 🔴 UN PLAN PUEDE ESTAR NUMÉRICAMENTE PERFECTO Y AUN ASÍ MENTIR SOBRE SÍ MISMO, y hasta hoy
-  // este revisor solo sabía mirar números. Medido el 15-ago sobre los 10 planes escritos: Luz
+  // este revisor solo sabía mirar números. Medido el 15-ago sobre los 10 planes escritos: Luisa
   // (objetivo «Perder grasa») tiene desfase **0** —su déficit es exactamente el que le toca— pero
   // su plan quedó rotulado `mantenimiento` de una plantilla vieja, así que su app le explica
-  // «estás comiendo en balance: lo que gastas» mientras baja de peso a propósito. Igual Kathe, e
-  // igual Samuel al revés (gana músculo leyendo «balance»). Son 3 de 10 y **ninguno disparaba
+  // «estás comiendo en balance: lo que gastas» mientras baja de peso a propósito. Igual Karen, e
+  // igual Salomón al revés (gana músculo leyendo «balance»). Son 3 de 10 y **ninguno disparaba
   // ningún aviso**: el único detector vivía dentro del editor de nutrición, así que solo existía
   // si el coach reabría a esa persona. Detectar en el editor y callar sobre lo guardado deja vivos
   // exactamente los casos que ya estaban ahí — el mismo defecto de forma que v485 le cerró a los
@@ -8858,9 +8858,9 @@ function nutPlanReview(client, currentPlan, weightKg) {
 // Se juzga en **g por kg de peso de REFERENCIA**, que es el idioma del dictamen y el único que no
 // se descuadra con la grasa corporal (dosificar sobre el peso de báscula es lo que v428 arregló).
 // La tolerancia (±0,3 g/kg) NO se eligió a ojo: se derivó de los VEREDICTOS de Andrés sobre los 10
-// planes escritos, midiendo el 2026-08-18. Él marcó a Claudia (−0,56), Kathe (−0,47), Natalia
-// (−0,41) y Luz (−0,40) como cortas y a Miguel (+0,37) como pasado del techo; y dio por buenos a
-// Nataly (−0,20), Samuel (+0,06) y Astrid (−0,01). **±0,3 es el único corte que reproduce sus 9
+// planes escritos, midiendo el 2026-08-18. Él marcó a Carla (−0,56), Karen (−0,47), Nadia
+// (−0,41) y Luisa (−0,40) como cortas y a Mario (+0,37) como pasado del techo; y dio por buenos a
+// Nayla (−0,20), Salomón (+0,06) y Andrea (−0,01). **±0,3 es el único corte que reproduce sus 9
 // veredictos**, y tiene aire a los dos lados (el peor aprobado está en 0,20 y el mejor marcado en
 // 0,37). Con ±0,25 entraría el plan del propio coach, que él no juzgó.
 const NUT_PROT_TOL_G_KG = 0.3;
@@ -9287,7 +9287,7 @@ function communityCommentText(raw) {
 }
 
 // P0 (2026-07-25) — NOMBRE de una clave local de comunidad, SIEMPRE atada a su dueño.
-// El bug que reportó el PO («en el perfil de Astrid aparecía el mío») tenía dos vías: el objeto
+// El bug que reportó el PO («en el perfil de Andrea aparecía el mío») tenía dos vías: el objeto
 // CMTY en memoria y las claves de disco GLOBALES del dispositivo (`ax_cmty_cache`,
 // `ax_cmty_probe`, `ax_cmtynudge`, `ax_cmty_refresh`), que guardan apodos y caras de OTRAS
 // personas y sobrevivían al cambio de cuenta. Una clave con datos ajenos sin uid en el nombre es
@@ -9448,7 +9448,7 @@ const SECS_PER_SET_MIN_SESSIONS = 3;
 // Segundos por serie de ESTA persona, medidos de su propio historial. PURO. `null` si no hay con
 // qué (entonces manda la constante global).
 // 🔴 Por qué existe: entre las 7 personas con historial suficiente el ritmo va de **129 s/serie
-// (Claudia) a 192 (Kathe)** — 1,5× — y cada una es consistente consigo misma a lo largo de 8-43
+// (Carla) a 192 (Karen)** — 1,5× — y cada una es consistente consigo misma a lo largo de 8-43
 // sesiones. Un solo número para todas se equivoca por diseño con las dos puntas.
 function personalSecsPerSet(sessions) {
   const vals = [];
@@ -9632,13 +9632,13 @@ function hiitCfg(ex) { const c = (ex && ex.hiit) || {}; return { work: parseInt(
 function holdSecsOf(ex) { ex = ex || {}; return parseInt(ex.holdSecs) || parseInt(ex.reps) || 60; }
 
 // ── Duración PRESCRITA de una sesión que es SOLO HIIT (v545). PURA. ──
-// POR QUÉ: Luz y Claudia hicieron el MISMO HIIT (10 rondas de 30/15), las dos marcaron 10/10, y
+// POR QUÉ: Luisa y Carla hicieron el MISMO HIIT (10 rondas de 30/15), las dos marcaron 10/10, y
 // la app les mostró «8 min · 92 kcal» y «7 min · 67 kcal» — 504 y 405 segundos guardados. Lo que
 // les saltó a la vista fueron las calorías: 25 de diferencia por el mismo trabajo. Ninguno de los
 // dos números estaba mal: medía el reloj de pared
 // entre la 1ª ronda cerrada y la última, así que una pausa —o el celular bloqueado, que en Android
 // congela el temporizador— se cuenta como entrenamiento. Y como las calorías se estiman sobre ese
-// tiempo, Luz recibió ~25 kcal por 99 segundos en los que quizá no estaba pedaleando.
+// tiempo, Luisa recibió ~25 kcal por 99 segundos en los que quizá no estaba pedaleando.
 // En un HIIT el tiempo NO es una medición: está decidido de antemano por el protocolo. 10 rondas
 // de 30s con 9 pausas de 15s son 435s, para quien sea. Por eso, cuando la sesión es 100% HIIT, la
 // duración se DERIVA de las rondas cerradas y deja de depender del reloj.
@@ -9816,7 +9816,7 @@ function communityInviteMsg(name, peers, url) {
 // ══════════════════════════════════════════════════════════════════════
 // ¿EL LOGIN FALLO POR FALTA DE CONEXION O PORQUE LA CLAVE ESTA MAL?
 // ──────────────────────────────────────────────────────────────────────
-// Claudia lo reporto el 31-ago: «necesito internet para entrar». Reproducido — sin señal
+// Carla lo reporto el 31-ago: «necesito internet para entrar». Reproducido — sin señal
 // la app respondia «Email o contraseña incorrectos», o sea que le echaba la culpa a su
 // clave, y encima le GASTABA un intento de los 5 que la bloquean 30 segundos. La castigaba
 // por no tener red.
@@ -9843,7 +9843,7 @@ function loginFailIsNetwork(err, online) {
 // Supabase responde 400 con `error_code:'email_not_confirmed'` (la librería lo deja en `err.code`)
 // DESPUÉS de comprobar la contraseña: la clave era buena. El login lo trataba como credenciales malas,
 // gastaba uno de los 5 intentos que bloquean 30 s y no decía nada del correo, y no había forma de
-// pedirlo otra vez. Medido: Edwin Ávila (25-jul) se registró y nunca confirmó; Laura Ramírez (15-sep)
+// pedirlo otra vez. Medido: Elías A. (25-jul) se registró y nunca confirmó; Lucía Ríos (15-sep)
 // se atascó y 76 s después se registró de nuevo con Google (hoy tiene una cuenta viva y una fantasma).
 // PURA. Por código y, de respaldo, por el texto (una versión de la librería que no pase el código).
 function loginNeedsConfirm(err) {
@@ -10015,7 +10015,7 @@ function computeExerciseProgress(history) {
 // El panel pintaba como titular `points[último].maxKg` —el peso de la ÚLTIMA
 // sesión— SIN rotularlo, y la flecha ↑/↓ comparaba esa última contra la PRIMERA
 // sesión de toda la historia. Medido el 7-sep-2026 sobre los 229 ejercicios-persona
-// en kg de producción: en 59 (26%) el titular NO era el récord —Samuel, prensa de
+// en kg de producción: en 59 (26%) el titular NO era el récord —Salomón, prensa de
 // pierna: récord 90 kg y en pantalla 10— y de los 34 marcados «↓ bajando», 9 tenían
 // el récord POR ENCIMA de su primera sesión, o sea progreso real contado como
 // retroceso. Un día liviano no es una regresión, y el coach decide cargas leyendo
@@ -10113,9 +10113,9 @@ function _insRecordOf(prs, nowTs) {
 // ──────────────────────────────────────────────────────────────────────
 // El detector viejo miraba SOLO `p.maxKg`, con una ventana de 4 PUNTOS y `recent <= prior`.
 // Consecuencias medidas sobre los datos reales (2026-08-04): marcaba 41 ejercicios en 6 personas
-// y disparaba 4 semanas de descarga. **Castigaba terminar bien una progresión**: Astrid subió el
+// y disparaba 4 semanas de descarga. **Castigaba terminar bien una progresión**: Andrea subió el
 // hip thrust 90→100 kg y lo consolidó, su récord quedó DENTRO de la ventana `prior` y la app le
-// dijo «se estancó»; Nataly subió de 40 a 57 repeticiones con 80 kg fijos y también.
+// dijo «se estancó»; Nayla subió de 40 a 57 repeticiones con 80 kg fijos y también.
 // Lo nuevo, con los criterios de Andrés Hyp:
 //   · índice de rendimiento = Epley con TOPE de 20 reps (las repeticiones cuentan)
 //   · ventana ELÁSTICA: dura ≥5-6 semanas Y contiene ≥6 puntos, lo que resulte más largo
@@ -10148,7 +10148,7 @@ function perfIndex(kg, reps) {
 // 7 puntos-día (STALL_MIN_POINTS + STALL_MIN_BEFORE) para pronunciarse: partido, ninguna mitad
 // llega al mínimo y el ejercicio se vuelve INVISIBLE justo cuando más historia tiene. Medido en
 // producción el 7-sep: 3 de 201 ejercicios-persona estaban partidos («Pullover en Polea» y
-// «Pull Over en Polea» de Kathe son el mismo e24), y 2 de esos 3 quedaban fuera del detector solo
+// «Pull Over en Polea» de Karen son el mismo e24), y 2 de esos 3 quedaban fuera del detector solo
 // por eso. Es la misma clase que ya se mató en `computeExerciseProgress` (v484) y en el filtro de
 // dolor (v546): el nombre es una COPIA editable, el id es la identidad. `key` viaja en la serie
 // para que quien la consuma pueda casar por identidad y no por rótulo.
@@ -10445,7 +10445,7 @@ const SHOCK_GLOBAL_MUTE_DAYS = 7;   // re-chequear antes que los 21d: si está f
 // «3+ estancados = descarga» SOLO vale si viene entrenando parejo (fatiga de tanto exigir). Si se
 // estancó por FALTAS (poca frecuencia / huecos por trabajo), una descarga es el consejo equivocado
 // —ya entrena poco— y toca RECUPERAR EL RITMO. Los separa la constancia reciente (decisión de
-// Camilo con el caso real de Astrid, 2026-07-16). Ver [[avi-coach-inteligente-plan]].
+// Camilo con el caso real de Andrea, 2026-07-16). Ver [[avi-coach-inteligente-plan]].
 const SHOCK_CONSISTENCY_DAYS = 28;       // ventana para medir la constancia reciente
 const SHOCK_CONSISTENCY_MIN_RATIO = 0.8; // fracción del plan (días/sem) para llamarla "constante"
 // (v433: sube de 0,7 a 0,8 — criterio de Andrés Hyp para la descarga)
@@ -10540,7 +10540,7 @@ function painExclZones(area) {
 //   { mode:'multi', targets:[{name,muscle,also}] }    → el resto (uno por músculo)
 // `client`/`now` hacen falta para las compuertas del detector; sin ellos no hay veredicto.
 // v433 — el disparo de DESCARGA cambió: antes bastaban 3 ejercicios PLANTADOS y eso es un conteo
-// absoluto que ignora cuántos van subiendo (medido: Astrid tenía 3 planos y 7 mejorando, y la app
+// absoluto que ignora cuántos van subiendo (medido: Andrea tenía 3 planos y 7 mejorando, y la app
 // le mandaba una descarga). Ahora pide 3 en REGRESIÓN real (índice cayendo ≥5%), que es lo que
 // significa fatiga sistémica — una meseta no lo es (criterio de Andrés Hyp).
 // deloadFloorReason: por qué esta persona NO puede recibir una semana de descarga, o '' si puede.
@@ -10573,7 +10573,7 @@ function deloadFloorReason(client, sessions, now) {
 //   · series × 0,6 con piso de 2                 (Andrés)
 //   · carga × 0,85 SOBRE EL RÉCORD               (Andrés, dictamen 2026-08-14)
 //   · 7 días                                     (Andrés · decisión del PO 2026-08-04)
-// Medido sobre planes reales: Kathe 91 → 54 series (−41%), Astrid 113 → 64 (−43%).
+// Medido sobre planes reales: Karen 91 → 54 series (−41%), Andrea 113 → 64 (−43%).
 //
 // ── v482: LA DESCARGA NO DESCARGABA LA CARGA (reclamo del PO 13-ago, medido el 14-ago) ──
 // Él dijo: «solo le bajas el 10% del peso y eso es prácticamente nada». Tenía razón en el dato y
@@ -10654,7 +10654,7 @@ function startDeload(client, now, days) {
 
 // ── DESCARGA PROGRAMADA (v532) ───────────────────────────────────────────────────────────────
 // Pedido del PO (24-ago): *«necesito poder programar las semanas de descarga a asesorados que
-// según mi criterio la necesiten — por ejemplo Claudia y Luz, que se están recuperando de una
+// según mi criterio la necesiten — por ejemplo Carla y Luisa, que se están recuperando de una
 // gripa y ya casi cumplen las 8 semanas»*. El botón de v434 ya existía, pero arranca HOY y dura
 // 7 días fijos; lo que faltaba era elegir CUÁNDO empieza, CUÁNTO dura y hacerlo a varios de una.
 //
@@ -11206,11 +11206,11 @@ function errReportGate(state, msg, now) {
 // ══════════════════════════════════════════════════════════════════════
 // SELLO ANTI-HARNESS — corta escrituras a la nube desde localhost (v298)
 // ──────────────────────────────────────────────────────────────────────
-// Incidente 2026-07-08 (Samuel): los harness E2E corren `python http.server`
+// Incidente 2026-07-08 (Salomón): los harness E2E corren `python http.server`
 // sobre el index.html LOCAL, que apunta al Supabase de PRODUCCIÓN. Al iniciar
 // sesión con la cuenta REAL de un asesorado y hacer svNow('ax_c') con una
 // rutina de PRUEBA (fixture rTest), el harness SOBRESCRIBIÓ las 4 rutinas
-// reales de Samuel en la nube. Causa de raíz: la ruta de escritura (UD.upsert*)
+// reales de Salomón en la nube. Causa de raíz: la ruta de escritura (UD.upsert*)
 // nunca se sellaba en localhost. Este guard la sella para CUALQUIER harness,
 // presente o futuro, sin tener que tocar cada script. Pura y testeable:
 // recibe hostname + flag de opt-in. Escape hatch para probar sync a propósito
@@ -11223,7 +11223,7 @@ function cloudWriteSealed(hostname, allowFlag) {
 // ══════════════════════════════════════════════════════════════════════
 // LOS RÉCORDS QUE SE QUEDARON ATASCADOS (v591) — hallazgo D3-2
 // ──────────────────────────────────────────────────────────────────────
-// «Nataly, Curl Femoral Acostado: `prs` dice 20 kg del 25-may y su historial tiene 30 kg».
+// «Nayla, Curl Femoral Acostado: `prs` dice 20 kg del 25-may y su historial tiene 30 kg».
 // v585 lo esquivó en el panel «Cargas» (calcula el récord del historial), pero `ax_pr` sigue
 // alimentando **el peso sugerido** y la pantalla de récords del asesorado: con el récord
 // atascado, la app le sugiere menos de lo que ya levanta — el bucle de v432 otra vez.
@@ -11241,7 +11241,7 @@ function cloudWriteSealed(hostname, allowFlag) {
 //      que el coach borró a mano con `coachEditPR` —cuya promesa es «se vuelve a crear la próxima
 //      vez que lo levante»—, y crearlo aquí sería resucitarlo. Medido: 132 ejercicios tienen peso
 //      en el historial y ningún récord; ninguno se toca.
-//   2. **Solo cuenta una serie MARCADA** (`done`). Nataly tiene 30 kg anotados el 4-ago en una
+//   2. **Solo cuenta una serie MARCADA** (`done`). Nayla tiene 30 kg anotados el 4-ago en una
 //      serie que **no marcó**: eso no es un récord, es un número escrito en la casilla.
 //   3. **Solo récords con CARGA** (`unit` kg y valor > 0). Un récord de 0 kg es de peso corporal;
 //      convertirlo en uno de 40 kg no es «destrabar un récord», es cambiarle la modalidad — y
@@ -11250,8 +11250,8 @@ function cloudWriteSealed(hostname, allowFlag) {
 //      ANTERIOR, lo más probable es que un humano corrigiera el récord hacia abajo a propósito.
 //
 // Medido el 8-sep contra producción con estas cuatro reglas: **9 récords de 4 personas**
-// (5 del propio coach; Samuel 2, Miguel 1, Nataly 1). Ejemplos: Samuel, Aperturas en Polea Alta
-// 10 → 35 kg; Nataly, Curl Femoral 20 → 30; Miguel, Jalón al Pecho 50 → 70.
+// (5 del propio coach; Salomón 2, Mario 1, Nayla 1). Ejemplos: Salomón, Aperturas en Polea Alta
+// 10 → 35 kg; Nayla, Curl Femoral 20 → 30; Mario, Jalón al Pecho 50 → 70.
 //
 // PURA: recibe los récords y el historial de UNA persona y devuelve unos récords nuevos + la
 // lista de lo que cambió. No escribe, no formatea y no decide cuándo correr.
@@ -11306,12 +11306,12 @@ function healStalePrs(prs, history) {
 // ──────────────────────────────────────────────────────────────────────
 // Hallazgo D2-3 de la auditoría del 7-sep: la plantilla «Tren Superior — Espalda, Pecho y
 // Hombros» son `e6, e83, e51, e84, e24` = 3 de espalda + 2 de pecho y **cero de hombro**. Se le
-// aplicó a tres personas, y a Kathe la dejó sin un solo ejercicio de hombro en TODO su plan
+// aplicó a tres personas, y a Karen la dejó sin un solo ejercicio de hombro en TODO su plan
 // (25 ejercicios, 4 rutinas). Se le corrigió a mano el 7-sep; la plantilla seguía igual para la
 // siguiente persona a la que se la aplicara.
 //
 // Medido el 8-sep contra producción: **1 de las 5 plantillas** y **2 de las 108 rutinas vivas**
-// (maria rubio y Astrid, las dos con ese mismo nombre heredado). O sea que la regla marca poco y
+// (marta rojas y Andrea, las dos con ese mismo nombre heredado). O sea que la regla marca poco y
 // lo que marca es de verdad — que es justo lo que hace que un aviso se siga leyendo.
 //
 // 🔒 AVISA, NO BLOQUEA ni corrige sola: lo que arma el algoritmo se filtra, lo que arma el coach
@@ -11407,7 +11407,7 @@ function mergeCoachMsgs(cloud, pend) {
 
 // Topes de la cola de escrituras pendientes del coach. localStorage son ~5 MB para TODA la app
 // (que ahí guarda además el caché de sesión), así que la cola no puede crecer sin freno.
-const COACH_Q_MAX_ENTRY = 300 * 1024;   // una entrada (las fotos de Samuel pesan 280 KB)
+const COACH_Q_MAX_ENTRY = 300 * 1024;   // una entrada (las fotos de Salomón pesan 280 KB)
 const COACH_Q_MAX_TOTAL = 1024 * 1024;  // la cola entera
 
 // Mete una escritura fallida en la cola. PURA: recibe la lista y devuelve una nueva.
@@ -11599,7 +11599,7 @@ function waPhone(raw) {
 //
 // 🔴 SE ORDENA POR KILOS GANADOS, NO POR PORCENTAJE. Medido sobre las 4 personas con más
 // historial: el porcentaje saca accesorios de peso chico («Pullover 4 → 15 kg, +275%») y el kilo
-// saca lo que de verdad impresiona y además es creíble («Prensa de Pierna 40 → 95 kg», Astrid).
+// saca lo que de verdad impresiona y además es creíble («Prensa de Pierna 40 → 95 kg», Andrea).
 // Y el porcentaje NO se muestra: un «+650%» en un post se lee como marketing inflado aunque sea
 // verdad, y la credibilidad es justo lo que está vendiendo.
 //
@@ -11618,11 +11618,11 @@ const STORY_MIN_SESSIONS = 8;   // por debajo no hay historia que contar, hay un
 const STORY_TOP_LIFTS = 8;
 // 🔴 EL TITULAR EN % ES LA CIFRA MÁS FRÁGIL DE ESTA TARJETA, y por eso no es el máximo.
 // Medido el 10-sep-2026 sobre las 11 personas con ≥8 sesiones: el máximo por ejercicio llega a
-// **650%** y sale de cargas minúsculas (Nataly, «Extensión en Polea», 2 → 15 kg). Peor: Nataly y
+// **650%** y sale de cargas minúsculas (Nayla, «Extensión en Polea», 2 → 15 kg). Peor: Nayla y
 // el propio PO tienen el **volumen por sesión A LA BAJA** (x0,58 y x0,70) mientras su máximo dice
 // +650% y +140%. Un titular con el máximo los presentaría mejor de lo que están, que es
 // exactamente «el arreglo que mejora el caso bueno y empeora el malo» (v595).
-// La MEDIANA sí se sostiene y sigue siendo grande (Luz 133%, Claudia 133%, Valery 200%), y encima
+// La MEDIANA sí se sostiene y sigue siendo grande (Luisa 133%, Carla 133%, Valery 200%), y encima
 // se puede decir en una frase verdadera: «en la mitad de sus ejercicios subió esto o más».
 // Y se dice **CARGA, nunca FUERZA**: pasar de 2 a 15 kg en una polea es sobre todo técnica y
 // aprendizaje del movimiento; multiplicar la fuerza por 7,5 no lo sostiene ningún dato nuestro.
@@ -11757,7 +11757,7 @@ function clientProgressStory(client, sessions, now) {
     //    (el detector mudo de v433 al revés) — se exige la baja PROBADA para callar.
     medianaPct: (mitad != null && (volRatio == null || volRatio >= STORY_VOL_MIN_RATIO)) ? mitad : null,
     // 🔴 EL OBJETIVO ES LA LENTE CON QUE SE LEEN LOS NÚMEROS (pedido del PO, 30-ago). Sin él la
-    // misma cifra dice cosas opuestas: Nataly ganó 5,5 kg y eso es un ÉXITO porque su objetivo es
+    // misma cifra dice cosas opuestas: Nayla ganó 5,5 kg y eso es un ÉXITO porque su objetivo es
     // ganar músculo, pero en una tarjeta sin objetivo un «+5,5 kg» se lee como que engordó. Sale
     // del perfil, no lo teclea nadie: es dato de la app, como el resto de la tarjeta.
     objetivo: normalizeGoal(client.goal),
@@ -11826,7 +11826,7 @@ function showcaseRow(story) {
 // tarjeta publicada **no se puede volver a atar a su persona por id** — solo por ese nombre.
 // Esta función hace esa atadura, y cuando no puede lo DICE en vez de adivinar.
 //
-// 🔴 EL DEFECTO QUE LA TRAE (medido el 3-sep en producción). Samuel se registró declarando 28
+// 🔴 EL DEFECTO QUE LA TRAE (medido el 3-sep en producción). Salomón se registró declarando 28
 // años y tiene 15. Con esa edad falsa la app publicó su tarjeta el 29-ago: el candado de menores
 // de `clientProgressStory` nunca se activó porque le preguntó a la cifra equivocada. Hasta ahí es
 // un dato malo. Lo grave apareció al ir a corregirlo: **el único botón para QUITAR una tarjeta
@@ -11857,7 +11857,7 @@ function showcaseAudit(cards, clients, historyByClient, now) {
     const base = { id: card.id, nombre };
     if (!cand.length) return Object.assign(base, { estado: 'huerfana' });
     // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy mismo hay dos
-    //    Diana en la lista. Elegir una sería decidir sobre la tarjeta equivocada; se muestra
+    //    Dora en la lista. Elegir una sería decidir sobre la tarjeta equivocada; se muestra
     //    el caso y decide quien sí sabe de quién es.
     if (cand.length > 1) {
       return Object.assign(base, { estado: 'ambigua', cuantos: cand.length });
@@ -11899,7 +11899,7 @@ function coachCanReach(client) {
 // GUARDADOS en la fila de `push_subscriptions`, o sea una copia por APARATO de un hecho que es
 // de la PERSONA. Esa copia solo se reescribe cuando el navegador cambia de endpoint — y cuando
 // cambia, la fila vieja queda HUÉRFANA: ningún aparato la vuelve a tocar nunca, pero la ronda
-// diaria le sigue enviando. Natalia Martínez tenía la fila del 7-ago con
+// diaria le sigue enviando. Nadia Mejía tenía la fila del 7-ago con
 // `["Lunes","Lunes","Martes"]` y la de hoy con su plan real de 4 días: **el jueves 28-ago recibió
 // los dos avisos de la tarde, uno diciéndole que hoy entrenaba y otro que hoy descansaba**
 // (verificado en los logs de la edge: mismo client_id, mismo turno, «(entreno) ✅» y

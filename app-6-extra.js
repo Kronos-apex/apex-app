@@ -1270,7 +1270,7 @@ function kgSanityHint(rid, ei, si, el){
   }catch(_e){}
 }
 
-// v593 · El mismo aviso, para las REPETICIONES. Nace de un caso real: Luz anotó `10 / 110` en
+// v593 · El mismo aviso, para las REPETICIONES. Nace de un caso real: Luisa anotó `10 / 110` en
 // Dead Bug dos días distintos (su plan dice 2×10) y ese 110 se convirtió en su récord — con lo
 // que ese ejercicio le quedaba imposible de superar. Avisa y deja seguir, como el de los kilos:
 // quien sabe si hizo 110 repeticiones es ella, no la app.
@@ -1967,7 +1967,7 @@ function checkAndShowCongrats(routine){
   let done=0,totalVol=0;
   (routine.exercises||[]).forEach((ex,ei)=>{const sets=parseInt(ex.sets)||3;for(let si=0;si<sets;si++){if(isDone(routine.id,ei,si)){done++;totalVol+=(parseFloat(getLog(routine.id,ei,si,'kg'))||0)*(parseFloat(getLog(routine.id,ei,si,'reps'))||0);}}});
   if(done>=total&&total>0){
-    // Mismo blindaje que updateClientProgress (caso Claudia 2026-07-07): la celebración
+    // Mismo blindaje que updateClientProgress (caso Carla 2026-07-07): la celebración
     // no puede morir por un throw en los pasos intermedios.
     let newPRs=[];
     // v483: los récords ya se escriben al marcar cada serie, así que la celebración tiene que

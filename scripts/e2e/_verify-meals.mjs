@@ -1,6 +1,6 @@
 // _verify-meals.mjs — LA COMIDA DE HOY pegada al día de entreno (2026-08-01) + la REVISIÓN
 // del plan que ve el coach. Sin login: sintetiza a las personas REALES de producción que
-// motivaron la feature (Nataly +971 kcal, Luz +670 queriendo perder grasa, Astrid sin peso ni
+// motivaron la feature (Nayla +971 kcal, Luisa +670 queriendo perder grasa, Andrea sin peso ni
 // estatura) y llama a los render directo. La escritura a la nube está SELLADA en localhost
 // (v298), así que nada toca producción.
 // CON DIENTES (exit 1): no se queda en capturas — la lección de v403 es que un harness que
@@ -45,26 +45,26 @@ const SETUP = `(()=>{try{
   const tod=document.getElementById('cn-today'); if(tod)tod.classList.add('on');
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const hoy=days[new Date().getDay()];
-  // Nataly: 56 kg, ganar músculo, plan del coach de 3200 kcal (+971 sobre su objetivo real).
-  const nataly={id:'cN',name:'Nataly',sex:'F',age:40,weight:56,height:162,goal:'Ganar músculo',
+  // Nayla: 56 kg, ganar músculo, plan del coach de 3200 kcal (+971 sobre su objetivo real).
+  const nayla={id:'cN',name:'Nayla',sex:'F',age:40,weight:56,height:162,goal:'Ganar músculo',
     activityFactor:1.55,days:3,tier:'premium',
     routines:[{id:'r1',name:'Full Body',day:hoy,exercises:[{muscle:'piernas'},{muscle:'gluteo'},{muscle:'pecho'}]}]};
-  // Luz: 82 kg, PERDER GRASA, y su plan la tiene comiendo por encima del mantenimiento.
-  const luz={id:'cL',name:'Luz',sex:'F',age:39,weight:82,height:156,goal:'Perder grasa',
+  // Luisa: 82 kg, PERDER GRASA, y su plan la tiene comiendo por encima del mantenimiento.
+  const luz={id:'cL',name:'Luisa',sex:'F',age:39,weight:82,height:156,goal:'Perder grasa',
     activityFactor:1.55,days:3,tier:'premium',routines:[]};
   // Andrés: su plan está BIEN (+38 kcal) → no debe generar alarma.
   const sano={id:'cS',name:'Andrés',sex:'M',age:37,weight:90,height:175,goal:'Ganar músculo',
     activityFactor:1.55,days:5,tier:'premium',routines:[]};
-  // Astrid: sin peso ni estatura → no se le puede calcular nada.
-  const astrid={id:'cX',name:'Astrid',sex:'F',age:33,goal:'Ganar músculo',activityFactor:1.55,days:3,tier:'premium',routines:[]};
-  DB.clients=[nataly,luz,sano,astrid];
+  // Andrea: sin peso ni estatura → no se le puede calcular nada.
+  const andrea={id:'cX',name:'Andrea',sex:'F',age:33,goal:'Ganar músculo',activityFactor:1.55,days:3,tier:'premium',routines:[]};
+  DB.clients=[nayla,luz,sano,andrea];
   DB.nutrition={cN:{kcal:3200,prot:180,carbs:380,fat:80},cL:{kcal:2400,prot:150,carbs:270,fat:75},
                 cS:{kcal:3200,prot:180,carbs:440,fat:80},cX:{kcal:2400}};
   // 🔴 El plan de Andres es el CONTROL de silencio, asi que tiene que estar sano de VERDAD: sus
   // macros suman exactamente su titular (180x4 + 440x4 + 80x9 = 3200). Antes traia carbs:380, o
   // sea 2960 contra un titular de 3200 — un descuadre de 240 kcal, que es justo el defecto de
   // v435. El control disparaba la alarma y el harness llevaba meses en rojo culpando a la app.
-  // El de Nataly (cN) SI conserva el descuadre a proposito: es su caso real y otro check lo usa.
+  // El de Nayla (cN) SI conserva el descuadre a proposito: es su caso real y otro check lo usa.
   DB.bodyweight={};DB.history={cN:[],cL:[],cS:[],cX:[]};DB.prs={};DB.medidas={};DB.photos={};
   return {hoy};
 }catch(e){return {err:String(e)}}})()`;
@@ -97,10 +97,10 @@ await shot('meals-hoy-claro');
 const r3 = await ev(`(()=>{const luz=DB.clients[1];CUR.clientId='cL';renderNutReviewCard(luz);
   const e=document.getElementById('d-nutreview');
   return {vis:!!(e&&e.style.display!=='none'&&e.innerHTML.length>50), txt:e?e.textContent.replace(/\\s+/g,' ').trim():''};})()`);
-ok(r3.vis, 'avisa que el plan de Luz está desviado');
+ok(r3.vis, 'avisa que el plan de Luisa está desviado');
 ok(/perder grasa/i.test(r3.txt), 'explica el riesgo PARA SU OBJETIVO', r3.txt.slice(0, 130));
 ok(/6[0-9]{2}/.test(r3.txt), 'dice cuántas kcal sobran');
-// 🔴 El plan de Luz falla en DOS cosas a la vez: le sobran ~625 kcal para su objetivo Y su titular
+// 🔴 El plan de Luisa falla en DOS cosas a la vez: le sobran ~625 kcal para su objetivo Y su titular
 // (2400) no cuadra con sus macros (2355). Hasta hoy la tarjeta del descuadre cortaba con `return`
 // y el coach solo leía «ajusta el número para que digan lo mismo» — 625 kcal presentadas como un
 // problema de redacción. El titular tiene que ser la palanca GRANDE y el descuadre viajar como

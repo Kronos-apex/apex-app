@@ -6,7 +6,7 @@
 // entreno guardado SIN volver a celebrar, y que el 1RM que ve la persona lleve la barra.
 //
 // Sin login ni red: monta la app local (la nube está sellada en localhost, v298) con una asesorada
-// INVENTADA que ya entrenó hip thrust con barra de 15 (el caso de Astrid).
+// INVENTADA que ya entrenó hip thrust con barra de 15 (el caso de Andrea).
 //   node scripts/e2e/_verify-barra-rir.mjs      · exit 1 si algo falla · cero jsErrors
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';

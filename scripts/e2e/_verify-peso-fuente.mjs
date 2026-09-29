@@ -56,10 +56,10 @@ const montaje = await ev(`(()=>{try{
   const dia=86400000, hoy=Date.now();
   const base={height:170,age:30,sex:'F',activityFactor:1.55,goal:'Perder grasa',level:'Intermedio',days:3,tier:'premium',routines:[]};
   DB.clients=[
-    Object.assign({id:'w1',name:'Vieja 104',weight:73},base),        // Astrid: 73 kg de hace 104 días
-    Object.assign({id:'w2',name:'Sin Pesada',weight:82},base),       // Luz: 48 sesiones, 0 pesadas
+    Object.assign({id:'w1',name:'Vieja 104',weight:73},base),        // Andrea: 73 kg de hace 104 días
+    Object.assign({id:'w2',name:'Sin Pesada',weight:82},base),       // Luisa: 48 sesiones, 0 pesadas
     Object.assign({id:'w3',name:'Fresca',weight:60},base),           // pesada de hace 6 días
-    Object.assign({id:'w4',name:'Descuadre',weight:78},base),        // Samuel: ficha 78, pesada 86
+    Object.assign({id:'w4',name:'Descuadre',weight:78},base),        // Salomón: ficha 78, pesada 86
   ];
   DB.bodyweight={
     w1:[{date:new Date(hoy-104*dia).toISOString(),kg:73}],

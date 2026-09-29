@@ -4,7 +4,7 @@
 El generador y el calentamiento filtran bien lo que saben filtrar, pero la ÚNICA marca visual que
 avisa de un ejercicio contraindicado DURANTE el entreno real (`_painForEx`) depende exclusivamente
 de un reporte de dolor 🤕 — nunca de las notas del coach — y en TODA la historia de la app solo el
-propio PO ha usado esa puerta (2 reportes, 0 asesorados): para Laura, Danilo y cualquiera cuya
+propio PO ha usado esa puerta (2 reportes, 0 asesorados): para Laura, Darío y cualquiera cuya
 limitación viva solo en las notas, el candado no existe en ninguna pantalla donde entrena de
 verdad, esté o no la zona en `GEN_LIMIT_KWS`.
 
@@ -15,7 +15,7 @@ reporte de dolor, nunca a `parseLimitations`/notas — y casi nadie ha usado esa
 - Qué: `_painForEx` (el chip 🩹 que aparece en la tarjeta del ejercicio dentro del guiado "Hoy")
   llama a `painZoneKeys(c, Date.now())`, que lee EXCLUSIVAMENTE `client.painCare`. Nunca consulta
   `limitationsFor(c).keys` completo ni `parseLimitations(c.notes)`.
-- A quién le pasa HOY: Laura Ramírez Rueda y Danilo — sus dos limitaciones son 100% de notas
+- A quién le pasa HOY: Lucía Ríos y Darío — sus dos limitaciones son 100% de notas
   (`profile->'painCare'` es `null` para ambos, verificado por SQL) — entrenan hoy (23-sep y 25-sep
   resp.) sin que NINGUNA pantalla del entreno les marque nada, aunque `rodilla`/`lumbar` SÍ se
   detectan correctamente en sus notas.
@@ -29,13 +29,13 @@ reporte de dolor, nunca a `parseLimitations`/notas — y casi nadie ha usado esa
   (`grep -n "limitationsFor("`): generador (filtra, pero solo aplica a rutinas NUEVAS), calentamiento
   auto en 3 sitios (filtra), chip del calentamiento MANUAL del coach (marca, correcto y deliberado),
   wizard de autorregistro y el gate `_hasExcl` del resultado del reporte. Ninguno marca el EJERCICIO
-  de una rutina ya guardada. Confirmado con SQL: `painCare` de Laura y Danilo es `null`.
+  de una rutina ya guardada. Confirmado con SQL: `painCare` de Laura y Darío es `null`.
 - Costo de arreglo: mediano. `renderDetailRoutines`/`rfExRow`/la tarjeta del guiado necesitarían
   llamar `exerciseContraindicated(ex, limitationsFor(c).keys, DB.exercises)` igual que ya hace
   `_painForEx` con `painZoneKeys` — es extender la MISMA función a la fuente que le falta, no una
   regla nueva.
 
-**2. 🔴 Caso real Laura Ramírez Rueda: 8 ejercicios vigentes en su plan que las reglas de codo/cuello
+**2. 🔴 Caso real Lucía Ríos: 8 ejercicios vigentes en su plan que las reglas de codo/cuello
 tienen escritas y no le llegan (confirma Q1).**
 - `parseLimitations` con su nota real → `{keys:['rodilla'], hasExclusions:true}` (medido con
   `core.parseLimitations` en Node): "espalda alta" y "codos" no producen NADA porque `GEN_LIMIT_KWS`
@@ -55,10 +55,10 @@ tienen escritas y no le llegan (confirma Q1).**
 - Costo: bajo para ampliar `GEN_LIMIT_KWS` con las 7 zonas que faltan (las regex ya existen en
   `GEN_ZONE_EXCL`, es reusar el mismo patrón); no resuelve el hallazgo #1 por sí solo.
 
-**3. 🟡 El generador colapsa un slot a un solo ejercicio para Laura y Danilo — pool chico REAL, no
+**3. 🟡 El generador colapsa un slot a un solo ejercicio para Laura y Darío — pool chico REAL, no
 cursor mal alineado (barrido de 80 semillas, con control).**
 - Laura (rodilla): `e89 Clamshell con Banda (Concha)` aparece en el 100% de los días generados en
-  las 80 semillas (320/320). Danilo (lumbar): `e133 Press Pallof con Banda` en el 100% (400/400).
+  las 80 semillas (320/320). Darío (lumbar): `e133 Press Pallof con Banda` en el 100% (400/400).
 - Control de discriminación: corriendo los MISMOS perfiles SIN la nota de limitación, esos mismos
   ids aparecen en 0/160 y 0/200 respectivamente — la limitación es la causa, no un cursor fijo.
 - Por qué es pool real y no cursor: `_genPick` elige con `start = st.cursors[key] ?? (seed % pool.length)`.
@@ -77,12 +77,12 @@ cursor mal alineado (barrido de 80 semillas, con control).**
 
 | Sev | Qué | Dónde | ¿Víctima hoy? |
 |---|---|---|---|
-| 🔴 | `_painForEx` (chip en vivo) solo lee `painCare`, nunca notas | `app-6-extra.js:673-687` | Laura, Danilo, Miguel — todo limitación-por-nota |
+| 🔴 | `_painForEx` (chip en vivo) solo lee `painCare`, nunca notas | `app-6-extra.js:673-687` | Laura, Darío, Mario — todo limitación-por-nota |
 | 🔴 | `renderDetailRoutines` (lista de rutinas del coach) no marca ningún ejercicio por limitación | `app-3-coach.js:3501-3530` | Todos los que el coach revisa en su panel |
 | 🔴 | `rfExRow` (editor de rutina) no avisa al agregar un ejercicio contraindicado | `app-3-coach.js:3679-3699` | Cualquiera a quien el coach le edite el plan |
-| 🔴 | Laura: 8 ejercicios vigentes que codo/cuello excluirían, sin marca en ningún lado | plan real SQL, 25-sep | Laura Ramírez Rueda, hoy |
+| 🔴 | Laura: 8 ejercicios vigentes que codo/cuello excluirían, sin marca en ningún lado | plan real SQL, 25-sep | Lucía Ríos, hoy |
 | 🟡 | PO: `e15` Curl Femoral Tumbado en Máquina (Martes/Pierna) sigue en su plan con isquios vigente (14-sep, R5) | `user_data.routines` del PO | Andrés Martínez — mitigado SOLO si corre esa rutina en el guiado (`_painForEx` sí lo marcaría ahí, vía `painZoneKeys`) |
-| 🟡 | Pool colapsado a 1 (e89/e133), 100% de 80 semillas, 0% sin limitación | `avi-core.js` `_genPick`/`GEN_DAYS` | Laura, Danilo — cada regeneración futura |
+| 🟡 | Pool colapsado a 1 (e89/e133), 100% de 80 semillas, 0% sin limitación | `avi-core.js` `_genPick`/`GEN_DAYS` | Laura, Darío — cada regeneración futura |
 | 🟡 | Plantillas y QUICK_WORKOUTS: sin candado contra `REMOVED_EXERCISES` (hoy sano) | `app-2-login.js` (`openNewRoutineFromTemplate`), `app-4-entreno.js:1789` | Nadie hoy; se rompe en silencio el día que se retire un ejercicio usado en una plantilla |
 | 🟡 | Aplicar una plantilla a un cliente con limitación no filtra ni avisa | `app-2-login.js:835-845` | Cualquier plantilla aplicada a alguien con limitación declarada |
 | 🟢 | `dedupeExercises`/`prsRemapRetired` SÍ autocuran rutinas y récords al retirar un ejercicio | `app-2-login.js:34-80` | — (sano) |
@@ -96,10 +96,10 @@ notas reales de Laura: solo detecta `rodilla`; "espalda alta" y "codos" no produ
 Contra su plan real (SQL), codo excluiría 4 ejercicios (e11, e69, e75, e81) y cuello 6 (e23, e69,
 e18, e62, e75, e184) — hoy sin marca. Pero el hallazgo va más allá: incluso `rodilla`, que SÍ se
 detecta, tampoco produce marca en ninguna pantalla del entreno real (8 ejercicios más sin aviso) —
-ver hallazgo #1. Con Danilo (lumbar, sí detectado): 12 ejercicios de su plan caen en la regla y
+ver hallazgo #1. Con Darío (lumbar, sí detectado): 12 ejercicios de su plan caen en la regla y
 ninguno está marcado, por la misma razón estructural. Con el PO (isquios+lumbar vigente): `e15`
 Curl Femoral Tumbado — el ejercicio exacto que motivó la regla de isquios en v607 — sigue en su
-rutina de Martes; a diferencia de Laura/Danilo, su caso SÍ tiene reporte de dolor, así que
+rutina de Martes; a diferencia de Laura/Darío, su caso SÍ tiene reporte de dolor, así que
 `_painForEx` lo marcaría si corre esa rutina en el guiado — pero NO en la lista de rutinas del
 panel del coach, que nunca marca nada (hallazgo #1 también aplica).
 
@@ -122,9 +122,9 @@ arma esa función línea por línea — no encontré ninguna referencia a `lim`/
 de turno (ver "Qué NO miré").
 
 **3. Barrido de 40 semillas — ¿repite o deja huecos?**
-**REPITE (pool chico real), no huecos.** 0 días vacíos en 320 (Laura) y 400 (Danilo) revisados hasta
+**REPITE (pool chico real), no huecos.** 0 días vacíos en 320 (Laura) y 400 (Darío) revisados hasta
 80 semillas (la cifra no se movió entre 40 y 80). Pero un slot por persona queda con pool=1 tras la
-exclusión (e89 para Laura, e133 para Danilo, 100% de las veces), confirmado con control (0% sin la
+exclusión (e89 para Laura, e133 para Darío, 100% de las veces), confirmado con control (0% sin la
 limitación) y con la fórmula del cursor (`seed % 1 = 0` siempre). El PO (isquios+lumbar, pool más
 grande) no muestra este patrón: su top-1 ejercicio nunca pasa de ~13% de las sesiones.
 
@@ -157,10 +157,10 @@ sido tocado por ninguno de los 28 asesorados reales.
 - `_PAIN_ZONE_TO_EXCL` (avi-core.js:10118) cubre las 16 áreas declarables menos "otra zona" (a
   propósito) — coincide exacto con la tabla del briefing.
 - El picker del sustituto 🔄 SÍ filtra por `limitationsFor` completo (notas+dolor), no solo dolor.
-- 0 días completamente vacíos en 1.720 días-sesión revisados (Laura+Danilo+PO, hasta 80 semillas).
+- 0 días completamente vacíos en 1.720 días-sesión revisados (Laura+Darío+PO, hasta 80 semillas).
 
 ## Sospechas sin medir
-- No aislé el `slotOpts`/`prefer`/`avoid` exacto de `GEN_DAYS` que colapsa el pool de Laura/Danilo a
+- No aislé el `slotOpts`/`prefer`/`avoid` exacto de `GEN_DAYS` que colapsa el pool de Laura/Darío a
   1 candidato — `_genPick` y `GEN_DAYS` no están exportados a Node y no quise tocar el código para
   exportarlos temporalmente.
 - No confirmé en pantalla (browser harness) que `renderDetailRoutines` no marca nada — el rastreo de
@@ -174,7 +174,7 @@ sido tocado por ninguno de los 28 asesorados reales.
   until control con SQL+Node, que da la misma certeza sin el riesgo de rate-limit/sesión zombi de
   los harnesses (ver gotchas de `scripts/e2e/README.md`) — prioricé cerrar las 5 preguntas con
   evidencia de código+datos dentro del presupuesto de turno.
-- Miguel Pulido (suspendido, rodilla+generic): no corrí su plan porque está suspendido y no entrena
+- Mario Parra (suspendido, rodilla+generic): no corrí su plan porque está suspendido y no entrena
   hoy — mencionado en el baseline, no repetí la medición.
 - No revisé `correctiveFor`/el trabajo correctivo (bloque final de `generarRutinas`) contra
   codo/cuello — fuera del alcance de las 5 preguntas y del área de G2.

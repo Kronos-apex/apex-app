@@ -16,21 +16,21 @@ menor.** Medido con `nslookup -type=mx`: los dos dominios tienen MX apuntando a
 `*.mail.protection.outlook.com` (Microsoft 365) — no son inventados, alguien los tiene
 registrados y con correo activo, y no son de Camilo (su dominio real es `avientrena.com`,
 verificado: NS en Vercel). De las 13 cuentas de acceso bajo esos dominios, **9 son
-asesorados reales del coach** (astrid, kathe, miguel, natalia, samuel — `@apex.com` — y
-claudia, danilo, luz, nataly — `@avi.com`), 2 son las cuentas QA de los harness
+asesorados reales del coach** (andrea, karen, miguel, nadia, salomon — `@apex.com` — y
+carla, dario, luz, nayla — `@avi.com`), 2 son las cuentas QA de los harness
 (`qa-…@apex.com`, `qa-…@apex.com`, aisladas bajo su propio coach QA, documentadas)
-y 2 son cuentas sin ficha (`dia…@avi.com`, `val…@avi.com`, ver hallazgo #3 abajo). El
+y 2 son cuentas sin ficha (`oculto@avi.com`, `oculto@avi.com`, ver hallazgo #3 abajo). El
 flujo «¿Olvidaste tu contraseña?» (`pedirResetPass` → `AUTH.resetPassword` →
 `supabase.auth.resetPasswordForEmail`) manda el enlace de recuperación por el SMTP de
 Supabase al correo tal cual está registrado — sin distinguir si el dominio es del negocio.
-Si alguien pide recuperar `sam…@apex.com` (asesorado real, **15 años**, caso ya conocido
+Si alguien pide recuperar `oculto@apex.com` (asesorado real, **15 años**, caso ya conocido
 del consentimiento de menores v570-v573) o cualquiera de los otros 8, el correo sale hacia
 la infraestructura de Microsoft 365 de quien sea dueño de `apex.com`/`avi.com` hoy — no hacia
 Camilo ni hacia el asesorado. **Cómo lo intenté tumbar:** comprobé que la app NO distingue
 dominio en ningún punto del flujo (`emailRe` en `coach-create-client` solo exige formato
 `x@y.z`, sin lista blanca de dominios) y que Supabase responde igual exista o no la cuenta
 (anti-enumeración, así que no hay forma de confirmar sin mandar el correo — prohibido por las
-reglas). No pude confirmar que exista un buzón real en `sam…@apex.com` (solo que el DOMINIO
+reglas). No pude confirmar que exista un buzón real en `oculto@apex.com` (solo que el DOMINIO
 acepta correo); es el límite de lo medible sin infringir la regla de cero-correos.
 **Costo de arreglarlo:** exigir dominios propios (`@avientrena.com` o los que el coach
 controle) al crear una cuenta de acceso, o —más simple y ya construible hoy— que el coach
@@ -62,10 +62,10 @@ de `auth.users` (o al menos invalide la contraseña) para asesorados `selfReg`, 
 confiar en que la metadata quede incompleta.
 
 **3. Dos de los 7 huérfanos son la MISMA persona reintentando: el registro por correo se
-abandona y el de Google lo completa un minuto después — dos veces.** `dia…@avi.com`
-(creada 12:13:02, sin ficha, nunca volvió a entrar) y `dia…@gmail.com`
-(creada 12:13:02+52min vía Google, SÍ tiene ficha) son la misma Diana Pilar. `lau…@hotmail.com`
-(creada 13:33:09, nunca confirmada) y `lau…@gmail.com` (Google, creada 13:34:22 —
+abandona y el de Google lo completa un minuto después — dos veces.** `oculto@avi.com`
+(creada 12:13:02, sin ficha, nunca volvió a entrar) y `oculto@gmail.com`
+(creada 12:13:02+52min vía Google, SÍ tiene ficha) son la misma Dora Pilar. `oculto@hotmail.com`
+(creada 13:33:09, nunca confirmada) y `oculto@gmail.com` (Google, creada 13:34:22 —
 **un minuto después**) son la misma Laura. Patrón repetido dos veces con el mismo intervalo
 corto: alguien intenta el registro por correo, algo lo frena o lo abandona, y en menos de un
 minuto reintenta con Google y esta vez sí completa. No es un hallazgo de seguridad — es una
@@ -81,9 +81,9 @@ correos y confirmación; aquí solo queda medido y señalado.
 |---|---|---|---|
 | 🔴 | `apex.com`/`avi.com` tienen MX real (Microsoft 365), ajeno al PO; 9 asesorados reales (uno menor de 15) usan esos correos | Dominios completos, `auth.users` | No confirmada (no se puede probar sin mandar correo) |
 | 🔴 | `delClient` no revoca acceso de un `selfReg:true`; vuelve a entrar y se le crea ficha nueva sola | `app-3-coach.js:2765` (`delClient`) + `:692` (`_enterAuthSession`) | No hoy (estructural) |
-| 🟡 | 2 pares de cuentas fantasma por reintento correo→Google en <1 min (Diana Pilar, Laura) | `auth.users`, self-reg | Sí — 4 cuentas concretas, sin daño (solo residuo) |
+| 🟡 | 2 pares de cuentas fantasma por reintento correo→Google en <1 min (Dora Pilar, Laura) | `auth.users`, self-reg | Sí — 4 cuentas concretas, sin daño (solo residuo) |
 | 🟡 | `daily-notifs` desplegado (v9) NO coincide con el repo: le falta el wrapper `conCors`/`ORIGENES` de v657 (dual-origin CORS) | Edge Function `daily-notifs`, `updated_at` ~25 días más viejo que las otras 5 | No — la invoca el cron con bearer secreto, no un navegador; CORS no aplica a esa vía |
-| 🟢 | 2 cuentas Google nunca confirman ficha (`ste…@gmail.com`, `jos…@gmail.com`, `her…@gmail.com`) y quedan vivas porque el self-heal solo corre si esa identidad vuelve a intentar entrar | `_enterAuthSession`, rama `!prof._complete` | No — nunca volvieron, cero acceso a datos |
+| 🟢 | 2 cuentas Google nunca confirman ficha (`oculto@gmail.com`, `oculto@gmail.com`, `oculto@gmail.com`) y quedan vivas porque el self-heal solo corre si esa identidad vuelve a intentar entrar | `_enterAuthSession`, rama `!prof._complete` | No — nunca volvieron, cero acceso a datos |
 | 🟢 | `rls_enabled_no_policy` en `apex_data`/`apex_data_backups`/`community_resolve_attempts` (RLS activa, sin policy) | Advisors | No — deny-by-default, es más restrictivo de lo normal, no menos |
 | 🟢 | `pg_net` instalada en `public` | Advisors | No — higiene, no explota nada hoy |
 | 🟢 | 12 funciones `SECURITY DEFINER` ejecutables por `authenticated` | Advisors | No — todas son RPCs con su propio candado interno (moderador, dueño), patrón ya documentado |
@@ -107,7 +107,7 @@ confirmado comparando ambas funciones. **La cuenta nace `email_confirm:true`** (
 entra sin clic en ningún correo). **La ficha `user_data` la crea la propia función** con
 `admin.from('user_data').upsert(...)` DESPUÉS de crear el auth user; **si ese upsert falla
 (`rErr`), la función devuelve 500 pero el auth user YA EXISTE** — queda un auth account
-huérfano sin ficha (candidato exacto al patrón de `dia…@avi.com`, aunque no pude
+huérfano sin ficha (candidato exacto al patrón de `oculto@avi.com`, aunque no pude
 probar que ESE caso concreto haya sido por esta vía y no por abandono del usuario). **Sí
 captura el consentimiento de menores (v565):** `saveClient` en `app-3-coach.js` llama
 `consentEvidence(...)` antes de guardar y el resultado viaja dentro de `profile` (vía
@@ -118,13 +118,13 @@ client-side en `avi-core.js` y está intacta.
 ### Q2 · Las 13 cuentas en `apex.com` y `avi.com`
 **PARCIALMENTE CIERTA, con la pista confirmada y ampliada.** Son 7 `@apex.com` + 6
 `@avi.com` = 13, tal como dice el baseline. Desglose real: **9 asesorados reales** del coach
-(`0a6484ed…`) — astrid, kathe, miguel, natalia, samuel (todos `@apex.com`, creados en bloque
+(`0a6484ed…`) — andrea, karen, miguel, nadia, salomon (todos `@apex.com`, creados en bloque
 el 2026-06-03, probablemente por un seed/migración inicial y no por `coach-create-client`
-uno a uno, a juzgar por el timestamp idéntico `15:05:22.234411` en 4 de ellos) y claudia,
-danilo, luz, nataly (`@avi.com`); **2 cuentas QA** (`qa-…@apex.com` = coach QA aislado,
+uno a uno, a juzgar por el timestamp idéntico `15:05:22.234411` en 4 de ellos) y carla,
+dario, luz, nayla (`@avi.com`); **2 cuentas QA** (`qa-…@apex.com` = coach QA aislado,
 `qa-…@apex.com` = su único asesorado, ambas documentadas y fuera del panel del coach
-real); **2 sin ficha** (`dia…@avi.com`, `val…@avi.com` — ver Q3). Ninguno entrena
-bajo un coach que no sea el real o el QA. **Samuel Cifuentes (sam…@apex.com) tiene 15
+real); **2 sin ficha** (`oculto@avi.com`, `oculto@avi.com` — ver Q3). Ninguno entrena
+bajo un coach que no sea el real o el QA. **Salomón Cárdenas (oculto@apex.com) tiene 15
 años** en su ficha — el caso ya conocido de v570-v573. **`avi.com` y `apex.com` SÍ RECIBEN
 CORREO**: `nslookup -type=mx` confirma MX real hacia `*.mail.protection.outlook.com`
 (Microsoft 365) en los dos — no son dominios inertes, alguien los tiene registrados con
@@ -148,13 +148,13 @@ inertes.
 **CIERTA, clasificadas todas.**
 | Correo | Proveedor | Clasificación |
 |---|---|---|
-| `ste…@gmail.com` | Google | Fantasma Google: entró una vez el mismo día de creación y nunca volvió; el self-heal de `_enterAuthSession` (borra el "cascarón" al detectar `_complete:false`) solo se dispara si esa identidad vuelve a intentar login — como no volvió, sigue viva |
-| `jos…@gmail.com` | Google | Igual que arriba |
-| `her…@gmail.com` | Google | Igual que arriba |
-| `val…@avi.com` | correo | Confirmado, entró una vez (07-jul) y nunca completó el registro (nunca llegó a `_provisionFreeClient` con perfil completo); sin match con ninguna ficha actual |
-| `pin…@gmail.com` | correo | Auto-registro **nunca confirmado** (`email_confirmed_at` null) — ni siquiera puede loguearse; trae datos del asistente (wizard) pendientes de confirmar |
-| `dia…@avi.com` | correo | **Duplicado/abandonado**: la misma persona (Diana Pilar Rodríguez Salazar) completó el registro 52 min después vía Google (`dia…@gmail.com`, con ficha real hoy). Confirmado pero nunca volvió a entrar por esta vía |
-| `lau…@hotmail.com` | correo | **Duplicado/abandonado**: la misma persona (Laura Ramírez Rueda) completó el registro **1 minuto después** vía Google (`lau…@gmail.com`, con ficha real hoy, actualizada hoy mismo). Nunca confirmada por esta vía |
+| `oculto@gmail.com` | Google | Fantasma Google: entró una vez el mismo día de creación y nunca volvió; el self-heal de `_enterAuthSession` (borra el "cascarón" al detectar `_complete:false`) solo se dispara si esa identidad vuelve a intentar login — como no volvió, sigue viva |
+| `oculto@gmail.com` | Google | Igual que arriba |
+| `oculto@gmail.com` | Google | Igual que arriba |
+| `oculto@avi.com` | correo | Confirmado, entró una vez (07-jul) y nunca completó el registro (nunca llegó a `_provisionFreeClient` con perfil completo); sin match con ninguna ficha actual |
+| `oculto@gmail.com` | correo | Auto-registro **nunca confirmado** (`email_confirmed_at` null) — ni siquiera puede loguearse; trae datos del asistente (wizard) pendientes de confirmar |
+| `oculto@avi.com` | correo | **Duplicado/abandonado**: la misma persona (Dora Pilar Rodríguez Salazar) completó el registro 52 min después vía Google (`oculto@gmail.com`, con ficha real hoy). Confirmado pero nunca volvió a entrar por esta vía |
+| `oculto@hotmail.com` | correo | **Duplicado/abandonado**: la misma persona (Lucía Ríos) completó el registro **1 minuto después** vía Google (`oculto@gmail.com`, con ficha real hoy, actualizada hoy mismo). Nunca confirmada por esta vía |
 
 `delClient` (`app-3-coach.js:2765`) **borra SOLO la fila `user_data`**, nunca
 `auth.users` — confirmado leyendo la función completa (solo llama
@@ -255,13 +255,13 @@ listado de hoy.
   un campo client-writable).
 - `send-push`: candado de autorización por destinatario (`_authorize`), no solo por sesión.
 - 37 cuentas de acceso totales, 30 fichas, 0 fichas sin cuenta — consistente con el baseline.
-- 2 de los 3 Google-phantom (`stevanwg`, `josegutierrezpe19`, `hernan8xd`) nunca volvieron a
+- 2 de los 3 Google-phantom (`oculto`, `oculto`, `oculto`) nunca volvieron a
   entrar → 0 riesgo de acceso hoy (sin sesión posible sin OAuth de esa identidad exacta).
 
 ## Lo que tiene que correr o decidir el orquestador / el PO
 - **Decidir** si los 9 correos `@apex.com`/`@avi.com` de asesorados reales se migran a
   correos que el coach o el asesorado sí controlen (vía `_updateClientAccount`, ya
-  construido) — especialmente `sam…@apex.com` por ser un menor.
+  construido) — especialmente `oculto@apex.com` por ser un menor.
 - **Redesplegar `daily-notifs`** para que quede alineado con el repo (parche v657 de CORS
   dual-origen); no es urgente por impacto pero perpetúa el drift si no se cierra.
 - Si se quiere una prueba de punta a punta de `delete-account`, **correr
@@ -270,7 +270,7 @@ listado de hoy.
   asesorados `selfReg:true` — hoy pueden volver a entrar solos.
 
 ## Sospechas sin medir
-- No se pudo confirmar si existe un buzón real detrás de `sam…@apex.com` o cualquiera de
+- No se pudo confirmar si existe un buzón real detrás de `oculto@apex.com` o cualquiera de
   las otras 8 direcciones `@apex.com`/`@avi.com` (solo que el DOMINIO acepta correo) —
   requeriría mandar un correo, prohibido por las reglas.
 - No revisé si algún backup local (`Desktop/AVI/backups`) contiene alguna de estas 13

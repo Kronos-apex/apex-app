@@ -95,7 +95,7 @@ julio.
 campaña, recordatorio o mejora de producto llega a esa gente. Es el límite duro de cualquier plan
 de retención que se escriba.
 
-Incluye a personas que **sí entrenan**, como Miguel Pulido.
+Incluye a personas que **sí entrenan**, como Mario Parra.
 
 ---
 
@@ -122,8 +122,8 @@ día** entre sesiones. Los que se están apagando: 3, 4, 5 y 23 días.
 ## 7. Dos cifras que yo mismo di mal, corregidas
 
 1. **«23% de entrenos abandonados» está inflado.** De las 74 sesiones sin finalizar, **23 llegaron
-   al 75-99%** y 13 de ellas son posteriores a v367 — de **las personas más activas** (Natalia ×4,
-   Andrés ×4, Valery ×2, Samuel ×2), con marcadores como 17/18, 25/26 y 27/28 series. **Eso no es
+   al 75-99%** y 13 de ellas son posteriores a v367 — de **las personas más activas** (Nadia ×4,
+   Andrés ×4, Valery ×2, Salomón ×2), con marcadores como 17/18, 25/26 y 27/28 series. **Eso no es
    abandono: es gente que hizo el entreno y no pulsó «Finalizar».** El abandono temprano real
    (0-25%) son 19 sesiones.
 2. **194 de las 322 sesiones no tienen `finishedAt`** porque el campo llegó en v367 (13-jul).

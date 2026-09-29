@@ -14,8 +14,8 @@
 - **Fuente:** backup local `avi-backup-2026-08-12.json`. Nada de la nube, nada de harness.
 - **Población:** 25 filas de asesorado; **21 las resuelve `nutBaseFor`** (la ruta de producción) —
   4 no, por datos faltantes. De esas 21, **2 son `tier:'libre'` y nunca ven el plan de comida**
-  (maria rubio y FELIPE R.L), así que en el frente ② separo lo que le llega a alguien de lo que no.
-- **Menores:** 5. Uno (Santiago, 17) no declara sexo → no hay gasto que calcular.
+  (marta rojas y FABIO), así que en el frente ② separo lo que le llega a alguien de lo que no.
+- **Menores:** 5. Uno (Sebastián, 17) no declara sexo → no hay gasto que calcular.
 - **Método:** los gastos y los platos se recalcularon con las funciones puras de `avi-core.js`
   (Schofield 10-18 para menores). Los barridos del piso de proteína se hicieron sobre **copias
   parcheadas** del archivo, con verificación de que el parche se aplicó (si no aparece exactamente
@@ -49,8 +49,8 @@ carbohidrato la habría dejado en 1,81 g/kg. Tu opción es estrictamente mejor. 
 
 **Hoy no sobra: falta.** 1,94 g/kg está **por debajo** de mi estándar (2,0-2,2 g/kg para alguien que
 entrena con objetivo de músculo). Y hay una incoherencia que conviene que sepas: **sus 4 compañeros
-menores, que caen a la calculadora, reciben exactamente 2,20 g/kg** (Sharith, Valery Valbuena y
-Hernán, medidos). Valery recibe 1,94 **solo porque su plan lo escribió una persona**. No es peligroso
+menores, que caen a la calculadora, reciben exactamente 2,20 g/kg** (Sonia, Vanesa Vargas y
+Hugo, medidos). Valery recibe 1,94 **solo porque su plan lo escribió una persona**. No es peligroso
 —va en la dirección segura— pero es un plan peor que el de sus compañeras.
 
 **Ahora, el techo sí hace falta**, y no por Valery: por el caso que hoy no existe. El escalado
@@ -94,7 +94,7 @@ seguimiento, una condición metabólica— eso lo firma un pediatra o un nutrici
 coach en un desplegable de una app de entrenamiento**, y hoy no hay ni un caso así en la base
 (revisé los 5). Cuando la app se equivoque, que se equivoque hacia arriba.
 
-Lo que **no** es una excepción y ya está bien resuelto: **Santiago (17) no declara sexo, así que no
+Lo que **no** es una excepción y ya está bien resuelto: **Sebastián (17) no declara sexo, así que no
 hay gasto que calcular** y el código no inventa un piso. Correcto. Eso no es «gana el coach», es «no
 sabemos», y son cosas distintas.
 
@@ -107,13 +107,13 @@ El candado mira hacia abajo. **Hacia arriba no mira nadie**, y ahí sí hay gent
 
 | Menor | Datos | Gasto | Plan que recibe | Desvío |
 |---|---|---|---|---|
-| **Sharith sofia** | 16 a · F · 72 kg · 165 cm (IMC **26,4**) | 2.567 | 2.917 | **+350 kcal (+13,6%)** |
-| **Hernán Camacho** | 17 a · M · 64 kg · 177 cm (IMC 20,4) | 2.775 | 3.125 | **+350 kcal (+12,6%)** |
+| **Sonia** | 16 a · F · 72 kg · 165 cm (IMC **26,4**) | 2.567 | 2.917 | **+350 kcal (+13,6%)** |
+| **Hugo C.** | 17 a · M · 64 kg · 177 cm (IMC 20,4) | 2.775 | 3.125 | **+350 kcal (+12,6%)** |
 
-- **Hernán está bien y lo dejaría igual.** IMC 20,4, hombre, 17 años, objetivo de músculo: +350 es
+- **Hugo está bien y lo dejaría igual.** IMC 20,4, hombre, 17 años, objetivo de músculo: +350 es
   un poco alto para mi banda de volumen limpio (+200 a +300) pero es defendible en un adolescente
   delgado en pleno crecimiento. **No lo toques.**
-- **Sharith NO.** Mujer, 16 años, **IMC 26,4** — en las curvas de percentil de la OMS para 16 años
+- **Sonia NO.** Mujer, 16 años, **IMC 26,4** — en las curvas de percentil de la OMS para 16 años
   eso cae en **sobrepeso**, y mi propio árbol de decisión dice: por encima del 25% de grasa en
   mujer **no hay superávit**, hay recomposición. La app le está mandando **+350 kcal/día** a una
   adolescente con sobrepeso, y eso viene de la calculadora, no de nadie escribiéndolo.
@@ -122,7 +122,7 @@ El candado mira hacia abajo. **Hacia arriba no mira nadie**, y ahí sí hay gent
 > superávit si su IMC lo pone en sobrepeso para su edad y sexo**. Su dirección es mantenimiento y
 > el trabajo lo hace el entrenamiento. Y el texto se lo dice sin una sola palabra de composición
 > corporal (regla de v448/v449, que ahí sí funciona).
-> **Afectada hoy: 1 persona (Sharith, 2.917 → 2.567).**
+> **Afectada hoy: 1 persona (Sonia, 2.917 → 2.567).**
 
 ---
 
@@ -142,8 +142,8 @@ Definición: comidas que **sirven más del 130% de la proteína de su propia com
 | Media mañana | 3 |
 | Almuerzo | 1 |
 
-**Exposición real:** de esas 48, **18 son de las dos personas en `tier:'libre'`** (maria rubio 11,
-FELIPE R.L 7), **que nunca ven el plan de comida**. Le llega de verdad a **30 comidas en 13
+**Exposición real:** de esas 48, **18 son de las dos personas en `tier:'libre'`** (marta rojas 11,
+FABIO 7), **que nunca ven el plan de comida**. Le llega de verdad a **30 comidas en 13
 personas**. Sigue siendo un defecto, pero es la mitad de grande de lo que dice el titular.
 
 **En el día completo la proteína se pasa una mediana de +8,5%, y el peor día +41,7%.**
@@ -231,18 +231,18 @@ Los 8 adultos con plan escrito a mano, con el gasto recalculado por fuera de la 
 
 | Persona | Datos | Gasto | Plan | Desvío | Proteína | Rótulo | Veredicto |
 |---|---|---|---|---|---|---|---|
-| **Luz Rodríguez** | 39 F · 82 kg · 156 cm · IMC 33,7 | 2.230 | 1.731 | **−499 kcal (−22,4%)** | 111 g (1,80 g/kg ref) | «balance» | 🟡 número OK, **proteína corta**, rótulo mal |
-| **Kathe Beltrán** | 28 F · 83 kg · 163 cm · IMC 31,2 | 2.399 | 1.931 | **−468 kcal (−19,5%)** | 119 g (1,73 g/kg ref) | «balance» | 🟡 número OK, **proteína corta**, rótulo mal |
-| **Samuel Cifuentes** | 28 M · 86 kg · 176 cm · IMC 27,8 | 3.148 | 3.535 | **+387 kcal (+12,3%)** | 194 g (2,26 g/kg) | «balance» | 🔴 **bajar el número** |
-| **Miguel Pulido** | 29 M · 70 kg · 183 cm · IMC 20,9 | 2.641 | 3.040 | **+399 kcal (+15,1%)** | 180 g (2,57 g/kg) | **(vacío)** | 🟡 ajustar reparto y rótulo |
-| Natalia Martínez | 34 F · 63 kg | 2.052 | 2.053 | 0,0% | 113 g (1,79) | «balance» | ✅ número y rótulo bien · proteína corta |
-| Astrid Beltrán | 33 F · 73 kg | 2.206 | 2.206 | 0,0% | 131 g (1,79) | «balance» | ✅ correcto |
-| Claudia Valbuena | 34 F · 74 kg · IMC 30,4 | 2.145 | 2.146 | 0,0% | 107 g (1,80 g/kg ref) | «balance» | ✅ número bien · proteína corta |
-| Nataly | 40 F · 59,5 kg | 1.933 | 2.197 | +13,7% | 119 g (2,00) | «volumen» | ✅ rótulo y número coherentes |
+| **Luisa R.** | 39 F · 82 kg · 156 cm · IMC 33,7 | 2.230 | 1.731 | **−499 kcal (−22,4%)** | 111 g (1,80 g/kg ref) | «balance» | 🟡 número OK, **proteína corta**, rótulo mal |
+| **Karen Bernal** | 28 F · 83 kg · 163 cm · IMC 31,2 | 2.399 | 1.931 | **−468 kcal (−19,5%)** | 119 g (1,73 g/kg ref) | «balance» | 🟡 número OK, **proteína corta**, rótulo mal |
+| **Salomón Cárdenas** | 28 M · 86 kg · 176 cm · IMC 27,8 | 3.148 | 3.535 | **+387 kcal (+12,3%)** | 194 g (2,26 g/kg) | «balance» | 🔴 **bajar el número** |
+| **Mario Parra** | 29 M · 70 kg · 183 cm · IMC 20,9 | 2.641 | 3.040 | **+399 kcal (+15,1%)** | 180 g (2,57 g/kg) | **(vacío)** | 🟡 ajustar reparto y rótulo |
+| Nadia Mejía | 34 F · 63 kg | 2.052 | 2.053 | 0,0% | 113 g (1,79) | «balance» | ✅ número y rótulo bien · proteína corta |
+| Andrea Bernal | 33 F · 73 kg | 2.206 | 2.206 | 0,0% | 131 g (1,79) | «balance» | ✅ correcto |
+| Carla Vargas | 34 F · 74 kg · IMC 30,4 | 2.145 | 2.146 | 0,0% | 107 g (1,80 g/kg ref) | «balance» | ✅ número bien · proteína corta |
+| Nayla | 40 F · 59,5 kg | 1.933 | 2.197 | +13,7% | 119 g (2,00) | «volumen» | ✅ rótulo y número coherentes |
 
 ## Caso por caso
 
-### 🟡 Luz, 39 años, −22,4% — **el déficit SÍ es defendible; el problema no es el que crees**
+### 🟡 Luisa, 39 años, −22,4% — **el déficit SÍ es defendible; el problema no es el que crees**
 Tu pregunta era si −22% en una mujer de 39 es defendible. **En porcentaje asusta; en kilocalorías
 está justo en mi banda.** −499 kcal/día es el **tope exacto** de mi corte moderado (−300 a −500).
 El porcentaje sale grande porque su gasto es chico (2.230), no porque el recorte sea agresivo.
@@ -254,12 +254,12 @@ En un déficit de 500 kcal con IMC 33, la proteína baja es exactamente donde se
 de grasa. **Súbele 25 g de proteína, quítale 100 kcal de carbohidrato, deja el total igual.**
 Y el rótulo: **«déficit»**, no «balance».
 
-### 🟡 Kathe, 28 años, −19,5% — **idéntico a Luz**
+### 🟡 Karen, 28 años, −19,5% — **idéntico a Luisa**
 −468 kcal, dentro de banda. Proteína 119 g = 1,73 g/kg ref (68,9) contra **152 g de doctrina
 (+33 g)**, la brecha más grande de toda la base. **No toques el total; mueve 130 kcal de
 carbohidrato a proteína.** Rótulo → «déficit».
 
-### 🔴 Samuel, 28 años, +12,3% — **el único donde hay que mover el NÚMERO**
+### 🔴 Salomón, 28 años, +12,3% — **el único donde hay que mover el NÚMERO**
 Este es el caso que originó mi dictamen de v448: el PO lo puso en mantenimiento **precisamente
 porque tiene ~25% de grasa**, y hoy el plan le da **+387 kcal/día**. Es lo contrario de lo que se
 decidió, y +387 se sale de mi banda de volumen limpio (+200 a +300). Con IMC 27,8 y esa grasa,
@@ -267,7 +267,7 @@ decidió, y +387 se sale de mi banda de volumen limpio (+200 a +300). Con IMC 27
 ya la tiene bien) y el trabajo lo hace el entrenamiento.** Y ahí el rótulo «balance» pasa a ser
 verdad, en vez de una etiqueta encima de un superávit.
 
-### 🟡 Miguel, 29 años, +15,1% — **el superávit se justifica, el reparto no, y el rótulo está VACÍO**
+### 🟡 Mario, 29 años, +15,1% — **el superávit se justifica, el reparto no, y el rótulo está VACÍO**
 IMC 20,9 y objetivo de músculo: es el perfil de libro para volumen. Pero **+399 se pasa de la
 banda** y su proteína son **2,57 g/kg**, por encima de mi techo de 2,2. Esos 26 g de proteína de más
 son 104 kcal que deberían ser carbohidrato — el combustible del estímulo. **Ajuste: 2.940 kcal
@@ -277,8 +277,8 @@ Un plan sin rótulo es peor que uno mal rotulado, porque no hay nada que corregi
 
 ## 🔴 El patrón que atraviesa los 8 — mi punto pendiente de v448, sin ejecutar
 
-**4 de los 8 adultos están entre 24 y 33 g de proteína por debajo de la doctrina** (Luz −25, Kathe
-−33, Natalia −26, Claudia −24). Todas mujeres, todas en «Perder grasa» o «Recomposición» — que es
+**4 de los 8 adultos están entre 24 y 33 g de proteína por debajo de la doctrina** (Luisa −25, Karen
+−33, Nadia −26, Carla −24). Todas mujeres, todas en «Perder grasa» o «Recomposición» — que es
 **el cubo donde la proteína alta importa MÁS**, no menos. Es el **punto 1 de mi dictamen del
 2026-08-05**, que sigue sin ejecutarse tres meses después. Mientras eso no entre, cada plan nuevo
 que se escriba va a nacer con la misma brecha.
@@ -296,12 +296,12 @@ antes del detector.** Ese aviso tiene que estar en la **ficha del asesorado**, n
 
 | # | Qué | A quién le llega hoy | Estado |
 |---|---|---|---|
-| 1 | 🔴 **Sharith (16) con +350 kcal de superávit y IMC 26,4** → bajar a su mantenimiento (2.567) | 1 menor | **nuevo, sin construir** |
+| 1 | 🔴 **Sonia (16) con +350 kcal de superávit y IMC 26,4** → bajar a su mantenimiento (2.567) | 1 menor | **nuevo, sin construir** |
 | 2 | 🔒 **Piso de menores = gasto × 1,05** (absorbe el −5,3% medido del plato) | Valery (1.915 → ~2.006) | cambio al arreglo de v485 |
 | 3 | 🔒 **Techo: la proteína no escala por encima de 2,2 g/kg ref** | 0 hoy — cierra la puerta | cambio al arreglo de v485 |
 | 4 | 🔒 **`NUT_PROT_MIN_SHARE` 0,70 → 0,60** | 20 comidas menos, 13 personas | medido, sin costo |
-| 5 | 🟡 **Proteína +25 a +33 g en Luz, Kathe, Natalia y Claudia** (sin tocar el total) | 4 adultas | punto 1 de v448, pendiente |
-| 6 | 🔴 **Samuel a mantenimiento (3.150)** · Miguel a +300 con 154 g de proteína | 2 adultos | decisión del PO |
+| 5 | 🟡 **Proteína +25 a +33 g en Luisa, Karen, Nadia y Carla** (sin tocar el total) | 4 adultas | punto 1 de v448, pendiente |
+| 6 | 🔴 **Salomón a mantenimiento (3.150)** · Mario a +300 con 154 g de proteína | 2 adultos | decisión del PO |
 | 7 | 🟡 **El aviso de rótulo, en la ficha y no solo en el editor** | 4 planes guardados | pendiente |
 | 8 | 🟡 **Regla de menú: el carbohidrato no aporta >30% de la proteína de su comida** + `maxG` a la pasta (**medir antes**) | residuo de 28 comidas | sin medir |
 

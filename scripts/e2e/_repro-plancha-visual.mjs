@@ -50,7 +50,7 @@ for (let k = 0; k < 8; k++) { await ev(`(()=>{try{if(typeof hideClientWelcome===
 const logged = await ev(`(()=>{const sc=document.getElementById('s-client');return !!(sc&&getComputedStyle(sc).display!=='none')})()`);
 if (!logged) { log('FATAL: no se pudo entrar a la app'); ws.close(); try { chrome.kill(); } catch {} try { srv.kill(); } catch {} process.exit(1); }
 
-// Rutina cardio/HIIT realista (como la de Camilo/Daniel) + mood ya respondido
+// Rutina cardio/HIIT realista (como la de Camilo/David) + mood ya respondido
 await ev(`(()=>{
   try{UD.loadOwn=async()=>null;}catch(e){}
   const c=DB.clients.find(x=>x.id===CUR.clientId);

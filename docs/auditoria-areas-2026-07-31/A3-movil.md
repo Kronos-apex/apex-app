@@ -1,11 +1,11 @@
-# Auditoría: PLATAFORMA MÓVIL (Android / iOS / PWA) — Samuel Ríos
+# Auditoría: PLATAFORMA MÓVIL (Android / iOS / PWA) — Salomón Ríos
 
 ## Veredicto en 5 líneas
 
 1. **La hipótesis de la «caché vieja del teléfono» está CONFIRMADA con datos de producción**, no con teoría: la tabla `app_errors` guarda la versión de la caché del teléfono (`build`) y la del HTML servido (`?v=` en `src`), y hay **tres filas donde no coinciden — una con 18 versiones de desfase** (caché `avi-v375` sirviendo un HTML `v393`). Ese desfase es el estado en el que ocurrieron **las 3 caídas de Android** (24, 26 y 27-jul): 3 de 3.
-2. La causa mecánica es doble y ambas son de una línea: (a) `cache.addAll()` es **atómico** — un solo archivo que falle deja la caché **VACÍA**, y el comentario de `sw.js` afirma exactamente lo contrario; (b) `reg.update()` se envuelve en un `try/catch` **síncrono** que no atrapa el rechazo de la promesa → los fallos de actualización del Service Worker se pierden como `unhandledrejection` (**6 filas, 5 usuarios distintos, una HOY en el teléfono de Astrid con v417**).
+2. La causa mecánica es doble y ambas son de una línea: (a) `cache.addAll()` es **atómico** — un solo archivo que falle deja la caché **VACÍA**, y el comentario de `sw.js` afirma exactamente lo contrario; (b) `reg.update()` se envuelve en un `try/catch` **síncrono** que no atrapa el rechazo de la promesa → los fallos de actualización del Service Worker se pierden como `unhandledrejection` (**6 filas, 5 usuarios distintos, una HOY en el teléfono de Andrea con v417**).
 3. **«No se sabe en qué versión va cada asesorado» ya está resuelto en un 80% y nadie lo sabe.** `app_errors.build` trae la versión y `app_errors.ctx->>'uid'` trae la persona (la nota que dice «la telemetría no identifica a nadie» mira la columna `uid`, que sí está NULL, pero **el uid está dentro de `ctx`**). Falta solo reportar al ARRANCAR, no solo al fallar. Costo real: ~10 líneas.
-4. **Push:** encontré el emisor del «push al celular del coach que sigue sin explicar» — `daily-notifs` recorre `push_subscriptions` **sin excluir `_coach`**, así que el coach recibe cada día las 3 notificaciones de asesorado. Y hay un endpoint **idéntico registrado a la vez como `_coach` y como el asesorado Samuel** (mismo md5): ese aparato recibe las notificaciones del coach, que llevan **nombre y texto de mensajes de otros asesorados**.
+4. **Push:** encontré el emisor del «push al celular del coach que sigue sin explicar» — `daily-notifs` recorre `push_subscriptions` **sin excluir `_coach`**, así que el coach recibe cada día las 3 notificaciones de asesorado. Y hay un endpoint **idéntico registrado a la vez como `_coach` y como el asesorado Salomón** (mismo md5): ese aparato recibe las notificaciones del coach, que llevan **nombre y texto de mensajes de otros asesorados**.
 5. Lo demás está sano y mejor de lo que esperaba: manifest, íconos maskable, `assetlinks.json` bien servido en la raíz del dominio, safe-areas, `dvh`, inputs a 16px, la píldora en z-index 690 con su guardia de hit-testing, y la frontera hacia `app-7` correctamente aguardada. **Play Store: mi opinión es NO hoy** (argumentada al final).
 
 ---
@@ -34,7 +34,7 @@
 
   Y la cuarta caída registrada (`_dia1 is not defined`, 2026-07-27 12:27) sí tiene `build avi-v403` con `src app-4-entreno.js?v=403` — **coinciden**, y en efecto esa fue un bug de código puro (la `const` copiada entre funciones), no de caché. O sea: la telemetría **separa sola** las dos familias de fallo, y las 3 del módulo que no cargó caen todas del lado del desfase.
 - **Intenté tumbarlo así:** (1) pensé que la dirección podía ser la contraria (HTML viejo, caché nueva) — no lo es: `src` sale de los `<script src="app-N.js?v=NNN">` de `index.html`, así que `?v=393` prueba que el HTML era v393; (2) pensé que `ks.find` podía devolver una caché *nueva* en vez de la vieja — `caches.keys()` devuelve en orden de creación y `activate` solo borra las demás **cuando activa**, así que con un SW atascado en `waiting` conviven varias y `find` toma la primera = la del SW activo; (3) busqué si el `fetch` network-first de los JS (`sw.js:75-84`, con `cache:'no-cache'`) hacía el desfase inofensivo — **lo hace mientras haya red**, y por eso el síntoma es intermitente y nunca se reprodujo en el PC; con red mala o nula el desfase se vuelve visible. Sobrevivió: la coincidencia 3-de-3 entre desfase y caída no es explicable por azar, y el caso de control (`_dia1`, sin desfase) confirma que la medición discrimina.
-- **A quién le pasa:** a cualquiera con red del gimnasio. Está medido en al menos 3 dispositivos distintos y los fallos de actualización de SW (H3) aparecen en **5 usuarios**: Astrid, Natalia, Samuel, Luz y Kathe.
+- **A quién le pasa:** a cualquiera con red del gimnasio. Está medido en al menos 3 dispositivos distintos y los fallos de actualización de SW (H3) aparecen en **5 usuarios**: Andrea, Nadia, Salomón, Luisa y Karen.
 - **Costo del arreglo:** el arreglo de fondo es H2 + H3 (dos líneas). Adicional recomendado, quirúrgico: en `activate`, borrar las cachés viejas también, y añadir un tope de edad al `waiting` (si lleva N horas esperando, aplicar aunque `_aviUpdateBusy` diga que sí, salvo timer de entreno vivo). ~15 líneas.
 
 ---
@@ -69,7 +69,7 @@
   Se dispara en cada `visibilitychange` (línea 70) y cada 20 minutos (línea 72).
 - **Evidencia:** 6 filas en `app_errors` con
   `Failed to update a ServiceWorker for scope ('.../apex-app/') with script ('.../sw.js'): An unknown …`,
-  de **5 usuarios distintos** (`c52b90af` Astrid ×2, `78ea069c` Natalia ×3, `31bf6d19` Samuel ×1), todas con `ctx.standalone = true` (o sea, **PWA instalada**), la más reciente **2026-07-31 12:54 con build `avi-v417`** — hoy. Doble daño: (a) confirma que las comprobaciones de versión están fallando de verdad en teléfonos reales (el combustible de H1); (b) `errReportGate` (`avi-core.js:3464`) topa en **5 errores por sesión y 20 por día**, así que un teléfono que falle al actualizar puede **gastar la cuota y esconder un error real**.
+  de **5 usuarios distintos** (`c52b90af` Andrea ×2, `78ea069c` Nadia ×3, `31bf6d19` Salomón ×1), todas con `ctx.standalone = true` (o sea, **PWA instalada**), la más reciente **2026-07-31 12:54 con build `avi-v417`** — hoy. Doble daño: (a) confirma que las comprobaciones de versión están fallando de verdad en teléfonos reales (el combustible de H1); (b) `errReportGate` (`avi-core.js:3464`) topa en **5 errores por sesión y 20 por día**, así que un teléfono que falle al actualizar puede **gastar la cuota y esconder un error real**.
 - **Intenté tumbarlo así:** verifiqué que no hubiera un `.catch()` en otra parte de la cadena (`app-6-extra.js:79` tiene `.catch` pero cuelga del `register()`, no del `update()`); y comprobé que `errReportGate` deduplica por firma de mensaje, lo que mitiga —pero no elimina— el consumo de cuota. Sobrevivió.
 - **A quién le pasa:** a los 5 usuarios medidos, con la app instalada.
 - **Costo del arreglo:** **una línea**: `reg.update().catch(()=>{})`.
@@ -80,14 +80,14 @@
 
 - **Qué pasa:** el pendiente está redactado como si no hubiera nada. En realidad `app_errors` ya guarda `build` (versión de la caché) y `ctx.uid` (la persona). Lo único que falta es que se escriba **al arrancar**, no solo cuando algo falla.
 - **Dónde:** `app-1-infra.js:156-163` construye la fila; `ctx:{standalone, w, uid:(typeof _authUid!=='undefined'&&_authUid)||null}`.
-- **Evidencia:** de 17 filas, **13 traen `ctx.uid` poblado** con uid reales (Astrid `c52b90af`, Samuel `31bf6d19`, Natalia `78ea069c`, Luz `782f3c3d`, el coach `0a6484ed`). La nota del proyecto —«`app_errors` guarda `uid` NULL, así que la telemetría no identifica a nadie»— **es cierta solo para la columna `uid` de primer nivel**; el identificador está dentro del jsonb `ctx`. Query que ya funciona hoy:
+- **Evidencia:** de 17 filas, **13 traen `ctx.uid` poblado** con uid reales (Andrea `c52b90af`, Salomón `31bf6d19`, Nadia `78ea069c`, Luisa `782f3c3d`, el coach `0a6484ed`). La nota del proyecto —«`app_errors` guarda `uid` NULL, así que la telemetría no identifica a nadie»— **es cierta solo para la columna `uid` de primer nivel**; el identificador está dentro del jsonb `ctx`. Query que ya funciona hoy:
   ```sql
   select ctx->>'uid' as quien, build, ctx->>'standalone' as instalada, max(at)
   from app_errors group by 1,2,3 order by 4 desc;
   ```
   Además `ctx.standalone` responde gratis «¿la tiene instalada o la abre en el navegador?» y `ua` distingue Android de iPhone.
 - **Intenté tumbarlo así:** revisé si `_authUid` podría estar vacío en el momento del arranque (sería el caso de las 4 filas con `uid:null`, todas anteriores al login o de sesión anónima) — es una limitación real pero solo afecta al pre-login; al reportar en el arranque **después** de resolver la sesión, se cubre. Sobrevivió.
-- **A quién le pasa:** al PO, que hoy no puede responder «¿por qué versión va Astrid?» teniendo el dato a una query de distancia.
+- **A quién le pasa:** al PO, que hoy no puede responder «¿por qué versión va Andrea?» teniendo el dato a una query de distancia.
 - **Costo del arreglo:** ~10 líneas — un `_logAppError('boot', ...)` (o mejor, una tabla/campo aparte para no ensuciar los errores ni gastar `errReportGate`) disparado una vez por sesión tras el login. **Cero infraestructura nueva.**
 
 ---
@@ -111,7 +111,7 @@
 
 ---
 
-### H6 · 🟠 Un mismo endpoint de push está registrado a la vez como `_coach` y como el asesorado Samuel
+### H6 · 🟠 Un mismo endpoint de push está registrado a la vez como `_coach` y como el asesorado Salomón
 
 - **Qué pasa:** hay un aparato/navegador cuyo endpoint de push aparece en **dos filas**: una con `client_id='_coach'` y otra con el uid de un asesorado. Ese aparato recibe **las dos corrientes**: las notificaciones del asesorado y las del coach — y las del coach llevan **nombre y texto de mensajes de terceros**.
 - **Dónde / query:**
@@ -125,14 +125,14 @@
   80bd0669d52b09bc74cbe3d487890765 | 2 | {_coach, 31bf6d19-ec43-46e3-a7f8-5769bff5a5cd}
                                        | {2026-06-01 01:42:49+00, 2026-07-28 20:45:56+00}
   ```
-  `31bf6d19…` = **Samuel Cifuentes** (`samuel@apex.com`, 4 rutinas, coach_id `0a6484ed…`).
+  `31bf6d19…` = **Salomón Cárdenas** (`oculto@apex.com`, 4 rutinas, coach_id `0a6484ed…`).
 - **Evidencia adicional del contenido expuesto** — lo que se envía a `_coach`:
   `app-4-entreno.js:3017` → `'💬 '+clientName+' te escribió'` + los primeros 80 caracteres del mensaje;
   `app-4-entreno.js:915` y `app-6-extra.js:383` → `'🩺 '+name+' tiene dolor hoy'` + el texto;
   `app-2-login.js:1345` → `'💳 '+client.name+' notificó su pago'`.
   `send-push/index.ts:47-50` selecciona **por `client_id`** y envía a **todas** las filas, sin deduplicar por endpoint.
   El endpoint sigue **vivo**: la poda de `send-push` solo borra en 410/404 (líneas 78-95) y esa fila del 1-jun sobrevivió dos meses, además de haber sido re-registrada el 28-jul.
-- **Intenté tumbarlo así:** (1) sospeché que el prefijo de 45 caracteres podía ser una coincidencia de truncado (los endpoints FCM comparten 36 caracteres de prefijo) → **repetí la comparación con `md5()` del endpoint completo** y siguen siendo idénticos; (2) consideré que pudiera ser el PC de desarrollo, en cuyo caso no hay fuga de privacidad — **no lo puedo descartar**, y por eso el hallazgo es 🟠 y no 🔴: lo que está **probado** es que el mismo aparato recibe ambas corrientes; **quién es el dueño de ese aparato NO lo puedo determinar desde los datos**. Si es el teléfono de Samuel, es fuga de datos de otros asesorados; si es el PC del PO, es solo ruido duplicado.
+- **Intenté tumbarlo así:** (1) sospeché que el prefijo de 45 caracteres podía ser una coincidencia de truncado (los endpoints FCM comparten 36 caracteres de prefijo) → **repetí la comparación con `md5()` del endpoint completo** y siguen siendo idénticos; (2) consideré que pudiera ser el PC de desarrollo, en cuyo caso no hay fuga de privacidad — **no lo puedo descartar**, y por eso el hallazgo es 🟠 y no 🔴: lo que está **probado** es que el mismo aparato recibe ambas corrientes; **quién es el dueño de ese aparato NO lo puedo determinar desde los datos**. Si es el teléfono de Salomón, es fuga de datos de otros asesorados; si es el PC del PO, es solo ruido duplicado.
 - **A quién le pasa:** al coach (duplicado seguro) y, si el aparato no es suyo, a un asesorado que ve los mensajes de los demás.
 - **Costo del arreglo:** dos partes. (a) Inmediata, cero código: borrar la fila `_coach` del 2026-06-01 (decisión del PO). (b) De raíz, ~5 líneas: al suscribir, **borrar cualquier otra fila con el mismo endpoint y distinto `client_id`** — un aparato solo puede pertenecer a una identidad a la vez. Encaja con la regla ya escrita en `CLAUDE.md` sobre limpiar el estado por-identidad en `logout()`.
 
@@ -151,7 +151,7 @@
   grep -rn "iOS|iPhone|standalone" --include=*.js . | grep -i "push|notific"   → 0 resultados
   ```
   El mensaje de permiso bloqueado (`_pushDeniedHowto`, `app-1-infra.js:372`) sí distingue standalone de navegador, pero solo se alcanza cuando `Notification` **existe** — o sea, nunca en Safari-pestaña.
-- **Fracción de la base afectada, medida:** de las 6 suscripciones de asesorado vivas, **1 es de Apple** (`web.push.apple.com`, `78fe5c7c…` = Kathe Beltran) y 5 son FCM/Android. O sea, hay al menos **un iPhone que SÍ lo logró** (tiene la PWA instalada e iOS ≥16.4) — el camino funciona. El riesgo es para el iPhone que **no** la instala: hay al menos otro (telemetría 2026-07-06, `iPhone; CPU iPhone OS 18_7 … Version/26.5 Mobile/15E148 Safari/604.1`, con `ctx.standalone:false` — o sea, **en pestaña**). Para esa persona, la app nunca menciona las notificaciones.
+- **Fracción de la base afectada, medida:** de las 6 suscripciones de asesorado vivas, **1 es de Apple** (`web.push.apple.com`, `78fe5c7c…` = Karen Bernal) y 5 son FCM/Android. O sea, hay al menos **un iPhone que SÍ lo logró** (tiene la PWA instalada e iOS ≥16.4) — el camino funciona. El riesgo es para el iPhone que **no** la instala: hay al menos otro (telemetría 2026-07-06, `iPhone; CPU iPhone OS 18_7 … Version/26.5 Mobile/15E148 Safari/604.1`, con `ctx.standalone:false` — o sea, **en pestaña**). Para esa persona, la app nunca menciona las notificaciones.
 - **Intenté tumbarlo así:** busqué si el banner de instalación iOS (`index.html:1077`) mencionara las notificaciones como motivo — habla solo de instalar, no de notificaciones; y comprobé si `renderWfPushNudge` tenía una rama alternativa — no la tiene, hace `return` seco.
 - **A quién le pasa:** a los usuarios de iPhone que abren AVI desde el enlace de WhatsApp y no la instalan. Dado que **15 de 22 son inalcanzables**, callar la única vía que les queda es caro.
 - **Costo del arreglo:** ~8 líneas — en las tres puertas, cuando `isIOS && !standalone`, en vez de `innerHTML=''` pintar «Para recibir tus recordatorios, instala AVI: Compartir ⬆️ → Añadir a pantalla de inicio» con el botón que ya abre `#ios-install-banner`.
@@ -167,7 +167,7 @@
   ```
 - **Evidencia:** medición estática del valor + la regla conocida de WebKit. Alcance: `.cchat` lo reusan **el chat del coach y el chat de comunidad (DMs)** (`app-7`, overlay `#cmty-chat`), así que cubre las dos superficies de escritura.
 - **Intenté tumbarlo así:** revisé si el resto de campos tenía el mismo defecto — **no**: `.inp/.sel/.tarea` (`styles.css:455`) y `.gm-sinput` del guiado (`styles.css:1416`) están correctamente a 16px. Es un caso aislado, lo que refuerza que es un descuido y no una decisión. También comprobé que `user-scalable=no` no lo tapa: **el `<meta viewport>` (`index.html:5`) no lo lleva** (`width=device-width, initial-scale=1.0, viewport-fit=cover`), así que nada impide el zoom.
-- **A quién le pasa:** a Kathe (el iPhone con push confirmado) cada vez que le escribe al coach.
+- **A quién le pasa:** a Karen (el iPhone con push confirmado) cada vez que le escribe al coach.
 - **Costo del arreglo:** **una línea** — `font-size:16px`.
 
 ---
@@ -176,7 +176,7 @@
 
 - **La píldora «Instalar app» en las pestañas que NO están en `_PILL_ZONAS`.** La lista es `'#cn-today.on,#cn-routines.on,#cn-messages.on'` (`app-6-extra.js:184`) y la decisión de dejar fuera Comunidad/Perfil/Progreso está documentada y argumentada. Pero **Comunidad ganó campos de escritura después** de esa decisión: el compositor de publicación y el **borrador de comentario por post** (v390, `_cmtyActionsHtml`). Ese es exactamente el patrón que el propio comentario advierte («al mover algo a la zona de abajo, hay que revisar esta lista») y que ya mordió en v409 con Mensajes. **No lo medí**: hacerlo exige montar el fixture de comunidad con login real y correr el hit-testing de `pillStealsTap` sobre `#cn-community`. Falta: correr `_verify-comments.mjs` / `_verify-feed.mjs` con las credenciales de `~/.avi/e2e-creds.json` y añadirle el hit-test que ya usa `_verify-f4-chat`.
 - **`AVINAV.layers` podría dejar la app sin poder actualizarse nunca.** `_aviUpdateBusy` devuelve `true` mientras `AVINAV.layers>0` (`app-6-extra.js:30`), y el contador **solo se decrementa en un sitio**, dentro del handler de `popstate` (`app-2-login.js:1143`), mientras se incrementa en `navOpenLayer` (`app-1-infra.js:27`). Si una capa se cierra por una vía que no pasa por `history.back()`, el contador queda alto y el SW nuevo se queda en `waiting` indefinidamente — que es justo el estado de H1. **Atenuante que no pude descartar:** `navReset` (`app-1-infra.js:25`) lo pone en 0 al cambiar de pestaña, así que el escape existe. Falta: un harness que abra y cierre cada overlay por sus 5 vías de cierre y afirme `AVINAV.layers===0` al final.
-- **`Uncaught SyntaxError: Unexpected end of input` en `:4:87`** — 5 filas de `app_errors`, entre v310 y v410 (6 meses, 8 versiones distintas), **cuatro de ellas en el dispositivo del coach** (`0a6484ed`) y una en el de Luz. El `src` sin nombre de archivo (`:4:87`, una vez `#:4:87`) apunta a un script en línea o inyectado, no a un archivo de la app. **Sospecho una extensión del navegador o un `javascript:` externo**, no código de AVI — pero está consumiendo cuota de telemetría desde hace medio año y nadie lo ha mirado. Falta: reproducir en el aparato del PO, o añadir el nombre del documento al `src` para poder atribuirlo.
+- **`Uncaught SyntaxError: Unexpected end of input` en `:4:87`** — 5 filas de `app_errors`, entre v310 y v410 (6 meses, 8 versiones distintas), **cuatro de ellas en el dispositivo del coach** (`0a6484ed`) y una en el de Luisa. El `src` sin nombre de archivo (`:4:87`, una vez `#:4:87`) apunta a un script en línea o inyectado, no a un archivo de la app. **Sospecho una extensión del navegador o un `javascript:` externo**, no código de AVI — pero está consumiendo cuota de telemetría desde hace medio año y nadie lo ha mirado. Falta: reproducir en el aparato del PO, o añadir el nombre del documento al `src` para poder atribuirlo.
 - **`app-7-community.js` no está en el precache del shell** (`sw.js:10` lista los 10 archivos, y `app-7` no está, aunque `index.html:1170` sí lo carga). El handler de red **sí** lo intercepta (`sw.js:75`, el regex `app-\d-[\w-]+` lo cubre), así que se cachea de forma oportunista tras el primer uso. **Verifiqué que la frontera está bien aguardada** (ver «sano»), así que no rompe nada — pero es una asimetría no intencional que conviene cerrar cuando se toque H2.
 
 ---

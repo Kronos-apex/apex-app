@@ -54,7 +54,7 @@ const montaje = await ev(`(()=>{try{
   const venc=new Date(Date.now()+3*dia).toISOString();
   DB.clients=[]; DB.history={};
   // 7 que entrenaron HOY y además están por vencer (como en sus datos reales)
-  ['Claudia','Natalia','Danilo','Astrid','Andres','Valery','Luz'].forEach((n,i)=>{
+  ['Carla','Nadia','Darío','Andrea','Andres','Valery','Luisa'].forEach((n,i)=>{
     const id='e'+i; DB.clients.push({id,name:n+' Prueba',days:3,goal:'Ganar músculo',phone:'3001234567',
       payments:[{date:hoyISO,dueDate:venc,amount:120000}]});
     DB.history[id]=[{id:'h'+i,date:hoyISO,routineId:'r1',routineName:'Pierna',doneSets:12,totalSets:12,finishedAt:hoyISO,exercises:[]}];

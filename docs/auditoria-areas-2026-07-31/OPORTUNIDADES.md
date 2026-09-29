@@ -17,7 +17,7 @@ retención — hay un problema de puerta de entrada.
 | | Qué | Costo | Estado |
 |---|---|---|---|
 | 🔶 | **Pedir el teléfono en el registro.** Convierte 13 inalcanzables en 13 alcanzables. Hoy no se pide y por eso WhatsApp —el único canal que sí llega— no está disponible para ellos | ~25 líneas | — |
-| 🔶 | **El chat está bloqueado para `tier:'app'`** → le escribiste **20 mensajes a 5 personas que no pueden leerlos**, y el badge de no leídos las llama igual. A **Nataly** le escribiste hoy | 1 línea | — |
+| 🔶 | **El chat está bloqueado para `tier:'app'`** → le escribiste **20 mensajes a 5 personas que no pueden leerlos**, y el badge de no leídos las llama igual. A **Nayla** le escribiste hoy | 1 línea | — |
 | ✅ | **El coach recibe los avisos de asesorado** ×2 dispositivos (`daily-notifs` no excluye `_coach`) | 1 línea | **escrito, sin desplegar** |
 | 🔶 | Al mensaje «Abre AVI» le falta el enlace | 1 línea | — |
 
@@ -27,7 +27,7 @@ retención — hay un problema de puerta de entrada.
 | | Qué | Costo |
 |---|---|---|
 | 🔶 | **El día 1 puede ser día de descanso.** El generador asigna días consecutivos desde el lunes en **1296 de 1296** planes → quien se registra de jueves a domingo ve «Hoy es tu día de descanso» en vez de su primer entreno. Los 2 casos reales tienen 0 sesiones | medio |
-| 🔶 | **3 cuentas creadas que nunca entraron**, sin ficha, invisibles para el coach — una sería **Claudia Valbuena** (⚠️ discrepancia: en mis datos Claudia SÍ existe con 18 sesiones; probablemente son dos cuentas. **Verificar antes de actuar**) | bajo |
+| 🔶 | **3 cuentas creadas que nunca entraron**, sin ficha, invisibles para el coach — una sería **Carla Vargas** (⚠️ discrepancia: en mis datos Carla SÍ existe con 18 sesiones; probablemente son dos cuentas. **Verificar antes de actuar**) | bajo |
 | ✅ | **El plan del principiante es el mismo entrenamiento repetido** (1,5 ejercicios idénticos en todos los días) y **no lleva nada de glúteo** — a hombres y mujeres por igual (2 de 144 planes). La diferenciación femenina sí funciona de Intermedio en adelante | medio |
 | 🔶 | El navegador embebido de **WhatsApp no puede instalar la PWA**, y es la puerta de entrada real | medir primero |
 
@@ -48,7 +48,7 @@ exactamente las 3 caídas de Android. Es la hipótesis viva del bug del perfil d
 | | Qué | Costo |
 |---|---|---|
 | 🔶 | **`cache.addAll` es ATÓMICO**: un solo archivo que falle deja la caché **vacía**. El comentario de `sw.js:19` afirma lo contrario | bajo |
-| 🔶 | `app-6-extra.js:69`: `try{reg.update()}catch{}` **no atrapa el rechazo de una promesa** → 6 fallos de actualización de 5 usuarios con la PWA instalada, uno de hoy (Astrid, v417) | 1 línea |
+| 🔶 | `app-6-extra.js:69`: `try{reg.update()}catch{}` **no atrapa el rechazo de una promesa** → 6 fallos de actualización de 5 usuarios con la PWA instalada, uno de hoy (Andrea, v417) | 1 línea |
 | 🔶 | `SHELL` del service worker **nunca incluyó `app-7-community.js`** (escrito en v284, el módulo nació en v373) | 1 línea |
 
 ## GRUPO 5 · Ver lo que hoy pasa a oscuras

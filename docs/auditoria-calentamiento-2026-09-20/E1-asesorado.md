@@ -23,12 +23,12 @@ la insignia en "✅ ¡Listo para entrenar!" sin que la persona haya tocado nada.
 **A quién le pasa HOY, con nombre:** medido contra `user_data.history` (proyecto
 `eoebhrxbokyllqalyecj`, filtro `profile->>'name' not ilike '%QA%'`), hay **4 casos** de "misma
 rutina, mismo día, dos sesiones" en toda la vida de la app:
-- **Samuel Cifuentes**, 8-jul-2026, rutina `mqqxfqv0vyz65o7wt2b`: sesión 1 llega a 21/21 entre
+- **Salomón Cárdenas**, 8-jul-2026, rutina `mqqxfqv0vyz65o7wt2b`: sesión 1 llega a 21/21 entre
   16:51 y 17:24 UTC; sesión 2 arranca a las 19:20 UTC (≈2h después, mismo día en Colombia,
   UTC-5) partiendo de 1/21.
-- **Estella Rodríguez**, 1-ago-2026, entrenamiento rápido `qw_hiit_maquina`: 1/10 a las 14:57 UTC,
+- **Elena Romero**, 1-ago-2026, entrenamiento rápido `qw_hiit_maquina`: 1/10 a las 14:57 UTC,
   luego 10/10 (finalizada) a las 15:11 UTC.
-- **Natalia Martinez**, 18-jul-2026, rutina `mrqi7fbmkb75ydn1au`: dos sesiones finalizadas el
+- **Nadia Mejía**, 18-jul-2026, rutina `mrqi7fbmkb75ydn1au`: dos sesiones finalizadas el
   mismo día (20/20 y 19/20).
 - **Andres Martínez** (el coach, en «Mi entrenamiento»), 4-jul-2026: dos rutinas distintas
   completas el mismo día.
@@ -43,7 +43,7 @@ rutina, mismo día, dos sesiones" en toda la vida de la app:
 
 **Cómo intenté tumbarlo:** revisé si `prepareTodaySession`/`gmRebuild` (lo único que corre siempre
 al reabrir "Hoy") hacen alguna limpieza adicional — no, solo reubican dropsets huérfanos
-(`_rehomeOrphanDropsets`). Consideré que el "1/21" de Samuel pudiera venir de OTRO aparato (el
+(`_rehomeOrphanDropsets`). Consideré que el "1/21" de Salomón pudiera venir de OTRO aparato (el
 `wu_`/`done_` es local y nunca sale del teléfono, es la ceguera que el propio briefing señala): no
 puedo descartarlo desde la nube, así que separo el hallazgo en dos partes que SÍ pude verificar por
 separado — (a) el código no tiene ningún camino que limpie el calentamiento en un segundo entreno
@@ -120,7 +120,7 @@ que sustituya visualmente el contenido por un ícono — no, el emoji es el cont
 
 | Sev | Qué | Dónde | ¿Víctima hoy? |
 |---|---|---|---|
-| 🟡 | El calentamiento (y las series) quedan marcados como hechos en un 2º entreno de la misma rutina el mismo día | `app-4-entreno.js:1062-1068,1674-1681` + `app-6-extra.js:2424-2438` | Sí — 4 casos medidos de "misma rutina, mismo día, dos sesiones" (Samuel, Estella, Natalia, el coach). El síntoma exacto en pantalla no se puede confirmar desde la nube (el dato es local) |
+| 🟡 | El calentamiento (y las series) quedan marcados como hechos en un 2º entreno de la misma rutina el mismo día | `app-4-entreno.js:1062-1068,1674-1681` + `app-6-extra.js:2424-2438` | Sí — 4 casos medidos de "misma rutina, mismo día, dos sesiones" (Salomón, Elena, Nadia, el coach). El síntoma exacto en pantalla no se puede confirmar desde la nube (el dato es local) |
 | 🟡 | La sección "⚡ Activación muscular" puede quedar con título y 0 ejercicios (ej. lumbar+tobillo en día de pierna/glúteo) | `app-6-extra.js:2330-2418, 2515-2522` | No hoy — riesgo estructural, ninguna ficha real declara esa combinación ahora mismo |
 | 🟢 | El botón 🎥 ("Ver cómo se hace") es el único emoji crudo dentro de un control de la tarjeta; su vecino 🔥 ya es SVG | `app-6-extra.js:2493` | Sí — lo ve todo asesorado que abre el guiado (100% desde F5) |
 | 🟢 | "Sets de calentamiento" (por ejercicio, aproximación) y "Calentamiento" (de la sesión) comparten literalmente la palabra para dos mecánicas distintas, en la misma pantalla | `app-6-extra.js:884-896` (por ejercicio) vs `2501-2523` (de sesión) | Sin medir — riesgo de comprensión, no de función; no encontré que se pisen visualmente ni que compartan datos |

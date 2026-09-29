@@ -2,7 +2,7 @@
 //
 // Dos hallazgos de la auditoría del 7-sep, los dos del mismo frente:
 //   · D2-3 — «Tren Superior — Espalda, Pecho y Hombros» tiene 3 de espalda y 2 de pecho y CERO
-//     de hombro. Se aplicó a 3 personas; a Kathe la dejó sin un solo ejercicio de hombro en todo
+//     de hombro. Se aplicó a 3 personas; a Karen la dejó sin un solo ejercicio de hombro en todo
 //     su plan (corregido a mano el 7-sep; la plantilla seguía igual para la siguiente).
 //   · D2-4 — al aplicar una plantilla, el modal conservaba el CALENTAMIENTO y el «por qué» de la
 //     rutina que el coach hubiera abierto antes, que normalmente es de OTRO asesorado.
@@ -50,10 +50,10 @@ if (!booted) { log('🔴 la app no arrancó (o falta rfBlank)'); process.exit(1)
 // ── FIXTURE: dos asesoradas y las plantillas reales del coach (la mala y una sana) ──
 const montaje = await ev(`(()=>{try{
   DB.clients=[
-    {id:'as1',name:'Astrid Beltran',tier:'coach',level:'Intermedio',days:3,routines:[
-      {id:'r-astrid',name:'Pierna',day:'Lunes',restSec:60,note:'',why:'Astrid: esta semana bajamos volumen por su rodilla.',
+    {id:'as1',name:'Andrea Bernal',tier:'coach',level:'Intermedio',days:3,routines:[
+      {id:'r-andrea',name:'Pierna',day:'Lunes',restSec:60,note:'',why:'Andrea: esta semana bajamos volumen por su rodilla.',
        warmup:['e73','e106'],exercises:[{id:'e40',name:'Búlgara',muscle:'piernas',type:'Compuesto',sets:4,reps:'10'}]}]},
-    {id:'ka1',name:'Kathe Beltran',tier:'coach',level:'Intermedio',days:3,routines:[]},
+    {id:'ka1',name:'Karen Bernal',tier:'coach',level:'Intermedio',days:3,routines:[]},
   ];
   DB.templates=[
     {id:'t-mala',name:'Tren Superior — Espalda, Pecho y Hombros (plantilla)',tag:'',note:'',restSec:60,exercises:[
@@ -84,7 +84,7 @@ check('COBERTURA la lista pinta las 2 plantillas con alto real',
   cob && cob.alto > 0 && cob.tarjetas === 2, JSON.stringify({ alto: cob.alto, t: cob.tarjetas }));
 if (!cob || cob.tarjetas !== 2) { log('\n🔴 sin cobertura las cifras no valen'); process.exit(1); }
 
-// ══ R1 · LA HERENCIA, REPRODUCIDA: se abre la rutina de Astrid y se aplica una plantilla a Kathe ══
+// ══ R1 · LA HERENCIA, REPRODUCIDA: se abre la rutina de Andrea y se aplica una plantilla a Karen ══
 const r1 = await ev(`(()=>{try{
   CUR.clientId='as1'; openEditRoutine('as1',0);
   const antes={warmup:(CUR.routineWarmup||[]).slice(), why:document.getElementById('r-why')?document.getElementById('r-why').value:''};
@@ -95,11 +95,11 @@ const r1 = await ev(`(()=>{try{
     nombre:document.getElementById('rf-name').value, ejercicios:CUR.routineExs.length, editIdx:CUR.editRoutineIdx};
   return {antes,despues};
 }catch(e){return {err:e.message}}})()`);
-check('R1-a el montaje sirve: la rutina de Astrid SÍ traía calentamiento propio y su «por qué»',
-  r1 && r1.antes && r1.antes.warmup.length === 2 && /Astrid/.test(r1.antes.why || ''), JSON.stringify(r1 && r1.antes));
-check('R1-b al aplicarle la plantilla a Kathe NO se hereda el calentamiento de Astrid',
+check('R1-a el montaje sirve: la rutina de Andrea SÍ traía calentamiento propio y su «por qué»',
+  r1 && r1.antes && r1.antes.warmup.length === 2 && /Andrea/.test(r1.antes.why || ''), JSON.stringify(r1 && r1.antes));
+check('R1-b al aplicarle la plantilla a Karen NO se hereda el calentamiento de Andrea',
   r1 && r1.despues && r1.despues.warmup.length === 0, JSON.stringify(r1 && r1.despues && r1.despues.warmup));
-check('R1-c ni el «por qué» que el coach escribió para Astrid (lo lee el asesorado)',
+check('R1-c ni el «por qué» que el coach escribió para Andrea (lo lee el asesorado)',
   r1 && r1.despues && r1.despues.why === '', JSON.stringify(r1 && r1.despues && r1.despues.why));
 check('R1-d y la plantilla sí se cargó: 5 ejercicios y su nombre (vaciar no puede borrar la feature)',
   r1 && r1.despues && r1.despues.ejercicios === 5 && /Espalda, Pecho y Hombros/.test(r1.despues.nombre || '') && r1.despues.editIdx === null,
@@ -157,7 +157,7 @@ const r3 = await ev(`(()=>{try{
 }catch(e){return {err:e.message}}})()`);
 check('R3-a la rutina SE GUARDA aunque el nombre prometa lo que no tiene (avisa, no bloquea)',
   r3 && r3.rutinas === 1 && r3.ejercicios === 5, JSON.stringify(r3));
-check('R3-b y llega limpia: sin el calentamiento ni el «por qué» de Astrid',
+check('R3-b y llega limpia: sin el calentamiento ni el «por qué» de Andrea',
   r3 && r3.warmup === 0 && !r3.why, JSON.stringify({ w: r3 && r3.warmup, why: r3 && r3.why }));
 await sleep(1200);
 const r3b = await ev(`(window.__toasts||[]).slice()`);

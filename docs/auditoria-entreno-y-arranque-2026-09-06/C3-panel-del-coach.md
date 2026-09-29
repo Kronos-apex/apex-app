@@ -15,9 +15,9 @@ campo `date` cae en el mes calendario actual, para los clientes `clientIsBillabl
 `date` es la fecha en que el coach TECLEÓ el pago en la app, no una fecha de ciclo de facturación.
 
 **A quién le pasa HOY.** Al propio Camilo, cada vez que abre su panel un 3 o un 6 del mes. Hoy
-(6-sep) la tarjeta dice **$120.000**, y ese número sale de UN solo pago (Diana Paola Díaz, pagó el
-3-sep). El resto de sus pagos activos —Astrid, Claudia, Kathe, Luz, Samuel, Natalia, Danilo,
-Miguel, Nataly, Yeison, con cuotas de 100.000-150.000/mes cada uno— quedaron registrados en agosto
+(6-sep) la tarjeta dice **$120.000**, y ese número sale de UN solo pago (Dora Paola Díaz, pagó el
+3-sep). El resto de sus pagos activos —Andrea, Carla, Karen, Luisa, Salomón, Nadia, Darío,
+Mario, Nayla, Yamid, con cuotas de 100.000-150.000/mes cada uno— quedaron registrados en agosto
 y no cuentan para "este mes" aunque cubran hasta bien entrado septiembre.
 
 **Evidencia (SQL contra producción, solo lectura):**
@@ -130,10 +130,10 @@ hay teléfono**, y si no, cae a `wa.me/?text=...` — que abre WhatsApp pidiénd
 un contacto de su lista, con el mensaje ya escrito pero sin destinatario. Para alguien sin
 teléfono guardado, tocar "Empujar" no empuja a nadie: abre un selector de contactos en blanco.
 
-**A quién le pasa HOY.** De las 12 personas que la app considera "dormidas" ahora mismo (Chema,
-Cristian, Daniel, FELIPE, maria rubio, Santiago, Sofía Vega —nunca han entrenado— y jhojan
-hernandez, jose Daniel, Nicolás, Samuel, Sharith —llevan de 11 a 73 días sin volver—), **11 de
-las 12 NO tienen teléfono guardado** (solo maria rubio lo tiene). El coach que use el botón de
+**A quién le pasa HOY.** De las 12 personas que la app considera "dormidas" ahora mismo (Chucho,
+César, David, FABIO, marta rojas, Sebastián, Sara Vélez —nunca han entrenado— y jairo
+hernandez, jorge David, Nelson, Salomón, Sonia —llevan de 11 a 73 días sin volver—), **11 de
+las 12 NO tienen teléfono guardado** (solo marta rojas lo tiene). El coach que use el botón de
 esta tarjeta para "empujar" a cualquiera de esos 11 va a terminar frente a un WhatsApp vacío
 preguntándole a quién escribirle.
 

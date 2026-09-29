@@ -1,4 +1,4 @@
-# Auditoría: A3 · PLATAFORMA MÓVIL (Android / iOS / PWA) — Samuel Ríos
+# Auditoría: A3 · PLATAFORMA MÓVIL (Android / iOS / PWA) — Salomón Ríos
 
 **Alcance:** delta v418 → v526 (HEAD `6d2a561`, sello `avi-v526`, en producción).
 **Ronda anterior de esta área:** `docs/auditoria-areas-2026-07-31/A3-movil.md`.
@@ -23,7 +23,7 @@ solo-lectura a producción.
    que tienen atributo `class`, solo entiende selectores de UNA clase a secas (no `.cchat-composer
    textarea`), y no ve el `style=` en línea, que le GANA a la clase. La frase «era la única de las 7
    clases por debajo de 16» es cierta sobre un universo equivocado.
-4. **Nataly recibe cada notificación hasta 8 veces.** Tiene **8 filas de `push_subscriptions` con el
+4. **Nayla recibe cada notificación hasta 8 veces.** Tiene **8 filas de `push_subscriptions` con el
    MISMO endpoint** (mismo aparato, claves distintas). El comentario del código afirma justo lo
    contrario de lo que hace el `upsert`.
 5. **Tres hallazgos de julio siguen vivos en v526** y uno de ellos con casos nuevos medidos: el fallo
@@ -32,7 +32,7 @@ solo-lectura a producción.
    arreglos cuestan **una línea cada uno**.
 
 > **Dato de tamaño para priorizar, medido hoy:** de las suscripciones de push vivas hay **8 personas
-> en Android** y **1 en iPhone: Kathe Beltran** — que es exactamente quien reportó el bug de v525.
+> en Android** y **1 en iPhone: Karen Bernal** — que es exactamente quien reportó el bug de v525.
 > El público de iOS es pequeño **y es el que está reportando**.
 
 ---
@@ -88,7 +88,7 @@ solo-lectura a producción.
   (`styles.css:738`, `font-size:16px`) y que no aparece en la lista de la sonda: v526 hizo su
   trabajo, el problema es el alcance. (4) Comprobé que `.cchat-bar` **sí** respeta el área segura
   (`styles.css:1798`), o sea que ese overlay está bien por arriba y mal por dentro.
-- **A quién le pasa:** a **Kathe Beltran**, el único iPhone con la app instalada que aparece medido
+- **A quién le pasa:** a **Karen Bernal**, el único iPhone con la app instalada que aparece medido
   en `push_subscriptions` — y es la misma persona que reportó el bug de v525. Los DM de Comunidad y
   el comentario del muro son superficies de asesorado; `#notif-*`, `#r-why`, `#pk-env` y `#ads_` son
   del coach, así que solo le pican si él usa iPhone (no lo pude determinar: su UA en `app_errors` es
@@ -120,16 +120,16 @@ solo-lectura a producción.
   select eph, count(*) n, count(distinct client_id) ids from s group by eph having count(*)>1;
   -- 55eb36723f29288ad6130cf5bce4a9bf | 8 | 1
   ```
-  Las 8 filas son de `6e54e22b…` = **Nataly** (`tier:'app'`), fechadas del **12-ago al 20-ago**, con
+  Las 8 filas son de `6e54e22b…` = **Nayla** (`tier:'app'`), fechadas del **12-ago al 20-ago**, con
   el **mismo endpoint** y `keys.auth`/`keys.p256dh` **distintos en cada una**. Reparto por persona:
-  Nataly 8 filas / 1 aparato · otras dos con 2 filas / 2 aparatos · el resto 1 y 1.
+  Nayla 8 filas / 1 aparato · otras dos con 2 filas / 2 aparatos · el resto 1 y 1.
 - **Intenté tumbarlo así:** (1) pensé que serían aparatos distintos con endpoints parecidos —
   comparé por `md5()` del endpoint **completo**, son idénticos; (2) pensé que la guarda
   `shouldPostPush` (que compara el endpoint contra `localStorage`) lo frenaría — la frena, pero el
   **self-heal con `force=true`** la salta una vez por sesión, que es exactamente la cadencia que se
   ve en las fechas; (3) busqué una poda que las limpiara — `send-push` solo borra en **410/404**, y
   una fila con claves viejas falla con **400** (cifrado inválido), que no se poda nunca. Sobrevivió.
-- **A quién le pasa:** hoy a **Nataly**, y crece sola. Las dos ramas posibles son las dos malas y no
+- **A quién le pasa:** hoy a **Nayla**, y crece sola. Las dos ramas posibles son las dos malas y no
   puedo separarlas sin el aparato: **o recibe 8 copias de cada notificación** (una app que repite
   ocho veces se silencia, y el push es la única vía que le queda a quien no tiene teléfono guardado),
   **o recibe una y las otras 7 son envíos fallidos permanentes** que ensucian la cuenta de errores
@@ -138,7 +138,7 @@ solo-lectura a producción.
   `client_id` cuyo endpoint coincida** antes de insertar (un aparato = una fila), que es la misma
   regla que ya se aplicó en julio al caso `_coach`. Y **corregir el comentario**, que hoy documenta
   una creencia falsa — es exactamente la clase que el propio `CLAUDE.md` marca como «un comentario
-  con una razón falsa es peor que ninguno». Limpiar las 7 filas de Nataly es un `delete` de una vez.
+  con una razón falsa es peor que ninguno». Limpiar las 7 filas de Nayla es un `delete` de una vez.
 
 ---
 
@@ -159,7 +159,7 @@ solo-lectura a producción.
   de una sola persona: son **2 personas distintas** solo en el día 13-ago.
 - **A quién le pasa:** a quien tiene la app instalada — que son los que entrenan. Y tiene un daño de
   segundo orden que importa hoy más que nunca: **si la comprobación de versión falla, v525 y v526 no
-  llegan al teléfono de Kathe**, que es para quien se hicieron.
+  llegan al teléfono de Karen**, que es para quien se hicieron.
 - **Costo del arreglo:** **una línea** — `reg.update().catch(()=>{})`.
 
 ---
@@ -214,7 +214,7 @@ solo-lectura a producción.
   `position:fixed;inset:0` con el compositor como último hijo: en iOS, al abrir el teclado el
   *layout viewport* no encoge, así que el compositor puede quedarse **detrás del teclado**. Es el
   defecto clásico de WebKit y toca la MISMA superficie que H1. **No lo pude reproducir**: el
-  headless no levanta teclado y no hay iPhone. Falta: probarlo en el aparato de Kathe, o instrumentar
+  headless no levanta teclado y no hay iPhone. Falta: probarlo en el aparato de Karen, o instrumentar
   `visualViewport.height` y reportarlo una vez.
 - **`#cmt-in-<post>` (comentar en el muro) a 13 px NO salió en mi sonda del DOM vivo** porque la
   cuenta de prueba tiene el muro vacío y esa caja la pinta el JS por publicación. Lo tengo por

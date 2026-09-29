@@ -132,10 +132,10 @@ no hay tope y la base es Free de 500 MB.
   rompa el install, pero `cache.addAll` es **atómico** — un archivo que falle deja la caché
   **vacía**, única combinación capaz de producir el error observado.
 - 🟠 `app-6-extra.js:69`: `try{reg.update()}catch{}` no atrapa el rechazo de una promesa → 6 filas
-  de «Failed to update a ServiceWorker» de 5 usuarios con la PWA instalada, **una de hoy (Astrid,
+  de «Failed to update a ServiceWorker» de 5 usuarios con la PWA instalada, **una de hoy (Andrea,
   v417)**, que además se comen la cuota de 20 errores/día.
 - **Sobre el bug del perfil de coach: la caché vieja queda CONFIRMADA COMO MECANISMO, no como
-  prueba del caso concreto.** No hay telemetría del 27-jul del teléfono de Astrid. Deja de ser
+  prueba del caso concreto.** No hay telemetría del 27-jul del teléfono de Andrea. Deja de ser
   corazonada.
 - El agente **se equivocó y lo dejó escrito**: acusó `assetlinks.json` de estar mal ubicado y `curl`
   a la raíz devuelve 200, está bien.

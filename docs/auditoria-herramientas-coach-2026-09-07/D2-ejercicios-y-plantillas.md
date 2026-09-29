@@ -98,16 +98,16 @@ Polea (espalda). Tres de espalda, dos de pecho, **cero etiquetados `hombros`** �
 la plantilla (y el de las rutinas que salieron de ella) promete las tres zonas.
 
 **A quién le pasa HOY, con nombre:** el mismo set exacto de esos 5 ejercicios está en las rutinas
-reales de **Nataly**, **maria rubio**, **Astrid Beltran** y **Kathe Beltran** — las cuatro con el
+reales de **Nayla**, **marta rojas**, **Andrea Bernal** y **Karen Bernal** — las cuatro con el
 día llamado literalmente "Tren Superior — Espalda, Pecho y Hombros" o "Tren Superior". Si alguna
 de las cuatro entrena creyendo que ese día también trabaja hombro (se lo dice el nombre de su
 propia rutina), no lo hace: no hay press militar, elevación lateral ni nada etiquetado hombro ese
 día.
 
 **Evidencia:** SQL de contenido — plantilla: `ex_ids:[e6,e83,e51,e84,e24]`; rutinas idénticas en
-Nataly (`rhu8r86ehg1jsxf09w`, con 2 ejercicios más agregados encima: e21,e8 — tampoco hombro),
-maria rubio (`mtqex4bptb97gzrr64c`, EXACTA), Astrid Beltran (`mssydsmilrdahr7nr69`, EXACTA), Kathe
-Beltran (`060c33f645e6`, EXACTA). Nombres y músculos verificados contra `defaultExercises` en
+Nayla (`rhu8r86ehg1jsxf09w`, con 2 ejercicios más agregados encima: e21,e8 — tampoco hombro),
+marta rojas (`mtqex4bptb97gzrr64c`, EXACTA), Andrea Bernal (`mssydsmilrdahr7nr69`, EXACTA), Karen
+Bernal (`060c33f645e6`, EXACTA). Nombres y músculos verificados contra `defaultExercises` en
 `app-1-infra.js` (grep de los 5 ids).
 
 **Cómo intenté tumbarlo:** consideré que el press (pecho) y el remo (espalda) SÍ reclutan hombro de
@@ -128,7 +128,7 @@ decir solo "Espalda y Pecho" (como ya existe la plantilla separada "Pecho espald
 |---|---|---|---|
 | 🔴 | `migrateExercises()` revierte name/muscle/type/icon/desc de un ejercicio del catálogo en cada login — el comentario dice lo contrario | `app-2-login.js:3-21,1320` | No (coach nunca ha editado un catálogo); mecanismo verificado |
 | 🔴 | Marcar un chat leído o un lead atendido sube de nuevo los 374 ejercicios completos (~245 KB reales, no 95 KB) | `app-1-infra.js:158-166,940-969`; `app-3-coach.js:3381-3385,3399,3451` | Sí — pasa cada vez que el coach abre una conversación |
-| 🟡 | Plantilla/rutina "Tren Superior — Espalda, Pecho y Hombros" sin ningún ejercicio de hombro, aplicada a 4 personas | Contenido medido en `templates` y `routines` (SQL) | Sí — Nataly, maria rubio, Astrid Beltran, Kathe Beltran |
+| 🟡 | Plantilla/rutina "Tren Superior — Espalda, Pecho y Hombros" sin ningún ejercicio de hombro, aplicada a 4 personas | Contenido medido en `templates` y `routines` (SQL) | Sí — Nayla, marta rojas, Andrea Bernal, Karen Bernal |
 | 🟡 | `openNewRoutineFromTemplate` NO resetea `CUR.routineWarmup`: aplicar una plantilla puede heredar el calentamiento personalizado de la ÚLTIMA rutina que el coach editó (de otro asesorado, con otra limitación) | `app-2-login.js:816-836` vs `app-3-coach.js:2947,3043` (los únicos 2 sitios que sí lo resetean) | No confirmada en producción (requiere secuencia específica); mecanismo verificado |
 | 🟡 | Editar sets/reps de un ejercicio del catálogo NO actualiza las rutinas ya asignadas (copia congelada al agregarlo) — comportamiento razonable, pero no está documentado en ningún sitio de la UI y un coach puede creer que sí propaga | `app-4-entreno.js:73-84` (`saveEx`, sin tocar `DB.clients`); `app-2-login.js:740-742` (`{...ex}` al agregar a una rutina) | No hay evidencia de confusión reportada; comportamiento confirmado con datos reales (e42: catálogo hoy 4×10, rutinas van de 3×15 a 4×5) |
 | 🟢 | No existe forma de BORRAR un ejercicio del catálogo desde la UI del coach (solo crear/editar) | `index.html:1142-1154` (modal `#m-ex` solo tiene Cancelar/Guardar); sin `delEx()` en el repo | No aplica — no hay acción que pueda fallar |
@@ -140,15 +140,15 @@ decir solo "Espalda y Pecho" (como ya existe la plantilla separada "Pecho espald
 - **Las plantillas SÍ se usan.** Comparando por CONTENIDO (set exacto de ids de ejercicio, no por
   el marcador `fromTemplate` que no existe — la trampa que advertía el briefing) contra las 108
   rutinas reales: **21 de 108 rutinas (19,4%) son copia exacta, ejercicio por ejercicio, de una de
-  las 5 plantillas**, repartidas en **10 de 25 asesorados (40%)**: Sharith sofia (4 de sus 4
-  rutinas), Claudia Valbuena (3 de 4), maria rubio (4 de 4), Natalia Martinez (2 de 4, más 2
-  cuasi-idénticas con 1 ejercicio sustituido), Valery (3 de 4), Luz Rodríguez (3 de 4), Astrid
-  Beltran (1 de 4), Kathe Beltran (1 de 4), Yovan Tellez Rubio (1 de 4), YEISON VALBUENA (1 de 2).
+  las 5 plantillas**, repartidas en **10 de 25 asesorados (40%)**: Sonia (4 de sus 4
+  rutinas), Carla Vargas (3 de 4), marta rojas (4 de 4), Nadia Mejía (2 de 4, más 2
+  cuasi-idénticas con 1 ejercicio sustituido), Valery (3 de 4), Luisa R. (3 de 4), Andrea
+  Bernal (1 de 4), Karen Bernal (1 de 4), Yesid Torres Rojas (1 de 4), YAMID VARGAS (1 de 2).
   Además el NOMBRE de la rutina resultante coincide con el de la plantilla menos el sufijo
   " (plantilla)" en casi todos los casos, que es exactamente lo que hace
   `tpl.name.replace(' (plantilla)','')` en `openNewRoutineFromTemplate`. Control: comparé también
-  varias rutinas que NO usan plantilla (Felipe, Sofía Vega, Santiago Santos, Danilo, Chema,
-  Cristian, Daniel, Diana Paola, Nicolás, jhojan, Andres Martínez el propio coach) y ninguna
+  varias rutinas que NO usan plantilla (Fabio, Sara Vélez, Sebastián Suárez, Darío, Chucho,
+  César, David, Dora Paola, Nelson, jairo, Andres Martínez el propio coach) y ninguna
   coincide por contenido con ninguna de las 5 plantillas — el 19,4% no es ruido de coincidencia.
 - **El buscador y el pintado por tandas de la biblioteca funcionan como documenta el gotcha
   vigente**: `searchExercises`+`exQ`/`exF`/`EX_PAGE=30` (`app-4-entreno.js:1-58`) — no encontré

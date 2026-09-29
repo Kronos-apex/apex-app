@@ -10,7 +10,7 @@
 # y encima core.hooksPath apuntaba a Desktop\apex (ruta muerta) → NINGÚN commit
 # corría el audit. Ahora audita los módulos reales.
 
-import re, subprocess, sys, os, io
+import re, subprocess, sys, os, io, json
 from collections import Counter
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -176,7 +176,7 @@ secret_patterns = [
     (r'VAPID_PRIVATE\s*=\s*["\'][^"\']{10}', 'VAPID_PRIVATE key en frontend'),
     (r'service_role\s*[=:]\s*["\'][^"\']{20}', 'Supabase service_role key'),
     (r'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{50,}', 'JWT token hardcodeado'),
-    (r'Samuel2026|samuel@apex\.com', 'credenciales de la cuenta de prueba E2E'),
+    (r'Samuel2026|salomon@apex\.com', 'credenciales de la cuenta de prueba E2E'),
 ]
 secret_found = False
 for pattern, label in secret_patterns:
@@ -374,8 +374,45 @@ else:
                  f'catálogo. Corre: node scripts/build-foods.mjs para ver cuáles y por qué')
         ok(f'foods.json coincide con el generador ({m_nf.group(1) if m_nf else "?"} alimentos)')
 
+# ── [13] Nombres reales de asesorados (el repo es PÚBLICO) ────────────────────────
+# 29-sep-2026: el repo llevaba 4 meses con nombres completos, correos, pesos y la edad de un menor. Se
+# seudonimizó todo y la tabla real ↔ seudónimo vive SOLO en ~/.avi/seudonimos.json. La lista de lo que no
+# puede volver a entrar está en ~/.avi/nombres-reales.json — fuera del repo, porque la lista MISMA serían los
+# nombres. Sin ese archivo (CI, otra máquina) el check se salta: es un candado LOCAL. Solo mira lo AÑADIDO.
+print(f'\n{BOLD}[13] Nombres reales de asesorados{RESET}')
+_lista_nr = os.path.join(os.path.expanduser('~'), '.avi', 'nombres-reales.json')
+if not os.path.exists(_lista_nr):
+    warn('~/.avi/nombres-reales.json no existe en esta máquina — check saltado')
+else:
+    try:
+        with open(_lista_nr, encoding='utf-8') as _fh:
+            _nr = json.load(_fh)
+        _pats = [(p, re.compile(p)) for p in _nr.get('patrones', [])]
+        _solo_agentes = set(_nr.get('permitidos_en_agentes', []))
+        _diff = subprocess.run(['git', 'diff', '--cached', '-U0', '--no-color'], cwd=ROOT, capture_output=True,
+                               text=True, encoding='utf-8', errors='replace').stdout
+        _hallados = []; _arch = ''
+        for _l in _diff.splitlines():
+            if _l.startswith('+++ '):
+                _arch = _l[6:] if _l.startswith('+++ b/') else ''
+                continue
+            if not _l.startswith('+') or not _arch:
+                continue
+            for _p, _rx in _pats:
+                if _arch.startswith('.claude/agents/') and _p in _solo_agentes:
+                    continue
+                if _rx.search(_l[1:]):
+                    _hallados.append(f'{_arch}: «{_rx.search(_l[1:]).group(0)}»')
+        if _hallados:
+            fail('Nombre o correo REAL de un asesorado en lo que vas a subir (el repo es público). Usa su seudónimo '
+                 '(~/.avi/seudonimos.json):\n    ' + '\n    '.join(sorted(set(_hallados))[:15]))
+        else:
+            ok(f'ningún nombre ni correo real en lo añadido ({len(_pats)} patrones)')
+    except Exception as _e:
+        fail(f'no pude leer ~/.avi/nombres-reales.json: {_e}')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 12
+total = 13
 failed = len(errors)
 warned = len(warnings)
 

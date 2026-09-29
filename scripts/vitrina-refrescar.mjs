@@ -5,7 +5,7 @@
 //
 // POR QUÉ HACE FALTA: la tarjeta se CONGELA al publicarla (la tabla no tiene
 // grant de UPDATE a propósito, lección c13c: editar = quitar y volver a
-// publicar). La de Astrid decía 48 entrenos y ya iba en más.
+// publicar). La de Andrea decía 48 entrenos y ya iba en más.
 //
 // 🔒 NO RE-IMPLEMENTA NADA: arma la fila con las MISMAS funciones puras que usa
 // la app (`clientProgressStory` → `showcaseRow`). Un script que recalcule la

@@ -2,18 +2,18 @@
 --
 -- EL DEFECTO (auditoría «app instalada», 5-sep, hallazgo B1-1 y medición del orquestador).
 -- v535 colapsó las filas duplicadas por (client_id, endpoint) y dejó escrito, con razón para
--- entonces, que **«Samuel y Natalia tienen 2 filas cada uno pero con 2 endpoints DISTINTOS: son
+-- entonces, que **«Salomón y Nadia tienen 2 filas cada uno pero con 2 endpoints DISTINTOS: son
 -- dos aparatos de verdad y NO se tocan»**. Esa clasificación nunca se volvió a comprobar, y hoy
 -- ya no se sostiene para una de las dos:
 --
---   Natalia Martinez, medido el 5-sep:
+--   Nadia Mejía, medido el 5-sep:
 --     · fila A — refrescada hace 2 días, `training_days` = ["Lunes","Martes","Jueves","Viernes"]
 --       (su plan REAL de hoy)
 --     · fila B — refrescada hace **30 días**, `training_days` = **["Lunes","Lunes","Martes"]**,
 --       que es exactamente la copia congelada del 7-ago que el gotcha de v551 nombra como
 --       huérfana. Ningún código de hoy escribe eso.
 --   En los logs de la edge de hoy le salen **2 envíos «✅» en cada una de las 3 rondas diarias**.
---   Samuel, en cambio, tiene 2 filas de 7 y 12 días con su plan correcto en las dos: esas SÍ
+--   Salomón, en cambio, tiene 2 filas de 7 y 12 días con su plan correcto en las dos: esas SÍ
 --   parecen dos aparatos, y esta migración NO las toca.
 --
 -- 🔬 LA MEDICIÓN QUE HABILITA LA REGLA, porque sin ella «antigua» no significaría nada:
@@ -44,7 +44,7 @@
 
 -- ── 0) El margen, en un solo sitio ───────────────────────────────────────────────────────────
 -- 21 días: por debajo de eso dos aparatos que se alternan (el del gym y el de la casa) podrían
--- colapsarse el uno al otro. Natalia son 28 días de diferencia; Samuel, 5.
+-- colapsarse el uno al otro. Nadia son 28 días de diferencia; Salomón, 5.
 
 -- ── 1) Limpieza de lo que ya está abandonado hoy ─────────────────────────────────────────────
 delete from public.push_subscriptions v

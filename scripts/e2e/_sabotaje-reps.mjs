@@ -4,7 +4,7 @@
 // Por qué hace falta versionada: este defecto es SILENCIOSO y permanente. Un `110` entre series
 // de `10` no da error, se guarda, se vuelve récord — y a partir de ahí ese ejercicio queda
 // imposible de superar para esa persona, con el detector de estancamiento leyéndolo como plantado
-// para siempre. Ya pasó con Luz (Dead Bug, dos días) antes de que existiera este candado.
+// para siempre. Ya pasó con Luisa (Dead Bug, dos días) antes de que existiera este candado.
 //
 // 🔬 El umbral de este candado NO es el de los kilos: se eligió con un barrido sobre las 7.116
 // series reales, porque copiar `_SANE_REL_MIN_SETS` (3 series) dejaba fuera justo el único caso
@@ -19,7 +19,7 @@ const EXTRA = new URL('../../app-6-extra.js', import.meta.url);
 const ENTRENO = new URL('../../app-4-entreno.js', import.meta.url);
 
 const SABOTAJES = [
-  [CORE, '1· el mínimo vuelve a 3 series: el caso de Luz (que solo tiene 2) deja de cazarse',
+  [CORE, '1· el mínimo vuelve a 3 series: el caso de Luisa (que solo tiene 2) deja de cazarse',
     'const _SANE_REL_MIN_SETS_REPS = 2;',
     'const _SANE_REL_MIN_SETS_REPS = 3;'],
   [CORE, '2· la regla se afloja hasta no marcar a nadie',

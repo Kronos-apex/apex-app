@@ -46,7 +46,7 @@ const MONTAR = `((tier, conPlan) => {try{
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const hoy=days[new Date().getDay()];
   const ex=(i)=>({id:'e'+i,name:'Ejercicio '+i,muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'});
-  const client={id:'chips',name:'Nataly Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
+  const client={id:'chips',name:'Nayla Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
     weight:62,height:163,age:29,activityFactor:1.55,tier:tier||undefined,
     createdAt:'2026-05-01T10:00:00.000Z',
     routines:[{id:'r1',name:'Pierna y glúteo',day:hoy,restSec:90,exercises:[0,1,2,3].map(ex)}],

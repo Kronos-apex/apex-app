@@ -3,7 +3,7 @@
 //
 // Por qué hace falta versionada: los dos defectos que esto mata son SILENCIOSOS. Una plantilla
 // que promete hombros y no los tiene funciona perfectamente —se aplica, se guarda, se entrena—
-// y solo se nota meses después mirando el plan entero de alguien (Kathe, 25 ejercicios, cero de
+// y solo se nota meses después mirando el plan entero de alguien (Karen, 25 ejercicios, cero de
 // hombro). Y un formulario que hereda el calentamiento de otra persona tampoco da error: escribe
 // el dato de otra en el plan de una.
 //
@@ -16,7 +16,7 @@ const LOGIN = new URL('../../app-2-login.js', import.meta.url);
 const COACH = new URL('../../app-3-coach.js', import.meta.url);
 
 const SABOTAJES = [
-  [CORE, '1· la regla deja de mirar los hombros (el caso exacto de Kathe)',
+  [CORE, '1· la regla deja de mirar los hombros (el caso exacto de Karen)',
     "  [/\\bhombros?\\b/i, 'hombros', 'hombros'],",
     "  // (hombros fuera)"],
   [CORE, '2· deja de mirar QUÉ músculos hay dentro: no marca nunca',

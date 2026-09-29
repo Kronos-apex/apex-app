@@ -16,4 +16,4 @@ grant update (is_private) on public.community_profiles to authenticated;
 -- tiene grant sobre ellas. role NO se deriva de user_data.role (CLIENT-WRITABLE, lección F7 — probado
 -- 2026-07-21: un asesorado se auto-nombró 'coach') sino de "POSEE asesorados" (user_data.coach_id
 -- apuntando a él desde OTRAS filas, no forgeable por un atacante solo). Verificado: Camilo=22 asesorados
--- (coach), Samuel=0 (client).
+-- (coach), Salomón=0 (client).

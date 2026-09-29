@@ -45,7 +45,7 @@ await ev(`(()=>{
   document.getElementById('sbi-home').classList.add('on');
   navReset(null);
   const onP=document.querySelector('#s-coach .panel.on'); AVINAV.curTab=(onP&&onP.id)||'p-home';
-  // cliente de prueba para p-detail (usa el propio samuel que ya está en DB.clients, o uno fake)
+  // cliente de prueba para p-detail (usa el propio salomon que ya está en DB.clients, o uno fake)
   if(!(DB.clients||[]).length){ DB.clients=[{id:'tc1',name:'Test Cliente',level:'Intermedio',goal:'Ganar músculo',days:3}]; }
   window.__TCID=DB.clients[0].id;
   // saltar la carga pesada (en esta sesión-cliente falsa re-ejecuta el init y resetea el stack;

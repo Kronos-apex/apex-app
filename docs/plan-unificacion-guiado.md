@@ -139,7 +139,7 @@ Para cada uno:
 
 ### F4 — Encendido por defecto
 1. Tras el visto bueno de Camilo en F2/F3 (mínimo una semana de uso real suyo + idealmente
-   1-2 clientes beta, p.ej. Miguel o Kathe), default `ax_ui_guided='1'`.
+   1-2 clientes beta, p.ej. Mario o Karen), default `ax_ui_guided='1'`.
 2. Dejar en Perfil un enlace discreto "Volver a la vista clásica" (el kill-switch al alcance
    del usuario) durante al menos 2 semanas.
 3. Vigilar reportes; el poll/foreground y el TWA son los frentes de riesgo.
@@ -319,7 +319,7 @@ Para cada uno:
   default real** (`localStorage.removeItem('ax_ui_guided')` → `uiGuided()===true`) y `setupRoutine`
   fija OFF explícito para que los escenarios clásicos/overlay (SETUP,S1–S11) corran igual.
   Verificación: 267/267 tests, `_repro-plancha.mjs` TODO OK (jsErrors []). 🟡 **Ahora toca a
-  Camilo y a algún cliente beta (Miguel/Kathe) USAR el default por ~2 semanas y vigilar reportes
+  Camilo y a algún cliente beta (Mario/Karen) USAR el default por ~2 semanas y vigilar reportes
   (poll/foreground y TWA son los frentes de riesgo). CERO reportes 2 semanas → habilita F5.**
 - **F4 BLINDAJE ✅ (2026-07-04, avi-v263) — auditoría profunda "tipo 5 agentes" tras el deploy.**
   4 ángulos: (1) datos reales Supabase (497 ejercicios de 18 clientes+coach → 0 sin sets, 0

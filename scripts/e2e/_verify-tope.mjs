@@ -35,7 +35,7 @@ await sleep(1800);
 
 // EL PEOR CASO REALISTA, armado con datos que disparan a las tarjetas POR SU CUENTA (no se les
 // inyecta HTML: eso sería fabricarse el verde). Reproduce el perfil de las 4 personas que hoy
-// llegan a 6 —Claudia, Luz, Miguel, Samuel— y le añade las 3 que solo viven en el teléfono.
+// llegan a 6 —Carla, Luisa, Mario, Salomón— y le añade las 3 que solo viven en el teléfono.
 const MONTAR = `((opts) => {try{
   opts=opts||{};
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
@@ -44,7 +44,7 @@ const MONTAR = `((opts) => {try{
   // Rutina de un día YA PASADO de esta semana y sin entrenar → dispara «el día que se corrió».
   const pasado=days[di===0?6:(di-1)];
   const ex=(i)=>({id:'e'+i,name:'Ejercicio '+i,muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'});
-  const client={id:'tope',name:'Claudia Valbuena',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
+  const client={id:'tope',name:'Carla Vargas',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
     weight:62,height:163,age:31,activityFactor:1.55,createdAt:'2026-04-01T10:00:00.000Z',
     routines:[{id:'r1',name:'Pierna y glúteo',day:hoy,restSec:90,exercises:[0,1,2,3].map(ex)},
               {id:'r2',name:'Tren superior',day:pasado,restSec:90,exercises:[0,1,2].map(ex)}],

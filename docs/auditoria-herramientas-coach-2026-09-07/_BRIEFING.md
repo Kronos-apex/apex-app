@@ -92,20 +92,20 @@ hallazgos de la auditoría anterior).
 
 | persona | del asesorado | del coach | último del asesorado | último del coach |
 |---|---|---|---|---|
-| **Samuel Cifuentes** | 27 | 13 | 2026-07-31 | 2026-07-31 |
-| **Nataly** | 2 | 9 | 2026-06-14 | 2026-07-31 |
-| **Miguel Pulido** | 4 | 4 | 2026-05-29 | 2026-05-29 |
-| **Astrid Beltran** | 2 | 5 | 2026-06-05 | 2026-07-16 |
-| **Natalia Martinez** | 2 | 5 | **2026-08-29** | **2026-05-25** |
-| **Claudia Valbuena** | 5 | 2 | 2026-09-04 | 2026-09-04 (10 min después) |
-| **Kathe Beltran** | 2 | 3 | 2026-08-10 | 2026-07-29 |
-| **Sharith sofia** | 1 | 4 | 2026-07-20 | 2026-07-21 |
-| **Cristian Sneyder** | 1 | 1 | 2026-07-11 | 2026-07-11 |
-| **Luz Rodríguez** | 1 | 1 | 2026-07-16 | 2026-08-20 |
+| **Salomón Cárdenas** | 27 | 13 | 2026-07-31 | 2026-07-31 |
+| **Nayla** | 2 | 9 | 2026-06-14 | 2026-07-31 |
+| **Mario Parra** | 4 | 4 | 2026-05-29 | 2026-05-29 |
+| **Andrea Bernal** | 2 | 5 | 2026-06-05 | 2026-07-16 |
+| **Nadia Mejía** | 2 | 5 | **2026-08-29** | **2026-05-25** |
+| **Carla Vargas** | 5 | 2 | 2026-09-04 | 2026-09-04 (10 min después) |
+| **Karen Bernal** | 2 | 3 | 2026-08-10 | 2026-07-29 |
+| **Sonia** | 1 | 4 | 2026-07-20 | 2026-07-21 |
+| **César Sneyder** | 1 | 1 | 2026-07-11 | 2026-07-11 |
+| **Luisa R.** | 1 | 1 | 2026-07-16 | 2026-08-20 |
 | Andres Martínez (fila del coach) | — | 1 | — | 2026-08-20 |
 
-- **Dos personas escribieron y nadie les contestó después: Natalia Martinez (29-ago, 9 días) y
-  Kathe Beltran (10-ago, 28 días).** Eso es una VÍCTIMA VIVA si el defecto está en la app (que el
+- **Dos personas escribieron y nadie les contestó después: Nadia Mejía (29-ago, 9 días) y
+  Karen Bernal (10-ago, 28 días).** Eso es una VÍCTIMA VIVA si el defecto está en la app (que el
   coach no lo vea); es una decisión de negocio si el coach simplemente no contestó. **D1 tiene que
   distinguir esas dos cosas y decir cuál es, con evidencia.**
 - El último mensaje de todo el sistema es del **4-sep**. En 3 días no ha habido ninguno.
@@ -131,16 +131,16 @@ Por persona (no-QA), lo que el coach tiene para decidir:
 | persona | sesiones | ejercicios con récord | pesajes | medidas | fotos | días de nutrición |
 |---|---|---|---|---|---|---|
 | Andres Martínez (coach) | 80 | 43 | 4 | 1 | 2 | 11 |
-| Astrid Beltran | 58 | 35 | 1 | 0 | 0 | 11 |
-| Luz Rodríguez | 48 | 30 | 0 | 1 | 1 | 11 |
-| Claudia Valbuena | 48 | 30 | 1 | 1 | 0 | 11 |
-| Kathe Beltran | 44 | 31 | 3 | 1 | 0 | 11 |
-| Samuel Cifuentes | 37 | 36 | 2 | 1 | 5 | 11 |
-| Nataly | 28 | 22 | 2 | 0 | 0 | 11 |
-| Natalia Martinez | 26 | 25 | 2 | 1 | 0 | 11 |
+| Andrea Bernal | 58 | 35 | 1 | 0 | 0 | 11 |
+| Luisa R. | 48 | 30 | 0 | 1 | 1 | 11 |
+| Carla Vargas | 48 | 30 | 1 | 1 | 0 | 11 |
+| Karen Bernal | 44 | 31 | 3 | 1 | 0 | 11 |
+| Salomón Cárdenas | 37 | 36 | 2 | 1 | 5 | 11 |
+| Nayla | 28 | 22 | 2 | 0 | 0 | 11 |
+| Nadia Mejía | 26 | 25 | 2 | 1 | 0 | 11 |
 | Valery | 14 | 23 | 1 | 1 | 0 | 11 |
-| Miguel Pulido | 14 | 23 | 2 | 2 | 2 | 11 |
-| Danilo | 12 | 30 | 1 | 0 | 0 | 11 |
+| Mario Parra | 14 | 23 | 2 | 2 | 2 | 11 |
+| Darío | 12 | 30 | 1 | 0 | 0 | 11 |
 | (los 14 restantes) | 0-4 | 0-7 | 0-2 | 0-1 | 0-1 | 0 u 11 |
 
 - **11 personas tienen récords de carga con volumen real; 14 no tienen prácticamente nada.**

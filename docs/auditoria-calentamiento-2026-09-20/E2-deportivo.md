@@ -24,11 +24,11 @@ hacia afuera formando 90°, inclinándose sobre la pierna delantera — una post
 rodilla delantera en flexión profunda **y** rotación.
 
 **A quién le pasa HOY, con nombre.**
-- **Laura Ramirez Rueda** — notas del coach: *«Rodillas desgastadas, dolor en la espalda alta,
+- **Lucía Ríos** — notas del coach: *«Rodillas desgastadas, dolor en la espalda alta,
   dolor en los codos»*. Su rutina «Pierna» (Lunes, auto-derivada, `warmup:[]`) genera hoy:
   articulares `wc1, wc3, wr1, wr3, wt1, wt2` (medido corriendo `buildWarmup` real contra su rutina
   real con `limKeys:['rodilla']`).
-- **Miguel Pulido** — notas del coach: *«Lesión rodilla derecha operada, con 10% menos de
+- **Mario Parra** — notas del coach: *«Lesión rodilla derecha operada, con 10% menos de
   cartílago y tendón»* (el mismo perfil que describe `laura-physio.md`). Su rutina «Pierna A —
   Cuádriceps» (auto-derivada) genera exactamente el mismo par: `wc1, wc3, wr1, wr3, wt1, wt2`.
 
@@ -41,9 +41,9 @@ rodilla delantera en flexión profunda **y** rotación.
 - Corrida real (`node`, `buildWarmup` extraído de `app-6-extra.js:2330` contra las rutinas reales
   de las dos personas, leídas por `SELECT` de solo lectura de `user_data.routines`):
   ```
-  Laura Ramirez Rueda — Pierna — limKeys=["rodilla"]
+  Lucía Ríos — Pierna — limKeys=["rodilla"]
     Articulares: [ 'wc1', 'wc3', 'wr1', 'wr3', 'wt1', 'wt2' ]
-  Miguel Pulido — Pierna A — Cuádriceps — limKeys=["rodilla"]
+  Mario Parra — Pierna A — Cuádriceps — limKeys=["rodilla"]
     Articulares: [ 'wc1', 'wc3', 'wr1', 'wr3', 'wt1', 'wt2' ]
   ```
 - `docs/dictamen-laura-dolor-2026-08-08.md` §3.2 (Rodilla, tabla de calentamiento) dice
@@ -106,10 +106,10 @@ wai3 "Peso muerto con peso corporal" -> ❌ EL FILTRO LO QUITARÍA (está en WAR
 vea entrenando, porque el chip vive solo en el editor de esa rutina específica, y él la armó
 ANTES del reporte — si no vuelve a abrir el editor de «Full body funcional», nunca lo va a ver.
 
-*(Control: revisé la lista manual de **Danilo**, hernia lumbar L5 en notas, armada el 22-ago —
+*(Control: revisé la lista manual de **Darío**, hernia lumbar L5 en notas, armada el 22-ago —
 `wh1 wh2 wm1 we1 we2 wc1 wc2 wa1 wa3 wac1 wac2`. Corriendo el mismo chequeo con `limKeys:['lumbar']`,
-**los 11 pasan** — su lista no contiene ni `we3`, `we5`, `wai3` ni `wac3`. Danilo NO es víctima hoy.
-Las 4 listas de Claudia/Estella, armadas el 29-jun antes del filtro de lesiones (v424), tampoco son
+**los 11 pasan** — su lista no contiene ni `we3`, `we5`, `wai3` ni `wac3`. Darío NO es víctima hoy.
+Las 4 listas de Carla/Elena, armadas el 29-jun antes del filtro de lesiones (v424), tampoco son
 víctimas hoy porque ninguna de las dos tiene `notes` ni `painCare` activos — si algún día declaran
 algo, sus listas SÍ tienen ítems que caerían bajo lumbar/rodilla/aductor/abductor, medido y anotado
 en «Sospechas sin medir».)*
@@ -196,11 +196,11 @@ como hallazgo de contenido, no como bloqueo de seguridad.
 
 | Sev | Qué | Dónde | ¿Víctima hoy? |
 |---|---|---|---|
-| 🔴 | `wc3` (90/90) se promueve para rodilla sin que Laura la haya revisado para esa zona | `avi-core.js:427,857` (`GEN_ZONE_EXCL.rodilla` vs `warmupContraindicated`) | **Sí** — Laura Ramirez Rueda y Miguel Pulido, ambos hoy, en su rutina de pierna real |
+| 🔴 | `wc3` (90/90) se promueve para rodilla sin que Laura la haya revisado para esa zona | `avi-core.js:427,857` (`GEN_ZONE_EXCL.rodilla` vs `warmupContraindicated`) | **Sí** — Lucía Ríos y Mario Parra, ambos hoy, en su rutina de pierna real |
 | 🔴 | El aviso de zona contraindicada en el calentamiento manual solo existe en el editor del coach, nunca en la pantalla de entreno | `app-3-coach.js:3623-3665` vs `app-6-extra.js:2464` (`renderWarmup`) | **Sí** — Andrés Martínez (el coach), `we5` y `wai3` servidos hoy con bandera roja `R5` activa (vence 28-sep) |
 | 🟡 | 41% del catálogo (14/34) es inalcanzable por auto-derivación; 12 de esas piezas no tienen NINGÚN mecanismo de rescate | `app-6-extra.js:2330-2417` (`buildWarmup`, `slice(0,2)` fijo) | No hay «víctima» puntual — afecta a las 113-115 rutinas sin limitación con la misma monotonía |
 | 🟡 | La zona `isquios` (creada v607) no tiene lista propia de ids en `WARMUP_ZONE_EXCL_IDS`; solo la cubre el regex compartido `GEN_ZONE_EXCL.isquios`, que no matchea ninguna de las 34 piezas | `avi-core.js:791-804` (falta la clave `isquios`) vs `avi-core.js:468` | No — medido: `wr3` (el único candidato remotamente relacionado, un estiramiento de isquios) nunca es alcanzable vía isquios porque `wr1` nunca sale del pool por esa zona; solo se alcanza vía la cascada de `rodilla` (hallazgo #1), no de isquios |
-| 🟡 | El bucket `cardio` de `MUSCLE_WARMUP_MAP` (rodillas+tobillos, activación inferior) no calienta hombro pese a incluir ejercicios de tren superior pesado | `app-6-extra.js:2320` | Parcial — 10 rutinas reales «Cardio + Core» no tocan `hombros`; 2 de ellas (Diana Paola Diaz, Chema) incluyen Remo Ergómetro (tracción de espalda/hombro) sin ningún calentamiento de hombro dedicado |
+| 🟡 | El bucket `cardio` de `MUSCLE_WARMUP_MAP` (rodillas+tobillos, activación inferior) no calienta hombro pese a incluir ejercicios de tren superior pesado | `app-6-extra.js:2320` | Parcial — 10 rutinas reales «Cardio + Core» no tocan `hombros`; 2 de ellas (Dora P., Chucho) incluyen Remo Ergómetro (tracción de espalda/hombro) sin ningún calentamiento de hombro dedicado |
 | 🟢 | Duplicado de nombre «Círculos de muñeca» (`wh5` en hombros, `wm1` en muñecas) — mismo texto, distinto icono | `app-6-extra.js:2250,2275` | No — es un dato medido, `wh5` nunca se sirve (posición 5 de 5, ver hallazgo #3); confusión posible solo si el coach lo busca a mano en el selector |
 | 🟢 | `wc1`/`wc4` figuran como 🟡 «modificar» (más pequeño / suave) para aductor/abductor en el dictamen, pero el motor no tiene un modo «modificado», solo incluye/excluye | `docs/dictamen-laura-dolor-2026-08-08.md` §3.1 | No — cero reportes activos de aductor/abductor hoy en toda la base |
 
@@ -217,8 +217,8 @@ como hallazgo de contenido, no como bloqueo de seguridad.
   desde v454 (`limitationsFor`, `avi-core.js:965-983`) — confirmado: es la vía por la que el
   reporte del propio coach (14-sep) llega a filtrar su propia rutina auto-derivada.
 - **El motor de filtrado por sí mismo funciona bien en las rutas auto-derivadas** — corrí
-  `buildWarmup` contra 3 casos reales con limitación activa (Andrés/lumbar+isquios, Laura Ramirez
-  Rueda/rodilla, Miguel Pulido/rodilla) y en los 3 casos el ítem correcto sale del pool (`wai3`,
+  `buildWarmup` contra 3 casos reales con limitación activa (Andrés/lumbar+isquios, Lucía Ríos
+  Rueda/rodilla, Mario Parra/rodilla) y en los 3 casos el ítem correcto sale del pool (`wai3`,
   `wc2`+`wr2`) y se sustituye por el siguiente disponible sin vaciar el puesto.
 - **118 de 124 rutinas reales (95%) usan la vía auto-derivada** — recensado directamente con
   `SELECT` (127 client + 7 coach = 124; 6 con `warmup` propio, 70 con `warmup:[]`, 48 sin la
@@ -230,7 +230,7 @@ como hallazgo de contenido, no como bloqueo de seguridad.
   sobre `wai1`/`wai2` (4 y 5 de 118) precisamente porque la activación evita repetir el patrón
   sentadilla/zancada que ya usó la movilidad de cadera/rodilla — coincide con lo que CLAUDE.md
   documenta haber medido en v594 (0 de 105 con doble sentadilla, contra 54 antes).
-- **Danilo (hernia lumbar L5, lista manual del 22-ago) no es víctima hoy**: verificado ítem por
+- **Darío (hernia lumbar L5, lista manual del 22-ago) no es víctima hoy**: verificado ítem por
   ítem, ninguno de sus 11 movimientos manuales está en la lista de exclusión lumbar.
 - **`GEN_ZONE_EXCL.isquios` (regex, no lista de ids) es una decisión deliberada de Laura**
   (documentada en `avi-core.js:449-467` y en `docs/veredictos-grasa-2026-09-11.md:70-87`) para el
@@ -240,7 +240,7 @@ como hallazgo de contenido, no como bloqueo de seguridad.
 
 ## Sospechas sin medir
 
-- **Claudia Valbuena y Estella Rodríguez** (4 listas manuales idénticas, del 29-jun, antes del
+- **Carla Vargas y Elena Romero** (4 listas manuales idénticas, del 29-jun, antes del
   filtro v424): hoy no tienen `notes` ni `painCare`, así que no son víctimas — pero si alguna vez
   declaran una limitación de lumbar/rodilla/aductor/abductor, sus listas manuales YA contienen
   ítems que el filtro les quitaría hoy mismo si fueran auto-derivadas (`wai2`, `we5`, `wac3` en
@@ -287,7 +287,7 @@ estaba en la lista de aductor/abductor pero no en la de rodilla — la reviso ab
 `slice(0,2)` toma `wc1` + `wc4`. Las dos ya las tengo dictaminadas explícitamente para rodilla desde
 el 8-ago (`wc1` círculos de cadera, `wc4` puente de glúteo — ✅ ambas).
 
-Y el conjunto completo que le queda a Laura Ramirez Rueda y a Miguel Pulido es:
+Y el conjunto completo que le queda a Lucía Ríos y a Mario Parra es:
 **articulares** `wc1, wc4, wr1, wr3, wt1, wt2` · **activación** `wai3, wai4` (esto último ya lo
 confirmé corriendo el motor: con rodilla activa, `wai1`/`wai2` salen por id y quedan `wai3`+`wai4`).
 

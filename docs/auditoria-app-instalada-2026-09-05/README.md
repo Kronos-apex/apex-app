@@ -54,7 +54,7 @@ Medido contra las 24 personas reales hoy: **las 10 que tienen push son las 10 qu
 entrenando esta semana.** Las 14 sin push son las 7 que nunca entrenaron más las que se
 fueron. O sea que **RESCUE y COMEBACK —las notificaciones hechas para traer de vuelta a quien se
 fue— solo pueden hablarle a quien ya volvió.**
-🔴 El caso que lo retrata: **Yovan Tellez entrenó HOY (5-sep), lleva 2 sesiones, y no tiene push
+🔴 El caso que lo retrata: **Yesid Torres entrenó HOY (5-sep), lleva 2 sesiones, y no tiene push
 ni teléfono.** Es exactamente la persona que un recordatorio salvaría, y es inalcanzable.
 Y solo **8 de 24 tienen teléfono guardado**, que es la única vía alterna.
 
@@ -64,8 +64,8 @@ respuesta cortada o un error del servidor **se guarda y se sirve después**. Enc
 de los 3 `Uncaught SyntaxError: Unexpected end of input` registrados en v470, v479 y v507.
 
 ### 4. 🔴 Suscripciones duplicadas que cuentan doble (B1)
-**Natalia Martinez y Samuel Cifuentes tienen 2 filas cada uno.** Verificado en los logs de la
-edge de hoy: Natalia recibe 2 envíos «✅» en cada una de las 3 rondas diarias. La poda solo actúa
+**Nadia Mejía y Salomón Cárdenas tienen 2 filas cada uno.** Verificado en los logs de la
+edge de hoy: Nadia recibe 2 envíos «✅» en cada una de las 3 rondas diarias. La poda solo actúa
 ante un 410/404; una fila que nunca falla así se cuenta como éxito para siempre aunque lleve un
 mes sin refrescarse.
 
@@ -103,7 +103,7 @@ ronda está tanto en lo que se cayó como en lo que se sostuvo.
   v426 sigue cerrado); `sw.js` navega bien al chat con la app abierta.
 - **El gotcha de v551 quedó cerrado de verdad** — verificado con datos reales de hoy, no leyendo
   código.
-- La suscripción de **iPhone** (Kathe) funciona sin errores en 24 h.
+- La suscripción de **iPhone** (Karen) funciona sin errores en 24 h.
 - `delete-account` cierra bien el acceso: nadie borra la cuenta de otro y la del coach está
   protegida.
 - `refresh_snapshot` cumple su promesa: el cliente no puede inflar racha ni nivel.

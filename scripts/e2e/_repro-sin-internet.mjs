@@ -1,7 +1,7 @@
 // ¿Se puede ENTRAR a AVI sin internet?
 //
 // La web promete, en su FAQ y con esas palabras: «Si. La app se guarda en tu telefono, asi
-// que entra y funciona aunque en el gimnasio no haya senal». Claudia reporto lo contrario
+// que entra y funciona aunque en el gimnasio no haya senal». Carla reporto lo contrario
 // el 31-ago. Esto lo reproduce en vez de razonarlo.
 //
 // Metodo, que es el de ella: se entra UNA vez con red (para que el Service Worker cachee el

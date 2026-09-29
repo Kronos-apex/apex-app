@@ -17,7 +17,7 @@ const SABOTAJES = [
   [CORE, '1· CREA el récord que no existe: resucita el que el coach borró a mano (v483)',
     '  Object.keys(out).forEach(key => {',
     '  const _todas=new Set(Object.keys(out)); hist.forEach(s=>((s&&s.exercises)||[]).forEach(ex=>{ if(ex&&(ex.id||ex.name))_todas.add(ex.id||ex.name); }));\n  _todas.forEach(key => {\n    if(!out[key]) out[key]={val:0,kg:0,unit:\'kg\',reps:0,date:\'2000-01-01T00:00:00Z\',name:key};'],
-  [CORE, '2· una serie ANOTADA y no marcada pasa a ser récord (el caso de Nataly)',
+  [CORE, '2· una serie ANOTADA y no marcada pasa a ser récord (el caso de Nayla)',
     '          if (!se || se.done !== true) continue;',
     '          if (!se) continue;'],
   [CORE, '3· se cura hacia ATRÁS: una sesión ANTERIOR pisa el récord que un humano corrigió',

@@ -38,10 +38,10 @@ const ok = (cond, msg, extra) => { console.log(`  ${cond ? '✅' : '❌'} ${msg}
 
 const setup = n => `(()=>{try{
  ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none'});
- const c={id:'cF4',name:'Santiago Rivera',email:'s@x.com',goal:'Ganar músculo',level:'Principiante',days:3,routines:[]};
+ const c={id:'cF4',name:'Sebastián Rincón',email:'s@x.com',goal:'Ganar músculo',level:'Principiante',days:3,routines:[]};
  DB.clients=[c];CUR.clientId='cF4';CUR.loggedAs='client';
  const ms=[];const base=Date.now()-86400000*3;
- for(let i=0;i<${n};i++)ms.push({from:i%2?'client':'coach',text:i%2?'Listo coach, terminé el de piernas 💪':'¿Cómo te fue con la rutina de hoy, Santiago?',date:new Date(base+i*3600000).toISOString()});
+ for(let i=0;i<${n};i++)ms.push({from:i%2?'client':'coach',text:i%2?'Listo coach, terminé el de piernas 💪':'¿Cómo te fue con la rutina de hoy, Sebastián?',date:new Date(base+i*3600000).toISOString()});
  DB.msgs={cF4:ms};
  showScreen('s-client');
  const tabs=document.querySelectorAll('.cntab');cnTab('cn-messages',tabs[2]);
@@ -132,9 +132,9 @@ await ev(`(()=>{document.documentElement.removeAttribute('data-fs');return 1})()
 console.log('\n── bandeja del coach');
 const rCoach = await ev(`(()=>{try{
  DB.clients=[
-  {id:'k1',name:'Andrea Molina'},{id:'k2',name:'Santiago Rivera'},
-  {id:'k3',name:'Miguel Pulido'},{id:'k4',name:'Nataly Gómez'},
-  {id:'k5',name:'Kathe Beltrán',suspended:true}];
+  {id:'k1',name:'Andrea Molina'},{id:'k2',name:'Sebastián Rincón'},
+  {id:'k3',name:'Mario Parra'},{id:'k4',name:'Nayla Gómez'},
+  {id:'k5',name:'Karen Bernal',suspended:true}];
  DB.msgs={k1:[{from:'client',text:'Coach, me dolió la rodilla',date:new Date().toISOString()}]};
  CUR.loggedAs='coach';
  showScreen('s-coach');
@@ -145,7 +145,7 @@ await sleep(600);
 const mc = await ev(`(()=>{const s=document.getElementById('msgs-sinconv');
  const filas=s?s.querySelectorAll('.cli').length:0;
  const txt=(document.getElementById('msgs-list')||{}).innerText||'';
- return {existe:!!s, filas, mencionaSuspendido:/Kathe/.test(txt), alto:Math.round((document.getElementById('msgs-list')||{scrollHeight:0}).scrollHeight)};})()`);
+ return {existe:!!s, filas, mencionaSuspendido:/Karen/.test(txt), alto:Math.round((document.getElementById('msgs-list')||{scrollHeight:0}).scrollHeight)};})()`);
 console.log('  ', JSON.stringify(mc));
 ok(rCoach === 'ok', 'bandeja: se arma sin lanzar', rCoach);
 ok(mc.existe, 'bandeja: aparece la sección «Sin conversación»');
@@ -155,7 +155,7 @@ ok(!mc.mencionaSuspendido, 'bandeja: el asesorado suspendido no aparece como pen
 const abre = await ev(`(()=>{const f=document.querySelectorAll('#msgs-sinconv .cli')[0];if(!f)return 'sin fila';
  f.click();const on=document.querySelector('#coach-chat.cchat.on');
  return on?((document.getElementById('cchat-name')||{}).textContent||'sin nombre'):'no abrió';})()`);
-ok(/Miguel|Nataly|Santiago/.test(abre), 'bandeja: tocar una fila abre el chat de esa persona', abre);
+ok(/Mario|Nayla|Sebastián/.test(abre), 'bandeja: tocar una fila abre el chat de esa persona', abre);
 await ev(`(()=>{if(typeof closeCoachChat==='function')closeCoachChat();return 1})()`);
 {
   const png = await send('Page.captureScreenshot', { format: 'png' });

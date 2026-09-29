@@ -50,7 +50,7 @@ const booted = await waitFor("typeof renderProgressPanel==='function' && typeof 
 if (!booted) { log('🔴 la app no arrancó (o los módulos no cargaron)'); process.exit(1); }
 
 // ── EL FIXTURE: los tres casos que importan, con los números REALES de producción ──
-// (1) Astrid: récord 42,5 kg y última sesión 4,5 (que son 45 con el punto corrido). Es el caso
+// (1) Andrea: récord 42,5 kg y última sesión 4,5 (que son 45 con el punto corrido). Es el caso
 //     que el panel pintaba como «4,5 kg ↓ bajando 35,5».
 // (2) Alguien cuya última sesión ES su récord → no hay nada que aclarar.
 // (3) Alguien PLANTADO: 10 sesiones al mismo peso en 9 semanas, que es lo que el detector de
@@ -62,7 +62,7 @@ const montaje = await ev(`(async()=>{try{
     exercises:[{id:exId,name:nom,muscle:musc,track:'peso_reps',
       sets:[{done:true,kg:String(kg),reps:'10'}]}]});
   DB.clients=[
-    {id:'fk1',name:'Astrid Fixture',level:'Intermedio',days:3,goal:'Ganar músculo',routines:[{id:'r1',day:'Lunes',name:'Plan',exercises:[]}]},
+    {id:'fk1',name:'Andrea Fixture',level:'Intermedio',days:3,goal:'Ganar músculo',routines:[{id:'r1',day:'Lunes',name:'Plan',exercises:[]}]},
     {id:'fk2',name:'Enrecord Fixture',level:'Intermedio',days:3,goal:'Ganar músculo',routines:[{id:'r2',day:'Lunes',name:'Plan',exercises:[]}]},
     {id:'fk3',name:'Plantada Fixture',level:'Intermedio',days:3,goal:'Ganar músculo',routines:[{id:'r3',day:'Lunes',name:'Plan',exercises:[]}]},
   ];
@@ -109,17 +109,17 @@ const fila = async nombre => await ev(`(()=>{const l=document.getElementById('pr
   const r=c.querySelector('.pex-row');
   return r?r.innerText.replace(/\\s+/g,' ').trim():null;})()`);
 
-const fAstrid = await fila('Astrid Fixture');
+const fAstrid = await fila('Andrea Fixture');
 const fRecord = await fila('Enrecord Fixture');
 const fPlant = await fila('Plantada Fixture');
 log('\n  ── lo que se LEE en cada fila ──');
-log('   Astrid   : ' + fAstrid);
+log('   Andrea   : ' + fAstrid);
 log('   En récord: ' + fRecord);
 log('   Plantada : ' + fPlant);
 log('');
 
 // ── EL DEFECTO QUE SE ARREGLA ──
-check('C1 el número grande de Astrid es su RÉCORD (42,5), no su última sesión (4,5)',
+check('C1 el número grande de Andrea es su RÉCORD (42,5), no su última sesión (4,5)',
   /42[.,]5/.test(fAstrid || ''), fAstrid);
 check('C2 y ese número va ROTULADO: un número desnudo es el defecto', /récord/i.test(fAstrid || ''), '');
 check('C3 la fila DICE cuál fue su última sesión, que es lo que explica la gráfica',
@@ -139,7 +139,7 @@ check('C7 y su titular también es su récord rotulado (25 kg)',
 const filtro = await ev(`(async()=>{try{_progFilter='stalled';await renderProgressPanel();
   document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); });
   const t=document.getElementById('prog-list').innerText;
-  return {plantada:/Plantada/.test(t),astrid:/Astrid/.test(t),record:/Enrecord/.test(t)};
+  return {plantada:/Plantada/.test(t),andrea:/Andrea/.test(t),record:/Enrecord/.test(t)};
 }catch(e){return {err:e.message}}})()`);
 check('C8 el filtro «Estancados» deja SOLO a quien lo está',
   filtro && filtro.plantada && !filtro.astrid && !filtro.record, JSON.stringify(filtro));

@@ -9,7 +9,7 @@ al usuario por su JWT **y** autoriza al destinatario, `daily-notifs` v7 usa el s
 cerrada—, el aislamiento entre asesorados sigue en 0 filas ajenas, y el arreglo de `showcase_ins` de hoy
 está VIVO en producción (verificado contra `pg_policies`). **No tengo ningún 🔴.**
 Lo que sí encontré es un **defecto de datos que crece solo y nadie mira**: `push_subscriptions` deduplica
-por el jsonb ENTERO, así que un mismo teléfono acumula filas — **Nataly tiene 8 filas para UN solo
+por el jsonb ENTERO, así que un mismo teléfono acumula filas — **Nayla tiene 8 filas para UN solo
 endpoint** y cada recordatorio le sale 8 veces por la puerta (medido en los logs de hoy). La tabla pasó
 de 10 a 18 filas en tres semanas y **7 de esas 18 son duplicados patológicos de una sola persona**.
 De la CLASE que me pediste enumerar: el único hermano vivo de `showcase_ins` es **`fb_ins` de
@@ -61,7 +61,7 @@ select policyname, cmd, with_check from pg_policies
  where tablename='avi_showcase' and policyname='showcase_ins';
 -- showcase_ins | INSERT | ((coach_id = auth.uid()) AND private._is_moderator(auth.uid()))
 select private._is_moderator('0a6484ed…');              -- coach   → true
-select private._is_moderator('c52b90af…');              -- Astrid  → false
+select private._is_moderator('c52b90af…');              -- Andrea  → false
 select count(*) from community_moderators;              -- 1
 select count(*), count(distinct coach_id) from avi_showcase;  -- 1 fila, 1 coach
 ```
@@ -103,18 +103,18 @@ moderador que se agregue».
          count(distinct md5(subscription->>'endpoint'))       endpoints,
          count(distinct md5(subscription->'keys'->>'p256dh')) claves
     from push_subscriptions group by 1 order by filas desc;
-  -- Nataly            6e54e22b… →  8 filas ·  1 endpoint · 8 claves   ← patológico
-  -- Samuel Cifuentes  31bf6d19… →  2 filas ·  2 endpoints · 2 claves  ← 2 aparatos reales, legítimo
-  -- Natalia Martinez  78ea069c… →  2 filas ·  2 endpoints · 2 claves  ← legítimo
+  -- Nayla            6e54e22b… →  8 filas ·  1 endpoint · 8 claves   ← patológico
+  -- Salomón Cárdenas  31bf6d19… →  2 filas ·  2 endpoints · 2 claves  ← 2 aparatos reales, legítimo
+  -- Nadia Mejía  78ea069c… →  2 filas ·  2 endpoints · 2 claves  ← legítimo
   -- los otros 6 (incl. _coach)  →  1 fila cada uno
   ```
-  Las 8 filas de Nataly tienen **el mismo endpoint byte a byte** (`md5` del endpoint: 1 distinto) y se
+  Las 8 filas de Nayla tienen **el mismo endpoint byte a byte** (`md5` del endpoint: 1 distinto) y se
   acumularon entre el **12-ago y el 20-ago**, ~1 por apertura de app.
   Y sale en los logs de la edge de HOY: la ronda de la tarde imprimió **8 líneas**
   `[daily-notifs] afternoon → 6e54e22b-… ✅` en una sola pasada, y la respuesta fue
   `{"sent":17,…,"total":17}` para **9 personas**. O sea: **7 de los 17 envíos de cada ronda son basura.**
 - **Intenté tumbarlo así:**
-  (a) *¿No serán 8 aparatos suyos?* → No: `count(distinct md5(endpoint)) = 1`. Samuel y Natalia sí tienen
+  (a) *¿No serán 8 aparatos suyos?* → No: `count(distinct md5(endpoint)) = 1`. Salomón y Nadia sí tienen
   2 endpoints distintos, y ésos son aparatos de verdad — el control que separa las dos cosas.
   (b) *¿No lo frena `shouldPostPush`?* → Lo frenaría, pero `ensureClientPush` pasa `force=true` a
   propósito (es el self-heal del cutover de v320) y ese camino **no consulta el guard**.
@@ -122,8 +122,8 @@ moderador que se agregue».
   201, así que la poda no lo toca nunca; y `daily-notifs` no poda en absoluto. **No hay mecanismo de
   auto-cura: sólo crece.**
   (d) *¿Será un residuo viejo?* → No: la auditoría de julio contó **10 filas**; hoy hay **18**, y las 8
-  de Nataly son todas posteriores al 12-ago.
-- **A quién le pasa:** a Nataly hoy, en cada uno de los 3 turnos diarios y en cada mensaje que le escriba
+  de Nayla son todas posteriores al 12-ago.
+- **A quién le pasa:** a Nayla hoy, en cada uno de los 3 turnos diarios y en cada mensaje que le escriba
   el coach por el chat (`send-push` también hace `.eq('client_id', target)` sobre esta tabla).
 - **Por qué NO lo marco 🔴, dicho con honestidad:** de los 8 mensajes que le llegan al teléfono, **sólo el
   cifrado con la clave ACTUAL puede descifrarse**; los otros 7 el navegador los descarta antes de
@@ -243,7 +243,7 @@ es la misma clase de superficie compartida que el showcase, pero con opt-in del 
 **S4 · La cascada Service Worker → suscripción nueva.** Hay **11 filas de `Failed to update a
 ServiceWorker`** en `app_errors` desde el 31-jul, en 5 personas, la última el 21-ago (v512), casi una por
 despliegue. Sospecho que ese fallo es lo que hace que el navegador rehaga la suscripción con claves
-nuevas y alimente H1 — encaja con las fechas de Nataly. **No lo probé:** las dos cosas pueden ser
+nuevas y alimente H1 — encaja con las fechas de Nayla. **No lo probé:** las dos cosas pueden ser
 independientes. Para probarlo haría falta correlacionar la hora exacta del error con la de la fila nueva
 en la misma persona, y `app_errors` sólo registra el fallo del que además reporta.
 
@@ -264,7 +264,7 @@ en la misma persona, y `app_errors` sólo registra el fallo del que además repo
 - **Las 6 edge functions:** 5 con `verify_jwt:true` (`send-push` v11, `delete-account` v4,
   `coach-create-client` v4, `refresh_snapshot` v7, `activate_public_profile` v2) y sólo `daily-notifs`
   sin él, con el candado de arriba.
-- **Aislamiento entre asesorados, impersonando a Astrid (JWT sintético en tx con rollback):**
+- **Aislamiento entre asesorados, impersonando a Andrea (JWT sintético en tx con rollback):**
   `user_data` **1 fila propia / 0 ajenas** · `push_subscriptions` 1 (la suya) · `app_errors` 0 ·
   `apex_data` 0 · `fb_pending()` 0 · `cmty_mod_reports()` 0. `community_reports` ni siquiera tiene grant
   (`permission denied for table`, que es la denegación por PRIVILEGIO, la buena).

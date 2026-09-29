@@ -12,8 +12,8 @@ la clave desde el panel — eso ya existe, solo que en silencio.
 Quien se registra, no confirma a tiempo, y vuelve días después con su clave CORRECTA recibe
 *«Email o contraseña incorrectos»* y pierde uno de sus 5 intentos (bloqueo de 30s a la quinta). No hay
 NINGÚN mensaje que diga «confirma tu correo primero», y no existe botón de reenviar la confirmación en
-ningún lugar de la app. **Le pasó de verdad a Edwin Ávila** (se registró 25-jul, nunca confirmó, no hay
-rastro de que volviera — se perdió) **y a Laura Ramírez** (15-sep: se registró con hotmail, quedó
+ningún lugar de la app. **Le pasó de verdad a Elías A.** (se registró 25-jul, nunca confirmó, no hay
+rastro de que volviera — se perdió) **y a Lucía Ríos** (15-sep: se registró con hotmail, quedó
 atascada, y 76 segundos después se registró OTRA VEZ con gmail — hoy tiene una cuenta viva y una
 fantasma con su nombre real que el coach nunca ve). Cómo lo tumbé: reproduje con `AUTH.signInEmail`
 espiado devolviendo la forma EXACTA que da Supabase para `email_not_confirmed` (HTTP 400, mismo código
@@ -42,7 +42,7 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
 ## Todos los hallazgos (tabla)
 | severidad | qué | dónde | ¿víctima hoy? |
 |---|---|---|---|
-| 🔴 | Login trata "sin confirmar" como "clave incorrecta", gasta un intento, sin mención al correo | `app-2-login.js:322-363` | Sí — Edwin Ávila (perdido), Laura Ramírez (duplicada) |
+| 🔴 | Login trata "sin confirmar" como "clave incorrecta", gasta un intento, sin mención al correo | `app-2-login.js:322-363` | Sí — Elías A. (perdido), Lucía Ríos (duplicada) |
 | 🔴 | La salida real para quien no recibe correos (coach resetea clave) no se comunica en ningún mensaje | `app-2-login.js` (mensajes de error) · edge `coach-create-client` v5 | Sí — 7 asesorados activos con dominio `@avi.com`/`@apex.com` |
 | 🟡 | Sin botón «reenviar correo de confirmación» en toda la app | `app-1-infra.js` (objeto `AUTH`) | Sí — cualquiera que pierda el primer correo de confirmación |
 | 🟡 | CLAUDE.md afirma que el coach NO puede cambiar la clave de un asesorado; el código SÍ lo permite | `CLAUDE.md` vs `app-3-coach.js:219-238` | No es hallazgo de seguridad — es doc desactualizada, pero puede confundir a la próxima sesión |
@@ -90,11 +90,11 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
     verificado con `nslookup` por mí — lo mide H1). La persona queda esperando un correo que nunca llega, sin
     saber que la salida real es pedírselo al coach en persona.
   - **Medido (unidad: personas, `auth.users` + `user_data`, excluidas las 2 cuentas QA):**
-    **9 asesorados reales con correo `@avi.com`/`@apex.com`** — 2 suspendidos/bloqueados (Miguel, Nataly:
-    no pueden entrar de ningún modo, ni con clave nueva) y **7 ACTIVOS que sí pueden entrar** (Astrid,
-    Claudia, Danilo, Kathe, Luz/Estella, Natalia, Samuel). De esos 7, **5 entraron en los últimos 30 días**
-    (Claudia 26-sep, Luz 23-sep, Astrid 15-sep, Danilo 14-sep, Natalia 2-sep) — son quienes hoy dependen de
-    este camino si olvidan su clave. 6 de 7 tienen teléfono guardado (WhatsApp); Samuel no tiene teléfono
+    **9 asesorados reales con correo `@avi.com`/`@apex.com`** — 2 suspendidos/bloqueados (Mario, Nayla:
+    no pueden entrar de ningún modo, ni con clave nueva) y **7 ACTIVOS que sí pueden entrar** (Andrea,
+    Carla, Darío, Karen, Luisa/Elena, Nadia, Salomón). De esos 7, **5 entraron en los últimos 30 días**
+    (Carla 26-sep, Luisa 23-sep, Andrea 15-sep, Darío 14-sep, Nadia 2-sep) — son quienes hoy dependen de
+    este camino si olvidan su clave. 6 de 7 tienen teléfono guardado (WhatsApp); Salomón no tiene teléfono
     Y no ha entrado desde el 10-jul (79 días).
 - Q3 · Los 2 registros sin confirmar: **CIERTA, y con dos desenlaces distintos medidos por persona.**
   - **Qué ve al registrarse:** `signupClient` (`app-3-coach.js:1673-1697`) — si Supabase exige confirmar
@@ -111,13 +111,13 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
     **le gasta uno de los 5 intentos** que bloquean 30s (`app-2-login.js:353-366`). Nada distingue «no
     confirmaste tu correo» de «te equivocaste de clave». Probado con harness propio (espía, cero red real).
   - **¿Terminó con otra cuenta que sí funciona?** Medido cruzando `auth.users`+`user_data`:
-    - **Laura (15-sep): SÍ.** Se registró a las 13:33:09 con `lau…@hotmail.com` (metadata `name:"Laura"`)
+    - **Laura (15-sep): SÍ.** Se registró a las 13:33:09 con `oculto@hotmail.com` (metadata `name:"Laura"`)
       y quedó sin confirmar — cuenta fantasma, para siempre. **76 segundos después**, a las 13:34:22, creó
-      OTRA cuenta con `lau…@gmail.com`; esa ficha (`user_id 21e46a18…`, `name:"Laura Ramirez
+      OTRA cuenta con `oculto@gmail.com`; esa ficha (`user_id 21e46a18…`, `name:"Lucía Ríos
       Rueda"`) existe, se confirmó 9 minutos después (13:43:49) y **sí entrena** (`last_sign_in_at`
       2026-09-21). Ella misma se salió del atasco reintentando con Gmail — pero le quedaron **DOS cuentas**:
       una viva y una fantasma con su nombre real en la metadata, invisible para el coach.
-    - **Edwin/«pin…» (25-jul): NO.** Se registró como «Edwin Ávila» (`pin…@gmail.com`,
+    - **Elías/«pin…» (25-jul): NO.** Se registró como «Elías A.» (`oculto@gmail.com`,
       meta `goal:'Perder grasa'`) y nunca confirmó. Busqué una ficha con su nombre en toda `user_data`:
       **cero coincidencias.** No volvió a intentarlo con otro correo, no lo creó el coach — se perdió
       en el registro y no hay rastro de que haya vuelto.
@@ -125,7 +125,7 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
   otras 3 plantillas quedó en un estado que la documentación del propio proyecto CONTRADICE, y no lo pude
   resolver con mis herramientas (NO SE PUDO MEDIR esa parte).**
   - **SMTP propio: Brevo**, conectado el 2026-06-04 (`docs/bitacora.md:8386-8393`) — `smtp-relay.brevo.com`,
-    remitente verificado `avi…@gmail.com`, límite `30 correos/hora`, «Confirm email» ACTIVADO.
+    remitente verificado `oculto@gmail.com`, límite `30 correos/hora`, «Confirm email» ACTIVADO.
     No es el correo por defecto de Supabase (limitado y con tendencia a spam) como sugería la pista del
     orquestador — eso está superado desde junio.
   - **CONTRADICCIÓN sin resolver, dejo las dos citas:** la bitácora del 2026-06-04 dice que se configuraron
@@ -162,7 +162,7 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
     el mensaje: *«Ese Google no tiene cuenta en AVI. Si tu coach ya te creó una, entra con tu correo y clave
     (Google se conecta después, desde tu Perfil). Si eres nuevo, toca "Crear cuenta".»* + toast *«Entra con
     tu correo y clave, o crea tu cuenta. 👇»*. Es código y comentarios que documentan una auditoría anterior
-    (2026-07-01, caso real Claudia/Luz/Nataly) — **este camino ya se reprodujo y se cerró en producción.**
+    (2026-07-01, caso real Carla/Luisa/Nayla) — **este camino ya se reprodujo y se cerró en producción.**
   - **¿Por qué las 3 siguen vivas entonces?** El self-heal solo corre cuando la persona VUELVE a intentar
     (abre la app con esa sesión, o vuelve a tocar Google). Las 3 nunca regresaron — ni una vez — así que el
     auto-borrado nunca se disparó. No están en un limbo activo: están simplemente **abandonadas**, y

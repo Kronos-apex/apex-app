@@ -60,7 +60,7 @@ try {
     //    NOMBRE PELADO, o wfShare sigue viendo su variable vacia y no dibuja nada.
     // (sin comillas invertidas: esto vive DENTRO de un template literal — 5a vez del gotcha)
     _wfShareAvatar=(SIN_FOTO?null:img); _wfBgPhoto=img;
-    _wfShareData={name:'Astrid',fullName:'Astrid Beltran',rname:'Tren inferior · Fuerza',
+    _wfShareData={name:'Andrea',fullName:'Andrea Bernal',rname:'Tren inferior · Fuerza',
       fecha:'lunes, 15 de septiembre',
       chips:[['Duración','48 min'],['Series','18/18'],['Volumen','4.320 kg'],['Calorías','412 kcal']],
       prs:[{name:'Prensa de Pierna',val:95,unit:'kg',reps:12},

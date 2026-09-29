@@ -2,9 +2,9 @@
 // _verify-gracia.mjs — EL PERÍODO DE GRACIA, VISTO DESDE LA PANTALLA (v528)
 //
 // QUÉ CAMBIÓ: hasta v527 el plan vencía y la app se apagaba **el mismo día**. La auditoría de
-// negocio del 24-ago midió qué hizo eso: **cobra de quien iba a pagar igual** (Claudia y Luz
-// entrenaron el 1-ago con el plan vencido y pagaron el día 3) **y expulsa al que dudaba** (Yeison
-// y Valery Valbuena llevan 24 días bloqueados, sin volver y sin pagar). Ahora hay 7 días de
+// negocio del 24-ago midió qué hizo eso: **cobra de quien iba a pagar igual** (Carla y Luisa
+// entrenaron el 1-ago con el plan vencido y pagaron el día 3) **y expulsa al que dudaba** (Yamid
+// y Vanesa Vargas llevan 24 días bloqueados, sin volver y sin pagar). Ahora hay 7 días de
 // gracia con acceso completo y una banda que lo explica.
 //
 // 🔴 LO QUE ESTE HARNESS EXISTE PARA CAZAR: la banda es la ÚNICA forma que tiene la persona de

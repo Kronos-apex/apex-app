@@ -439,16 +439,16 @@ test('getSexCode: cualquier valor distinto de "M" → "F"', () => {
 section('2. Macros — el formulario del coach calcula con el MISMO motor que la app (v436)');
 // 🔴 `calcMacrosSugeridos` era una CUARTA cuenta: la que rellenaba «Editar plan». Hacía sobre el
 // PESO TOTAL lo que el motor corrige desde v428 (sobre IMC 30, proteína y grasa van sobre peso de
-// REFERENCIA). Medido sobre la base real el 2026-08-04: a Kathe (IMC 32) le proponía 2.710 kcal
-// cuando le corresponden 1.930, y a Luz (IMC 33,7) 2.602 contra 1.730 — a las dos, con objetivo de
+// REFERENCIA). Medido sobre la base real el 2026-08-04: a Karen (IMC 32) le proponía 2.710 kcal
+// cuando le corresponden 1.930, y a Luisa (IMC 33,7) 2.602 contra 1.730 — a las dos, con objetivo de
 // PERDER GRASA, les proponía comer POR ENCIMA de su propio gasto. Se borró; el formulario usa
 // `nutritionEstimate`, que es lo que la app entrega de verdad.
 
 test('🔴 v436 · a quien quiere perder grasa NUNCA se le propone comer por encima de su gasto', () => {
   // Los dos casos reales que lo destaparon.
   const casos = [
-    { name: 'Kathe', sex: 'F', age: 28, height: 163, weight: 85, activityFactor: 1.55, goal: 'Perder grasa' },
-    { name: 'Luz', sex: 'F', age: 39, height: 156, weight: 82, activityFactor: 1.55, goal: 'Perder grasa' },
+    { name: 'Karen', sex: 'F', age: 28, height: 163, weight: 85, activityFactor: 1.55, goal: 'Perder grasa' },
+    { name: 'Luisa', sex: 'F', age: 39, height: 156, weight: 82, activityFactor: 1.55, goal: 'Perder grasa' },
   ];
   for (const c of casos) {
     const est = nutritionEstimate(c, c.weight);
@@ -522,7 +522,7 @@ test('cliente sin suscripción previa (stored=null) → postea', () => {
 section('5. delClient — guard de confirmación');
 
 test('confirm=false → no borra (retorna false)', () => {
-  const client = { id: 'c1', name: 'Kathe' };
+  const client = { id: 'c1', name: 'Karen' };
   assert.strictEqual(delClientGuard(client, () => false), false);
 });
 
@@ -531,7 +531,7 @@ test('client=null → no borra', () => {
 });
 
 test('confirm=true + client válido → procede (retorna true)', () => {
-  const client = { id: 'c1', name: 'Kathe' };
+  const client = { id: 'c1', name: 'Karen' };
   assert.strictEqual(delClientGuard(client, () => true), true);
 });
 
@@ -584,7 +584,7 @@ test('🔴 el plan se REPARTE en la semana, no se amontona en días seguidos', (
 
 // 🔴 SOLO DÍAS HÁBILES (2026-08-22, regla de Camilo: «no trabajo sábados ni domingos»). El coach
 // acompaña las sesiones en su gimnasio, así que un entreno en fin de semana es un entreno sin él.
-// Antes del cambio pasaba de verdad: a Danilo le tocaba el DOMINGO y a Felipe el SÁBADO.
+// Antes del cambio pasaba de verdad: a Darío le tocaba el DOMINGO y a Fabio el SÁBADO.
 test('🔴 v514 · ninguna rutina cae en sábado ni domingo, arranque donde arranque', () => {
   const finde = [];
   core.GEN_WEEK_DAYS.forEach((_d, i) => {
@@ -736,7 +736,7 @@ test('🔴 v514 · los 18 festivos de 2026, uno por uno', () => {
   assert.deepStrictEqual(core.festivosCO(2026), [
     '2026-01-01', // Año Nuevo
     '2026-01-12', // Reyes (6-ene martes → lunes 12)
-    '2026-03-23', // San José (19-mar jueves → lunes 23)
+    '2026-03-23', // San Jorge (19-mar jueves → lunes 23)
     '2026-04-02', // Jueves Santo — NO se mueve
     '2026-04-03', // Viernes Santo — NO se mueve
     '2026-05-01', // Día del Trabajo
@@ -985,7 +985,7 @@ test('Fase C: excluir gana sobre priorizar (no se fuerza un ejercicio vetado)', 
 test('< 16 años INTERMEDIO → split de gym (no full body) PERO sin carga axial con barra', () => {
   // El NIVEL decide la estructura, no la edad: un menor intermedio sin condiciones recibe su
   // split (Empuje/Tracción/Pierna). La seguridad de menores es de SELECCIÓN (sin carga axial
-  // con barra), no de estructura. Corrección 2026-06-23 (caso Samuel, 14, casi intermedio).
+  // con barra), no de estructura. Corrección 2026-06-23 (caso Salomón, 14, casi intermedio).
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', age: 14, days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
   assert.deepStrictEqual(routines.map(r => r.name), ['Empuje', 'Tracción', 'Pierna'], 'menor intermedio debe recibir split, no Full Body');
   const nombres = routines.flatMap(r => r.exercises).map(e => e.name.toLowerCase());
@@ -2365,14 +2365,14 @@ test('EL BUG P0-2: sesión entrenada offline sobrevive al merge del boot', () =>
     history: [{ id: 's_offline', date: '2026-07-01T06:00:00.000Z', totalVol: 500 }],
     prs: { sentadilla: { val: 90, reps: 5, date: '2026-07-01T06:30:00Z' } },
     msgs: [], bodyweight: [{ date: '2026-07-01', kg: 74 }], medidas: [], photos: [],
-    routines: [{ id: 'r_vieja' }], profile: { name: 'Luz' },
+    routines: [{ id: 'r_vieja' }], profile: { name: 'Luisa' },
   };
   const cloud = { // fila de la nube: sin la sesión, pero con rutina nueva del coach
     history: [{ id: 's_ayer', date: '2026-06-30T18:00:00.000Z', totalVol: 400 }],
     prs: { sentadilla: { val: 100, reps: 3, date: '2026-06-28T00:00:00Z' } },
     msgs: [{ from: 'coach', text: 'Nueva rutina', date: '2026-07-01T07:00:00Z' }],
     bodyweight: [], medidas: [], photos: [],
-    routines: [{ id: 'r_nueva' }], profile: { name: 'Luz' }, user_id: 'u1', role: 'client',
+    routines: [{ id: 'r_nueva' }], profile: { name: 'Luisa' }, user_id: 'u1', role: 'client',
   };
   const merged = mergeAuthRow(cached, cloud);
   assert.strictEqual(merged.history.length, 2, 'La sesión offline Y la de la nube quedan');
@@ -2392,7 +2392,7 @@ test('mergeAuthRow: robusto ante filas incompletas o null', () => {
   assert.strictEqual(out2.history.length, 1, 'Sin fila de nube, el respaldo local no se pierde');
 });
 
-// 12c. parseOAuthReturn — retorno de linkIdentity/OAuth (caso Luz 2026-07-02: los
+// 12c. parseOAuthReturn — retorno de linkIdentity/OAuth (caso Luisa 2026-07-02: los
 // errores de GoTrue vuelven en el hash de la URL y se perdían en silencio).
 const { parseOAuthReturn } = core;
 
@@ -2797,7 +2797,7 @@ test('communityPrPayload: solo récords de PESO ya registrados, anti-cheat de UX
   assert.strictEqual(communityPrPayload({ name: 'y'.repeat(200), unit: 'kg', val: 50 }).exercise_name.length, 80);
 });
 
-test('leadPending: el lead atendido por el coach NO reaparece (caso Hernán/Cristian)', () => {
+test('leadPending: el lead atendido por el coach NO reaparece (caso Hugo/César)', () => {
   const hernan = { id: 'h1', wantsCoach: true, wantsCoachAt: '2026-07-06T19:33:26.070Z' };
   // sin registro de atención → pendiente (conducta vieja)
   assert.strictEqual(leadPending(hernan, {}), true);
@@ -2833,7 +2833,7 @@ test('leadPending: datos raros fallan del lado VISIBLE (perder un lead cuesta pl
 
 test('clientAttentionRank: un lead atendido deja de ocupar el tier 3', () => {
   const now = D(2026, 6, 22, 10);
-  const c = { id: 'h1', name: 'Hernán', selfReg: true, wantsCoach: true, wantsCoachAt: '2026-07-06T19:33:26.070Z',
+  const c = { id: 'h1', name: 'Hugo', selfReg: true, wantsCoach: true, wantsCoachAt: '2026-07-06T19:33:26.070Z',
     payments: [{ date: '2026-07-20', dueDate: '2026-08-20', amount: 1 }] };
   const pendiente = clientAttentionRank(c, [], now, {});
   assert.strictEqual(pendiente.reason, 'lead');
@@ -2995,33 +2995,33 @@ test('communityEmptyState: valores basura cuentan como 0 (no inventan gente)', (
 // ── A1 adopción — prueba social del opt-in (dato real: 23 en el gym, 6 con perfil) ──
 test('communityPeersLine: nombra a la gente del gym, en orden estable, con «y N más»', () => {
   const gym = h => ({ handle: h, is_private: true, gym: true }); // gym = señal REAL del servidor (F3)
-  const l = communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Kathe'), gym('Luz'), gym('Natalia')]);
+  const l = communityPeersLine([gym('Salomón'), gym('Andrea'), gym('Karen'), gym('Luisa'), gym('Nadia')]);
   assert.strictEqual(l.scope, 'gym');
   assert.strictEqual(l.total, 5);
-  assert.deepStrictEqual(l.names, ['Astrid', 'Kathe']); // alfabético: el repintado no baraja nombres
+  assert.deepStrictEqual(l.names, ['Andrea', 'Karen']); // alfabético: el repintado no baraja nombres
   assert.strictEqual(l.extra, 3);
-  assert.strictEqual(l.text, 'Astrid, Kathe y 3 más de tu gym ya están aquí');
+  assert.strictEqual(l.text, 'Andrea, Karen y 3 más de tu gym ya están aquí');
   // el mismo insumo en otro orden da EXACTAMENTE la misma línea (determinismo)
-  const l2 = communityPeersLine([gym('Luz'), gym('Natalia'), gym('Kathe'), gym('Samuel'), gym('Astrid')]);
+  const l2 = communityPeersLine([gym('Luisa'), gym('Nadia'), gym('Karen'), gym('Salomón'), gym('Andrea')]);
   assert.strictEqual(l2.text, l.text);
   // `picked` son los perfiles ORIGINALES (la UI pinta esos avatares, sin re-filtrar por su cuenta)
   assert.strictEqual(l.picked.length, 2);
-  assert.strictEqual(l.picked[0].handle, 'Astrid');
+  assert.strictEqual(l.picked[0].handle, 'Andrea');
 });
 
 test('communityPeersLine: concordancia y conteos exactos (1, 2 y 3 personas)', () => {
   const gym = h => ({ handle: h, is_private: true, gym: true }); // gym = señal REAL del servidor (F3)
-  assert.strictEqual(communityPeersLine([gym('Samuel')]).text, 'Samuel de tu gym ya está aquí');
-  assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid')]).text, 'Astrid y Samuel de tu gym ya están aquí');
-  assert.strictEqual(communityPeersLine([gym('Samuel'), gym('Astrid'), gym('Luz')]).text, 'Astrid, Luz y 1 más de tu gym ya están aquí');
+  assert.strictEqual(communityPeersLine([gym('Salomón')]).text, 'Salomón de tu gym ya está aquí');
+  assert.strictEqual(communityPeersLine([gym('Salomón'), gym('Andrea')]).text, 'Andrea y Salomón de tu gym ya están aquí');
+  assert.strictEqual(communityPeersLine([gym('Salomón'), gym('Andrea'), gym('Luisa')]).text, 'Andrea, Luisa y 1 más de tu gym ya están aquí');
 });
 
 test('communityPeersLine: una sonda CORRUPTA no puede tumbar «Hoy» (F9)', () => {
   // La lista sale de localStorage y esto se pinta ANTES del entreno: si `.filter` lanza, el
   // asesorado se queda sin su rutina en pantalla. Cualquier forma que no sea lista → null.
-  assert.strictEqual(communityPeersLine('Samuel'), null);
+  assert.strictEqual(communityPeersLine('Salomón'), null);
   assert.strictEqual(communityPeersLine(42), null);
-  assert.strictEqual(communityPeersLine({ handle: 'Samuel' }), null);
+  assert.strictEqual(communityPeersLine({ handle: 'Salomón' }), null);
   assert.strictEqual(communityPeersLine(true), null);
 });
 
@@ -3031,9 +3031,9 @@ test('communityPeersLine: sin nadie a quién nombrar → null (la bienvenida que
   assert.strictEqual(communityPeersLine(), null);
   // basura que no se puede nombrar NO cuenta: nunca «2 más» fantasma ni un avatar sin nombre
   assert.strictEqual(communityPeersLine([{ handle: '' }, { handle: '   ' }, { handle: null }, null, {}]), null);
-  const l = communityPeersLine([{ handle: 'Samuel', is_private: true, gym: true }, { handle: '  ' }, null]);
+  const l = communityPeersLine([{ handle: 'Salomón', is_private: true, gym: true }, { handle: '  ' }, null]);
   assert.strictEqual(l.total, 1);
-  assert.strictEqual(l.text, 'Samuel de tu gym ya está aquí');
+  assert.strictEqual(l.text, 'Salomón de tu gym ya está aquí');
 });
 
 test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI», no «de tu gym»)', () => {
@@ -3042,11 +3042,11 @@ test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI»,
   // reales de prod el ÚNICO perfil público del gym es el COACH: la línea lo escondía justo a él.
   // La pertenencia ya no se deduce de la privacidad — la marca el servidor (`cmty_gym_peers`).
   const publicoDelGym = { handle: 'Publico', is_private: false, gym: true };
-  const privadoDelGym = { handle: 'Samuel', is_private: true, gym: true };
+  const privadoDelGym = { handle: 'Salomón', is_private: true, gym: true };
   const l = communityPeersLine([publicoDelGym, privadoDelGym]);
   assert.strictEqual(l.scope, 'gym');
   assert.strictEqual(l.total, 2);                    // el público del gym SÍ es del gym
-  assert.strictEqual(l.text, 'Publico y Samuel de tu gym ya están aquí');  // plural correcto
+  assert.strictEqual(l.text, 'Publico y Salomón de tu gym ya están aquí');  // plural correcto
   // 5 públicos del gym + 1 privado: antes decía «Zulma de tu gym ya está aquí» (singular, 5 ocultos)
   const cinco = ['Ana', 'Beto', 'Caro', 'Dani', 'Eva'].map(h => ({ handle: h, is_private: false, gym: true }));
   const l5 = communityPeersLine(cinco.concat([{ handle: 'Zulma', is_private: true, gym: true }]));
@@ -3055,16 +3055,16 @@ test('communityPeersLine: el gym manda; sin gym no MIENTE el origen («en AVI»,
   // un DESCONOCIDO público (no marcado) no se cuela en el gym, aunque se le pueda ver
   const conExtrano = communityPeersLine([{ handle: 'Extrano', is_private: false }, privadoDelGym]);
   assert.strictEqual(conExtrano.total, 1);
-  assert.strictEqual(conExtrano.text, 'Samuel de tu gym ya está aquí');
+  assert.strictEqual(conExtrano.text, 'Salomón de tu gym ya está aquí');
   // nadie del gym → se nombra a los públicos, pero como gente de AVI (no se miente el origen)
   const p = communityPeersLine([{ handle: 'Ana', is_private: false }, { handle: 'Beto', is_private: false }]);
   assert.strictEqual(p.scope, 'avi');
   assert.strictEqual(p.text, 'Ana y Beto ya están en AVI');
   // sin la señal del servidor (RPC caída) un privado visible NO se pierde: el llamador cae al proxy
   // viejo y lo marca; sin marca, la línea sigue siendo cierta, solo que dice «en AVI».
-  const sinSenal = communityPeersLine([{ handle: 'Samuel', is_private: true }]);
+  const sinSenal = communityPeersLine([{ handle: 'Salomón', is_private: true }]);
   assert.strictEqual(sinSenal.scope, 'avi');
-  assert.strictEqual(sinSenal.text, 'Samuel ya está en AVI');
+  assert.strictEqual(sinSenal.text, 'Salomón ya está en AVI');
 });
 
 
@@ -3179,7 +3179,7 @@ test('communityMe: sé quién soy sin haber abierto la pestaña (F2), o no pregu
 });
 
 test('cmtyLocalKey: ninguna clave de comunidad sin dueño (P0 identidad pegada)', () => {
-  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', 'u-astrid'), 'ax_cmty_probe_u-astrid');
+  assert.strictEqual(cmtyLocalKey('ax_cmty_probe', 'u-andrea'), 'ax_cmty_probe_u-andrea');
   // dos cuentas del MISMO aparato NUNCA comparten clave — esto es el bug del PO, en una línea
   assert.notStrictEqual(cmtyLocalKey('ax_cmty_cache', 'u-a'), cmtyLocalKey('ax_cmty_cache', 'u-b'));
   // sin uid no hay clave: se prefiere no leer nada antes que leer lo del anterior
@@ -3240,8 +3240,8 @@ test('communityGymAdoption: solo cuenta como activo a quien está en MI gym', ()
 });
 
 test('communityInviteMsg: texto plano, honesto y con el nombre de pila', () => {
-  const m = communityInviteMsg('Samuel Cifuentes', 7);
-  assert.ok(/^Hola Samuel 👋/.test(m), m);
+  const m = communityInviteMsg('Salomón Cárdenas', 7);
+  assert.ok(/^Hola Salomón 👋/.test(m), m);
   assert.ok(/Ya somos 7 del gym/.test(m), m);
   // dice lo que se ve Y lo que no (la corrección de copy que salió en A1)
   assert.ok(/apodo y tu constancia/.test(m), m);
@@ -3252,13 +3252,13 @@ test('communityInviteMsg: texto plano, honesto y con el nombre de pila', () => {
 });
 
 test('communityInviteMsg: concuerda el número y no inventa una comunidad que no existe', () => {
-  assert.ok(/Ya hay alguien del gym/.test(communityInviteMsg('Luz', 1)));
-  assert.ok(/Ya somos 2 del gym/.test(communityInviteMsg('Luz', 2)));
+  assert.ok(/Ya hay alguien del gym/.test(communityInviteMsg('Luisa', 1)));
+  assert.ok(/Ya somos 2 del gym/.test(communityInviteMsg('Luisa', 2)));
   // sin nadie todavía NO dice «ya somos 0»: cambia el ángulo, no miente
-  const cero = communityInviteMsg('Luz', 0);
+  const cero = communityInviteMsg('Luisa', 0);
   assert.ok(/Abrimos la comunidad del gym/.test(cero), cero);
   assert.ok(!/0/.test(cero), cero);
-  assert.ok(/Abrimos la comunidad del gym/.test(communityInviteMsg('Luz')), 'sin dato de conteo se comporta como cero');
+  assert.ok(/Abrimos la comunidad del gym/.test(communityInviteMsg('Luisa')), 'sin dato de conteo se comporta como cero');
   // sin nombre no queda un «Hola  👋» cojo
   assert.ok(/^¡Hola! 👋/.test(communityInviteMsg('', 3)));
   assert.ok(/^¡Hola! 👋/.test(communityInviteMsg(null, 3)));
@@ -3495,7 +3495,7 @@ test('bodyLoadProfile: sin datos suficientes → normal (no asume)', () => {
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // 🔴 v511 · EL PESO DE LA FICHA NO ES EL PESO DE LA PERSONA. `profile.weight` se escribe UNA VEZ
 // al dar de alta y nadie vuelve a tocarlo, mientras ella sí se sigue pesando. Medido el
-// 2026-08-21: **5 de las 14 con peso registrado tenían la ficha desfasada** — Samuel decía 78 kg
+// 2026-08-21: **5 de las 14 con peso registrado tenían la ficha desfasada** — Salomón decía 78 kg
 // pesando 86 (y el MISMO día del alta registró 88, así que el 78 nunca fue un peso suyo).
 // El caso que más duele es el del propio coach: ficha 90 → IMC 29,4; real 92 → **30,0**, que cruza
 // el umbral y le cambia el PERFIL DE CARGA con el que el generador le arma la rutina.
@@ -3514,7 +3514,7 @@ test('🔴 v511 · bodyLoadProfile: el peso explícito MANDA sobre el de la fich
 });
 
 test('🔴 v511 · nutWeightFor es la ÚNICA decisión de «cuál es el último peso»', () => {
-  // Samuel real: dos pesadas, la más nueva NO es la última del arreglo (se guarda descendente).
+  // Salomón real: dos pesadas, la más nueva NO es la última del arreglo (se guarda descendente).
   const BW = [{ kg: 86, date: '2026-06-06' }, { kg: 88, date: '2026-05-23' }];
   const SAMUEL = { id: 's', weight: 78, height: 176 };
   assert.strictEqual(nutWeightFor(SAMUEL, BW), 86, 'no está eligiendo por FECHA');
@@ -4044,7 +4044,7 @@ test('consentEvidence: las 3 casillas marcadas arman la evidencia con versión y
 
 // 🔒 EL CANDADO DE v565, y el que más pesa de todos: la app ya no puede FIRMAR que alguien es
 // mayor de edad cuando su propio formulario acaba de decir que no lo es. Medido en producción
-// el 2-sep, antes del arreglo: Valery (15) y Sharith Sofía (16) tenían `adulto:true` guardado,
+// el 2-sep, antes del arreglo: Valery (15) y Sonia Sofía (16) tenían `adulto:true` guardado,
 // porque la única forma de entrar era declarar algo falso.
 test('consentEvidence: con edad de menor NO se puede firmar «soy mayor de 18» (v565)', () => {
   // Aunque el formulario mande la casilla de adulto marcada, la función pura NO la firma.
@@ -5048,16 +5048,16 @@ test('el formulario ofrece la salida del acudiente, no solo la de adulto (v565)'
 });
 
 test('minorCoachAlert: avisa solo si la evidencia dice menor, y nombra al acudiente (v565)', () => {
-  const txt = minorCoachAlert('Valery Valbuena', { menor: true, edad: 15, acudiente: { nombre: 'Camilo Andrés', tel: '3001234567' } });
-  assert.ok(/Valery/.test(txt), 'nombra a la persona por su primer nombre');
+  const txt = minorCoachAlert('Vanesa Vargas', { menor: true, edad: 15, acudiente: { nombre: 'Camilo Andrés', tel: '3001234567' } });
+  assert.ok(/Vanesa/.test(txt), 'nombra a la persona por su primer nombre');
   assert.ok(/MENOR/.test(txt) && /15 años/.test(txt), 'dice que es menor y su edad');
   assert.ok(/Camilo Andrés/.test(txt) && /3001234567/.test(txt), 'nombra al acudiente y su teléfono');
   // Sin teléfono lo DICE, en vez de callarlo: el coach tiene que saber que le toca conseguirlo.
-  assert.ok(/no dejó teléfono/.test(minorCoachAlert('Sharith', { menor: true, edad: 16, acudiente: { nombre: 'Ana' } })));
-  assert.ok(/No quedó registrado/.test(minorCoachAlert('Sharith', { menor: true, edad: 16 })));
+  assert.ok(/no dejó teléfono/.test(minorCoachAlert('Sonia', { menor: true, edad: 16, acudiente: { nombre: 'Ana' } })));
+  assert.ok(/No quedó registrado/.test(minorCoachAlert('Sonia', { menor: true, edad: 16 })));
   // CONTROL: a una adulta NO se le manda nada, o el aviso es ruido que se aprende a ignorar.
-  assert.strictEqual(minorCoachAlert('Astrid', { general: true, salud: true, adulto: true }), null);
-  assert.strictEqual(minorCoachAlert('Astrid', null), null);
+  assert.strictEqual(minorCoachAlert('Andrea', { general: true, salud: true, adulto: true }), null);
+  assert.strictEqual(minorCoachAlert('Andrea', null), null);
 });
 
 test('consentEvidence: cualquier casilla sin marcar devuelve null (no hay "acepto todo")', () => {
@@ -5218,10 +5218,10 @@ test('chatDeliveryBlock: avisa cuando el mensaje del coach NO le va a llegar', (
 });
 
 test('chatViewMode: bajar de nivel no le confisca la conversación que ya tuvo', () => {
-  // Caso real medido 2026-09-07: Samuel Cifuentes, 40 mensajes en 5 meses (la conversación más
+  // Caso real medido 2026-09-07: Salomón Cárdenas, 40 mensajes en 5 meses (la conversación más
   // larga de la app), pasó a 'libre' y el candado se comía el hilo entero. 68 de los 95
   // mensajes que existen estaban en esa situación, en 5 personas.
-  const hilo = [{ from: 'coach', text: 'Vamos Samuel', date: '2026-05-23T14:28:12.599Z' }];
+  const hilo = [{ from: 'coach', text: 'Vamos Salomón', date: '2026-05-23T14:28:12.599Z' }];
   // Con coach: chat normal, se puede escribir.
   assert.strictEqual(chatViewMode({ tier: 'premium' }, hilo), 'open');
   assert.strictEqual(chatViewMode({}, hilo), 'open');          // creado por coach, sin tier
@@ -7229,7 +7229,7 @@ test('🔴 v536 · el caso REAL de Sofía: el Hip Thrust Unilateral (nivel A) sa
   assert.strictEqual(nuevos[0].reps, 8);
   assert.strictEqual(nuevos[1].id, 'e42', 'lo que sí cumple el nivel no se toca');
 });
-test('🔴 v536 · el caso REAL de Felipe: dos avanzados fuera de un plan de peso corporal', () => {
+test('🔴 v536 · el caso REAL de Fabio: dos avanzados fuera de un plan de peso corporal', () => {
   const felipe = { level: 'Principiante', place: 'corporal', routines: [{
     name: 'Full Body', generated: true,
     exercises: [{ id: 'e107' }, { id: 'e83' }, { id: 'e97' }, { id: 'e82' }, { id: 'e47' }],
@@ -7356,7 +7356,7 @@ test('🔒 v535 · ninguna función `security definer` del repo se queda sin `se
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 🔔 v535 · LA IDENTIDAD DE UNA SUSCRIPCIÓN ES EL ENDPOINT, NO EL JSON ENTERO
-// Medido en producción: Nataly tenía 8 filas para UN endpoint (1 por apertura de app), porque la
+// Medido en producción: Nayla tenía 8 filas para UN endpoint (1 por apertura de app), porque la
 // UNIQUE era `(client_id, subscription)` y `subscription` incluye las claves, que el navegador
 // ROTA. 7 de los 17 envíos de cada ronda diaria eran basura.
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7953,7 +7953,7 @@ test('🔴 ninguna cifra de la franja sale con basura de coma flotante', () => {
 // que el PLATO entrega le diría «te pasaste» a quien comió EXACTAMENTE lo que la app le mandó.
 // Medido 2026-08-12 por la ruta `nutBaseFor` contra la nube: de 25 filas, 21 resuelven y **17
 // ven el plan en producción** (6 son tier 'libre'), 119 días-plan. El plato sirve 94,7%-110,2%
-// de lo que promete → a ±10% se sale 1 día (Nataly, 110,2%); a ±12%, ninguno.
+// de lo que promete → a ±10% se sale 1 día (Nayla, 110,2%); a ±12%, ninguno.
 // Aquí se re-deriva con una malla, que es lo que la suite puede correr sin red.
 test('🔴 la franja NUNCA es más estrecha de lo que el propio plato entrega', () => {
   let dias = 0, peor = 100, mejor = 100, fuera = 0, caso = null;
@@ -8318,8 +8318,8 @@ test('🔴 las carnes de la tabla son valores COCIDOS — si dejan de serlo, la 
 
 test('el texto para compartir sale de la lista YA armada, no de un segundo cálculo', () => {
   const l = nutShoppingList(_shopBase, _shopRut);
-  const txt = nutShoppingText(l, 'Nataly');
-  assert.ok(txt.includes('Nataly') && txt.includes('lista del mercado'));
+  const txt = nutShoppingText(l, 'Nayla');
+  assert.ok(txt.includes('Nayla') && txt.includes('lista del mercado'));
   l.grupos.forEach(g => {
     assert.ok(txt.includes(g.name.toUpperCase()), `falta la sección ${g.name}`);
     g.items.forEach(i => assert.ok(txt.includes(i.name), `falta ${i.name} en el texto`));
@@ -8419,7 +8419,7 @@ test('🔴 ninguna pantalla estima con el peso de la ficha en vez del último re
 // leer «el último peso registrado» leía el EXTREMO EQUIVOCADO: `saveBodyweight` guarda con
 // `unshift` + `sort` DESCENDENTE, así que `bw[bw.length-1]` es el registro MÁS VIEJO. Medido
 // contra producción: los 5 historiales con más de un registro están en orden descendente y 4
-// personas recibían un plan calculado sobre un peso que ya no era el suyo (Nataly con 54 kg
+// personas recibían un plan calculado sobre un peso que ya no era el suyo (Nayla con 54 kg
 // pesando 59,5 = 85 kcal y 12 g de proteína de diferencia). O sea: **pesarse no movía el plan**.
 test('🔴 el peso vigente sale de la FECHA, no de la posición en el arreglo', () => {
   // El orden REAL en el que la app guarda: el más nuevo primero.
@@ -8699,7 +8699,7 @@ test('🔴 «recomposicion» tiene explicación, plantilla y opción, y NO dice 
 // DERIVA de sus componentes, nunca se guarda aparte») aplicada al último sitio donde quedaba una
 // segunda verdad. Medido el 2026-08-06: 4 de las 5 plantillas tenían un `kcal` que no cuadraba con
 // sus propios gramos, y la de Volumen se desviaba **240 kcal** — el mismo número exacto del plan
-// de Nataly que se cazó en v435. La causa raíz nunca fue su plan: era este botón.
+// de Nayla que se cazó en v435. La causa raíz nunca fue su plan: era este botón.
 test('🔴 ninguna plantilla de nutrición guarda un titular aparte de sus macros', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8');
@@ -8723,15 +8723,15 @@ test('nutKcalDirection: déficit / superávit / balance con tolerancia del 5%', 
   assert.strictEqual(nutKcalDirection(1730, null), null);
 });
 // 🔴 REGRESIÓN — el caso REAL medido en producción el 2026-08-05: «✨ Generar» corrigió las
-// calorías de Luz (1.730 sobre un gasto de 2.230, déficit de 500) pero dejó el rótulo
+// calorías de Luisa (1.730 sobre un gasto de 2.230, déficit de 500) pero dejó el rótulo
 // «mantenimiento» de una plantilla vieja, así que su pantalla le explicaba «estás comiendo en
 // balance: lo que gastas» encima de un déficit. Con el defecto puesto NADIE avisaba.
-test('🔴 nutGoalMismatch: rótulo «mantenimiento» sobre un déficit real se MARCA (caso Luz)', () => {
+test('🔴 nutGoalMismatch: rótulo «mantenimiento» sobre un déficit real se MARCA (caso Luisa)', () => {
   const mm = nutGoalMismatch('mantenimiento', 1730, 2230);
   assert.ok(mm, 'un plan de mantenimiento que entrega 500 kcal menos del gasto debe marcarse');
   assert.strictEqual(mm.dice, 'balance');
   assert.strictEqual(mm.real, 'deficit');
-  // Caso Kathe, mismo defecto con otras cifras.
+  // Caso Karen, mismo defecto con otras cifras.
   assert.ok(nutGoalMismatch('mantenimiento', 1930, 2430));
 });
 test('nutGoalMismatch: rótulo que SÍ cuadra con los números no molesta', () => {
@@ -8741,7 +8741,7 @@ test('nutGoalMismatch: rótulo que SÍ cuadra con los números no molesta', () =
   assert.strictEqual(nutGoalMismatch('mantenimiento', 2230, 2230), null);
 });
 test('nutGoalMismatch: también caza el superávit rotulado como pérdida de grasa', () => {
-  // Es exactamente lo que el formulario proponía antes de v436 (Kathe: 2.710 con gasto 2.430).
+  // Es exactamente lo que el formulario proponía antes de v436 (Karen: 2.710 con gasto 2.430).
   const mm = nutGoalMismatch('cutting', 2710, 2430);
   assert.ok(mm);
   assert.strictEqual(mm.real, 'superavit');
@@ -8884,7 +8884,7 @@ test('el objetivo calórico nunca baja del metabolismo basal', () => {
 });
 
 test('nutRefWeight: por encima de IMC 30 dosifica sobre peso de referencia, no el total', () => {
-  // Luz: 82 kg / 156 cm = IMC 33,7. Con peso total, proteína+grasa no dejaban espacio al
+  // Luisa: 82 kg / 156 cm = IMC 33,7. Con peso total, proteína+grasa no dejaban espacio al
   // carbohidrato. Con peso ajustado sí.
   const ref = nutRefWeight(82, 156);
   assert.ok(ref < 82, 'con IMC 33,7 el peso de referencia debe ser menor que el total');
@@ -8896,7 +8896,7 @@ test('nutRefWeight: por encima de IMC 30 dosifica sobre peso de referencia, no e
 
 // 🔴 EL ACANTILADO DE IMC 30 (punto 6 del dictamen, verificado contra producción 2026-08-05).
 // Con el corte seco, **200 gramos de báscula cambiaban 30 g de proteína**: una mujer de 156 cm a
-// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y mordía al revés de como debe: Claudia está en IMC
+// 72,9 kg recibía 160 g y a 73,1 kg, 130 g. Y mordía al revés de como debe: Carla está en IMC
 // 30,4 y bajar 1,1 kg —el propósito de su plan— le SUBÍA la proteína de 131 a 160 sin ninguna
 // razón visible para ella. Al PO ya le pasó cruzando de 90 a 92 kg en julio.
 test('🔴 la rampa 28-32 quita el acantilado: 200 g de báscula no mueven 30 g de proteína', () => {
@@ -8912,12 +8912,12 @@ test('🔴 la rampa 28-32 quita el acantilado: 200 g de báscula no mueven 30 g 
     if (d > peorSalto) { peorSalto = d; dondeSalto = `${kg} kg`; }
   }
   assert.ok(peorSalto <= 2, `hay un escalón de ${peorSalto} g de proteína en ${dondeSalto}`);
-  // 🔴 El caso REAL que lo disparó: Claudia, 74 kg / 156 cm (IMC 30,4). Bajar 1,1 kg es el
+  // 🔴 El caso REAL que lo disparó: Carla, 74 kg / 156 cm (IMC 30,4). Bajar 1,1 kg es el
   // PROPÓSITO de su plan, y con el corte seco eso le subía la proteína de 131 a 160 g de golpe.
   // Que baje de peso tiene que mover su dosis de forma imperceptible, en cualquier dirección.
-  const claudia = protDe(74), claudiaMenos = protDe(72.9);
-  assert.ok(Math.abs(claudiaMenos - claudia) <= 4,
-    `bajar 1,1 kg le mueve la proteína de ${claudia} a ${claudiaMenos} g — con el acantilado eran 131→160`);
+  const carla = protDe(74), claudiaMenos = protDe(72.9);
+  assert.ok(Math.abs(claudiaMenos - carla) <= 4,
+    `bajar 1,1 kg le mueve la proteína de ${carla} a ${claudiaMenos} g — con el acantilado eran 131→160`);
   // Nota: dentro de la franja el peso de REFERENCIA baja al subir la báscula, y eso es el diseño
   // del peso ajustado (cuanto más exceso, más se descuenta). Lo que no puede haber es un ESCALÓN.
 });
@@ -9042,12 +9042,12 @@ test('historial vacío o nulo → []', () => {
 section('Panel «Cargas» del coach (progressRowModel, v585)');
 
 // El caso REAL que destapó el defecto, medido en producción el 7-sep-2026:
-// Astrid, sentadilla con barra. Dos sesiones quedaron anotadas en 4,5 kg (son 45 con
+// Andrea, sentadilla con barra. Dos sesiones quedaron anotadas en 4,5 kg (son 45 con
 // el punto corrido) entre sesiones de 40 y 42,5 — el panel pintaba «4,5 kg» como
 // titular, sin rótulo, y la flecha decía «↓ bajando» contra su primera sesión.
 const _astridPts = [40, 30, 30, 40, 35, 30, 35, 40, 40, 35, 40, 40, 4.5, 42.5, 4.5];
 
-test('🔴 v585 · EL TITULAR ES EL RÉCORD, NO LA ÚLTIMA SESIÓN (caso Astrid, sentadilla)', () => {
+test('🔴 v585 · EL TITULAR ES EL RÉCORD, NO LA ÚLTIMA SESIÓN (caso Andrea, sentadilla)', () => {
   const ex = { key: 'e13', name: 'Sentadilla con Barra', unit: 'kg', points: _astridPts.map((v, i) => ({ maxKg: v, dateStr: 'd' + i })) };
   const m = progressRowModel(ex, null);
   assert.strictEqual(m.record, 42.5, 'el número grande es su mejor marca');
@@ -9059,7 +9059,7 @@ test('🔴 v585 · EL TITULAR ES EL RÉCORD, NO LA ÚLTIMA SESIÓN (caso Astrid,
 });
 
 test('🔴 v585 · UN DÍA LIVIANO NO ES UNA REGRESIÓN (los 9 «↓ bajando» falsos)', () => {
-  // Claudia y Luz, prensa de pierna: primera 30, récord 70, última 8. El panel viejo
+  // Carla y Luisa, prensa de pierna: primera 30, récord 70, última 8. El panel viejo
   // pintaba «↓ bajando 22 kg» para las dos.
   const ex = { key: 'e50', name: 'Prensa de Pierna', unit: 'kg', points: [30, 50, 70, 8].map(v => ({ maxKg: v })) };
   const m = progressRowModel(ex, null);
@@ -9144,13 +9144,13 @@ test('🔒 CABLEADO v585: el panel PINTA el récord, lo ROTULA y le pregunta al 
 // ══════════════════════════════════════════════════════
 section('De cuándo es el peso con el que se calcula todo (bodyWeightSource, v587)');
 
-// El caso REAL: Astrid, 73 kg de hace 104 días y UNA sola toma. Con ese peso se le calculan
+// El caso REAL: Andrea, 73 kg de hace 104 días y UNA sola toma. Con ese peso se le calculan
 // TMB, TDEE, objetivo calórico, macros y el perfil de carga con el que el generador arma su
 // rutina — y la ficha no decía en ninguna parte de cuándo era.
 const _d = n => new Date(BW_NOW - n * 86400000).toISOString();
 const BW_NOW = new Date('2026-09-07T12:00:00Z').getTime();
 
-test('🔴 v587 · DICE DE CUÁNDO ES (caso Astrid: 73 kg de hace 104 días)', () => {
+test('🔴 v587 · DICE DE CUÁNDO ES (caso Andrea: 73 kg de hace 104 días)', () => {
   const r = bodyWeightSource({ id: 'a', weight: 73 }, [{ date: _d(104), kg: 73 }], BW_NOW);
   assert.strictEqual(r.fuente, 'pesaje');
   assert.strictEqual(r.kg, 73);
@@ -9452,7 +9452,7 @@ test('searchExercises: busca también por la etiqueta del músculo, y aguanta ba
 // `dedupeExercises` remapea el catálogo y las RUTINAS desde junio (`REMOVED_EXERCISES e38→e15`)
 // pero NUNCA tocó los récords: la rutina pasaba a `e15` y la marca se quedaba en `e38`, así que la
 // app dejaba de encontrarla. Medido contra producción el 14-ago: 3 récords varados en `e38`
-// (Kathe, Nataly, Miguel) y **Miguel sin peso sugerido** en un ejercicio con marca de 30 kg.
+// (Karen, Nayla, Mario) y **Mario sin peso sugerido** en un ejercicio con marca de 30 kg.
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
 test('🔴 v484 · el récord de un ejercicio RETIRADO se muda al que lo reemplazó', () => {
@@ -9467,11 +9467,11 @@ test('🔴 v484 · el récord de un ejercicio RETIRADO se muda al que lo reempla
 test('🔒 v484 · si los DOS existen se funden con isBetterPR, la única definición de récord', () => {
   const flojo = { val: 3, kg: 3, reps: 15, unit: 'kg' };
   const fuerte = { val: 20, kg: 20, reps: 15, unit: 'kg' };
-  // El caso de Kathe: e38 flojo (3 kg) contra su e15 real (15 kg) → gana el suyo.
+  // El caso de Karen: e38 flojo (3 kg) contra su e15 real (15 kg) → gana el suyo.
   const a = prsRemapRetired({ e38: flojo, e15: { val: 15, kg: 15, reps: 12, unit: 'kg' } });
   assert.strictEqual(a.prs.e15.val, 15, 'el récord bueno no se pisa con uno peor');
   assert.strictEqual(a.prs.e38, undefined);
-  // El caso de Nataly: el varado es MEJOR que el vigente → gana el varado.
+  // El caso de Nayla: el varado es MEJOR que el vigente → gana el varado.
   const b = prsRemapRetired({ e38: fuerte, e15: { val: 10, kg: 10, reps: 15, unit: 'kg' } });
   assert.strictEqual(b.prs.e15.val, 20, 'la mejor marca es la que sobrevive');
   // 🔒 CONTROL: la regla es la de `isBetterPR`, no «se queda el más reciente». Una segunda
@@ -9541,7 +9541,7 @@ test('🔴 v484 · CABLEADO: las DOS superficies remapean los récords', () => {
 // 🔴 v483 · CANDADO DE CABLEADO: el récord se escribe al GUARDAR la sesión, no solo al cerrarla.
 // El historial se guarda desde la 1ª serie marcada (auto-guardado parcial) pero `checkAndUpdatePRs`
 // solo corría en la rama del 100% y en «Finalizar temprano». Medido el 14-ago en producción:
-// **de 192 sesiones con peso registrado solo 72 (38%) quedaron cerradas** → Nataly hizo Prensa de
+// **de 192 sesiones con peso registrado solo 72 (38%) quedaron cerradas** → Nayla hizo Prensa de
 // Pierna 100 kg ×15 en CINCO sesiones y no tenía récord; 10 de los 11 huecos medidos son de
 // sesiones sin cerrar. Y la cadena sigue: sin récord no hay peso sugerido, y sin peso sugerido la
 // semana de descarga (v482) no tiene sobre qué bajar.
@@ -10109,7 +10109,7 @@ const NUT_RUT_4D = [
 ];
 
 test('🔴 v435 · el titular del plan y sus PROPIOS macros tienen que decir lo mismo', () => {
-  // Medido en producción (2026-08-04): 6 de 10 planes descuadrados, y el de Nataly por 240 kcal
+  // Medido en producción (2026-08-04): 6 de 10 planes descuadrados, y el de Nayla por 240 kcal
   // al día — decía 3.200 y sus macros sumaban 2.960. El plato se arma con los MACROS, así que el
   // titular era el número que mentía. Ahora el que se muestra es el que se sirve.
   assert.strictEqual(nutMacroKcal({ prot_g: 150, carb_g: 270, fat_g: 75 }), 2355);
@@ -10186,7 +10186,7 @@ test('🔴 v485 · un menor que YA come DENTRO de su banda no se toca', () => {
 });
 
 test('🔴 v485 · sin datos para conocer el gasto NO se inventa un piso', () => {
-  // Santiago (17) no declara sexo en producción: sin gasto no se puede afirmar que el plan esté
+  // Sebastián (17) no declara sexo en producción: sin gasto no se puede afirmar que el plan esté
   // por debajo, y un piso inventado sería peor que el defecto.
   for (const falta of [{ sex: '' }, { height: '' }, { weight: '' }]) {
     const c = Object.assign({}, MENOR_REAL, falta);
@@ -10224,7 +10224,7 @@ test('🔴 v485 · TECHO de proteína: escalar un plan muy bajo no produce un di
 });
 
 test('🔴 v485 · un menor SIN datos de gasto se MARCA, no se pasa en silencio', () => {
-  // Santiago, 17 años, no declara sexo. Antes el plan escrito pasaba sin piso y sin aviso: las dos
+  // Sebastián, 17 años, no declara sexo. Antes el plan escrito pasaba sin piso y sin aviso: las dos
   // puertas degradaban al revés (la calculadora se cierra y pide datos; esta se abría y servía).
   const sinSexo = Object.assign({}, MENOR_REAL, { sex: '' });
   const base = nutBaseFor(sinSexo, PLAN_BAJO, 52);
@@ -10345,7 +10345,7 @@ test('🔴 v497 · las máquinas que YA estaban ahora dicen que son máquina', (
 // entre 25 y 37 g POR DEBAJO de la doctrina y 1 está 26 g POR ENCIMA del techo de 2,2 g/kg, y a
 // tres de ellos la ficha les decía **«ok»**. Todas las cortas son mujeres en «Perder grasa» o
 // «Recomposición», que es el cubo donde la proteína alta importa MÁS.
-const CLAUDIA = { name: 'Claudia', age: 34, sex: 'F', weight: 74, height: 156, activityFactor: 1.55, goal: 'Recomposición' };
+const CLAUDIA = { name: 'Carla', age: 34, sex: 'F', weight: 74, height: 156, activityFactor: 1.55, goal: 'Recomposición' };
 const PLAN_CLAUDIA = { kcal: 2146, prot: 107, carbs: 268, fat: 71, goal: 'mantenimiento' };
 
 test('🔴 v496 · un plan con las CALORÍAS perfectas y la proteína corta ya no pasa por «ok»', () => {
@@ -10358,8 +10358,8 @@ test('🔴 v496 · un plan con las CALORÍAS perfectas y la proteína corta ya n
   assert.strictEqual(r.prot.objetivo, Math.round(core.nutRefWeight(74, 156) * 2.2));
 });
 
-test('🔴 v496 · y el que se PASA del techo de 2,2 g/kg también se marca (caso Miguel)', () => {
-  const miguel = { name: 'Miguel', age: 29, sex: 'M', weight: 70, height: 183, activityFactor: 1.55, goal: 'Ganar músculo' };
+test('🔴 v496 · y el que se PASA del techo de 2,2 g/kg también se marca (caso Mario)', () => {
+  const miguel = { name: 'Mario', age: 29, sex: 'M', weight: 70, height: 183, activityFactor: 1.55, goal: 'Ganar músculo' };
   const r = core.nutPlanReview(miguel, { kcal: 3040, prot: 180, carbs: 400, fat: 80 }, 70);
   assert.strictEqual(r.status, 'proteina_fuera', 'status real: ' + r.status);
   assert.strictEqual(r.prot.dir, 'pasada');
@@ -10370,9 +10370,9 @@ test('🔴 v496 · la tolerancia reproduce los VEREDICTOS de Andrés, uno por un
   // ±0,3 g/kg no se eligió a ojo: es el único corte que marca a los 5 que él marcó y deja en paz
   // a los 3 que aprobó. Si alguien la mueve, este test dice a quién empieza a molestar.
   const casos = [
-    ['Claudia', -0.56, true], ['Kathe', -0.47, true], ['Natalia', -0.41, true],
-    ['Luz', -0.40, true], ['Miguel', +0.37, true],
-    ['coach', -0.28, false], ['Nataly', -0.20, false], ['Samuel', +0.06, false], ['Astrid', -0.01, false],
+    ['Carla', -0.56, true], ['Karen', -0.47, true], ['Nadia', -0.41, true],
+    ['Luisa', -0.40, true], ['Mario', +0.37, true],
+    ['coach', -0.28, false], ['Nayla', -0.20, false], ['Salomón', +0.06, false], ['Andrea', -0.01, false],
   ];
   casos.forEach(([quien, dif, marcado]) => {
     assert.strictEqual(Math.abs(dif) >= core.NUT_PROT_TOL_G_KG, marcado,
@@ -10395,17 +10395,17 @@ test('🔴 v496 · la proteína se juzga sobre lo SERVIDO y en peso de REFERENCI
 test('🔴 v496 · el NÚMERO manda sobre el rótulo cuando fallan los dos', () => {
   // La tarjeta de `rotulo_miente` afirma «sus números están bien». Con un plan 387 kcal por encima
   // Y el rótulo cambiado, esa frase manda al coach a corregir lo que no toca. Caso real: apareció
-  // simulando el arreglo de Samuel (cambiarle el objetivo a Recomposición).
-  const samuel = { name: 'Samuel', age: 28, sex: 'M', weight: 86, height: 176, activityFactor: 1.725, goal: 'Recomposición' };
+  // simulando el arreglo de Salomón (cambiarle el objetivo a Recomposición).
+  const salomon = { name: 'Salomón', age: 28, sex: 'M', weight: 86, height: 176, activityFactor: 1.725, goal: 'Recomposición' };
   const plan = { kcal: 3533, prot: 194, carbs: 512, fat: 79, goal: 'mantenimiento' };   // los suyos, tal cual
-  const r = core.nutPlanReview(samuel, plan, 86);
+  const r = core.nutPlanReview(salomon, plan, 86);
   assert.strictEqual(r.status, 'desviado', 'status real: ' + r.status);
   assert.ok(r.gap > 300, `y el hueco es el de verdad: ${r.gap}`);
   assert.ok(r.mismatch, 'el rótulo sigue viajando en el resultado, para que la ficha lo diga en una línea');
   // CONTROL de v486: con las cifras CLAVADAS, el rótulo mentiroso sigue siendo el titular. (La
   // fixture va escrita aquí y no se toma de `LUZ`, que se declara más abajo en el archivo: un
   // `const` no existe antes de su línea y el test moría con «Cannot access before initialization».)
-  const luz = { name: 'Luz', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
+  const luz = { name: 'Luisa', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
   assert.strictEqual(core.nutPlanReview(luz, { kcal: 1731, prot: 130, carbs: 160, fat: 48, goal: 'mantenimiento' }, 82).status, 'rotulo_miente');
 });
 
@@ -10414,7 +10414,7 @@ test('🔴 v496 · el NÚMERO manda sobre el rótulo cuando fallan los dos', () 
 // SOBREPESO para su edad y su sexo en la referencia OMS 5-19) recibía **+350 kcal/día** porque su
 // objetivo dice «Ganar músculo». No lo escribió nadie: sale de la calculadora. El candado de v485
 // solo miraba hacia abajo.
-const SHARITH = { name: 'Sharith', age: 16, sex: 'F', weight: 72, height: 165, activityFactor: 1.55, goal: 'Ganar músculo' };
+const SHARITH = { name: 'Sonia', age: 16, sex: 'F', weight: 72, height: 165, activityFactor: 1.55, goal: 'Ganar músculo' };
 const SHARITH_TDEE = 2567; // Schofield 10-18 F: 13,384×72+692,6 = 1.656 → ×1,55 = 2.567
 
 test('🔴 v493 · una menor con SOBREPESO para su edad no recibe superávit', () => {
@@ -10434,10 +10434,10 @@ test('🔴 v493 · una menor con SOBREPESO para su edad no recibe superávit', (
 });
 
 test('🔴 v493 · CONTROL: un adolescente DELGADO con el mismo objetivo SÍ hace volumen', () => {
-  // Hernán (17, M, 64 kg, 177 cm, IMC 20,4) estaba en la misma medición y Andrés lo dejó igual:
+  // Hugo (17, M, 64 kg, 177 cm, IMC 20,4) estaba en la misma medición y Andrés lo dejó igual:
   // «es defendible en un adolescente delgado en pleno crecimiento». Lo único que se le aplica es
   // el tope general de +10%, no el recorte a mantenimiento.
-  const flaco = { name: 'Hernán', age: 17, sex: 'M', weight: 64, height: 177, activityFactor: 1.55, goal: 'Ganar músculo' };
+  const flaco = { name: 'Hugo', age: 17, sex: 'M', weight: 64, height: 177, activityFactor: 1.55, goal: 'Ganar músculo' };
   assert.strictEqual(core.nutMinorBmiOver(flaco, 64), false, 'IMC 20,4 no es sobrepeso a los 17');
   const e = nutritionEstimate(flaco, 64);
   assert.ok(e.deficit > 0, 'a un adolescente delgado en volumen se le quitó el superávit entero');
@@ -10585,9 +10585,9 @@ test('🔴 v493 · «sobrepeso» a los 16 no es «sobrepeso» a los 11, ni igual
 
 // ── EL RÓTULO QUE MIENTE SOBRE UN PLAN CORRECTO (v486) ────────────────────────────────────
 // Medido el 15-ago sobre los 10 planes escritos: 3 personas tienen los números EXACTOS para su
-// objetivo (Luz, desfase 0) y aun así su app les explica «estás comiendo en balance» encima de un
+// objetivo (Luisa, desfase 0) y aun así su app les explica «estás comiendo en balance» encima de un
 // déficit deliberado. Ninguna disparaba aviso: el detector vivía dentro del editor de nutrición.
-const LUZ = { name: 'Luz', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
+const LUZ = { name: 'Luisa', age: 39, sex: 'F', weight: 82, height: 158, activityFactor: 1.375, goal: 'Perder grasa' };
 const PLAN_LUZ = { kcal: 1731, prot: 130, carbs: 160, fat: 48, goal: 'mantenimiento' };
 
 test('🔴 v486 · un plan con los NÚMEROS BIEN pero el RÓTULO mentiroso se detecta', () => {
@@ -10600,12 +10600,12 @@ test('🔴 v486 · un plan con los NÚMEROS BIEN pero el RÓTULO mentiroso se de
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // 🔴 v510 · LA SUPERFICIE QUE FALTABA: v486 le AVISÓ al coach y a ELLA le siguió mintiendo.
-// Medido en producción el 2026-08-21: 2 de 10 planes. Kathe (28) leía «estás comiendo en balance:
+// Medido en producción el 2026-08-21: 2 de 10 planes. Karen (28) leía «estás comiendo en balance:
 // lo que gastas» encima de un déficit REAL de 500 kcal —su plan es correcto, el rótulo se quedó de
-// una plantilla vieja— y Samuel al revés, ganando músculo mientras leía «balance».
+// una plantilla vieja— y Salomón al revés, ganando músculo mientras leía «balance».
 test('🔴 v510 · a ella NO se le afirma una dirección que sus propios números contradicen', () => {
-  // Kathe real: 1.930 kcal contra un gasto de ~2.400 = déficit, rotulado «mantenimiento».
-  const KATHE = { name: 'Kathe', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
+  // Karen real: 1.930 kcal contra un gasto de ~2.400 = déficit, rotulado «mantenimiento».
+  const KATHE = { name: 'Karen', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
   const PLAN = { kcal: 1930, prot: 119, carbs: 231, fat: 59, goal: 'mantenimiento' };
   // Lo que el plan DECLARA no cambia: es lo que auditan los detectores.
   assert.strictEqual(core.nutWhyKey(PLAN, KATHE, 83), 'mantenimiento');
@@ -10627,7 +10627,7 @@ test('🔴 v510 · CONTROL: el coach SIGUE recibiendo el aviso de que el rótulo
 });
 
 test('🔴 v510 · CONTROL: un rótulo HONESTO no se toca (si no, sería borrar la feature)', () => {
-  const KATHE = { name: 'Kathe', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
+  const KATHE = { name: 'Karen', age: 28, sex: 'F', weight: 83, height: 163, activityFactor: 1.55, goal: 'Perder grasa' };
   const honesto = { kcal: 1930, prot: 119, carbs: 231, fat: 59, goal: 'cutting' };
   assert.strictEqual(core.nutWhyKeyShown(honesto, KATHE, 83), 'cutting');
   // Y un plan que de verdad está en balance sigue leyéndose como balance.
@@ -10898,7 +10898,7 @@ test('🔴 v472 · el plato reparte el carbohidrato entre DOS fuentes, y respeta
   // aporta MUCHO carbohidrato —fríjol, lenteja— deja un `falta` que es una fracción del objetivo
   // bruto. La puerta miraba `tC` y el solver reparte `falta`: veía 116 g de plátano y servía 15.
   // Medido sobre las 22 personas reales: 8 segundas raciones salían así («5 g», «10 g», «15 g»,
-  // «20 g» de plátano) en el almuerzo de 7 personas — Natalia, Luz, Valery, Nataly, Kathe, Astrid.
+  // «20 g» de plátano) en el almuerzo de 7 personas — Nadia, Luisa, Valery, Nayla, Karen, Andrea.
   // ⚠️ Este test NO puede escribirse con `pollo_pechuga`: su aporte de carbohidrato es cero, así
   // que `falta ≈ tC` y el defecto es invisible. Hace falta el aporte cruzado GRANDE.
   const cruzado = { prot: 'frijol', carb: 'arroz', carb2: 'platano_maduro', fat: 'aguacate' };
@@ -10987,8 +10987,8 @@ test('🔴 v472 · ninguna ración de carbohidrato pasa de su tope, y el tope MU
   // Lista propia (no `_VARIEDAD_PERFILES`: se declara más abajo y quedaría en zona muerta).
   const perfiles = [
     ['fixture', NUT_BASE],
-    ['Kathe', { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' }],
-    ['Samuel', { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' }],
+    ['Karen', { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' }],
+    ['Salomón', { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' }],
     ['sedentaria', { sex: 'F', age: 50, weight: 48, height: 150, activityFactor: 1.2, goal: 'Perder grasa' }],
   ];
   let porciones = 0;
@@ -11122,8 +11122,8 @@ test('el plan del día trae las 5 comidas y ninguna sale vacía', () => {
 // no es un control. Ahora se miran las cinco, y las meriendas tienen su propio test debajo.
 const _VARIEDAD_PERFILES = [
   ['la del fixture', NUT_BASE],
-  ['Kathe (perder grasa)', { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' }],
-  ['Samuel (ganar músculo)', { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' }],
+  ['Karen (perder grasa)', { sex: 'F', age: 28, weight: 85, height: 163, activityFactor: 1.55, goal: 'Perder grasa' }],
+  ['Salomón (ganar músculo)', { sex: 'M', age: 28, weight: 78, height: 176, activityFactor: 1.725, goal: 'Ganar músculo' }],
   ['recomposición (H)', { sex: 'M', age: 26, weight: 82, height: 175, activityFactor: 1.55, goal: 'Recomposición' }],
   ['sedentaria en el PISO', { sex: 'F', age: 50, weight: 48, height: 150, activityFactor: 1.2, goal: 'Perder grasa' }],
 ];
@@ -11150,7 +11150,7 @@ test('🔴 la semana NO es el mismo plato repetido', () => {
   // distintos**; el fixture pasaba el ≥4 por suerte, no por diseño. Lo que sí se sostiene sobre
   // gente real es que **nadie baja de 2** (mínimo medido: 2, con las dos versiones).
   // Lo que se compró con ese punto de variedad, en las mismas 21 personas reales:
-  //     peor hueco de proteína de un día  **−20,1% → −2,6%**   (Claudia)
+  //     peor hueco de proteína de un día  **−20,1% → −2,6%**   (Carla)
   //     días bajo −10% de proteína        **21 de 147 → 0**
   //     merienda repetida                 **55,1% → 0,0%**
   // Si esta barra vuelve a estorbar, la respuesta NO es bajarla otra vez: es AMPLIAR el banco de
@@ -11222,23 +11222,23 @@ test('el plan del día es determinista y no inventa sin datos', () => {
 });
 
 test('la revisión del coach señala el riesgo REAL para el objetivo de la persona', () => {
-  // Caso real de producción: Luz quiere perder grasa y su plan la tiene 670 kcal por
-  // encima; Samuel quiere ganar y está 806 por debajo.
+  // Caso real de producción: Luisa quiere perder grasa y su plan la tiene 670 kcal por
+  // encima; Salomón quiere ganar y está 806 por debajo.
   const luz = { sex: 'F', age: 39, weight: 82, height: 156, goal: 'Perder grasa', activityFactor: 1.55 };
   const rl = core.nutPlanReview(luz, { kcal: 2400 }, 82);
   assert.strictEqual(rl.status, 'desviado');
   assert.ok(rl.gap > 0);
   assert.strictEqual(rl.riesgo, 'come_de_mas_para_bajar');
 
-  const samuel = { sex: 'M', age: 28, weight: 78, height: 176, goal: 'Ganar músculo', activityFactor: 1.725 };
-  const rs = core.nutPlanReview(samuel, { kcal: 2554 }, 78);
+  const salomon = { sex: 'M', age: 28, weight: 78, height: 176, goal: 'Ganar músculo', activityFactor: 1.725 };
+  const rs = core.nutPlanReview(salomon, { kcal: 2554 }, 78);
   assert.strictEqual(rs.riesgo, 'come_de_menos_para_subir');
 });
 
 test('sin peso ni talla la revisión PIDE EL DATO, no inventa un plan', () => {
-  // Astrid, caso real: no tiene peso ni estatura guardados.
-  const astrid = { sex: 'F', age: 33, goal: 'Ganar músculo', activityFactor: 1.55 };
-  const r = core.nutPlanReview(astrid, { kcal: 2400 }, null);
+  // Andrea, caso real: no tiene peso ni estatura guardados.
+  const andrea = { sex: 'F', age: 33, goal: 'Ganar músculo', activityFactor: 1.55 };
+  const r = core.nutPlanReview(andrea, { kcal: 2400 }, null);
   assert.strictEqual(r.status, 'sin_datos');
   assert.ok(r.falta.includes('peso') && r.falta.includes('estatura'));
   assert.strictEqual(r.sugerido, undefined, 'no debe sugerir kcal sin datos del cuerpo');
@@ -11579,7 +11579,7 @@ test('perfIndex: las REPETICIONES cuentan, y con más de 15 no se calla', () => 
   assert.strictEqual(perfIndex('', ''), null);
 });
 
-test('🔴 v433 · CONSOLIDAR UN RÉCORD NO ES ESTANCARSE (caso Astrid, medido en producción)', () => {
+test('🔴 v433 · CONSOLIDAR UN RÉCORD NO ES ESTANCARSE (caso Andrea, medido en producción)', () => {
   // Subió el hip thrust 90 → 100 kg y lo afianzó a 4×12. El detector viejo la marcaba porque su
   // récord caía DENTRO de la ventana `prior` (los últimos 4 puntos no lo superaban) — castigaba
   // terminar bien una progresión. Con ella la app disparó una SEMANA DE DESCARGA.
@@ -11593,7 +11593,7 @@ test('🔴 v433 · CONSOLIDAR UN RÉCORD NO ES ESTANCARSE (caso Astrid, medido e
   assert.ok(it.delta > 0.05, 'lee la mejora real, no un empate: ' + Math.round(it.delta * 100) + '%');
 });
 
-test('🔴 v433 · SUBIR REPETICIONES CON EL MISMO PESO NO ES ESTANCARSE (caso Nataly)', () => {
+test('🔴 v433 · SUBIR REPETICIONES CON EL MISMO PESO NO ES ESTANCARSE (caso Nayla)', () => {
   // 80 kg fijos en el hip thrust, pero de 10 a 19 repeticiones por serie. El detector viejo solo
   // miraba `maxKg` → «se estancó». El índice de rendimiento ve el progreso que hay.
   const reps = [10, 12, 13, 14, 16, 17, 18, 19, 19, 19];
@@ -11606,7 +11606,7 @@ test('🔴 v433 · SUBIR REPETICIONES CON EL MISMO PESO NO ES ESTANCARSE (caso N
   assert.strictEqual(it.stalled, false, 'de 10 a 19 repeticiones es progreso, no meseta');
 });
 
-test('🔴 v433 · UN ESTANCAMIENTO REAL SÍ SE DETECTA (caso Astrid, remo con barra)', () => {
+test('🔴 v433 · UN ESTANCAMIENTO REAL SÍ SE DETECTA (caso Andrea, remo con barra)', () => {
   // El control que impide que el arreglo convierta el detector en un mudo: 10 kg × 12 repeticiones
   // quieto dos meses es una meseta de verdad, y su coach no la había visto.
   const h = Array.from({ length: 12 }, (_, i) => ({
@@ -11617,9 +11617,9 @@ test('🔴 v433 · UN ESTANCAMIENTO REAL SÍ SE DETECTA (caso Astrid, remo con b
   assert.ok(it && it.stalled, 'esto SÍ es un estancamiento y tiene que salir');
 });
 
-test('🔴 v585 · UN EJERCICIO RENOMBRADO ES EL MISMO EJERCICIO PARA EL DETECTOR (caso Kathe, e24)', () => {
+test('🔴 v585 · UN EJERCICIO RENOMBRADO ES EL MISMO EJERCICIO PARA EL DETECTOR (caso Karen, e24)', () => {
   // Medido en producción el 7-sep-2026: «Pullover en Polea» (5 sesiones) y «Pull Over en Polea»
-  // (3) son el MISMO e24 en el historial de Kathe; a Samuel le pasa con e30 y a Astrid con e29.
+  // (3) son el MISMO e24 en el historial de Karen; a Salomón le pasa con e30 y a Andrea con e29.
   // Agrupando por NOMBRE ninguna mitad llegaba a los 7 puntos-día que el detector exige para
   // pronunciarse, así que la meseta era invisible: 2 de los 3 ejercicios partidos de producción
   // quedaban fuera del detector solo por cómo se escribía su nombre ese día.
@@ -11647,7 +11647,7 @@ test('🔴 v585 · UN EJERCICIO RENOMBRADO ES EL MISMO EJERCICIO PARA EL DETECTO
   assert.strictEqual(items[0].name, 'Pull Over en Polea');
 });
 
-test('🔒 v433 · una PRINCIPIANTE en adaptación no se estanca nunca (caso Luz)', () => {
+test('🔒 v433 · una PRINCIPIANTE en adaptación no se estanca nunca (caso Luisa)', () => {
   // Llevaba 5 semanas y la app le decía que se había estancado en el curl femoral.
   const h = Array.from({ length: 12 }, (_, i) => ({
     date: new Date(CI_NOW - (34 - i * 3) * 86400000).toISOString(),
@@ -11695,7 +11695,7 @@ section('La semana de descarga (startDeload / endDeload, v434)');
 // la persona YA tiene.
 
 const dlClient = () => ({
-  id: 'c1', name: 'Kathe', level: 'Intermedio', days: 4,
+  id: 'c1', name: 'Karen', level: 'Intermedio', days: 4,
   routines: [
     { id: 'r1', name: 'Glúteo A', day: 'Lunes', restSec: 90, exercises: [
       { id: 'e1', name: 'Hip Thrust en Máquina', muscle: 'gluteo', sets: 4, reps: 15 },
@@ -11793,7 +11793,7 @@ test('🔒 v434 · la descarga NO se quita sola: sigue puesta hasta que el coach
   const en = Object.assign({}, c, { routines: r.routines, deload: r.deload });
   const tarde = DL_NOW + 30 * 86400000;
   assert.ok(deloadState(en, tarde), 'a los 30 días sigue activa');
-  assert.deepStrictEqual(deloadOverdue([en], tarde).map(x => x.name), ['Kathe'], 'pero el coach lo ve en su Inicio');
+  assert.deepStrictEqual(deloadOverdue([en], tarde).map(x => x.name), ['Karen'], 'pero el coach lo ve en su Inicio');
   assert.strictEqual(deloadOverdue([en], DL_NOW + 86400000).length, 0, 'dentro de los 7 días no molesta');
 });
 
@@ -11834,7 +11834,7 @@ test('🔴 v482 · EL CANDADO CENTRAL: en descarga NUNCA se sugiere un peso ≥ 
   assert.ok(casos > 200, 'el barrido tiene que morder de verdad, corrió ' + casos);
 });
 
-test('🔴 v482 · el caso REAL que lo destapó: Natalia, récord 25 kg ×15, plan de 15 reps', () => {
+test('🔴 v482 · el caso REAL que lo destapó: Nadia, récord 25 kg ×15, plan de 15 reps', () => {
   // Antes: suggestFromPR sube a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
   // récord. La app llamaba «descarga» a levantar lo mismo de siempre.
   const pr = { val: 25, unit: 'kg', reps: 15 };
@@ -11964,7 +11964,7 @@ const spLib = [
   { id: 'x3', name: 'Remo Pendlay', muscle: 'espalda', level: 'A', icon: '🔥', desc: 'd3', imgUrl: 'u3' },
   { id: 'x9', name: 'Press Banca', muscle: 'pecho', level: 'P', icon: '🏋️', desc: 'd9', imgUrl: 'u9' },
 ];
-const spClient = { id: 'c1', name: 'Astrid', level: 'Intermedio', notes: '' };
+const spClient = { id: 'c1', name: 'Andrea', level: 'Intermedio', notes: '' };
 const spPain = area => [{ area, at: new Date(CI_NOW - 2 * 86400000).toISOString() }];
 
 test('shockPlan: sin estancamiento (o ejercicio inexistente) → null', () => {
@@ -12053,7 +12053,7 @@ test('shockPlan: sin catálogo o sin variantes del mismo músculo → sigue habi
 test('shockPlan: los mensajes van en VOZ DEL COACH — nombre del asesorado, ejercicio y kg', () => {
   const p = shockPlan(spClient, 'Jalón al Pecho', spStalled, spLib, CI_NOW);
   p.options.forEach(o => {
-    assert.ok(o.msg.includes('Astrid'), o.id + ': le habla por su nombre');
+    assert.ok(o.msg.includes('Andrea'), o.id + ': le habla por su nombre');
     assert.ok(o.msg.includes('Jalón al Pecho'), o.id + ': nombra el ejercicio');
     assert.ok(o.msg.includes('62'), o.id + ': dice el kg en el que se plantó');
     assert.ok(o.title && o.desc, o.id + ': tiene título y explicación para el coach');
@@ -12181,9 +12181,9 @@ test('shockTargets: 3 EN REGRESIÓN (aunque sean de 3 músculos distintos) → g
   assert.deepStrictEqual(r.names.slice().sort(), ['Jalón al Pecho', 'Press Banca', 'Sentadilla']);
 });
 
-test('🔒 v433 · 3 en MESETA (sin caída) NO son una descarga — es el caso de Astrid', () => {
+test('🔒 v433 · 3 en MESETA (sin caída) NO son una descarga — es el caso de Andrea', () => {
   // El disparo viejo contaba ejercicios PLANTADOS: un conteo absoluto que ignora cuántos van
-  // subiendo. Medido en producción, Astrid tenía 3 planos y 7 MEJORANDO y la app le mandaba una
+  // subiendo. Medido en producción, Andrea tenía 3 planos y 7 MEJORANDO y la app le mandaba una
   // semana de descarga. Meseta ≠ fatiga sistémica: eso pide regresión real (criterio de Andrés).
   const meseta3 = [
     { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_MESETA },
@@ -12354,7 +12354,7 @@ test('errReportGate: al cambiar el día de calendario el tope diario arranca en 
 });
 
 // ══════════════════════════════════════════════════════
-// Sello anti-harness (cloudWriteSealed) — incidente Samuel 2026-07-08
+// Sello anti-harness (cloudWriteSealed) — incidente Salomón 2026-07-08
 // ══════════════════════════════════════════════════════
 section('Sello anti-harness (cloudWriteSealed)');
 
@@ -12817,7 +12817,7 @@ test('setLog es la única vía de escritura de una serie y aplica el tope', () =
 
 section('Auto-cura de valores imposibles ya guardados (2026-07-30)');
 
-// Los dos casos son LOS DE PRODUCCIÓN, con su forma exacta: kg como string, el de Natalia con
+// Los dos casos son LOS DE PRODUCCIÓN, con su forma exacta: kg como string, el de Nadia con
 // ceros a la izquierda (un teclado trabado, no un dedo), y el volumen guardado ya contaminado.
 test('sanitizeHistory borra el valor imposible y RECALCULA el volumen de esa sesión', () => {
   const hist = [{
@@ -13098,7 +13098,7 @@ test('H1: la edge send-push resuelve al usuario por su token y autoriza el desti
 // ── Los ACOMPAÑANTES del plan de comida se COMEN: entran al presupuesto y a la cuenta ──
 // Hasta el 2026-08-03 se mapeaban solo a nombre para pintarlos y sus macros no entraban en
 // ningún lado → el plan servía hasta un 22% más de lo que prometía en su propia tarjeta, y
-// pegaba más fuerte en quien está en déficit (Luz, perder grasa: prometía 1.768 kcal y
+// pegaba más fuerte en quien está en déficit (Luisa, perder grasa: prometía 1.768 kcal y
 // servía 2.160; su déficit de 500 quedaba en ~110).
 test('nutAcompMacros: un acompañante conocido aporta sus macros, uno inventado aporta 0', () => {
   const conFruta = nutAcompMacros(['guayaba']);
@@ -13149,7 +13149,7 @@ function _kcalRealmenteServidas(plan) {
 // 🔴 Y desde v471 devuelve también el peor hueco de PROTEÍNA, que es el macro que Andrés
 // protege y el que NADIE estaba vigilando: hasta esta versión `grep -c "peorProt"` daba 0. El
 // filtro de menús miraba solo kcal, así que un menú que cuadraba el total y entregaba 20 g menos
-// de proteína «cabía» — a Kathe, la persona por la que Andrés peleó +26 g, le quitaba 22 g en su
+// de proteína «cabía» — a Karen, la persona por la que Andrés peleó +26 g, le quitaba 22 g en su
 // peor día. Medido sobre estos perfiles: el peor hueco era **−23,8%** y ninguna línea lo decía.
 function _peorDesvioPlan(perfiles) {
   let peorKcal = -Infinity, quienKcal = '', peorCarb = Infinity, quienCarb = '';
@@ -13632,7 +13632,7 @@ test('🔴 v517 · la auto-cura del entorno corre SIEMPRE y no adivina el valor'
 // Quien toca el link que el PO comparte en sus historias veía una promesa y CERO pruebas.
 // `avi_showcase` es la ÚNICA tabla que se lee sin cuenta, y solo tiene lo que él publicó.
 const _STORY_OK = {
-  ok: true, nombre: 'Astrid', entrenos: 48, meses: 3,
+  ok: true, nombre: 'Andrea', entrenos: 48, meses: 3,
   subidas: [{ ejercicio: 'Prensa de Pierna', de: 40, a: 95 }], subieron: 15, conCarga: 26,
 };
 
@@ -13644,7 +13644,7 @@ test('🔴 v523 · a la vitrina solo llega lo que la HISTORIA produjo', () => {
   assert.deepStrictEqual(Object.keys(r.subidas[0]).sort(), ['a', 'de', 'ejercicio']);
   // 🔴 Se construye desde la HISTORIA, así que el candado de menores viaja incluido:
   // una historia bloqueada no puede producir una fila publicable.
-  assert.strictEqual(core.showcaseRow(core.clientProgressStory({ name: 'Sharith', age: 16 }, [], new Date())), null,
+  assert.strictEqual(core.showcaseRow(core.clientProgressStory({ name: 'Sonia', age: 16 }, [], new Date())), null,
     'una historia de un MENOR produjo fila publicable');
   assert.strictEqual(core.showcaseRow(null), null);
   assert.strictEqual(core.showcaseRow({ ok: false }), null);
@@ -13784,7 +13784,7 @@ test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', 
   // («Pullover 4 → 15 kg, +275%») y el kilo saca lo que impresiona Y es creíble («Prensa
   // 40 → 95»). En este fixture el pullover gana por porcentaje (+275%) y la prensa por kilos
   // (+55), así que el orden DISCRIMINA — con cualquier otro fixture el test no probaría nada.
-  const st = core.clientProgressStory({ name: 'Astrid Beltrán', age: 33 }, _HIST_ASTRID, new Date());
+  const st = core.clientProgressStory({ name: 'Andrea Bernal', age: 33 }, _HIST_ASTRID, new Date());
   assert.strictEqual(st.ok, true);
   assert.strictEqual(st.subidas[0].ejercicio, 'Prensa de Pierna',
     'ordenó por porcentaje: el primero debería ser el que más KILOS ganó');
@@ -13806,7 +13806,7 @@ test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', 
   const pctMax = Math.max.apply(null, st.subidas.map(s => s.pct));
   assert.ok(st.subidas[0].pct < pctMax,
     '🔴 la primera fila trae el % MÁS ALTO: volvió el orden por porcentaje que v522 midió y rechazó');
-  // 🔒 Y EL TITULAR NO PUEDE SER EL MÁXIMO. Es la mediana: con el máximo, la tarjeta de Nataly
+  // 🔒 Y EL TITULAR NO PUEDE SER EL MÁXIMO. Es la mediana: con el máximo, la tarjeta de Nayla
   //    diría «+650%» (una polea de 2 → 15 kg) mientras su volumen por sesión cayó un 42%.
   assert.ok(st.medianaPct < pctMax,
     '🔴 el titular volvió a ser el porcentaje MÁXIMO: es el número que infla la tarjeta');
@@ -13815,7 +13815,7 @@ test('🔴 v522 · la historia se ordena por KILOS GANADOS, no por porcentaje', 
 });
 
 // 🔒 v601 · CON EL TRABAJO TOTAL A LA BAJA, LA TARJETA NO PRESUME EN %.
-// Medido el 10-sep-2026: Nataly tiene un máximo de +650% y su volumen por sesión es x0,58; el
+// Medido el 10-sep-2026: Nayla tiene un máximo de +650% y su volumen por sesión es x0,58; el
 // propio PO, +140% con x0,70. Un titular en % los presentaría MEJOR de lo que están — es el
 // «arreglo que mejora el caso bueno y empeora el malo» de v595. Sin titular, la tarjeta se queda
 // con el recuento, que es verdad igual.
@@ -14049,19 +14049,19 @@ test('🔴 v522 · a un MENOR no se le arma la imagen de un toque', () => {
   // acudiente. No es que no se pueda: es que la app no lo hace fácil por accidente. Desde v573
   // ese permiso SE PUEDE ACREDITAR (`showcaseMinorOk`) — este test cubre a quien no lo tiene,
   // que sigue siendo el caso por defecto.
-  const menor = core.clientProgressStory({ name: 'Sharith', age: 16 }, _HIST_ASTRID, new Date());
+  const menor = core.clientProgressStory({ name: 'Sonia', age: 16 }, _HIST_ASTRID, new Date());
   assert.strictEqual(menor.ok, false);
   assert.strictEqual(menor.razon, 'menor');
   // 🔴 CONTROL: con los MISMOS datos, a una adulta sí. Sin esto, una función que devolviera
   // siempre `false` pasaría la aserción de arriba.
-  const adulta = core.clientProgressStory({ name: 'Astrid', age: 18 }, _HIST_ASTRID, new Date());
+  const adulta = core.clientProgressStory({ name: 'Andrea', age: 18 }, _HIST_ASTRID, new Date());
   assert.strictEqual(adulta.ok, true, 'a los 18 ya no es menor y la historia debe salir');
   // y la edad manda sobre todo lo demás: aunque no tuviera entrenos, la razón es la edad
   assert.strictEqual(core.clientProgressStory({ name: 'X', age: 15 }, [], new Date()).razon, 'menor');
 });
 
 test('🔴 v522 · sin material no se inventa una historia', () => {
-  const pocos = core.clientProgressStory({ name: 'Danilo', age: 51 }, _HIST_ASTRID.slice(0, 3), new Date());
+  const pocos = core.clientProgressStory({ name: 'Darío', age: 51 }, _HIST_ASTRID.slice(0, 3), new Date());
   assert.strictEqual(pocos.ok, false);
   assert.strictEqual(pocos.razon, 'pocos_entrenos');
   assert.strictEqual(pocos.faltan, core.STORY_MIN_SESSIONS - 3, 'dice cuántos entrenos faltan');
@@ -14075,8 +14075,8 @@ test('🔴 v522 · sin material no se inventa una historia', () => {
 });
 
 test('🔴 v522 · la historia dice solo el PRIMER nombre y cuenta lo que de verdad pasó', () => {
-  const st = core.clientProgressStory({ name: 'Astrid Beltrán', age: 33 }, _HIST_ASTRID, new Date());
-  assert.strictEqual(st.nombre, 'Astrid', 'en una historia pública va el primer nombre, no el apellido');
+  const st = core.clientProgressStory({ name: 'Andrea Bernal', age: 33 }, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.nombre, 'Andrea', 'en una historia pública va el primer nombre, no el apellido');
   assert.strictEqual(st.entrenos, 8);
   assert.strictEqual(st.subieron, 2);
   assert.strictEqual(st.conCarga, 2, 'cuenta los ejercicios con carga registrada, no los del catálogo');
@@ -14143,17 +14143,17 @@ test('🔒 la bienvenida aparta sus extras en TODA puerta que abre o cierra un f
 });
 
 // ══════ QUITAR NO PUEDE DEPENDER DE PODER PUBLICAR (v570) ═══════════════════════════════
-// 🔴 Medido el 3-sep en producción: Samuel se registró declarando 28 años y tiene 15, así que la
+// 🔴 Medido el 3-sep en producción: Salomón se registró declarando 28 años y tiene 15, así que la
 // app le publicó la tarjeta el 29-ago — el candado de menores le preguntó a la cifra equivocada.
 // Lo grave apareció al ir a corregirlo: el único botón «Quitar» vivía DENTRO del bloque que solo
 // se dibuja cuando la historia SÍ es publicable. Corregir la edad escondía el botón de bajar la
 // tarjeta que esa misma corrección volvía ilegal. Y borrando a la persona, la tarjeta se quedaba
 // pública sin puerta ninguna.
 const _scCl = [
-  { id: 'a', name: 'Samuel Cifuentes', age: 15 },
-  { id: 'b', name: 'Astrid Beltran', age: 33 },
-  { id: 'd1', name: 'diana ramirez', age: 18 },
-  { id: 'd2', name: 'Diana Paola Diaz', age: 41 },
+  { id: 'a', name: 'Salomón Cárdenas', age: 15 },
+  { id: 'b', name: 'Andrea Bernal', age: 33 },
+  { id: 'd1', name: 'dora rincón', age: 18 },
+  { id: 'd2', name: 'Dora P.', age: 41 },
 ];
 const _scSes = (n) => Array.from({ length: n }, (_, i) => ({
   date: '2026-0' + (1 + (i % 8)) + '-0' + (1 + (i % 9)),
@@ -14163,8 +14163,8 @@ const _scHist = { a: _scSes(37), b: _scSes(57), d1: [], d2: _scSes(30) };
 
 test('🔒 una tarjeta publicada se vuelve a atar a su persona, y si no puede lo DICE (v570)', () => {
   const r = core.showcaseAudit(
-    [{ id: 'c1', nombre: 'Samuel' }, { id: 'c2', nombre: 'Astrid' },
-     { id: 'c3', nombre: 'Miguel' }, { id: 'c4', nombre: 'Diana' }],
+    [{ id: 'c1', nombre: 'Salomón' }, { id: 'c2', nombre: 'Andrea' },
+     { id: 'c3', nombre: 'Mario' }, { id: 'c4', nombre: 'Dora' }],
     _scCl, _scHist, new Date('2026-09-03'));
   const por = {}; r.forEach(x => { por[x.id] = x; });
   // El caso real: publicada con 28 declarados, hoy la edad correcta la vuelve impublicable.
@@ -14176,20 +14176,20 @@ test('🔒 una tarjeta publicada se vuelve a atar a su persona, y si no puede lo
   // 🔴 SIN FICHA NO HAY PUERTA: la tarjeta de quien ya no está en la lista es la que no se
   //    puede quitar desde ninguna parte, y es justo la que nadie va a ir a mirar.
   assert.strictEqual(por.c3.estado, 'huerfana');
-  // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy hay dos Diana en la
+  // 🔒 DOS PERSONAS CON EL MISMO PRIMER NOMBRE NO SE DESEMPATAN A DEDO. Hoy hay dos Dora en la
   //    lista real; elegir una sería decidir sobre la tarjeta equivocada.
   assert.strictEqual(por.c4.estado, 'ambigua');
   assert.strictEqual(por.c4.cuantos, 2);
   // `showcasePendientes` es lo que ve el Inicio: todo menos lo sano.
   const p = core.showcasePendientes(
-    [{ id: 'c1', nombre: 'Samuel' }, { id: 'c2', nombre: 'Astrid' }], _scCl, _scHist, new Date('2026-09-03'));
+    [{ id: 'c1', nombre: 'Salomón' }, { id: 'c2', nombre: 'Andrea' }], _scCl, _scHist, new Date('2026-09-03'));
   assert.deepStrictEqual(p.map(x => x.id), ['c1'], 'el Inicio muestra la sana o esconde la mala');
 });
 
 test('🔒 la atadura tarjeta↔persona usa la MISMA derivación del nombre que la historia (v570)', () => {
   // Si las dos derivaciones se separan, la atadura falla EN SILENCIO: la tarjeta se vuelve
   // huérfana sin que nadie se haya ido, y el aviso pasa a mentir.
-  const c = { id: 'z', name: '  Samuel  Cifuentes ', age: 30 };
+  const c = { id: 'z', name: '  Salomón  Cárdenas ', age: 30 };
   const st = core.clientProgressStory(c, _scSes(20), new Date('2026-09-03'));
   assert.strictEqual(st.ok, true);
   assert.strictEqual(core.showcaseFirstName(c.name), st.nombre,
@@ -14339,7 +14339,7 @@ test('🔴 v553 · el tope de tarjetas por coach vive en el servidor', () => {
 
 // ── EL OBJETIVO EN LA TARJETA (v555) ─────────────────────────────────────────────────────────
 // Pedido del PO (30-ago). NO es decoración: sin el objetivo la MISMA cifra dice cosas opuestas.
-// Nataly subió de 54 a 59,5 kg y es un éxito —busca ganar músculo— pero en una tarjeta muda ese
+// Nayla subió de 54 a 59,5 kg y es un éxito —busca ganar músculo— pero en una tarjeta muda ese
 // «+5,5 kg» en una página de venta se lee como que engordó.
 test('🔴 v555 · el objetivo viaja del perfil a la fila, y solo si es uno de los seis', () => {
   assert.deepStrictEqual(core.SHOWCASE_OBJETIVOS,
@@ -14361,7 +14361,7 @@ test('🔴 v555 · la historia lleva el objetivo y la fila publicable lo copia',
     ses.push({ date: new Date(2026, 4, 1 + i).toISOString(),
       exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: 30 + i * 5, reps: 10 }] }] });
   }
-  const st = core.clientProgressStory({ name: 'Nataly Ruiz', age: 40, goal: 'Ganar músculo' }, ses, new Date(2026, 7, 30));
+  const st = core.clientProgressStory({ name: 'Nayla Ruiz', age: 40, goal: 'Ganar músculo' }, ses, new Date(2026, 7, 30));
   assert.strictEqual(st.ok, true, 'control: la historia debería armarse');
   assert.strictEqual(st.objetivo, 'Ganar músculo', 'la historia perdió el objetivo del perfil');
   const row = core.showcaseRow(st);
@@ -14532,13 +14532,13 @@ test('🔴 v552 · el camino del auto-registro NO sella «revisado» y SÍ avisa
 });
 
 // ── EL AVISO DIARIO SIGUE EL PLAN DE LA PERSONA, NO LA COPIA DEL TELÉFONO (v551) ─────────────
-// Medido en producción el 29-ago: Natalia Martínez tenía DOS filas de suscripción —la del 7-ago,
+// Medido en producción el 29-ago: Nadia Mejía tenía DOS filas de suscripción —la del 7-ago,
 // huérfana (ningún aparato vuelve a tocar un endpoint que ya rotó), con los días congelados de
 // aquel plan, y la de hoy con su plan real—. El jueves 28-ago los logs de la edge imprimieron
 // para ella «(entreno) ✅» y «(descanso) ✅» en el MISMO turno de la tarde: dos avisos que se
 // contradicen. La copia por aparato no puede ser la autoridad sobre un hecho de la persona.
 test('🔴 v551 · pushPlanFromRoutines deriva los días de entreno del plan, y colapsa repetidos', () => {
-  // El plan REAL de Natalia el 29-ago (4 días, dos turnos declarados).
+  // El plan REAL de Nadia el 29-ago (4 días, dos turnos declarados).
   const plan = core.pushPlanFromRoutines([
     { day: 'Lunes', shift: 'morning' }, { day: 'Martes' },
     { day: 'Jueves', shift: 'morning' }, { day: 'Viernes' },
@@ -14861,7 +14861,7 @@ test('🔴 v513 · en gimnasio NO entra la variante de sustitución por falta de
 // Tope relativo a la propia persona. El umbral se DERIVÓ midiendo 1.258 series reales: la regla
 // completa dispara en 9 (0,7%). Estos casos son los que decidieron la forma de la regla.
 test('🔴 kgNeedsConfirm: pide confirmar el disparate y NO estorba al progreso real', () => {
-  // El caso del PO: Samuel, mejor prensa 90 kg, escribe 800 → límite 180, se le pide confirmar.
+  // El caso del PO: Salomón, mejor prensa 90 kg, escribe 800 → límite 180, se le pide confirmar.
   assert.strictEqual(core.kgNeedsConfirm(800, 90, 90), true);
   assert.strictEqual(core.kgConfirmLimit(90, 90), 180);
   // 🔴 LA RAZÓN DE QUE HAGAN FALTA LAS DOS CONDICIONES: doblar un peso PEQUEÑO es normal.
@@ -15499,26 +15499,26 @@ test('🔒 ningún campo de texto baja de 16px (Safari iOS hace zoom al enfocar 
 // ══════════════════════════════════════════════════════
 // EL TIEMPO DE UN HIIT LO DECIDE EL PROTOCOLO, NO EL RELOJ (v545)
 // ══════════════════════════════════════════════════════
-// Caso real que lo motivó (27-ago-2026, medido en producción): Luz y Claudia arrancaron el mismo
+// Caso real que lo motivó (27-ago-2026, medido en producción): Luisa y Carla arrancaron el mismo
 // «HIIT en Máquina» con UN SEGUNDO de diferencia, las dos cerraron 10/10 rondas, y la app les
 // mostró «8 min · 92 kcal» y «7 min · 67 kcal» (504 y 405 s guardados; fmtDuration redondea a
 // minutos, así que en PANTALLA la brecha visible fueron las calorías, no el tiempo).
 // Ninguno de los dos números estaba mal: medían el reloj
-// de pared entre la 1ª ronda cerrada y la última. El de Claudia salió en 405,000 s EXACTOS, que
+// de pared entre la 1ª ronda cerrada y la última. El de Carla salió en 405,000 s EXACTOS, que
 // es el valor teórico (435 del protocolo menos los 30 s de la 1ª ronda, que es cuando nace la
-// sesión); Luz tenía 99 s que el protocolo no explica — una pausa, o el celular bloqueado, que
+// sesión); Luisa tenía 99 s que el protocolo no explica — una pausa, o el celular bloqueado, que
 // en Android congela el temporizador. En un HIIT el tiempo no se mide: está decidido de antemano.
 
 const _hiitEx = (sets, work, rest) => ({ name: 'HIIT / Intervalos', track: 'hiit', sets, hiit: { work, rest } });
 const _hiitRut = (...exs) => ({ id: 'r1', name: 'HIIT', exercises: exs });
 
-test('HIIT: 10 rondas de 30/15 duran 435 s (el caso real de Luz y Claudia), no lo que marque el reloj', () => {
+test('HIIT: 10 rondas de 30/15 duran 435 s (el caso real de Luisa y Carla), no lo que marque el reloj', () => {
   const r = _hiitRut(_hiitEx(10, 30, 15));
   assert.strictEqual(core.hiitProtocolSec(r, [10]), 10 * 30 + 9 * 15);
   assert.strictEqual(core.hiitProtocolSec(r, [10]), 435);
 });
 
-test('HIIT: las MISMAS rondas dan la MISMA duración — es lo que preguntaron Luz y Claudia', () => {
+test('HIIT: las MISMAS rondas dan la MISMA duración — es lo que preguntaron Luisa y Carla', () => {
   const r = _hiitRut(_hiitEx(10, 30, 15));
   assert.strictEqual(core.hiitProtocolSec(r, [10]), core.hiitProtocolSec(r, [10]));
   // Y con menos rondas TIENE que dar menos: si no, «duración» dejaría de significar nada.
@@ -16205,7 +16205,7 @@ test('🔒 en las tres gráficas, cada etiqueta pasa por su guarda de «¿cabe?�
 
 // 🔴 Sin señal la app respondía «Email o contraseña incorrectos» y encima gastaba un intento
 // de los 5 que bloquean 30 segundos: le echaba la culpa a la persona por no tener red
-// (reporte de Claudia, 31-ago). La señal que separa los dos casos es el `status`: si el
+// (reporte de Carla, 31-ago). La señal que separa los dos casos es el `status`: si el
 // servidor RESPONDIÓ, un 4xx significa que juzgó las credenciales; si la petición no llegó,
 // no hay status.
 test('🔴 sin conexión el login NO culpa a la contraseña', () => {
@@ -16335,7 +16335,7 @@ test('🔴 v573 · el consentimiento de v565 NO habilita por sí solo publicar a
   // OTRA finalidad. Si el candado leyera `consent.acudiente`, cualquier menor inscrito con
   // normalidad quedaría publicable de una — el accidente que el candado vino a evitar.
   const conV565 = {
-    name: 'Sharith Sofía', age: 16,
+    name: 'Sonia Sofía', age: 16,
     consent: { general: true, salud: true, menor: true, adulto: false, edad: 16,
                acudiente: { nombre: 'Marta Restrepo', tel: '573001234567' },
                v: 'legal-3', at: '2026-09-01T10:00:00.000Z' },
@@ -16356,14 +16356,14 @@ test('🔴 v573 · con el permiso del acudiente registrado, la historia del meno
   assert.strictEqual(ev.edad, 15, 'no deja constancia de con qué edad se autorizó');
   assert.ok(ev.at && ev.v, 'una evidencia sin fecha ni versión no acredita nada');
 
-  const menor = { name: 'Samuel Cifuentes', age: 15, showcaseConsent: ev };
+  const menor = { name: 'Salomón Cárdenas', age: 15, showcaseConsent: ev };
   const st = core.clientProgressStory(menor, _HIST_ASTRID, new Date());
   assert.strictEqual(st.ok, true, 'con permiso registrado sigue bloqueado');
-  assert.strictEqual(st.nombre, 'Samuel');
+  assert.strictEqual(st.nombre, 'Salomón');
   // 🔴 CONTROL: el MISMO menor sin el campo sigue bloqueado. Sin esto, un candado que se hubiera
   // caído entero (o un `showcaseMinorOk` que devolviera siempre true) pasaría la aserción de
   // arriba y el test estaría midiendo el aire.
-  const sinPermiso = { name: 'Samuel Cifuentes', age: 15 };
+  const sinPermiso = { name: 'Salomón Cárdenas', age: 15 };
   assert.strictEqual(core.clientProgressStory(sinPermiso, _HIST_ASTRID, new Date()).razon, 'menor',
     'el candado dejó de morder para un menor SIN permiso');
   // Y la fila publicable se arma de verdad: el candado viaja dentro de showcaseRow.
@@ -16376,7 +16376,7 @@ test('🔴 v573 · el permiso se puede RETIRAR, y retirarlo no borra la prueba',
   const ev = core.showcaseMinorConsent(
     { autoriza: true, acudienteNombre: 'Marta Restrepo', edad: 15 },
     core.SHOWCASE_MINOR_V, '2026-09-05T12:00:00.000Z');
-  const menor = { name: 'Samuel', age: 15, showcaseConsent: ev };
+  const menor = { name: 'Salomón', age: 15, showcaseConsent: ev };
   assert.strictEqual(core.showcaseMinorOk(menor), true);
   menor.showcaseConsent = Object.assign({}, ev, { retiradoAt: '2026-09-06T08:00:00.000Z' });
   assert.strictEqual(core.showcaseMinorOk(menor), false, 'retirar el permiso no lo apagó');
@@ -16410,7 +16410,7 @@ test('🔴 v573 · una autorización a medias no se firma', () => {
 test('🔴 v573 · un ADULTO no pasa por la puerta del acudiente, ni para bien ni para mal', () => {
   // El permiso solo puede AÑADIR un caso, jamás quitar uno: si un adulto quedara colgando de
   // este campo, la puerta nueva habría roto lo que ya funcionaba.
-  const adulta = { name: 'Astrid', age: 33 };
+  const adulta = { name: 'Andrea', age: 33 };
   assert.strictEqual(core.clientProgressStory(adulta, _HIST_ASTRID, new Date()).ok, true);
   // y un campo retirado tampoco puede bloquear a quien ya no es menor
   const exMenor = { name: 'Valery', age: 18,
@@ -16422,13 +16422,13 @@ test('🔴 v573 · un ADULTO no pasa por la puerta del acudiente, ni para bien n
 test('🔴 v573 · la auditoría de la vitrina ve el permiso: «revisar» pasa a «ok»', () => {
   // Una tarjeta publicada es un hecho vivo (v570). Cuando el permiso entra, el aviso de «hoy no
   // la publicaría» tiene que APAGARSE solo — si no, el coach ve una alarma que ya no es cierta.
-  const card = [{ id: 'c1', nombre: 'Samuel' }];
-  const sinPermiso = [{ id: 's1', name: 'Samuel Cifuentes', age: 15 }];
+  const card = [{ id: 'c1', nombre: 'Salomón' }];
+  const sinPermiso = [{ id: 's1', name: 'Salomón Cárdenas', age: 15 }];
   const hist = { s1: _HIST_ASTRID };
   const a1 = core.showcaseAudit(card, sinPermiso, hist, new Date());
   assert.strictEqual(a1[0].estado, 'revisar');
   assert.strictEqual(a1[0].razon, 'menor');
-  const conPermiso = [{ id: 's1', name: 'Samuel Cifuentes', age: 15,
+  const conPermiso = [{ id: 's1', name: 'Salomón Cárdenas', age: 15,
     showcaseConsent: core.showcaseMinorConsent(
       { autoriza: true, acudienteNombre: 'Marta Restrepo', edad: 15 }, core.SHOWCASE_MINOR_V, null) }];
   const a2 = core.showcaseAudit(card, conPermiso, hist, new Date());
@@ -16465,7 +16465,7 @@ test('🔴 v573 · el permiso VIAJA a la fila del asesorado, o la puerta nace mu
   // el coach guarda en `ax_c` (SU fila), pero quien decide si la tarjeta se puede corregir
   // —`vitrina-refrescar.mjs` y cualquier lectura del lado servidor— lee `user_data.profile`,
   // que es la fila del ASESORADO. El puente es `clientToRow`, que copia todas las claves.
-  const c = { id: 'smx', name: 'Samuel Cifuentes', age: 15, routines: [], password: 'x',
+  const c = { id: 'smx', name: 'Salomón Cárdenas', age: 15, routines: [], password: 'x',
     showcaseConsent: { acudiente: { nombre: 'Marta Restrepo' }, edad: 15, v: 'vitrina-menor-1',
                        at: '2026-09-05T12:00:00.000Z' } };
   const row = core.clientToRow(c, { coachId: 'coach-1' });
@@ -16522,7 +16522,7 @@ test('🔴 v574 · la TARJETA PÚBLICA se quita, y atada por coach + nombre', ()
   // 🔒 MISMA derivación que `showcaseFirstName` (avi-core). Si se separan, la atadura falla
   //    en silencio y la tarjeta sobrevive al borrado.
   assert.match(_DEL_SRC, /\.trim\(\)\.split\(\/\\s\+\/\)\[0\]/, 'el primer nombre se deriva de otra forma que showcaseFirstName');
-  assert.strictEqual(core.showcaseFirstName('  Samuel  Cifuentes Ruiz '), 'Samuel',
+  assert.strictEqual(core.showcaseFirstName('  Salomón  Cárdenas Ruiz '), 'Salomón',
     'showcaseFirstName cambió: la edge quedó desalineada');
   // y la respuesta dice cuántas quitó, para poder avisarle al coach
   assert.match(_DEL_FULL, /tarjetasQuitadas/, 'no informa cuántas tarjetas se quitaron');
@@ -16713,11 +16713,11 @@ test('🔔 v577 · se poda el hermano abandonado, NUNCA la única suscripción d
 // de las sesiones sin cerrar nunca.
 
 test('v579 · el titular NO felicita por lo que no se hizo (sesión parcial)', () => {
-  assert.strictEqual(core.wfTitle('Claudia', true), '¡Bien hecho, Claudia!');
+  assert.strictEqual(core.wfTitle('Carla', true), '¡Bien hecho, Carla!');
   assert.strictEqual(core.wfTitle('', true), '¡Bien hecho!');
   // CONTROL: con la sesión completa el texto es EXACTAMENTE el de siempre — si esto cambiara,
   // el arreglo habría degradado la celebración de quien SÍ llegó al 100%.
-  assert.strictEqual(core.wfTitle('Claudia', false), '¡Lo lograste, Claudia!');
+  assert.strictEqual(core.wfTitle('Carla', false), '¡Lo lograste, Carla!');
   assert.strictEqual(core.wfTitle('', false), '¡Lo lograste!');
   // Estados no-felices: sin nombre (null/undefined) o con espacios, nunca «¡Lo lograste, !».
   assert.strictEqual(core.wfTitle(null, false), '¡Lo lograste!');
@@ -16772,7 +16772,7 @@ test('🔒 CABLEADO v579: finishSessionEarly devuelve el resumen, no un booleano
     'el resumen perdió alguna cifra que la pantalla de cierre necesita');
   assert.ok(!/return\s+true\s*;/.test(cuerpo),
     'volvió el `return true`: el llamador se queda sin cifras y la pantalla saldría en 0');
-  // Y la celebración no puede morir por un throw de los récords (caso Claudia 2026-07-07).
+  // Y la celebración no puede morir por un throw de los récords (caso Carla 2026-07-07).
   assert.ok(/try\s*\{\s*newPRs\s*=\s*_prsMergeSession/.test(cuerpo),
     'los récords volvieron a correr sin blindaje: un throw ahí se lleva la pantalla de cierre');
 });
@@ -17164,7 +17164,7 @@ test('v583 · cuenta y estima SOLO a quien está en gracia', () => {
 });
 
 test('🔴 v583 · un vencido de hace un mes NO es una renovación pendiente', () => {
-  // Meterlo aquí sería inflar una expectativa de plata que no va a llegar: Yeison lleva 37 días
+  // Meterlo aquí sería inflar una expectativa de plata que no va a llegar: Yamid lleva 37 días
   // vencido y ya se fue. La ventana es la de v528 — aquella en la que el coach todavía alcanza.
   const clientes = [_cliPago('Ido', '2026-07-31T12:00:00Z', 20000)];
   assert.deepStrictEqual(core.coachPendingRenewals(clientes, _AHORA), { count: 0, amount: 0 });
@@ -17251,10 +17251,10 @@ test('v588 · dos mensajes con el MISMO texto en momentos distintos son dos mens
 
 test('v588 · la cola guarda UNA entrada por columna+asesorado, y gana la última', () => {
   let q = [];
-  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Samuel', val: [1], ts: 10 }).list;
-  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Samuel', val: [1, 2], ts: 20 }).list;
-  q = core.coachQueuePut(q, { col: 'history', id: 'c1', name: 'Samuel', val: [9], ts: 30 }).list;
-  q = core.coachQueuePut(q, { col: 'msgs', id: 'c2', name: 'Kathe', val: [7], ts: 40 }).list;
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Salomón', val: [1], ts: 10 }).list;
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c1', name: 'Salomón', val: [1, 2], ts: 20 }).list;
+  q = core.coachQueuePut(q, { col: 'history', id: 'c1', name: 'Salomón', val: [9], ts: 30 }).list;
+  q = core.coachQueuePut(q, { col: 'msgs', id: 'c2', name: 'Karen', val: [7], ts: 40 }).list;
   assert.strictEqual(q.length, 3, 'la cola crece con cada intento fallido en vez de reemplazar');
   const msgs1 = q.find(x => x.col === 'msgs' && x.id === 'c1');
   assert.deepStrictEqual(msgs1.val, [1, 2], '🔴 reenviaría la versión VIEJA: eso es hacer retroceder el hilo');
@@ -17262,7 +17262,7 @@ test('v588 · la cola guarda UNA entrada por columna+asesorado, y gana la últim
 });
 
 test('🔒 v588 · lo que no cabe NO se descarta en silencio: queda marcado y sin payload', () => {
-  const gordo = { col: 'photos', id: 'c1', name: 'Samuel', val: 'x'.repeat(400 * 1024), ts: 10 };
+  const gordo = { col: 'photos', id: 'c1', name: 'Salomón', val: 'x'.repeat(400 * 1024), ts: 10 };
   const r = core.coachQueuePut([], gordo, { entry: 300 * 1024, total: 1024 * 1024 });
   assert.strictEqual(r.tooBig, true);
   assert.strictEqual(r.list.length, 1, '🔴 se perdió el aviso: el coach no se enteraría de nada');
@@ -17428,7 +17428,7 @@ test('🔒 v589 · ESPEJO: el cliente llama a la función que la migración defi
 // v590 · EL NOMBRE PROMETE Y LO PROMETIDO ESTÁ ADENTRO (D2-3) · EL FORMULARIO SE VACÍA (D2-4)
 // ══════════════════════════════════════════════════════
 // «Tren Superior — Espalda, Pecho y Hombros» = 3 de espalda + 2 de pecho y CERO de hombro.
-// Se aplicó a 3 personas y dejó a Kathe sin un solo ejercicio de hombro en todo su plan.
+// Se aplicó a 3 personas y dejó a Karen sin un solo ejercicio de hombro en todo su plan.
 // Medido el 8-sep: 1 de 5 plantillas y 2 de 108 rutinas vivas — marca poco, y lo que marca es real.
 
 const _ejs = (...ms) => ms.map(m => ({ muscle: m, name: 'Ej ' + m }));
@@ -17437,7 +17437,7 @@ test('v590 · el nombre que promete hombros sin un solo ejercicio de hombro se m
   const falta = core.routinePromiseGap('Tren Superior — Espalda, Pecho y Hombros', _ejs('espalda', 'espalda', 'pecho'));
   assert.deepStrictEqual(falta, ['hombros']);
   assert.match(core.routinePromiseText(falta), /nombre dice hombros/);
-  // El caso de Kathe, ya corregido a mano: con el ejercicio dentro, la app se calla.
+  // El caso de Karen, ya corregido a mano: con el ejercicio dentro, la app se calla.
   assert.deepStrictEqual(core.routinePromiseGap('Tren Superior — Espalda, Pecho y Hombros',
     _ejs('espalda', 'pecho', 'hombros')), []);
 });
@@ -17544,7 +17544,7 @@ test('🔴 v591 · NUNCA crea un récord que no existe (es lo que v483 midió y 
 });
 
 test('🔴 v591 · una serie ANOTADA pero NO MARCADA no es un récord', () => {
-  // El caso REAL de Nataly: 30 kg escritos el 4-ago en una serie que no marcó. Eso es un número
+  // El caso REAL de Nayla: 30 kg escritos el 4-ago en una serie que no marcó. Eso es un número
   // en la casilla, no un levantamiento — y el motor de la app siempre lo ha tratado así.
   const r = core.healStalePrs(_pr50(), [_ses('2026-08-04T00:00:00Z', 'e6', [{ kg: 90, reps: 15, done: false }])]);
   assert.strictEqual(r.curados.length, 0, '🔴 un peso sin marcar se convirtió en récord');
@@ -17611,23 +17611,23 @@ test('🔒 CABLEADO v591: la cura corre en las DOS puertas, y DESPUÉS de sanear
 // v593 · EL CERO DE MÁS, PERO EN LAS REPETICIONES (auditoría de rápidos, 8-sep)
 // ══════════════════════════════════════════════════════
 // v431 puso el candado sobre los KILOS. Las repeticiones no tenían ninguno, y ya había daño:
-// Luz anotó `10 / 110` en Dead Bug dos días (su plan dice 2×10) y ese 110 ES SU RÉCORD, con lo
+// Luisa anotó `10 / 110` en Dead Bug dos días (su plan dice 2×10) y ese 110 ES SU RÉCORD, con lo
 // que ese ejercicio le queda imposible de superar. Medido sobre las 7.116 series de la base:
 // 3 sospechosas, y las 3 son de verdad.
 
 test('v593 · una repetición que no cuadra con las otras series del día se marca', () => {
-  // El caso REAL de Luz, con sus dos únicas series.
+  // El caso REAL de Luisa, con sus dos únicas series.
   assert.strictEqual(core.repsOutlier([10, 110], 1), true);
   assert.strictEqual(core.repsOutlier([10, 110], 0), false, 'el valor normal no se acusa');
-  // El de Astrid: el peso tecleado en la casilla de repeticiones, entre series normales.
+  // El de Andrea: el peso tecleado en la casilla de repeticiones, entre series normales.
   assert.strictEqual(core.repsOutlier([10, 110, 10, 8], 1), true);
 });
 
 test('🔒 v593 · el umbral se eligió BARRIENDO el dato real: con 3 series se perdía el único récord malo', () => {
-  // 🔬 `_SANE_REL_MIN_SETS` (kilos) vale 3, y Luz tiene DOS series: copiar la constante habría
+  // 🔬 `_SANE_REL_MIN_SETS` (kilos) vale 3, y Luisa tiene DOS series: copiar la constante habría
   //    dejado fuera justo el caso con récord corrupto. Barrido sobre 7.116 series reales:
   //    mín. 2 → 3 marcadas (las 3 reales, con cualquier factor de 2,5× a 5×) · mín. 3 → 1.
-  assert.strictEqual(core.repsOutlier([10, 110], 1), true, '🔴 con dos series dejó de marcar: vuelve el récord de Luz');
+  assert.strictEqual(core.repsOutlier([10, 110], 1), true, '🔴 con dos series dejó de marcar: vuelve el récord de Luisa');
   // Con UNA sola serie no hay con qué comparar y no se acusa a nadie.
   assert.strictEqual(core.repsOutlier([110], 0), false);
   assert.strictEqual(core.repsOutlier([], 0), false);
@@ -17859,7 +17859,7 @@ test('🔴 v610 · con el récord desfasado, el peso sale del TRABAJO RECIENTE (
 });
 
 test('🔒 v610 · un día flojo suelto NO mueve el ancla (27 de 59 casos reales eran eso)', () => {
-  // La guarda de v595 miraba solo la ÚLTIMA sesión, así que a la Patada de Glúteo de Nataly le
+  // La guarda de v595 miraba solo la ÚLTIMA sesión, así que a la Patada de Glúteo de Nayla le
   // quitaba la instrucción por un día liviano, con el récord vigente en las sesiones de al lado.
   const ses = [
     { date: '2026-09-01', exercises: [{ id: 'e10', sets: [{ kg: '30', reps: '12', done: 1 }] }] },
@@ -18425,7 +18425,7 @@ test('🔒 v608 · saveEx sella la marca y el arranque respeta la marca (si no, 
 //     Andrés (siempre) y Valery (nunca). Fuente Gallagher 2000, que ajusta por EDAD.
 // (2) La grasa REEMPLAZA al IMC en el perfil de carga cuando existe — Andrés y Coach Pro a
 //     favor, Laura en contra. Medido sobre las 6 personas estimables: cambia a 3, y a DOS las
-//     pone en 'high' (Astrid y Claudia, con IMC por debajo de 30 y grasa por encima de 32).
+//     pone en 'high' (Andrea y Carla, con IMC por debajo de 30 y grasa por encima de 32).
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
 test('🔴 v609 · la etiqueta solo sale si la franja ENTERA cae en una sola banda', () => {
@@ -18461,7 +18461,7 @@ test('🔴 v609 · con grasa estimada manda la grasa, no el IMC', () => {
   assert.strictEqual(bodyLoadProfile(po, null, 96), 'high', 'sin grasa, el IMC manda como siempre');
   assert.strictEqual(bodyLoadProfile(po, null, 96, 24.4), 'normal', '🔴 la grasa no reemplazó al IMC');
   // 🔒 CONTROL en la otra dirección, que es la mitad que de verdad se midió: una mujer con IMC
-  //    por debajo de 30 y grasa por encima de 32 pasa a 'high' — el caso de Astrid y Claudia.
+  //    por debajo de 30 y grasa por encima de 32 pasa a 'high' — el caso de Andrea y Carla.
   const ella = { sex: 'F', age: 33, height: 160, weight: 70 };   // IMC 27,3
   assert.strictEqual(bodyLoadProfile(ella, null, 70), 'normal');
   assert.strictEqual(bodyLoadProfile(ella, null, 70, 37.9), 'high', '🔴 la grasa alta no subió el perfil');
@@ -18611,7 +18611,7 @@ test('🔒 v611 · CABLEADO: las superficies que rotulan la 2ª cifra pasan por 
 // de la única señal que avisa de que algo suyo de verdad no subió.
 
 test('v612 · no poder PREGUNTAR y haber preguntado son dos cosas: el veredicto las separa', () => {
-  const e = { col: 'history', id: 'c1', name: 'Kathe', ts: 1000 };
+  const e = { col: 'history', id: 'c1', name: 'Karen', ts: 1000 };
   // Sin poder hablar con la nube NO se concluye nada: sigue en cola y se reintenta.
   assert.strictEqual(core.coachQueueVerdict(e, { estado: 'mudo' }), 'mudo');
   // La consulta llegó y esa fila no está → jamás se va a poder escribir.
@@ -18623,7 +18623,7 @@ test('v612 · no poder PREGUNTAR y haber preguntado son dos cosas: el veredicto 
 });
 
 test('v612 · una entrada sin payload se RETIENE, pero si la fila no existe es huérfana igual', () => {
-  const gordo = { col: 'photos', id: 'c1', name: 'Samuel', ts: 1000, tooBig: true };
+  const gordo = { col: 'photos', id: 'c1', name: 'Salomón', ts: 1000, tooBig: true };
   assert.strictEqual(core.coachQueueVerdict(gordo, { estado: 'ok', updatedAt: new Date(1).toISOString() }), 'retener');
   // 🔒 El ORDEN importa: si la fila no está, da igual que el payload cupiera o no — nunca se va
   // a poder escribir. Con el orden al revés, un pendiente gordo de alguien borrado se quedaría
@@ -18636,8 +18636,8 @@ test('v612 · una entrada sin payload se RETIENE, pero si la fila no existe es h
 
 test('v612 · borrar la ficha se lleva TODO lo pendiente de esa persona, y solo de esa', () => {
   const q = [
-    { col: 'msgs', id: 'c1', name: 'Kathe' }, { col: 'history', id: 'c1', name: 'Kathe' },
-    { col: 'msgs', id: 'c2', name: 'Luz' },
+    { col: 'msgs', id: 'c1', name: 'Karen' }, { col: 'history', id: 'c1', name: 'Karen' },
+    { col: 'msgs', id: 'c2', name: 'Luisa' },
   ];
   const r = core.coachQueueDropClient(q, 'c1');
   assert.strictEqual(r.length, 1, 'tenía que soltar las DOS columnas de c1');
@@ -19213,7 +19213,7 @@ test('v622 · el retrato es el que eligió el PO (≥50% del ancho) y las cifras
 // v620 — EL AVISO «N SIN GUARDAR» YA NO SE QUEDA CLAVADO CUANDO LA NUBE ES MÁS NUEVA
 // ══════════════════════════════════════════════════════
 // Reporte del PO (16-sep): «el aviso amarillo aún está ahí». v612 le dio salida a la HUÉRFANA
-// (fila borrada), pero el pendiente era de Diana Pilar, cuya fila EXISTE y se actualiza cada día
+// (fila borrada), pero el pendiente era de Dora Pilar, cuya fila EXISTE y se actualiza cada día
 // (medido: updated_at 16-sep 13:46). Veredicto «retener» → el toast mandaba a rehacerlo desde la
 // ficha y el aviso no tenía NINGUNA salida.
 
@@ -19267,8 +19267,8 @@ const _prBorrado = () => ({ e1: { val: 200000, kg: 200000, reps: 8, date: '2026-
 const _tumba = { e1: { at: '2026-09-01T10:00:00.000Z', val: 200000 } };
 
 test('v620 · la copia vieja del teléfono NO devuelve el récord que el coach borró', () => {
-  const nube = { prs: {}, profile: { name: 'Samuel', prTombs: _tumba } };
-  const telefono = { prs: _prBorrado(), profile: { name: 'Samuel' } };
+  const nube = { prs: {}, profile: { name: 'Salomón', prTombs: _tumba } };
+  const telefono = { prs: _prBorrado(), profile: { name: 'Salomón' } };
   const r = core.mergeAuthRow(telefono, nube);
   assert.ok(!r.prs.e1, '🔴 el récord borrado resucitó en la fusión');
   assert.deepStrictEqual(r.profile.prTombs, _tumba, '🔴 la fusión perdió la lápida');
@@ -19337,7 +19337,7 @@ const _subidaTelefono = (cliente, prsLocal, doblar) => {
 const _arranque = fila => core.applyPrTombs(fila.prs, core.rowToClient(fila).prTombs).prs;
 
 test('v621 · el teléfono abierto desde antes del borrado ya NO le quita la lápida a la nube', () => {
-  const viejo = { id: 'u1', name: 'Samuel' };   // su ficha en memoria: de antes del borrado
+  const viejo = { id: 'u1', name: 'Salomón' };   // su ficha en memoria: de antes del borrado
   // 🔒 CONTROL: sin unir las lápidas de la nube, el récord borrado vuelve para quedarse.
   const sin = _subidaTelefono(viejo, _prBorrado(), false);
   assert.ok(!sin.profile.prTombs && _arranque(sin).e1, 'el control no reproduce el hueco: este test no prueba nada');
@@ -19345,16 +19345,16 @@ test('v621 · el teléfono abierto desde antes del borrado ya NO le quita la lá
   assert.deepStrictEqual(con.profile.prTombs, _tumba, '🔴 la subida del perfil borró la lápida de la nube');
   assert.ok(!con.prs.e1, '🔴 la copia vieja de récords subió el récord borrado');
   assert.ok(!_arranque(con).e1, '🔴 el récord borrado resucitó en el siguiente arranque');
-  assert.strictEqual(con.profile.name, 'Samuel', '🔴 unir lápidas le pisó el resto del perfil');
+  assert.strictEqual(con.profile.name, 'Salomón', '🔴 unir lápidas le pisó el resto del perfil');
 });
 
 test('v621 🔒 unir lápidas no inventa nada: sin lápidas el perfil sale IGUAL, y un récord real sobrevive', () => {
-  const p = { name: 'Luz' };
+  const p = { name: 'Luisa' };
   const f = core.foldPrTombs(p, {}, { e1: { val: 40, date: '2026-09-10T00:00:00.000Z' } });
   assert.strictEqual(f.profile, p, '🔴 inventó `prTombs` en un perfil que no tenía');
   assert.ok(!('prTombs' in f.profile));
   assert.ok(core.foldPrTombs(p, null, {}).profile === p, '🔴 una nube sin respuesta cambió el perfil');
-  const legit = core.foldPrTombs({ name: 'Luz' }, _tumba, { e1: { val: 30, kg: 30, date: '2026-08-20T00:00:00.000Z' } });
+  const legit = core.foldPrTombs({ name: 'Luisa' }, _tumba, { e1: { val: 30, kg: 30, date: '2026-08-20T00:00:00.000Z' } });
   assert.ok(legit.prs.e1, '🔴 la lápida se comió un récord de OTRO número');
   // Las dos lápidas se unen: la local no se pierde porque la nube traiga otra.
   const dos = core.foldPrTombs({ prTombs: { e2: { at: '2026-09-02T00:00:00.000Z', val: 9 } } }, _tumba, {}, '2026-09-17T00:00:00.000Z');
@@ -19369,7 +19369,7 @@ test('v621 · EJECUTADO: el guardado del teléfono viejo sube la lápida y NO su
   const src = _srcApp1();
   const cortar = nombre => { const i = src.indexOf('async function ' + nombre + '('); return src.slice(i, src.indexOf('\n}', i) + 2).replace('async function', 'function').replace(/\bawait /g, ''); };
   const armar = nube => {
-    const ctx = { DB: { clients: [{ id: 'u1', name: 'Samuel' }], prs: { u1: _prBorrado() } }, _authUid: 'u1',
+    const ctx = { DB: { clients: [{ id: 'u1', name: 'Salomón' }], prs: { u1: _prBorrado() } }, _authUid: 'u1',
       UD: { readPrTombs: () => nube }, foldPrTombs: core.foldPrTombs };
     require('vm').runInNewContext(cortar('_foldOwnPrTombs') + cortar('_profileWithCloudPrTombs') +
       'this.fold=_foldOwnPrTombs; this.perfil=_profileWithCloudPrTombs;', ctx);
@@ -19380,7 +19380,7 @@ test('v621 · EJECUTADO: el guardado del teléfono viejo sube la lápida y NO su
   const subida = core.clientToRow(ok.DB.clients[0], {}).profile;
   assert.deepStrictEqual(subida.prTombs, _tumba, '🔴 la lápida no llegó a la ficha que se sube');
   assert.ok(!ok.DB.prs.u1.e1, '🔴 los récords que se suben todavía traen el borrado');
-  assert.deepStrictEqual(ok.perfil('u1', { name: 'Samuel' }).prTombs, _tumba, '🔴 el panel sube el perfil sin la lápida');
+  assert.deepStrictEqual(ok.perfil('u1', { name: 'Salomón' }).prTombs, _tumba, '🔴 el panel sube el perfil sin la lápida');
   // Sin respuesta de la nube no se toca nada (y el guardado sigue: no se bloquea por esto).
   const mudo = armar(null);
   mudo.fold('u1');
@@ -19422,9 +19422,9 @@ test('v621 · CABLEADO: TODA escritura del perfil entero pregunta antes por las 
 // acababa de registrar, y una rutina editada desde un panel abierto borraba el vaso.
 
 test('v623 · el pago del coach y el vaso de agua del asesorado sobreviven los dos', () => {
-  const base  = { name: 'Luz', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 2 } } };
-  const phone = { name: 'Luz', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 3 } } };
-  const nube  = { habits: { water: { '2026-09-17': 2 } }, payments: [{ d: '2026-09-01' }, { d: '2026-09-17' }], name: 'Luz' };
+  const base  = { name: 'Luisa', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 2 } } };
+  const phone = { name: 'Luisa', payments: [{ d: '2026-09-01' }], habits: { water: { '2026-09-17': 3 } } };
+  const nube  = { habits: { water: { '2026-09-17': 2 } }, payments: [{ d: '2026-09-01' }, { d: '2026-09-17' }], name: 'Luisa' };
   // 🔒 CONTROL: lo que hacía la app (subir la copia del teléfono) pierde el pago.
   assert.strictEqual(phone.payments.length, 1, 'el control no reproduce la pérdida');
   const m = core.mergeProfile3(base, phone, nube);
@@ -19465,7 +19465,7 @@ test('v623 · EJECUTADO: el teléfono adopta el pago, conserva lo suyo y NO mand
   const cortar = (nombre, kw) => { const i = src.indexOf(kw + ' ' + nombre + '('); return src.slice(i, src.indexOf('\n}', i) + 2).replace('async function', 'function').replace(/\bawait /g, ''); };
   const armar = (lec, baseGuardada) => {
     const ls = {}; if (baseGuardada) ls['ax_udbase_u1'] = JSON.stringify(baseGuardada);
-    const ctx = { DB: { clients: [{ id: 'u1', name: 'Luz', payments: [{ d: 1 }], habits: { w: 3 }, routines: [{ id: 'r1', n: 'viejo' }] }], prs: { u1: {} } },
+    const ctx = { DB: { clients: [{ id: 'u1', name: 'Luisa', payments: [{ d: 1 }], habits: { w: 3 }, routines: [{ id: 'r1', n: 'viejo' }] }], prs: { u1: {} } },
       _authUid: 'u1', localStorage: { getItem: k => ls[k] || null, setItem: (k, v) => { ls[k] = v; }, removeItem: k => { delete ls[k]; } },
       UD: { readClientCol: () => lec }, clientToRow: core.clientToRow, mergeOwnRow3: core.mergeOwnRow3, canonJSON: core.canonJSON,
       applyPrTombs: core.applyPrTombs, __fold: 0 };
@@ -19475,8 +19475,8 @@ test('v623 · EJECUTADO: el teléfono adopta el pago, conserva lo suyo y NO mand
       + cortar('_mergeOwnWithCloud', 'async function') + '\nthis.mg=_mergeOwnWithCloud;', ctx);
     return { ctx, ls };
   };
-  const base = { profile: { name: 'Luz', payments: [{ d: 1 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'viejo' }] };
-  const nube = { estado: 'ok', row: { profile: { name: 'Luz', payments: [{ d: 1 }, { d: 2 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'NUEVO' }] } };
+  const base = { profile: { name: 'Luisa', payments: [{ d: 1 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'viejo' }] };
+  const nube = { estado: 'ok', row: { profile: { name: 'Luisa', payments: [{ d: 1 }, { d: 2 }], habits: { w: 2 } }, routines: [{ id: 'r1', n: 'NUEVO' }] } };
   const { ctx, ls } = armar(nube, base);
   const r = ctx.mg('u1');
   const c = ctx.DB.clients[0];
@@ -19488,7 +19488,7 @@ test('v623 · EJECUTADO: el teléfono adopta el pago, conserva lo suyo y NO mand
   // 🔒 Una fila SIN perfil no es «la nube lo borró todo»: no se fusiona (si no, se iría la ficha entera).
   const vacia = armar({ estado: 'ok', row: { profile: null, routines: [] } }, base);
   assert.strictEqual(vacia.ctx.mg('u1'), null);
-  assert.strictEqual(vacia.ctx.DB.clients[0].name, 'Luz', '🔴 una lectura sin perfil borró la ficha entera');
+  assert.strictEqual(vacia.ctx.DB.clients[0].name, 'Luisa', '🔴 una lectura sin perfil borró la ficha entera');
   const mudo = armar({ estado: 'mudo', row: null }, base);
   assert.strictEqual(mudo.ctx.mg('u1'), null);
   assert.strictEqual(mudo.ctx.__fold, 1, '🔴 sin nube ya no se unen ni las lápidas');
@@ -19531,9 +19531,9 @@ const _ses624 = {
 };
 
 test('v624 · una sesión guardada arma la MISMA tarjeta que la pantalla de cierre', () => {
-  const d = core.sessionShareData(_ses624, { name: 'Astrid Beltran' });
-  assert.strictEqual(d.name, 'Astrid', '🔴 el nombre grande de la tarjeta');
-  assert.strictEqual(d.fullName, 'Astrid Beltran', '🔴 sin nombre completo el círculo pierde iniciales y color');
+  const d = core.sessionShareData(_ses624, { name: 'Andrea Bernal' });
+  assert.strictEqual(d.name, 'Andrea', '🔴 el nombre grande de la tarjeta');
+  assert.strictEqual(d.fullName, 'Andrea Bernal', '🔴 sin nombre completo el círculo pierde iniciales y color');
   assert.strictEqual(d.rname, 'Pierna');
   assert.match(d.fecha, /martes, 15 de septiembre/, '🔴 la fecha es la del ENTRENO, no la de hoy');
   // El separador de miles lo pone el idioma del aparato («4.320» en es-CO, «4,320» en en-US), así
@@ -19547,7 +19547,7 @@ test('v624 · una sesión guardada arma la MISMA tarjeta que la pantalla de cier
 test('v624 🔒 lo que no se guardó NO se pinta: ni duración, ni calorías, ni récords inventados', () => {
   // Las sesiones de mayo y junio son anteriores a esos campos (medido: 25% del total no los trae).
   const vieja = { id: 's0', date: '2026-05-25T16:34:00.000Z', routineName: 'Glúteo', doneSets: 23, totalSets: 23, totalVol: 19780 };
-  const d = core.sessionShareData(vieja, { name: 'Kathe Beltran' });
+  const d = core.sessionShareData(vieja, { name: 'Karen Bernal' });
   assert.deepStrictEqual(d.chips.map(c => c[0]), ['Series', 'Volumen'], '🔴 se inventó una duración o unas calorías');
   assert.deepStrictEqual(d.prs, [], '🔴 se inventaron récords de una sesión que no los guardó');
   // 🔒 CONTROL: con los campos puestos SÍ salen — si no, este test pasaría con la función rota.
@@ -19565,7 +19565,7 @@ test('v624 · sin fecha no hay tarjeta (null), y la fecha no depende del idioma 
   //    1 de enero de 2000. Y el 0 es justo como llega un «no hay fecha» de un `|| 0` (gotcha ya
   //    pagado en `training_since`). Sin la guarda de `!s.date`, esa tarjeta se comparte fechada
   //    en el año 2000.
-  assert.strictEqual(core.sessionShareData({ date: 0, doneSets: 3, totalSets: 3 }, { name: 'Astrid' }), null,
+  assert.strictEqual(core.sessionShareData({ date: 0, doneSets: 3, totalSets: 3 }, { name: 'Andrea' }), null,
     '🔴 una sesión con fecha 0 arma tarjeta: saldría «1 de enero» de 2000');
   assert.strictEqual(core.sessionShareData({ date: '' }, {}), null);
   // `toLocaleDateString` con opciones lanza RangeError en WebViews sin ICU completo (gotcha ya
@@ -20010,13 +20010,13 @@ test('v632 · las iniciales del avatar nunca pintan un carácter roto', () => {
   assert.ok(i >= 0, 'desapareció ini()');
   const cuerpo = src.slice(i, src.indexOf('\n}', i) + 2);
   const ini = new Function(cuerpo + '\nreturn ini;')();
-  assert.strictEqual(ini('Samuel Cifuentes'), 'SC');
+  assert.strictEqual(ini('Salomón Cárdenas'), 'SC');
   assert.strictEqual(ini('🧪 QA HARNESS (no borrar)'), 'QH', 'el emoji del nombre partía el avatar en «�Q»');
   assert.strictEqual(ini('  valery   gómez '), 'VG');
   assert.strictEqual(ini('Ángela'), 'Á');
   assert.strictEqual(ini('💪'), '?');
   assert.strictEqual(ini(''), '?');
-  assert.ok(!/[\uD800-\uDFFF]/.test(ini('🔥 Luz')), 'medio par sustituto en las iniciales');
+  assert.ok(!/[\uD800-\uDFFF]/.test(ini('🔥 Luisa')), 'medio par sustituto en las iniciales');
 });
 
 test('v632 🔒 los iconos con clase propia (portada, récords, ajustes) no vuelven a ser emoji', () => {
@@ -21301,7 +21301,7 @@ test('🔒 v671 · SIN EDAD NO SE PRESUME ADULTO: ni se publica, ni se comparte,
   }
   // Controles: el menor sigue siendo «menor» (no «sin_edad») y el adulto sigue pudiendo todo.
   assert.strictEqual(core.clientProgressStory({ name: 'X', age: 15 }, _HIST_ASTRID, new Date()).razon, 'menor');
-  assert.strictEqual(core.clientProgressStory({ name: 'Astrid', age: 33 }, _HIST_ASTRID, new Date()).ok, true, 'a una adulta sí se le arma');
+  assert.strictEqual(core.clientProgressStory({ name: 'Andrea', age: 33 }, _HIST_ASTRID, new Date()).ok, true, 'a una adulta sí se le arma');
   assert.strictEqual(core.bodyFatEstimate({ sex: 'M', age: 15, height: 175 }, _BF_MED_PO).razon, 'menor');
   assert.ok(core.bodyFatEstimate({ sex: 'M', age: 37, height: 175 }, _BF_MED_PO).ok, 'a un adulto sí se le estima');
   assert.ok(core.waistFlag({ sex: 'M', age: 37, height: 175 }, _BF_MED_PO), 'a un adulto con 102 cm sí se le marca');
@@ -21386,7 +21386,7 @@ test('🔒 v675 · «Esperando respuesta» no cuenta lo que no pide nada (Entren
   const { chatAwaiting, chatNeedsReply, CHAT_NO_REPLY_TEXTS } = core;
   const ahora = new Date('2026-09-25T12:00:00Z');
   const hace = h => new Date(ahora.getTime() - h * 3600000).toISOString();
-  const c = [{ id: 'cl', name: 'Claudia' }];
+  const c = [{ id: 'cl', name: 'Carla' }];
   const hilo = (...ms) => ({ cl: ms });
   const coach = h => ({ from: 'coach', text: 'Dale', date: hace(h) });
   const yo = (h, text, extra) => Object.assign({ from: 'client', text, date: hace(h) }, extra || {});
@@ -21748,11 +21748,11 @@ test('🔒 v668 · la gráfica de la rutina escribe el volumen como sus casillas
 // ══════════════════════════════════════════════════════
 // v676 · R13 LESIONES: lo que el coach escribe en las NOTAS
 // ══════════════════════════════════════════════════════
-// Nace de la auditoría del 25-sep (docs/auditoria-lesiones-2026-09-25/README.md). Laura Ramírez
+// Nace de la auditoría del 25-sep (docs/auditoria-lesiones-2026-09-25/README.md). Lucía Ríos
 // tiene escrito «Rodillas desgastadas, dolor en la espalda alta, dolor en los codos» y el lector
 // devolvía SOLO `rodilla`; ninguna pantalla del coach marcaba los ejercicios que eso carga.
 
-test('🔴 v676 · la nota REAL de Laura Ramírez reconoce sus tres zonas (antes solo rodilla)', () => {
+test('🔴 v676 · la nota REAL de Lucía Ríos reconoce sus tres zonas (antes solo rodilla)', () => {
   const lim = core.parseLimitations('Rodillas desgastadas, dolor en la espalda alta, dolor en los codos');
   assert.deepStrictEqual([...lim.keys].sort(), ['codo', 'cuello', 'rodilla'],
     '🔴 las notas volvieron a ignorar «espalda alta» o «codos»: ' + JSON.stringify(lim.keys));
@@ -21986,7 +21986,7 @@ test('🔴 v679 · «no confirmaste tu correo» se reconoce, y NO se confunde co
 });
 
 test('🔴 v679 · «olvidé mi contraseña» no manda el enlace a un dominio que no es del coach', () => {
-  for (const e of ['claudia@avi.com', 'Samuel@APEX.com', '  danilo@avi.com  '])
+  for (const e of ['oculto@avi.com', 'Salomón@APEX.com', '  oculto@avi.com  '])
     assert.strictEqual(core.resetPassWouldLeak(e), true, e + ' debía detectarse');
   // CONTROLES: dominio EXACTO — el del PO, los subdominios y los correos personales pasan.
   for (const e of ['x@avientrena.com', 'x@mail.avi.com', 'x@gmail.com', 'x@avi.com.co', 'avi.com', '', null])
@@ -22107,7 +22107,7 @@ test('🔴 v681 · la barra de UNA persona: la última que anotó en ese ejercic
   const HT = { id: 'e42', name: 'Hip Thrust con Barra' };
   assert.strictEqual(exerciseBarKg([], HT), 20, 'sin historial: la del catálogo');
   const s = (date, ex) => ({ date, exercises: [ex] });
-  // Astrid: su barra es de 15. Manda la FECHA, no el orden en que venga el historial.
+  // Andrea: su barra es de 15. Manda la FECHA, no el orden en que venga el historial.
   const hist = [
     s('2026-09-01T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 20 }),
     s('2026-09-23T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 15 }),
@@ -22505,7 +22505,7 @@ test('📦 v687 · TODO archivo propio que index.html carga está en la lista de
 const { bootAuthDecision, bootNetWait, BOOT_NET_MS, SPLASH_MAX_MS: _SPLASH_MAX } = core;
 // Reproducido el 29-sep (`_verify-red-colgada`): sin red y con el token vencido (una hora sin usar
 // la app) la persona veía el LOGIN; con la WiFi colgada, igual, a los 12 s. Es el «necesito
-// internet para entrar» de Claudia, que la medición de septiembre no reprodujo (sesión fresca).
+// internet para entrar» de Carla, que la medición de septiembre no reprodujo (sesión fresca).
 test('🔑 v688 · con respuesta de la nube, manda la nube', () => {
   const u = { id: 'u1' };
   assert.deepStrictEqual(bootAuthDecision({ session: { user: u }, antes: u, despues: u, respaldo: true }), { user: u, sinRed: false });
@@ -22520,7 +22520,7 @@ test('🔑 v688 · sin respuesta (vencida sin red, o red colgada): entra con lo 
     '🔴 con la sesión guardada y su copia local, la mandó al login porque la red no contestó');
   // La librería respondió «no hay sesión» (no pudo renovar el token) pero la sesión sigue guardada.
   assert.deepStrictEqual(bootAuthDecision({ session: null, antes: u, despues: u, respaldo: true }), { user: u, sinRed: true },
-    '🔴 con el token vencido y sin red, la mandó al login (el caso de Claudia)');
+    '🔴 con el token vencido y sin red, la mandó al login (el caso de Carla)');
 });
 
 test('🔒 v688 · NO se entra sin copia local ni con una sesión que la librería borró', () => {

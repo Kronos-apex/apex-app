@@ -11,7 +11,7 @@
 ## Veredicto en 5 líneas
 
 1. **El lote de dirección B (v503-v508) NO llega al día 1: los tres mecanismos están apagados a propósito para quien nunca ha entrenado.** El héroe se excluye con un `!_dia1` explícito, la tira de chips está en `_DIA1_OFF` y el tope no tiene nada que topar. «Hoy» quedó más clara para quien ya la conocía; para el día 1 no cambió — y lo único que sí cambió en el delta (v447) **le añadió una tarjeta duplicada**.
-2. **La puerta del día 1 sigue cerrada 43% de los días.** El plan cae de lunes a viernes y el día 1 solo tiene entreno si la persona llega en un día suyo; si no, la portada del día 1 **no se pinta** y lo que lee es «Hoy es tu día de descanso». Le pasó a **Chema el sábado 22-ago (ayer)**, plan de pago, 0 sesiones, sin teléfono.
+2. **La puerta del día 1 sigue cerrada 43% de los días.** El plan cae de lunes a viernes y el día 1 solo tiene entreno si la persona llega en un día suyo; si no, la portada del día 1 **no se pinta** y lo que lee es «Hoy es tu día de descanso». Le pasó a **Chucho el sábado 22-ago (ayer)**, plan de pago, 0 sesiones, sin teléfono.
 3. **La app promete «te toma menos de una hora» y en el 52,7% de las veces no se cumple** (81 sesiones reales emparejadas con su propia rutina: mediana real 62,2 min contra 40,0 prometidos; 70 de 81 más largas).
 4. **Dos textos afirman un coach que no existe:** el saludo de cada entrada dice «Tu coach la preparó para ti» a **12 de 24** personas sin acceso a coach, y el badge de mensajes sigue llamando a un candado que además **marca los 19 mensajes del coach como leídos** al tocarlo.
 5. Lo bueno: **H4 de julio (teléfono y lesiones en el registro) está EJECUTADO y bien resuelto**, el aviso de no-entrega al coach funciona, y el reparto de días ya no amontona. El área no está sana, pero lo que se arregló se arregló bien.
@@ -57,12 +57,12 @@
   **72 de 168 días-persona = 42,9%.** Si el primer arranque cae uniforme en la semana, casi la
   mitad de las personas nuevas ven el banner de descanso en vez de su portada.
 
-  **Víctima con nombre y fecha:** `Chema` — cuenta creada **sábado 22-ago 11:28**, `selfReg:true`,
+  **Víctima con nombre y fecha:** `Chucho` — cuenta creada **sábado 22-ago 11:28**, `selfReg:true`,
   `tier:'app'` (plan de pago), plan **Lunes|Martes|Miércoles|Jueves|Viernes**, **0 sesiones**, sin
   teléfono. Su fila se guardó por última vez a las **11:34**: seis minutos después de registrarse y
   nunca volvió. Lo que leyó ese sábado fue *«Hoy es tu día de descanso… regresa mañana listo para
   rendir»* — y el domingo tampoco tenía nada.
-  Antes que él: `maria rubio` (domingo 9-ago, 0 sesiones) y `Nicolás` (sábado 4-jul, 1 sesión).
+  Antes que él: `marta rojas` (domingo 9-ago, 0 sesiones) y `Nelson` (sábado 4-jul, 1 sesión).
 - **Intenté tumbarlo así:**
   1. *¿No lo tapa la portada del día 1?* No. Leí el orden real de `renderClientToday` (línea 960 el
      `return`, línea 1006 la llamada). Además `#cn-firstrun` se **vacía** arriba de los `return`
@@ -76,7 +76,7 @@
   4. *¿El banner ofrece salida?* Ofrece «Ver todas mis rutinas →», que sí lleva a un sitio donde
      puede arrancar una. Pero es un segundo destino y el texto que acaba de leer le dijo que hoy
      **no** entrene.
-- **A quién le pasa:** a Chema (ayer), a maria rubio, a Nicolás; y a cualquiera —también de la
+- **A quién le pasa:** a Chucho (ayer), a marta rojas, a Nelson; y a cualquiera —también de la
   cohorte del coach, cuyos planes arrancan siempre en lunes— que abra la app por primera vez en un
   día vacío.
 - **Costo del arreglo:** **quirúrgico, ~15 líneas.** En el `if(!baseR)`, si `firstSessionMode(sess)`
@@ -199,8 +199,8 @@
   `app-4-entreno.js:696-698` (`renderFirstRun`) calla la atribución cuando `getCoachName()` vale
   `'Mi Coach'`. Aquí no hay nada equivalente. Población sin acceso a coach según
   `clientHasCoach` (`avi-core.js:3316`, `tier` `'libre'` o `'app'` → false), contada sobre las 24
-  filas reales: **4 en `libre`** (FELIPE, Daniel, Nicolás, maria rubio) **+ 8 en `app`** (Miguel,
-  Natalia, Nataly, YEISON, Santiago, jose Daniel, Cristian, Chema) = **12**. A esas mismas 12
+  filas reales: **4 en `libre`** (FABIO, David, Nelson, marta rojas) **+ 8 en `app`** (Mario,
+  Nadia, Nayla, YAMID, Sebastián, jorge David, César, Chucho) = **12**. A esas mismas 12
   personas la pestaña Mensajes les pinta un candado que dice *«Habla directo con un entrenador que
   te guía»* — o sea, **la app les vende el coach que el saludo acaba de decirles que ya tienen**.
 - **Intenté tumbarlo así:**
@@ -212,7 +212,7 @@
      `chatDeliveryBlock` (v418) le avisa al coach de que sus mensajes no llegan.
   3. *¿Será un texto viejo que ya nadie ve?* Se pinta en `initClientView`, la ruta de arranque de
      todo asesorado.
-- **A quién le pasa:** a 12 de 24, incluidas Nataly, Miguel, Natalia y YEISON, que sí entrenan.
+- **A quién le pasa:** a 12 de 24, incluidas Nayla, Mario, Nadia y YAMID, que sí entrenan.
 - **Costo del arreglo:** **3 líneas.** Reusar el mismo criterio del hermano:
   `clientHasCoach(client) ? 'Tu coach la preparó para ti.' : 'La armamos con tu objetivo y tu
   nivel.'` — y de paso queda una sola definición de «¿tiene coach?» en toda la app.
@@ -238,12 +238,12 @@
 
   | nombre | tier | sesiones | msgs del coach | último del coach |
   |---|---|---|---|---|
-  | Nataly | app | 24 | **9** | 2026-07-31 |
-  | Cristian S. Luna | app | 0 | 1 | 2026-07-11 |
-  | Miguel Pulido | app | 14 | 4 | 2026-05-29 |
-  | Natalia Martinez | app | 18 | 5 | 2026-05-25 |
+  | Nayla | app | 24 | **9** | 2026-07-31 |
+  | César S. Luna | app | 0 | 1 | 2026-07-11 |
+  | Mario Parra | app | 14 | 4 | 2026-05-29 |
+  | Nadia Mejía | app | 18 | 5 | 2026-05-25 |
 
-  **19 mensajes del coach que nadie puede leer.** Nataly es una de las personas más activas de la
+  **19 mensajes del coach que nadie puede leer.** Nayla es una de las personas más activas de la
   app. Los cuatro son de plan de pago.
 - **Intenté tumbarlo así:**
   1. *¿El aviso de v418 no lo cierra?* Cierra el engaño al **coach** (y se nota: no hay ningún
@@ -275,16 +275,16 @@
 - **Evidencia:** cuentas en `auth.users` **sin fila en `user_data`** — personas que llegaron hasta
   «crear cuenta» y no existen para el coach:
   ```
-  stevanwg@gmail.com              google  08-jun 20:17  entró 1 vez (al crearse)
+  oculto@gmail.com              google  08-jun 20:17  entró 1 vez (al crearse)
   dramirezmontenegro1203@…        google  08-jun 20:32  entró 1 vez (al crearse)
-  josegutierrezpe19@gmail.com     google  23-jun 08:56  entró 1 vez (al crearse)
-  hernan8xd@gmail.com             google  06-jul 14:30  entró 1 vez (al crearse)
-  pinzonedwin121@gmail.com        email   25-jul 13:59  NUNCA entró · correo SIN confirmar
+  oculto@gmail.com     google  23-jun 08:56  entró 1 vez (al crearse)
+  oculto@gmail.com             google  06-jul 14:30  entró 1 vez (al crearse)
+  oculto@gmail.com        email   25-jul 13:59  NUNCA entró · correo SIN confirmar
   ```
-  Julio contó 3; hoy son **5**. Claudia Valbuena **sí se rescató** (tiene fila y 35 sesiones — el
-  pendiente «escribirle a Claudia» funcionó). En cambio `hernan8xd` es Hernán Camacho, que en julio
+  Julio contó 3; hoy son **5**. Carla Vargas **sí se rescató** (tiene fila y 35 sesiones — el
+  pendiente «escribirle a Carla» funcionó). En cambio `oculto` es Hugo C., que en julio
   **sí tenía fila** y de plan de pago: hoy su fila no existe y su cuenta auth sigue viva.
-  `pinzonedwin121` lleva **4 semanas** parado exactamente en ese toast.
+  `oculto` lleva **4 semanas** parado exactamente en ese toast.
 - **Intenté tumbarlo así:**
   1. *¿No lo cura solo el mecanismo de fantasmas?* El de Google existe y está bien pensado
      (`app-3-coach.js:585-594`, borrado en modo ghost), pero **solo se ejecuta si la persona vuelve
@@ -295,12 +295,12 @@
      tiene su fila.
   3. *¿El toast dura más de lo que dice?* No: `ms||2500`, y no hay ningún llamador que le pase otro
      valor en esa rama.
-- **A quién le pasa:** a Edwin (hoy mismo), y a cualquiera que se registre por correo. Los 4 de
+- **A quién le pasa:** a Elías (hoy mismo), y a cualquiera que se registre por correo. Los 4 de
   Google, además, quedan **bloqueados para siempre** para conectar ese Google a su cuenta real
   (`identity_already_exists`), según el propio comentario del código.
 - **Costo del arreglo:** (a) **hoy, 0 código:** son 5 correos, el coach escribe. (b) **~40 líneas:**
   que el final del registro sea una **pantalla**, no un toast: «Te enviamos un correo a
-  **edwin@…** — ábrelo y vuelve» con «Reenviar» y «Cambiar correo». Es el último escalón del embudo
+  **elias@…** — ábrelo y vuelve» con «Reenviar» y «Cambiar correo». Es el último escalón del embudo
   y hoy es el elemento más frágil de la interfaz. (c) **~20 líneas:** una fila «cuentas sin
   asesorado» en el panel del coach, para que dejen de ser invisibles.
 
@@ -343,11 +343,11 @@
   pidió 6 → recibe 5 rutinas: Lunes|Martes|Miércoles|Jueves|Viernes
   ```
   (`generarRutinas` con el catálogo real, semilla fija). En producción **una sola persona** pidió 6:
-  `Santiago Santos`, 5 rutinas, **0 sesiones**.
+  `Sebastián Suárez`, 5 rutinas, **0 sesiones**.
 - **Intenté tumbarlo así:** *¿la app le promete el sexto día en algún sitio?* No — `planDays` prefiere
   las rutinas reales, y eso está bien resuelto y documentado. El defecto es que **se lo pregunta**:
   responder «6» y recibir 5 sin una palabra es la contradicción, aunque después nadie la repita.
-- **A quién le pasa:** hoy a Santiago. Mañana a cualquiera que toque el 6.
+- **A quién le pasa:** hoy a Sebastián. Mañana a cualquiera que toque el 6.
 - **Costo del arreglo:** **1 línea** (quitar el chip y la opción 6) o **2** si se prefiere dejarlo con
   una nota honesta («tu coach entrena de lunes a viernes»). Lo segundo es mejor producto: explica el
   porqué en vez de esconder la opción.
@@ -386,7 +386,7 @@
 2. **La primera pantalla de quien llega por el link del PO tiene una sola prueba.** `avi_showcase`
    tiene **1 fila** (publicada el 22-ago 18:49). El mecanismo de v523 funciona; con una sola tarjeta
    no puedo decir si convence. *Faltaría* medir registros con y sin tarjetas publicadas, y hoy n=1.
-3. **Chema es el caso limpio del hueco del fin de semana, pero no puedo separar las causas.** Se fue
+3. **Chucho es el caso limpio del hueco del fin de semana, pero no puedo separar las causas.** Se fue
    a los 6 minutos: puede ser el banner de descanso (H1), puede ser que no instaló la app, puede ser
    que solo miraba. *Faltaría* instrumentación de sesión (`lastSetAt` / eventos de pantalla), que ya
    estaba pedida en julio y sigue sin existir.
@@ -395,7 +395,7 @@
    dos dispositivos.
 5. **El estado vacío «Tu plan aún está en preparación»** (`app-4-entreno.js:944`) sigue mandando a
    Mensajes, que para un `libre`/`app` es el candado de H5. Hoy **no le pasa a nadie** (las 24 filas
-   tienen al menos una rutina; Hernán, el caso de julio, ya no existe), así que no lo levanto a
+   tienen al menos una rutina; Hugo, el caso de julio, ya no existe), así que no lo levanto a
    hallazgo — pero el texto y el botón siguen ahí para el próximo `_autoGenerateWeek` que falle en
    silencio.
 
@@ -406,7 +406,7 @@
 - **H4 de julio (teléfono y lesiones en el registro) está EJECUTADO y bien hecho.** `index.html:295-308`
   añade WhatsApp y lesiones en el paso 6, **opcionales a propósito** y con la explicación al lado
   («tu coach lo usa para escribirte si algo no te llega a la app»). El único registro posterior que
-  lo llenó, `maria rubio`, tiene teléfono normalizado. Chema lo dejó vacío — con n=2 no hay
+  lo llenó, `marta rojas`, tiene teléfono normalizado. Chucho lo dejó vacío — con n=2 no hay
   conclusión, pero la superficie ya existe y eso era el bloqueo.
 - **El aviso de no-entrega al coach funciona y está bien escrito** (`app-3-coach.js:2930-2938`):
   nombre + plan + consecuencia + acción, con `textContent` para que el nombre no entre como HTML. Se
@@ -450,5 +450,5 @@
 - **No abrí el contenido de los mensajes** entre coach y asesorados: conté cuántos hay y de quién.
 - **El camino de quien entra por Google** (`ax_wz_pending`, la vuelta del OAuth) lo toqué solo por el
   lado de las cuentas varadas; no lo seguí punta a punta.
-- **No verifiqué qué ve exactamente Chema hoy.** Su fila está en producción y su plan es Lu-Vi;
+- **No verifiqué qué ve exactamente Chucho hoy.** Su fila está en producción y su plan es Lu-Vi;
   deduje su día 1 del código y del calendario, no de una captura de su teléfono.

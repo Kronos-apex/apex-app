@@ -32,7 +32,7 @@ function applyNutTemplate(idx){
   // 🔴 El titular se DERIVA de sus macros, NUNCA se guarda aparte (regla de v435/v444).
   // Las plantillas cargaban su propio `kcal` y cuatro de las cinco no cuadraban con sus
   // propios gramos: la de Volumen por **240 kcal**, que es EXACTAMENTE el desfase del plan
-  // de Nataly que se cazo en v435. O sea que la causa raiz nunca fue su plan: era este
+  // de Nayla que se cazo en v435. O sea que la causa raiz nunca fue su plan: era este
   // boton. Y el remate: como el plato se arma con los MACROS, el asesorado leia 2.960
   // mientras el coach habia escrito 3.200, y encima la ficha le saltaba al coach con
   // «tu plan dice 3.200 pero sus macros suman 2.960» — la app culpandolo de haber pulsado
@@ -78,8 +78,8 @@ function openNutModal(){
 // ── v436: EL FORMULARIO CALCULA CON EL MISMO MOTOR QUE LA APP ──────────────────
 // 🔴 `calcMacrosSugeridos` era una CUARTA cuenta, distinta de la que la app entrega, y hacía sobre
 // el PESO TOTAL lo que el motor ya corrige desde v428 (por encima de IMC 30 la proteína y la grasa
-// van sobre peso de REFERENCIA, o no queda espacio para nada más). Medido 2026-08-04: a Kathe
-// (IMC 32) le proponía 2.710 kcal cuando le corresponden 1.930, y a Luz (IMC 33,7) 2.602 contra
+// van sobre peso de REFERENCIA, o no queda espacio para nada más). Medido 2026-08-04: a Karen
+// (IMC 32) le proponía 2.710 kcal cuando le corresponden 1.930, y a Luisa (IMC 33,7) 2.602 contra
 // 1.730 — a las dos, con objetivo de PERDER GRASA, les proponía comer POR ENCIMA de su gasto.
 // El prefill pasa a `nutritionEstimate`, que es exactamente lo que come quien no tiene plan escrito.
 function nutFillSuggested(c,silencioso){
@@ -102,7 +102,7 @@ function nutFillSuggested(c,silencioso){
   // ── v437: EL RÓTULO VA CON LOS NÚMEROS ──────────────────────────────────────────────────
   // «Generar» calculó para el objetivo de ESTA persona, así que el objetivo del PLAN —el que le
   // explica el «por qué» al asesorado— se fija aquí mismo. Antes solo se tocaban las cifras:
-  // medido en producción el 2026-08-05, Kathe y Luz (objetivo «Perder grasa») quedaron con el
+  // medido en producción el 2026-08-05, Karen y Luisa (objetivo «Perder grasa») quedaron con el
   // rótulo «mantenimiento» de una plantilla vieja y su pantalla les decía «estás comiendo en
   // balance: lo que gastas» encima de un déficit real de 500 kcal/día.
   // El peso va explícito: el rótulo de un menor depende de su IMC para la edad (banda de menores),
@@ -353,7 +353,7 @@ function setNutActivity(f){
 }
 function nutCalcHTML(c){
   // El peso que manda es el ULTIMO registrado, no el de la ficha (que envejece). Estas tres
-  // superficies se quedaron llamando sin peso: en Samuel eran 78 kg de ficha contra 86 reales,
+  // superficies se quedaron llamando sin peso: en Salomón eran 78 kg de ficha contra 86 reales,
   // o sea 138 kcal y 17 g de proteina de diferencia ENTRE PANTALLAS DE LA MISMA APP.
   // Cuarta superficie de la familia de v435/v444 (hallazgo de Andres Hyp, 2026-08-05).
   const est=nutritionEstimate(c,_nutPesoDe(c));
@@ -507,7 +507,7 @@ function renderNutritionClient(clientId){
   let html='';
   // ── v435: LA MISMA VERDAD QUE «HOY» ──────────────────────────────────────────
   // El PO reportó «hay dos planes y son diferentes». Lo eran: aquí se pintaba el titular escrito
-  // por el coach (fijo) y en «Hoy» el objetivo DEL DÍA (que se mueve con el entreno) — a Kathe le
+  // por el coach (fijo) y en «Hoy» el objetivo DEL DÍA (que se mueve con el entreno) — a Karen le
   // salían 2.227 el domingo contra 2.400 aquí. Ahora esta pantalla lee del MISMO motor y muestra
   // la semana entera, para que el número de «Hoy» tenga dónde encajar.
   const _c=DB.clients.find(x=>x.id===clientId);
@@ -545,7 +545,7 @@ function renderNutritionClient(clientId){
   if(nut.kcal||nut.prot||nut.carbs||nut.fat){
     html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">`;
     // v435: el número que se muestra es el que suman SUS PROPIOS macros — que es lo que el plato
-    // entrega. El titular escrito puede no cuadrar (medido: 6 de 10 planes; Nataly por 240 kcal).
+    // entrega. El titular escrito puede no cuadrar (medido: 6 de 10 planes; Nayla por 240 kcal).
     // El titular tiene que cuadrar con las tarjetas de macros que van justo debajo (P×4+C×4+G×9);
     // el PROMEDIO de la semana puede diferir en 1-2 kcal por el redondeo del reparto diario y lo
     // dice la tarjeta de la semana. Dos números distintos a la vista es justo el bug que se arregla.

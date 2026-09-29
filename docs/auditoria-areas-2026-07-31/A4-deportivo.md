@@ -66,7 +66,7 @@ entre "3 días iguales" y "no tengo plan"; distingue entre "esto es mío" y "est
 
 ### El plan REAL de una persona real que nunca entrenó
 
-`diana ramirez` — 18 años, mujer, 92 kg / 164 cm (IMC 34,2), principiante, 3 días, quiere perder
+`dora rincón` — 18 años, mujer, 92 kg / 164 cm (IMC 34,2), principiante, 3 días, quiere perder
 grasa. Se auto-registró. **0 sesiones.** Lo que la app le dejó en el teléfono, tal cual está hoy
 en producción:
 
@@ -130,7 +130,7 @@ parece de un entrenador y el otro parece de un formulario.
   - `grep -c "su-notes\|su-lesion\|su-limit" index.html app-2-login.js` → **0 y 0**.
   - Producción: `select profile->>'notes' from user_data where profile->>'selfReg'='true'` →
     **13 de 13 con `notes` vacío.** El único cliente con limitación declarada
-    (`Miguel Pulido`: *"Lesión rodilla derecha operada, con 10 % menos de cartílago y tendón"*)
+    (`Mario Parra`: *"Lesión rodilla derecha operada, con 10 % menos de cartílago y tendón"*)
     lo tiene porque **lo creó el coach a mano**.
   - `parseLimitations('')` → `{detected:false, keys:[], hasExclusions:false, advice:''}` →
     `_genMakeExcluder` no añade ni una regla → `needsReview:false` → el plan sale sin ⚠️ y sin
@@ -232,7 +232,7 @@ parece de un entrenador y el otro parece de un formulario.
   Smith, Step-up: cuádriceps-dominantes, ninguno es hip-hinge; (b) ¿lo compensa el cierre por
   objetivo? No, `cardioClose`/`coreClose` solo añaden cardio o core; (c) ¿lo arregla el coach?
   Para las 13 auto-registradas no hay coach.
-- **A quién le pasa:** hoy, a `diana ramirez` (18 a, 92 kg, nunca entrenó) y a `Sharith sofia`
+- **A quién le pasa:** hoy, a `dora rincón` (18 a, 92 kg, nunca entrenó) y a `Sonia`
   (16 a, principiante). A toda mujer principiante que se registre mañana.
 - **Costo del arreglo:** **una línea de datos**, no de lógica. Un sexto hueco en `FULL_BODY`:
   `['gluteo','Compuesto',1]` — o mejor, una variante `FULL_BODY_F` con glúteo delante y que
@@ -259,11 +259,11 @@ parece de un entrenador y el otro parece de un formulario.
   | Intermedio | 1.881 | 167 | 8,9 % | 6 (media 0,08 por plan) |
 
   Casos pegados arriba: `Press Militar en Máquina` los 4 días · `Step-up a Peso Corporal` los 3
-  días (verificado también en el plan real de `diana ramirez` en producción).
+  días (verificado también en el plan real de `dora rincón` en producción).
 - **Intenté tumbarlo así:** (a) ¿es culpa de mi `seed` fijo? Repetí con 8 semillas distintas en
   `gate.js` y el patrón se mantiene: el cursor arranca en otro sitio pero vuelve a dar la vuelta;
   (b) ¿es culpa de mi biblioteca extraída? Los ejercicios coinciden uno a uno con el plan real de
-  `diana ramirez` que está hoy en Supabase, generado por la app de verdad; (c) ¿es deliberado
+  `dora rincón` que está hoy en Supabase, generado por la app de verdad; (c) ¿es deliberado
   ("repetir el patrón motor 3 veces es bueno para aprender")? Deportivamente **sí lo defiendo
   para el compuesto principal** — repetir sentadilla tres veces por semana es correcto. Lo que
   no se defiende es que se repitan los 3 primeros a la vez y que la variación que sí existe vaya
@@ -291,15 +291,15 @@ parece de un entrenador y el otro parece de un formulario.
 
   | Persona | Perfil | Objetivo declarado | Plan que tiene | Su TDEE por Mifflin×1,55 |
   |---|---|---|---|---|
-  | Kathe Beltran | F, 28, 85 kg / 163 | **Perder grasa** | 2.400 "Mantenimiento" | ~2.430 |
-  | Luz Rodríguez | F, 39, 82 kg / 156 | **Perder grasa** | 2.400 "Mantenimiento" | ~2.230 |
-  | Claudia Valbuena | F, 34, 74 kg / 156 | Recomposición | 2.400 "Mantenimiento" | ~2.130 |
-  | Natalia Martinez | F, 34, 63 kg / 164 | Recomposición | 2.400 "Mantenimiento" | ~2.070 |
-  | Astrid Beltran | F, 33, **sin peso ni talla** | Ganar músculo | 2.400 "Mantenimiento" | no calculable |
-  | **Nataly** | **F, 40, 56 kg / 162** | Ganar músculo | **3.200 kcal / 180 g prot** "Volumen" | **~1.877** |
+  | Karen Bernal | F, 28, 85 kg / 163 | **Perder grasa** | 2.400 "Mantenimiento" | ~2.430 |
+  | Luisa R. | F, 39, 82 kg / 156 | **Perder grasa** | 2.400 "Mantenimiento" | ~2.230 |
+  | Carla Vargas | F, 34, 74 kg / 156 | Recomposición | 2.400 "Mantenimiento" | ~2.130 |
+  | Nadia Mejía | F, 34, 63 kg / 164 | Recomposición | 2.400 "Mantenimiento" | ~2.070 |
+  | Andrea Bernal | F, 33, **sin peso ni talla** | Ganar músculo | 2.400 "Mantenimiento" | no calculable |
+  | **Nayla** | **F, 40, 56 kg / 162** | Ganar músculo | **3.200 kcal / 180 g prot** "Volumen" | **~1.877** |
 
 - **Criterio de Andrés Hyp (vinculante en nutrición) y mío:**
-  - **Nataly, 56 kg, con 3.200 kcal, es un superávit de ~+1.300 kcal/día.** Eso son ~57 kcal/kg
+  - **Nayla, 56 kg, con 3.200 kcal, es un superávit de ~+1.300 kcal/día.** Eso son ~57 kcal/kg
     y 3,2 g de proteína por kg. Un superávit limpio son +250-400 kcal. A ese ritmo se ganan
     ~1 kg/semana y la mayor parte es grasa. Es la prescripción más equivocada que encontré en
     toda la auditoría, y está en el teléfono de una persona real.
@@ -335,12 +335,12 @@ parece de un entrenador y el otro parece de un formulario.
 
   | Persona | El asesorado ve | El coach ve pre-llenado | Diferencia |
   |---|---|---|---|
-  | diana ramirez (F, 18, 92 kg) — perder grasa | **2.126 kcal** · P166 C179 G83 | **2.962 kcal** · P184 **C370** G83 | **+836 kcal** |
-  | Kathe Beltran (F, 28, 85 kg) — perder grasa | 1.930 kcal | 2.710 kcal | +780 kcal |
-  | Samuel (M, 28, 78 kg) — ganar músculo | 3.055 kcal | 3.058 kcal | +3 kcal |
+  | dora rincón (F, 18, 92 kg) — perder grasa | **2.126 kcal** · P166 C179 G83 | **2.962 kcal** · P184 **C370** G83 | **+836 kcal** |
+  | Karen Bernal (F, 28, 85 kg) — perder grasa | 1.930 kcal | 2.710 kcal | +780 kcal |
+  | Salomón (M, 28, 78 kg) — ganar músculo | 3.055 kcal | 3.058 kcal | +3 kcal |
 - **La causa raíz, dicha como entrenador:** la regla de kcal/kg **se rompe con el sobrepeso**.
   36 kcal/kg × 92 kg = 3.312 kcal de partida para una chica que gasta 2.626. Mifflin lo hace bien
-  precisamente porque separa peso de talla y edad. Por eso las dos fórmulas coinciden en Samuel
+  precisamente porque separa peso de talla y edad. Por eso las dos fórmulas coinciden en Salomón
   (IMC 25) y divergen 836 kcal en diana (IMC 34). El bug se esconde exactamente en las personas
   a las que más importa acertar.
 - **Intenté tumbarlo así:** (a) ¿son para cosas distintas a propósito? El comentario de
@@ -366,10 +366,10 @@ parece de un entrenador y el otro parece de un formulario.
 
   | Persona | Nivel | Ejercicio | Nivel del ejercicio hoy |
   |---|---|---|---|
-  | Stevan Guerrero (auto-reg, sin peso/edad/sexo) | Principiante | **Zancada Búlgara** | A |
-  | FELIPE R.L (auto-reg, 18 a) | Principiante | **Pike Push-up (Flexión Pica)** | A |
-  | FELIPE R.L | Principiante | **Rueda Abdominal (Ab Wheel)** | A |
-  | Santiago Santos (auto-reg, 17 a) | Intermedio | **Thruster** | A |
+  | Simón G. (auto-reg, sin peso/edad/sexo) | Principiante | **Zancada Búlgara** | A |
+  | FABIO (auto-reg, 18 a) | Principiante | **Pike Push-up (Flexión Pica)** | A |
+  | FABIO | Principiante | **Rueda Abdominal (Ab Wheel)** | A |
+  | Sebastián Suárez (auto-reg, 17 a) | Intermedio | **Thruster** | A |
 
   **Las 4 personas son auto-registradas y las 4 rutinas están marcadas `generated:true`.
   Ninguna rutina creada por el coach viola el gate.**
@@ -452,7 +452,7 @@ tumba primero.
 
 - **Evidencia:** barrido de 600 planes → **92 planes superan las 25 series/semana en piernas**
   (mi propio techo declarado en `coach-pro.md`: "más allá de 25, rendimientos decrecientes y
-  riesgo de overtraining"), y 52 lo superan en glúteo. Caso real en producción: `Santiago Santos`
+  riesgo de overtraining"), y 52 lo superan en glúteo. Caso real en producción: `Sebastián Suárez`
   (17 años, 6 días) tiene **40 series/semana de piernas y 4 de glúteo**, más 24 de pecho.
 - **Dónde:** `avi-core.js:120` (`PIERNA` = 5 huecos de piernas + 1 de glúteo) × 2 días en el
   split de 6 (`avi-core.js:137`) × 4 series (`genSchemeFor` para intermedio).
@@ -485,7 +485,7 @@ tumba primero.
 ## Sospechas sin probar
 
 1. **La primera pantalla no vende la sesión, y sospecho que ahí está la activación.** Los 3
-   auto-registrados que SÍ entrenaron (`YEISON`, `jose Daniel`, `Sharith`) tienen rutinas con
+   auto-registrados que SÍ entrenaron (`YAMID`, `jorge David`, `Sonia`) tienen rutinas con
    `generated=0` — es decir, **no están entrenando el plan que les dio el motor**, sino uno
    posterior. Los que se quedaron con el plan generado dan 1 sesión entre todos. Es un contraste
    muy sugerente, pero **no puedo probar la causalidad**: no sé si el coach les rehizo la rutina
@@ -496,7 +496,7 @@ tumba primero.
    concreto donde se cae? ¿posición en la sesión?). Se probaría con el índice del último
    ejercicio tocado en las sesiones incompletas — el dato no se guarda hoy.
 3. **Los menores.** `_genMakeExcluder` protege de carga axial solo si `age < 16`. En producción
-   hay auto-registrados de 16 y 17 años (`Sharith` 16, `Santiago` 17, `Hernan` 17) que **sí
+   hay auto-registrados de 16 y 17 años (`Sonia` 16, `Sebastián` 17, `Hugo` 17) que **sí
    reciben barra**, y la casilla del wizard les hizo declarar que eran mayores de 18. Deportivamente
    un chico de 17 puede levantar con barra si la técnica es buena; **lo que no puedo juzgar es si
    ese corte de 16 es una decisión tomada o un descuido** — el doc dice "<16" pero el resto de la
@@ -534,7 +534,7 @@ tumba primero.
 - **Ningún día sale vacío**: 0 de 600 planes con un día sin ejercicios.
 - **Las fórmulas de `nutritionEstimate`**: Mifflin-St Jeor correcta, TDEE correcto, exigir sexo
   explícito en vez de caer a 'F' (arreglado en su día) es lo correcto.
-- **El caso "sin peso ni talla"** (Astrid, la más constante, y Stevan): `nutritionEstimate`
+- **El caso "sin peso ni talla"** (Andrea, la más constante, y Simón): `nutritionEstimate`
   devuelve `null` y la interfaz pinta un mensaje honesto pidiendo los datos, no un número
   inventado (`nutCalcHTML`, `app-5-salud.js:200-206`). `waterGoalGlasses(undefined)` cae a 8
   vasos, que es el default sensato. **Aquí la app se comporta exactamente como debe.**

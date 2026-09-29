@@ -13,7 +13,7 @@ Harnesses de regresión y verificación visual que antes vivían sueltos en `Des
   Jamás hardcodearlas: el repo es público.
   - ⚠️ **Usar SIEMPRE la cuenta QA dedicada `qa-harness@apex.com`** (creada 2026-07-08,
     aislada bajo un coach QA que NO aparece en el panel de Camilo) — **NUNCA la cuenta de
-    un asesorado real.** Antes se usaba `samuel@apex.com` (real) y un harness le borró las
+    un asesorado real.** Antes se usaba `oculto@apex.com` (real) y un harness le borró las
     rutinas (incidente 2026-07-08). Refuerzo de raíz: el sello `cloudWriteSealed` corta toda
     escritura a la nube en localhost, así que aunque un harness mute datos NO toca producción.
     Detalle de las cuentas QA: `%USERPROFILE%\.avi\qa-accounts.txt`.
@@ -49,7 +49,7 @@ Correr: `node scripts/e2e/<harness>.mjs` (algunos aceptan flags; ver cabecera de
 | `_test-coach-back.mjs` | Stepping del atrás del COACH (paneles + p-detail), 20/20. Setup cierra el tour de novedades (se comía el 1er atrás) | 2026-07-10 |
 | `_shot-nutri.mjs` | Habitación de Nutrición llena (estimación y plan del coach) | 2026-06-30 |
 | `_shots-rooms.mjs` | Screenshots de las 7 habitaciones (.sroom) | 2026-06-29 |
-| `_walk-samuel.mjs` / `_walk-live.mjs` / `_walk-train.mjs` | Recorridos del asesorado (hoy/en vivo/entreno) | 2026-06-25 |
+| `_walk-salomon.mjs` / `_walk-live.mjs` / `_walk-train.mjs` | Recorridos del asesorado (hoy/en vivo/entreno) | 2026-06-25 |
 | `_walk-progreso.mjs` / `_walk-advstats.mjs` / `_walk-split.mjs` / `_walk-room.mjs` | Recorridos de progreso/estadísticas/split/habitaciones | 2026-06-28 |
 
 > `qa-julian.mjs` se borró el 2026-07-08: era el audit estático pre-modularización (v146),

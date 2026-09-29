@@ -6,10 +6,10 @@
 -- que el `upsert` con `onConflict:'client_id,subscription'` **nunca casa el conflicto** e inserta
 -- una fila nueva. Y `ensureClientPush()` llama con `force=true` una vez por cada apertura de la
 -- app, saltándose el guard que lo frenaría.
---   Medido en producción: **Nataly, 8 filas · 1 endpoint · 8 claves**, acumuladas entre el 12 y el
+--   Medido en producción: **Nayla, 8 filas · 1 endpoint · 8 claves**, acumuladas entre el 12 y el
 --   20 de agosto (~1 por apertura). Los logs de la edge de ese día imprimieron **8 líneas de envío
 --   para ella en una sola ronda**: 7 de cada 17 envíos diarios eran basura.
---   🔒 EL CONTROL que separa el defecto de lo legítimo: Samuel y Natalia tienen 2 filas cada uno
+--   🔒 EL CONTROL que separa el defecto de lo legítimo: Salomón y Nadia tienen 2 filas cada uno
 --   pero con **2 endpoints DISTINTOS** — son dos aparatos de verdad y NO se tocan.
 -- No hay auto-cura: `send-push` solo poda en 410/404 y un endpoint vivo con clave vieja devuelve
 -- 201. Sólo crece (10 filas en julio → 18 hoy).

@@ -1,6 +1,6 @@
 // _verify-chat-archivo.mjs — v584: bajar de nivel NO le confisca la conversación que ya tuvo.
 //
-// Caso real: Samuel Cifuentes, 40 mensajes en 5 meses, pasó a 'libre' y su pestaña de mensajes
+// Caso real: Salomón Cárdenas, 40 mensajes en 5 meses, pasó a 'libre' y su pestaña de mensajes
 // le mostraba un candado de upsell en vez de su historial. Medido 2026-09-07: 68 de los 95
 // mensajes que existen estaban así, en 5 personas.
 //

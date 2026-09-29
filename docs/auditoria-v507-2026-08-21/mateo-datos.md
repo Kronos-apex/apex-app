@@ -25,7 +25,7 @@ ningún tapado de la ventana, así que mi conteo es exacto, no una cota.)
 | «ajusta el titular, 25 kcal» | titular 1800, macros 1775 → **−25**, justo en el umbral `NUT_KCAL_MISMATCH=25` | ✅ |
 | «callaba −1.418 kcal, 57 veces más grande» | −1.418 **es la cifra de HOY**. Con el código de cada época: **−1.362** (05-ago) y **−1.393** (08→16-ago). Ratio real de la ventana ≈ **54-56×**, no 57 | 🟢 matiz |
 | «el 03-ago: 6 planes descuadrados y los 6 tapaban algo» | **6 de 9 planes** (el 03-ago hay 9, no 10: Valery aún no tenía). Los **6 nombres reproducen exactos** con el código de HOY **y** con el código de ese día (v436) | ✅ nombres |
-| Luz +625 · Nataly +677 · Kathe +456 · Natalia +303 · Samuel −1.007 · Andrés −1.418 | Con el código del **4-ago (v436)**, que es lo que el coach habría leído: **Luz +670 · Nataly +1.002 · Kathe +470 · Natalia +348 · Samuel −979 · Andrés −1.362** | 🔴 **6 de 6 cifras no son las de la época** (Nataly, +48%) |
+| Luisa +625 · Nayla +677 · Karen +456 · Nadia +303 · Salomón −1.007 · Andrés −1.418 | Con el código del **4-ago (v436)**, que es lo que el coach habría leído: **Luisa +670 · Nayla +1.002 · Karen +470 · Nadia +348 · Salomón −979 · Andrés −1.362** | 🔴 **6 de 6 cifras no son las de la época** (Nayla, +48%) |
 | «al día siguiente quedaba 1» | **No hay backup del 04-ago.** La siguiente observación es el **05-ago 20:00**. Y por `updatedAt`, el 6→4 ocurrió a las **14:00 COT del 4-ago, 27 minutos después** de desplegar v435 | 🟡 la frase exagera la exposición |
 | «porque el coach reescribió esos 6 planes el 4 y 5 de agosto» | **5 de 6.** El sexto (Andrés) sí se re-guardó el 4-ago 20:01 COT, pero **con los mismos números** (1800/160/160/55) → su descuadre sobrevivió. Por eso es el que queda | 🟡 |
 
@@ -36,11 +36,11 @@ ningún tapado de la ventana, así que mi conteo es exacto, no una cota.)
 | 3-ago 09:19 | Andrés fija su plan 1800/160/160/55 (desfase −25, **exacto** en el umbral) | — |
 | **3-ago 10:10** | backup 08-03 (última foto antes de la tarjeta) | **6 de 9** |
 | **4-ago 13:33** | **v435: nace la tarjeta** (estado inferido = el del 03-ago) | 6 |
-| 4-ago 14:00 / 14:01 | el coach reescribe **Luz** y **Kathe** | 4 |
+| 4-ago 14:00 / 14:01 | el coach reescribe **Luisa** y **Karen** | 4 |
 | 4-ago 20:01 | re-guarda Andrés **sin cambiar un número** | 4 |
-| 5-ago 15:15–15:20 | reescribe **Nataly, Samuel, Natalia** (+Claudia, +Valery estrena plan) | **1** |
+| 5-ago 15:15–15:20 | reescribe **Nayla, Salomón, Nadia** (+Carla, +Valery estrena plan) | **1** |
 | **5-ago 20:00** | backup 08-05 | **1** ✅ medido |
-| 10-ago 08:54 | única escritura de plan dentro de un hueco sin backup (Astrid); sin desfase en ninguno de sus dos extremos | 1 |
+| 10-ago 08:54 | única escritura de plan dentro de un hueco sin backup (Andrea); sin desfase en ninguno de sus dos extremos | 1 |
 | **19-ago 20:00** | backup 08-19, **78 min antes del arreglo** | **1** ✅ medido |
 | 19-ago 21:18 | v506: se quita el `return` | — |
 | 20-ago 07:01 | el PO reescribe el plan de Andrés → desfase 0 | 0 |
@@ -58,9 +58,9 @@ ningún tapado de la ventana, así que mi conteo es exacto, no una cota.)
   **no podía** callar porque sin `kcal` no hay descuadre).
 - **`tier:'libre'` no mueve el número:** ninguno de los 10 con plan es libre, y la tarjeta vive en el
   panel del coach, que no tiene puerta de tier.
-- **Rotación en la ventana:** entra `maria rubio` (09-ago), salen `Stevan Guerrero`, `diana ramirez` y
-  `Hernan Camacho` (15-ago) — **los cuatro sin plan** → el denominador es **10 en los 7 backups**.
-- **Menores:** el guard `_banda` excluye a Sharith (16), Valery Valbuena (16) y Valery (15). Solo
+- **Rotación en la ventana:** entra `marta rojas` (09-ago), salen `Simón G.`, `dora rincón` y
+  `Hugo C.` (15-ago) — **los cuatro sin plan** → el denominador es **10 en los 7 backups**.
+- **Menores:** el guard `_banda` excluye a Sonia (16), Vanesa Vargas (16) y Valery (15). Solo
   Valery tiene plan → es la única fila que el guard puede quitar del numerador.
 
 ---
@@ -77,7 +77,7 @@ que se le mostrara cincuenta veces. La medición no lo puede decir.
 
 ### 🔴 2. Las 6 cifras de la frase del 03-ago son del revisor de HOY, no del de entonces
 Los **nombres** aguantan (medido con el código de v436: los mismos 6). Los **gaps** no: cada uno de
-los seis cambia, y el de Nataly cambia **+325 kcal (+48%)**. La frase publicada los presenta como lo
+los seis cambia, y el de Nayla cambia **+325 kcal (+48%)**. La frase publicada los presenta como lo
 que la ficha decía ese día; nunca dijo eso. Es el gotcha del repo aplicado a una medición forense:
 **el número que se atribuye a un momento del pasado se calcula con el código de ese momento, o se
 declara como recálculo.**
@@ -118,7 +118,7 @@ silencio y el titular se cae.
 ### 🟡 7. Cobertura: 7 de 16 días — pero se puede levantar, y no lo declaraste
 La ventana tiene 16 días y hay backup en 7 (faltan 04, 06, 07, 10, 11, 13, 14, 17, 18). Ahora bien:
 crucé **todos los `nutrition.updatedAt` del periodo** y solo **UNA** escritura de plan cae dentro de
-un hueco ciego: **Astrid, 10-ago 08:54 COT**. Sus dos extremos observados (2000/175/185/60 y
+un hueco ciego: **Andrea, 10-ago 08:54 COT**. Sus dos extremos observados (2000/175/185/60 y
 2206/131/272/66) **no tienen desfase**, así que no pudo producir un tapado. Para la condición que
 manda (el desfase, que depende **solo** de `nutrition`), la cobertura es **efectivamente continua**
 con un único agujero no falsificable. Eso es *más fuerte* que lo publicado y merece estar escrito.
@@ -126,7 +126,7 @@ con un único agujero no falsificable. Eso es *más fuerte* que lo publicado y m
 ### 🟢 8. El «1 de 10» está a 15 kcal de ser «2 de 10»
 Barrido del umbral sobre el backup 19-ago (que además es el **control de discriminación** de mi propia
 sonda: tope 0 → 7 tapados · 5 → 2 · **25 → 1** · 50 → 0; la sonda discrimina, no es una constante):
-con umbral 10 entra **Miguel Pulido** (plan 3050 contra 3040 de macros = **−10**), y lo que se le
+con umbral 10 entra **Mario Parra** (plan 3050 contra 3040 de macros = **−10**), y lo que se le
 habría callado es un `proteina_fuera` de +59 vivo desde mayo. El titular es correcto **y frágil**: no
 es un 1 con holgura, es un 1 con 15 kcal de margen.
 
@@ -139,8 +139,8 @@ Es la afirmación que pediste que atacara más y es la mejor sostenida de todas.
 | **código HOY** (v507) | 6 | 1 |
 
 El eje del código no mueve nada; el de los datos lo mueve todo. Y el mecanismo está fechado con
-evidencia independiente (los `updatedAt`: Luz 4-ago 14:00, Kathe 14:01, Nataly 5-ago 15:15, Samuel
-15:19, Natalia 15:19). **No la pude tumbar.**
+evidencia independiente (los `updatedAt`: Luisa 4-ago 14:00, Karen 14:01, Nayla 5-ago 15:15, Salomón
+15:19, Nadia 15:19). **No la pude tumbar.**
 
 ---
 
@@ -149,7 +149,7 @@ evidencia independiente (los `updatedAt`: Luz 4-ago 14:00, Kathe 14:01, Nataly 5
 1. **«el aviso equivocado se MOSTRÓ en 1 plan de 10»** → *«1 de 10 planes ESTABA en el estado en que
    la ficha miente (no hay telemetría de aperturas; y la única fila afectada es la del propio coach,
    a la que se llega por otra puerta)»*.
-2. **«6 planes descuadrados … (Luz +625 · Nataly +677 · Kathe +456 · Natalia +303 · Samuel −1.007 ·
+2. **«6 planes descuadrados … (Luisa +625 · Nayla +677 · Karen +456 · Nadia +303 · Salomón −1.007 ·
    Andrés −1.418)»** → o se sustituyen por las cifras de la época **(+670 · +1.002 · +470 · +348 ·
    −979 · −1.362)**, o se marca explícitamente *«recalculado con el revisor de hoy; con el código de
    entonces los seis gaps son otros»*. Tal como está, atribuye al pasado números que la app no dijo.
@@ -161,10 +161,10 @@ evidencia independiente (los `updatedAt`: Luz 4-ago 14:00, Kathe 14:01, Nataly 5
 5. **«callaba −1.418 kcal, 57 veces más grande»** → cierto para el estado final; durante la ventana
    el gap fue −1.362 → −1.393 (**54-56×**). Poner el rango, o aclarar que es la cifra de hoy.
 6. **Añadir la cobertura y el porqué de la robustez** (hoy no están): *«7 backups de 16 días; la
-   única escritura de plan en un hueco ciego (Astrid, 10-ago) no tiene desfase en ninguno de sus
+   única escritura de plan en un hueco ciego (Andrea, 10-ago) no tiene desfase en ninguno de sus
    extremos. La conclusión sobrevive al anacronismo porque el numerador lo gatea el DESFASE, y
    `nutMacroKcal`/`NUT_KCAL_MISMATCH` no se han tocado desde que nacieron en v435»*.
-7. **Añadir el margen:** *«con umbral 10 en vez de 25 serían 2 de 10 (entra Miguel Pulido, −10 kcal).
+7. **Añadir el margen:** *«con umbral 10 en vez de 25 serían 2 de 10 (entra Mario Parra, −10 kcal).
    El 1 tiene 15 kcal de holgura»*.
 
 **En una línea: la dirección aguanta entera (1 de 10, el del coach, y la caída 6→1 es por datos); lo
@@ -179,17 +179,17 @@ que hay que arreglar es el lenguaje —«se mostró» por «estaba»— y las si
    de una menor por debajo de su gasto, que es exactamente lo que el dictamen de Andrés prohíbe. El
    candado de v485/v493 corrige lo que se SIRVE, pero el plan escrito sigue ahí y la ficha lleva 16
    días avisando sin que nadie actúe. **Es el punto más accionable de todo el informe.**
-2. 🟡 **Miguel Pulido: plan sin tocar desde el 27-may (3 meses).** 3.050 kcal, `proteina_fuera` +59
+2. 🟡 **Mario Parra: plan sin tocar desde el 27-may (3 meses).** 3.050 kcal, `proteina_fuera` +59
    estable en las 9 fotos, sin `goal`. Es el único de los 10 que **no** pasó por la reescritura del
    4-5 de agosto. Y está a −10 kcal de disparar también el descuadre.
-3. 🟡 **De los 10 planes, el 19-ago solo 2 están `ok`** (Astrid y Nataly). Los otros 8: 3
-   `rotulo_miente` (Luz, Kathe, Samuel), 3 `proteina_fuera` (Natalia, Miguel, Claudia), 1
+3. 🟡 **De los 10 planes, el 19-ago solo 2 están `ok`** (Andrea y Nayla). Los otros 8: 3
+   `rotulo_miente` (Luisa, Karen, Salomón), 3 `proteina_fuera` (Nadia, Mario, Carla), 1
    `menor_bajo_gasto` (Valery) y 1 `desviado` (Andrés). La ficha del coach está avisando en 8 de 10
    fichas — con ese ruido de fondo **se aprende a ignorarla**, que es la muerte del gate que este
    repo ya documentó dos veces.
 4. 🟢 **12 de 22 personas del panel no tienen plan de nutrición en absoluto.** El «10» del titular es
    menos de la mitad de la base.
 5. 🟢 **Residuo de plantilla, fotografiado en los datos:** el 03-ago, **cuatro** personas distintas
-   tenían el plan **literalmente idéntico** 2400/150/270/75, y Nataly compartía el 3200/180/380/80
+   tenían el plan **literalmente idéntico** 2400/150/270/75, y Nayla compartía el 3200/180/380/80
    con Andrés. Es el defecto de v471 («una plantilla no puede traer su propio titular») visible en
    producción; la reescritura del 4-5 de agosto es lo que lo deshizo.

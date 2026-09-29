@@ -1,7 +1,7 @@
 // _verify-marca-notas.mjs — LO QUE EL COACH ESCRIBE EN LAS NOTAS SE VE EN SUS DOS PANTALLAS (v676).
 //
 // R13 (lesiones, 27-sep): la regla de la casa dice que lo que arma el coach se MARCA, y esa marca
-// solo existía con dolor REPORTADO. Laura Ramírez («rodillas desgastadas… codos») hizo el 23-sep
+// solo existía con dolor REPORTADO. Lucía Ríos («rodillas desgastadas… codos») hizo el 23-sep
 // una plantilla con saltos y escaladores sin que ninguna pantalla lo dijera. La suite vigila el
 // cableado; esto prueba lo único que la suite no puede: que la marca se PINTE, se LEA en los dos
 // temas y quepa a 360 px, en la ficha y en el editor (adonde llega una plantilla aplicada).

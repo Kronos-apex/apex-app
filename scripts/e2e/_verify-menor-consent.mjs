@@ -5,7 +5,7 @@
 // EL DEFECTO (medido contra producción el 2026-09-02, hallazgo A7 de la auditoría):
 // la casilla «Declaro que soy mayor de 18 años» era OBLIGATORIA, no había alternativa
 // de acudiente, y **nadie la cruzaba contra la edad que el propio formulario acababa
-// de pedir dos pasos antes**. Valery (15) y Sharith Sofía (16) tienen `adulto:true`
+// de pedir dos pasos antes**. Valery (15) y Sonia Sofía (16) tienen `adulto:true`
 // guardado en su perfil: la única forma de entrar era declarar algo falso, y esa
 // mentira quedaba archivada como PRUEBA de que autorizaron siendo adultas.
 //

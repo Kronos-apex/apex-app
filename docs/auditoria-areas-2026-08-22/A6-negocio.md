@@ -9,11 +9,11 @@
 
 ## Veredicto en 5 líneas
 
-1. **El dinero SUBIÓ y agosto es el mejor mes de la historia: 890.000 COP** (contra 746.000 en julio), con la **base recurrente de 725.000 → 835.000**. Lo movieron dos cosas que **no costaron una hora de código**: subirle el precio a Claudia y Luz (100.000 → 130.000, y las dos siguen entrenando) e inscribir a Danilo a mano (150.000 el mismo día del alta). Se fueron Valery Valbuena (100.000) y Yeison (20.000), y las dos **dejaron de entrenar 3-6 semanas ANTES de dejar de pagar**.
-2. **«Vender a nuevos» es la decisión correcta, pero solo por una de las dos puertas.** Las cuentas que crea el coach van **10 de 10 en conversión a pago**; el auto-registro sumó 3 personas más en el delta y **0 pesos**. El predictor de los 28 días se confirma: las 2 que pasaron de 8 días entrenados siguen pagando, las 2 que no llegaron a 4 se fueron. Y la app **no está lista para recibirlos**: Chema se registró el sábado 22-ago y su primera pantalla fue «día de descanso» (A5 H1) — 0 sesiones y sin teléfono.
+1. **El dinero SUBIÓ y agosto es el mejor mes de la historia: 890.000 COP** (contra 746.000 en julio), con la **base recurrente de 725.000 → 835.000**. Lo movieron dos cosas que **no costaron una hora de código**: subirle el precio a Carla y Luisa (100.000 → 130.000, y las dos siguen entrenando) e inscribir a Darío a mano (150.000 el mismo día del alta). Se fueron Vanesa Vargas (100.000) y Yamid (20.000), y las dos **dejaron de entrenar 3-6 semanas ANTES de dejar de pagar**.
+2. **«Vender a nuevos» es la decisión correcta, pero solo por una de las dos puertas.** Las cuentas que crea el coach van **10 de 10 en conversión a pago**; el auto-registro sumó 3 personas más en el delta y **0 pesos**. El predictor de los 28 días se confirma: las 2 que pasaron de 8 días entrenados siguen pagando, las 2 que no llegaron a 4 se fueron. Y la app **no está lista para recibirlos**: Chucho se registró el sábado 22-ago y su primera pantalla fue «día de descanso» (A5 H1) — 0 sesiones y sin teléfono.
 3. **La vitrina funciona y está medio vacía: 1 tarjeta en 6 huecos, con 8 historias listas.** El hueco de ESCRITURA lo cerró v525; **queda el de LECTURA** (`app-2-login.js:1877` pide las 6 más nuevas sin filtrar por coach) y **hoy no muerde** porque hay un solo moderador — muerde el día que AVI GYM tenga el suyo.
 4. **La mitad del delta se fue en comida y el asesorado no la usa.** 90 de 182 commits son de nutrición y **49 son del registro de alimentos**; su uso total es **4 personas, 5 días, 16 entradas y nada desde el 13-ago**, y el **escáner de códigos de barras tiene 0 filas: nadie lo ha usado ni una vez**. El triaje de dolor (24 commits) se usó **una vez, y fue el propio PO**. En cambio el **motor del plan** de nutrición sí llega: 11 planes vigentes, todos de esta semana.
-5. **Lo que anuncié en julio pasó tal cual:** el 1-ago quedaron bloqueadas 8 personas (**66 días-persona en 23 días**) y el candado **siguió sin morder** — Claudia y Luz entrenaron con el plan vencido. **El 1-sep se repite con 5 de los 8 que pagan: 560.000 COP/mes.**
+5. **Lo que anuncié en julio pasó tal cual:** el 1-ago quedaron bloqueadas 8 personas (**66 días-persona en 23 días**) y el candado **siguió sin morder** — Carla y Luisa entrenaron con el plan vencido. **El 1-sep se repite con 5 de los 8 que pagan: 560.000 COP/mes.**
 
 ---
 
@@ -44,16 +44,16 @@
   **(b) La base recurrente — el número que sirve para decidir — pasó de 725.000 a 835.000 COP/mes:**
   ```
   persona            julio     agosto    Δ        vence
-  Astrid Beltran    150.000   150.000    =        2026-09-02
-  Kathe Beltran     150.000   150.000    =        2026-09-02
-  Samuel Cifuentes  125.000   125.000    =        2026-09-05
-  Claudia Valbuena  100.000   130.000   +30.000   2026-09-02
-  Luz Rodríguez     100.000   130.000   +30.000   2026-09-02
-  Danilo                  —   150.000   NUEVO     2026-09-20
+  Andrea Bernal    150.000   150.000    =        2026-09-02
+  Karen Bernal     150.000   150.000    =        2026-09-02
+  Salomón Cárdenas  125.000   125.000    =        2026-09-05
+  Carla Vargas  100.000   130.000   +30.000   2026-09-02
+  Luisa R.     100.000   130.000   +30.000   2026-09-02
+  Darío                  —   150.000   NUEVO     2026-09-20
   ───────────────────────────────────────────────
   nivel «coach»     725.000   835.000   +110.000  (6 personas las dos veces)
-  Nataly (app)       vencida   30.000              2026-08-31
-  Natalia (app)       1.000    25.000              2026-09-11
+  Nayla (app)       vencida   30.000              2026-08-31
+  Nadia (app)       1.000    25.000              2026-09-11
   ───────────────────────────────────────────────
   TOTAL              726.000   890.000   +164.000
   ```
@@ -61,10 +61,10 @@
 
   **(c) Las dos bajas, con nombre y con lo que estaban haciendo:**
   ```
-  Valery Valbuena  100.000/mes  último pago 2026-07-02, venció 2026-08-01
+  Vanesa Vargas  100.000/mes  último pago 2026-07-02, venció 2026-08-01
                    3 sesiones EN TOTAL, la última el 2026-07-09 — 45 días antes de vencer
                    16 años · sin teléfono guardado · sin push · último login 2026-07-07
-  YEISON VALBUENA   20.000/mes  último pago 2026-07-01, venció 2026-07-31
+  YAMID VARGAS   20.000/mes  último pago 2026-07-01, venció 2026-07-31
                    3 sesiones, la última el 2026-07-10 · auto-registrado
                    sin teléfono · sin push · último login 2026-07-01 (el día del alta)
   ```
@@ -72,7 +72,7 @@
   ANTES de dejar de pagar.** El pago fue el último indicador en apagarse, no el primero. Y las dos
   son **inalcanzables**: ni teléfono ni push, así que ni siquiera se les podía escribir.
 
-  **(d) El precio subió y nadie se fue.** Claudia y Luz pasaron de 100.000 a 130.000 (+30%) el
+  **(d) El precio subió y nadie se fue.** Carla y Luisa pasaron de 100.000 a 130.000 (+30%) el
   3-ago y las dos siguen entrenando: **18 sesiones cada una desde el 31-jul, las dos más activas
   del negocio**. La sospecha nº3 de mi informe de julio («los de 100-150.000 aguantarían un alza»)
   **se probó en producción y aguantó** — pero se probó sobre las dos personas de más adherencia,
@@ -81,18 +81,18 @@
 - **Intenté tumbarlo así:** cuatro intentos.
   1. *«Los 890.000 incluyen ruido como el pago de 1.000 de julio»* — **no**: los 9 pagos de agosto
      son 150.000 · 150.000 · 150.000 · 130.000 · 130.000 · 125.000 · 30.000 · 25.000 y **un 0**
-     (Miguel Pulido, 4-ago). El 0 no suma. Sin él serían 890.000 igual.
+     (Mario Parra, 4-ago). El 0 no suma. Sin él serían 890.000 igual.
   2. *«Agosto solo lleva 23 días, la comparación es injusta»* — es injusta **a favor de julio**:
      los pagos se concentran los días 1-6 del mes (7 de los 9 de agosto), así que el mes ya está
-     cobrado. Nadie más vence antes del 31-ago (Nataly).
-  3. *«Danilo puede ser una cuenta de prueba»* — su email es `danilo@avi.com`, el mismo patrón de
+     cobrado. Nadie más vence antes del 31-ago (Nayla).
+  3. *«Darío puede ser una cuenta de prueba»* — su email es `oculto@avi.com`, el mismo patrón de
      las cuentas que crea el coach a mano, y **entrenó al día siguiente del alta** (22-ago).
      Es un cliente real y es la décima cuenta creada por el coach.
   4. *«¿Y si hay pagos en efectivo sin registrar?»* — sigue siendo la limitación de siempre
      (§Lo que NO alcancé a revisar). Estos números son un **piso**, no la verdad.
 
 - **A quién le pasa:** al coach. Su tablero le dirá 890.000 este mes; lo que no le dice es que
-  **835.000 de eso son 6 personas** y que dos de ellas (Claudia y Luz) acaban de aceptar un +30%.
+  **835.000 de eso son 6 personas** y que dos de ellas (Carla y Luisa) acaban de aceptar un +30%.
 
 - **Costo del arreglo:** ninguno — esto es una buena noticia, no un defecto. Lo accionable está en
   H2 y H3.
@@ -114,9 +114,9 @@
   ```
   nombre        alta     puerta          tel  pagó       sesiones  último login
   Valery      02-ago   auto-registro     NO   0 COP      8 (7 días)  21-ago
-  maria rubio 09-ago   auto-registro     sí   0 COP      0           09-ago (el alta)
-  Danilo      21-ago   la crea el coach  sí   150.000    1 (100%)    22-ago
-  Chema       22-ago   auto-registro     NO   0 COP      0           22-ago (el alta)
+  marta rojas 09-ago   auto-registro     sí   0 COP      0           09-ago (el alta)
+  Darío      21-ago   la crea el coach  sí   150.000    1 (100%)    22-ago
+  Chucho       22-ago   auto-registro     NO   0 COP      0           22-ago (el alta)
   ```
 
   **(b) La cohorte acumulada sigue siendo binaria, y el delta la refuerza:**
@@ -127,19 +127,19 @@
   dinero que dejaron       2.286.000 COP           20.000 COP
   con plan vigente hoy         8                     0
   ```
-  **Danilo es la décima cuenta creada por el coach y la décima que paga.** Cien por ciento, diez
+  **Darío es la décima cuenta creada por el coach y la décima que paga.** Cien por ciento, diez
   de diez, en tres meses.
 
   **(c) Cuánto vale y cuánto dura un asesorado nuevo (nivel «coach», que es el que sostiene todo):**
   ```
-  Samuel     125.000 × 4 meses seguidos (may·jun·jul·ago) = 500.000 — 0 fallos
-  Astrid     150.000, 3 pagos                            = 450.000
-  Kathe      150.000, 3 pagos                            = 450.000
-  Claudia    100.000 → 130.000, 2 pagos                  = 230.000
-  Luz        100.000 → 130.000, 2 pagos                  = 230.000
-  Danilo     150.000, 1 pago (2 días de vida)            = 150.000
+  Salomón     125.000 × 4 meses seguidos (may·jun·jul·ago) = 500.000 — 0 fallos
+  Andrea     150.000, 3 pagos                            = 450.000
+  Karen      150.000, 3 pagos                            = 450.000
+  Carla    100.000 → 130.000, 2 pagos                  = 230.000
+  Luisa        100.000 → 130.000, 2 pagos                  = 230.000
+  Darío     150.000, 1 pago (2 días de vida)            = 150.000
   ───────────────────────────────────────────────────────────────
-  la ÚNICA baja del nivel: Valery Valbuena, 100.000 × 1 mes = 100.000 y se fue
+  la ÚNICA baja del nivel: Vanesa Vargas, 100.000 × 1 mes = 100.000 y se fue
   ```
   **Ticket medio 134.000 COP/mes · churn del nivel «coach» en 3 meses: 1 de 7 (14%).** Con el
   precio de hoy, un asesorado nuevo que dure lo que dura la media **vale ~400.000 COP**.
@@ -150,25 +150,25 @@
   «su primer mes» medido desde el alta no existe). La cohorte limpia:
   ```
   persona            días entrenados en sus 1os 28   dónde está hoy
-  Luz                        16                      paga 130.000 · 35 sesiones
-  Claudia                    15                      paga 130.000 · 35 sesiones
+  Luisa                        16                      paga 130.000 · 35 sesiones
+  Carla                    15                      paga 130.000 · 35 sesiones
   Valery (auto)               7 (en 21 días)         entrena · 8 sesiones · NO paga
-  Valery Valbuena             3                      SE FUE — 100.000/mes perdidos
-  YEISON (auto)               3                      SE FUE — 20.000/mes perdidos
-  jose Daniel, jhojan,
-  Sharith, Nicolás (auto)   0-1                      muertos
-  Danilo                      1 (lleva 2 días)       demasiado pronto
+  Vanesa Vargas             3                      SE FUE — 100.000/mes perdidos
+  YAMID (auto)               3                      SE FUE — 20.000/mes perdidos
+  jorge David, jairo,
+  Sonia, Nelson (auto)   0-1                      muertos
+  Darío                      1 (lleva 2 días)       demasiado pronto
   ```
   **Las 2 que pasaron de 8 días siguen pagando; las 2 que no llegaron a 4 se fueron.** No hay ni
   un caso en medio. El objetivo operativo del estudio del 21-ago (8 días entrenados en el primer
   mes) **no se cae con los datos nuevos: se confirma**.
 
   **(e) ¿Está la app lista para recibirlos? A medias, y hay dos casos de esta misma semana.**
-  - **Danilo** se dio de alta el **viernes 21-ago** y entrenó el **sábado 22**. Su plan es
+  - **Darío** se dio de alta el **viernes 21-ago** y entrenó el **sábado 22**. Su plan es
     lunes-viernes: **el sábado su app no tenía nada programado** y aun así completó 23 de 23
     series — tuvo que rodear la pantalla de «día de descanso» que describe A5 H1. Le salió bien
     **porque estaba motivado y lo acababa de inscribir su coach en persona**.
-  - **Chema** se dio de alta el **sábado 22-ago** por la puerta pública. Misma pantalla, sin coach
+  - **Chucho** se dio de alta el **sábado 22-ago** por la puerta pública. Misma pantalla, sin coach
     detrás: **0 sesiones**. Y sin teléfono guardado ni push, **no hay forma de escribirle**.
   - Lo que SÍ funciona: los dos recibieron rutina (5 días) **y plan de nutrición el mismo día**
     (`user_data.nutrition`, `updated_at` 22-ago). El motor entrega; la primera pantalla no.
@@ -180,16 +180,16 @@
      adopta**. Mi frase de julio («0 de 13 volvieron a iniciar sesión») era verdad entonces y hoy
      sería falsa. **Matiz que la sostiene igual: no paga.** El coach le puso `tier:'premium'`
      gratis, así que el canal sigue sin producir un peso desde el 1-jul.
-  2. *«Danilo puede ser un traspaso de otro sistema, no una venta»* — no lo puedo descartar desde
+  2. *«Darío puede ser un traspaso de otro sistema, no una venta»* — no lo puedo descartar desde
      los datos (§Sospechas). Lo que sí es medible: su fila se creó el 21-ago y su primer pago tiene
      esa fecha, así que **para el negocio el dinero es nuevo** aunque la persona no lo sea.
-  3. *«El churn del 14% está inflado: Valery Valbuena es hija del PO (email `valery@avi.com`,
+  3. *«El churn del 14% está inflado: Vanesa Vargas es hija del PO (email `oculto@avi.com`,
      16 años)»* — es un argumento real y lo escribo aunque me quite el hallazgo: si esa cuenta es
      familiar, **el churn del nivel «coach» es 0 de 6 en 3 meses** y el negocio es aún más sano de
      lo que digo. En los dos casos, el dinero que se fue en agosto (120.000/mes entre ella y
-     Yeison) es real.
+     Yamid) es real.
 
-- **A quién le pasa:** a Chema, hoy. Y a los próximos que lleguen por la puerta pública mientras
+- **A quién le pasa:** a Chucho, hoy. Y a los próximos que lleguen por la puerta pública mientras
   la única puerta que convierte dependa de que el coach los inscriba a mano.
 
 - **Costo del arreglo:** la palanca no es código, es **secuencia**. En orden de dinero por hora:
@@ -200,7 +200,7 @@
      delta la refuerza: 3 auto-registros más, 0 pesos más. Convierte un canal de 1 de 13 en el de
      10 de 10.
   3. **~2 h — que el día 1 nunca caiga en descanso** (A5 H1, mismo arreglo). Hoy le cuesta a la
-     mitad de los que llegan y ya se comió a Chema.
+     mitad de los que llegan y ya se comió a Chucho.
   4. **0 h, 1 campo — teléfono obligatorio al crear un asesorado.** De las 4 altas del delta,
      **2 no tienen teléfono** y son las 2 que no arrancaron.
 
@@ -220,17 +220,17 @@
   **(a) Lo que hay publicado hoy — una fila, de anteayer:**
   ```sql
   select nombre, entrenos, meses, subieron, con_carga, created_at from avi_showcase;
-  → Astrid | 48 entrenos | 3 meses | subió carga en 15 de 26 | 2026-08-22 18:49 UTC
+  → Andrea | 48 entrenos | 3 meses | subió carga en 15 de 26 | 2026-08-22 18:49 UTC
   ```
   Una sola. `renderShowcase` pide `limit=6` (`app-2-login.js:1877`), así que **5 de los 6 huecos
   de su página de llegada están en blanco**.
 
   **(b) El material que NO está publicado — 8 personas con historia completa:**
   ```
-  Astrid   48 sesiones · 33 récords   ← la única publicada
-  Samuel   36 · 36        Claudia 35 · 29      Luz      35 · 29
-  Kathe    34 · 30        Nataly  24 · 22      Natalia  18 · 18
-  Miguel   14 · 23
+  Andrea   48 sesiones · 33 récords   ← la única publicada
+  Salomón   36 · 36        Carla 35 · 29      Luisa      35 · 29
+  Karen    34 · 30        Nayla  24 · 22      Nadia  18 · 18
+  Mario   14 · 23
   (Valery, 15 años, queda fuera CORRECTAMENTE por el candado de menores de v522)
   ```
 
@@ -309,17 +309,17 @@
   **(b) El uso, contado — el registro entero, desde que existe:**
   ```sql
   select nombre, dia, jsonb_array_length(entradas) from ... profile->'foodlog'->'d' ...
-  Astrid Beltran   2026-08-05   1 entrada
-  Astrid Beltran   2026-08-06   6
-  Kathe Beltran    2026-08-10   1
-  Samuel Cifuentes 2026-08-12   1
-  Natalia Martinez 2026-08-13   7
+  Andrea Bernal   2026-08-05   1 entrada
+  Andrea Bernal   2026-08-06   6
+  Karen Bernal    2026-08-10   1
+  Salomón Cárdenas 2026-08-12   1
+  Nadia Mejía 2026-08-13   7
   ────────────────────────────────────
   4 personas · 5 días · 16 entradas · NADA desde el 13-ago (hace 10 días)
   ```
   Desglose por vía:
   ```
-  marcado del plan («✓ Me lo comí», F7/v477)   7 entradas   ← las 7 son de Natalia, un solo día
+  marcado del plan («✓ Me lo comí», F7/v477)   7 entradas   ← las 7 son de Nadia, un solo día
   tecleado a mano desde el catálogo             9
   escaneado con la cámara                       0
   ```
@@ -337,7 +337,7 @@
   ```sql
   select nombre, painCare from user_data where profile ? 'painCare';
   🧪 QA HARNESS      []            ← vacío
-  Samuel Cifuentes   []            ← vacío
+  Salomón Cárdenas   []            ← vacío
   Andres Martínez    [{"at":"2026-08-17…","area":"codo","level":2,…}]   ← el COACH, sobre sí mismo
   ```
   **Un solo reporte de dolor en toda la base, el 17-ago, del entrenador.** De los 23 asesorados,
@@ -347,8 +347,8 @@
   ```
   planes de nutrición vigentes en user_data.nutrition:  11 personas
   todos con updated_at entre el 20 y el 22-ago          ← fresco, no legacy
-  incluidos Danilo y Chema, que lo recibieron el mismo día de su alta
-  hábitos (agua/pasos): 7 personas, la última anotación de AYER (Luz, 22-ago)
+  incluidos Darío y Chucho, que lo recibieron el mismo día de su alta
+  hábitos (agua/pasos): 7 personas, la última anotación de AYER (Luisa, 22-ago)
   ```
   **El PLAN de comida se usa. El REGISTRO de comida no.** Son dos cosas distintas y el delta las
   trató como una sola.
@@ -396,7 +396,7 @@
     lo que hay que volver a verificar cada vez que se toque la tabla de alimentos.
 
 ---
-### H5 · 🟠 Las dos predicciones de julio se cumplieron al pie de la letra: 8 personas bloqueadas el 1-ago, y el candado siguió sin morder (Claudia y Luz entrenaron vencidas). Y el 1-sep vuelve a pasar
+### H5 · 🟠 Las dos predicciones de julio se cumplieron al pie de la letra: 8 personas bloqueadas el 1-ago, y el candado siguió sin morder (Carla y Luisa entrenaron vencidas). Y el 1-sep vuelve a pasar
 
 - **Qué pasa:** no re-audito los H1/H2 de julio — mido **si lo que anuncié ocurrió**. Ocurrió las
   dos veces, y las dos con nombres.
@@ -409,16 +409,16 @@
   **(a) El bloqueo del 1-ago, tal como estaba anunciado.** Días-persona con la app apagada por
   vencimiento en los 23 días del delta:
   ```
-  YEISON VALBUENA   venció 31-jul   sin pago      24 días y contando
-  Valery Valbuena   venció 01-ago   sin pago      23 días y contando
-  Claudia Valbuena  venció 31-jul   pagó 03-ago    3
-  Luz Rodríguez     venció 31-jul   pagó 03-ago    3
-  Kathe Beltran     venció 01-ago   pagó 03-ago    2
-  Astrid Beltran    venció 01-ago   pagó 03-ago    2
-  Nataly            venció 30-jul   pagó 01-ago    2
-  Natalia Martinez  venció 10-ago   pagó 12-ago    2
-  Samuel Cifuentes  venció 05-ago   pagó 06-ago    1
-  Miguel Pulido     venció 23-jun   «pago» de 0 el 04-ago   (4 días dentro del delta)
+  YAMID VARGAS   venció 31-jul   sin pago      24 días y contando
+  Vanesa Vargas   venció 01-ago   sin pago      23 días y contando
+  Carla Vargas  venció 31-jul   pagó 03-ago    3
+  Luisa R.     venció 31-jul   pagó 03-ago    3
+  Karen Bernal     venció 01-ago   pagó 03-ago    2
+  Andrea Bernal    venció 01-ago   pagó 03-ago    2
+  Nayla            venció 30-jul   pagó 01-ago    2
+  Nadia Mejía  venció 10-ago   pagó 12-ago    2
+  Salomón Cárdenas  venció 05-ago   pagó 06-ago    1
+  Mario Parra     venció 23-jun   «pago» de 0 el 04-ago   (4 días dentro del delta)
   ─────────────────────────────────────────────────────────
   ≈66 días-persona de bloqueo en 23 días de operación
   ```
@@ -427,38 +427,38 @@
   **(b) Y el candado sigue sin ser un candado.** El 1-ago, con el plan **vencido el día anterior**:
   ```sql
   select nombre, fecha, count(*) from history where fecha between '2026-07-31' and '2026-08-06'
-  2026-08-01  Claudia Valbuena   3 sesiones   ← plan vencido el 31-jul, pagó el 3
-  2026-08-01  Luz Rodríguez      4 sesiones   ← plan vencido el 31-jul, pagó el 3
+  2026-08-01  Carla Vargas   3 sesiones   ← plan vencido el 31-jul, pagó el 3
+  2026-08-01  Luisa R.      4 sesiones   ← plan vencido el 31-jul, pagó el 3
   ```
   **Siete sesiones con el plan vencido, de las dos personas de mayor adherencia del negocio**, y
   a las dos se les subió el precio dos días después sin problema.
 
   **(c) El coach volvió a usar el parche que ya usó dos veces:** el **tercer pago de 0 COP** de la
-  historia (Miguel Pulido, 4-ago), que no es un cobro sino un «extenderle el plazo». Sigue sin
+  historia (Mario Parra, 4-ago), que no es un cobro sino un «extenderle el plazo». Sigue sin
   existir el botón que lo haga bien, así que ese 0 entra en la lista de pagos del tablero.
 
   **(d) Se repite el 1-sep.** Vencimientos vigentes hoy 23-ago:
   ```
-  Nataly            31-ago  ← en 8 días
-  Kathe · Astrid · Claudia · Luz    02-sep
-  Samuel            05-sep
-  Natalia           11-sep
-  Danilo            20-sep
-  Miguel            03-sep (cortesía de 0)
+  Nayla            31-ago  ← en 8 días
+  Karen · Andrea · Carla · Luisa    02-sep
+  Salomón            05-sep
+  Nadia           11-sep
+  Darío            20-sep
+  Mario            03-sep (cortesía de 0)
   ```
   **5 de los 8 que pagan vencen entre el 31-ago y el 2-sep**, otra vez en bloque.
 
 - **Intenté tumbarlo así:** dos intentos.
   1. *«El bloqueo sí cobró: todos pagaron a los 2-3 días»* — es la lectura más favorable y no se
-     sostiene: **Claudia y Luz entrenaron igual el día que estaban vencidas**, así que para ellas
-     no hubo bloqueo que las empujara. Y las dos que de verdad quedaron fuera (Yeison, Valery
-     Valbuena) llevan 23-24 días bloqueadas y **no han vuelto ni han pagado**. El bloqueo recauda
+     sostiene: **Carla y Luisa entrenaron igual el día que estaban vencidas**, así que para ellas
+     no hubo bloqueo que las empujara. Y las dos que de verdad quedaron fuera (Yamid, Valery
+     Vargas) llevan 23-24 días bloqueadas y **no han vuelto ni han pagado**. El bloqueo recauda
      de quien iba a pagar igual y expulsa a quien dudaba.
   2. *«El candado no muerde porque la app no se actualizó»* — puede ser (A3 midió teléfonos por
      detrás), y da lo mismo para el negocio: **un candado que depende de la versión que tenga cada
      teléfono castiga al que actualiza.** Es lo mismo que escribí en julio y sigue siendo cierto.
 
-- **A quién le pasa:** al 1-sep, a Kathe, Astrid, Claudia, Luz y Samuel; a Nataly el 31-ago.
+- **A quién le pasa:** al 1-sep, a Karen, Andrea, Carla, Luisa y Salomón; a Nayla el 31-ago.
   Y al negocio: son **560.000 COP/mes** de gente que va a ver una pantalla de plan vencido.
 
 - **Costo del arreglo:** el mismo que estimé en julio y que sigue sin hacerse — **~2 h** para el
@@ -466,7 +466,7 @@
   **~1 h** del recordatorio 3 días ANTES del vencimiento. Con un matiz que el delta hace posible:
   **el recordatorio ya tiene por dónde salir** — v520 construyó `coachCanReach` y el coach ya ve
   a quién puede avisarle. De los 8 que pagan, **7 de los 8 tienen teléfono guardado**
-  (medido sobre `profile.phone`); el único sin él es **Samuel**, que además es el que lleva 4
+  (medido sobre `profile.phone`); el único sin él es **Salomón**, que además es el que lleva 4
   meses pagando sin fallar una vez.
 
 ---
@@ -492,18 +492,18 @@ seguidos.* Hoy el récord es **una persona, un día**.
    **no tiene forma de saber si vende.** *Para probarlo: un contador anónimo (un insert a una tabla
    de conteo al pintar la vitrina, sin identificar a nadie) o un parámetro `?src=` en el link que
    el PO comparte. ~1 h, y sin él la decisión de invertir más en la vitrina es a ciegas.*
-2. **Danilo puede no ser un cliente nuevo sino uno de siempre que acaba de entrar a la app.** Su
+2. **Darío puede no ser un cliente nuevo sino uno de siempre que acaba de entrar a la app.** Su
    email es del dominio que usa el coach para las cuentas que crea a mano, y pagó 150.000 el mismo
    día del alta — un cliente completamente nuevo no suele pagar el precio más alto sin probar.
    Para el flujo de caja da igual; para decir «la app captó un cliente» **no da igual**.
-   *Para probarlo: preguntarle al coach si Danilo ya era su asesorado presencial.*
-3. **Sospecho que el precio de 130.000 aguanta en los otros cuatro.** Claudia y Luz lo aceptaron y
-   son las dos de más adherencia; Astrid y Kathe están en 150.000 y Samuel en 125.000 desde mayo,
+   *Para probarlo: preguntarle al coach si Darío ya era su asesorado presencial.*
+3. **Sospecho que el precio de 130.000 aguanta en los otros cuatro.** Carla y Luisa lo aceptaron y
+   son las dos de más adherencia; Andrea y Karen están en 150.000 y Salomón en 125.000 desde mayo,
    sin fallar un mes. **No lo recomiendo como palanca todavía**: el negocio son 8 personas y subir
    el precio a la única base sana por un +10% no compensa el riesgo mientras haya cupo libre
    (~25% de ocupación). *Para probarlo: que el precio nuevo lo estrenen los que entren, no los que
    ya están.*
-4. **El pago de 0 COP de Miguel Pulido puede ser una cortesía, o puede ser que Miguel ya no sea
+4. **El pago de 0 COP de Mario Parra puede ser una cortesía, o puede ser que Mario ya no sea
    cliente y el coach solo le esté dejando la app abierta.** Lleva **sin entrenar desde el 30-jun**
    (54 días) y su último pago real fueron 10.000 COP en mayo. *Para probarlo: preguntarle al coach.
    Si es lo segundo, es la primera baja del nivel «app» y hay que contarla.*
@@ -511,7 +511,7 @@ seguidos.* Hoy el récord es **una persona, un día**.
    De los 9 pagos de agosto, **solo 1 tiene nota** («Transferencia Nequi»). *Para probarlo: cruzar
    contra el Nequi del coach — fuera de mi alcance.*
 6. **Sospecho que las 3-4 filas de auto-registrados que existían en julio y hoy no existen se
-   borraron a mano** (Stevan, diana, Hernán, jose Gutiérrez: A5 los encontró en `auth.users` sin
+   borraron a mano** (Simón, diana, Hugo, jorge Gutiérrez: A5 los encontró en `auth.users` sin
    fila en `user_data`). Si es así, **mis cohortes y las de julio no son comparables sin decirlo**,
    y por eso el conteo de auto-registrados sigue en 13 pese a haber entrado 3 nuevos.
    *Para probarlo: preguntarle al coach si limpió la lista.*
@@ -522,7 +522,7 @@ seguidos.* Hoy el récord es **una persona, un día**.
 - **El negocio creció, y creció por lo barato.** +164.000 COP/mes de base recurrente en 23 días, y
   las dos causas (subirle el precio a dos personas, inscribir a una a mano) **costaron 0 horas de
   desarrollo**. Ninguna de las 45 versiones del delta aparece en la explicación del crecimiento.
-- **La puerta que convierte sigue convirtiendo: 10 de 10.** Con Danilo, las cuentas creadas por el
+- **La puerta que convierte sigue convirtiendo: 10 de 10.** Con Darío, las cuentas creadas por el
   coach llevan **cien por ciento de conversión a pago** en tres meses. Era el hallazgo más fuerte
   de julio y se reforzó.
 - **El motor de nutrición SÍ llega a la gente.** 11 planes vigentes en `user_data.nutrition`, todos
@@ -547,7 +547,7 @@ seguidos.* Hoy el récord es **una persona, un día**.
 - **Sin cambio (no es hallazgo nuevo, es estado):** el KPI **«Ingresos mes»** sigue sumando la caja
   del mes calendario (`app-2-login.js:1400`, `d.getMonth()===mo`) y sigue sin existir un widget de
   base recurrente. **Este mes no engaña** —todos pagaron dentro de agosto— pero el 890.000 que le
-  va a mostrar incluye el pago de 0 COP de Miguel y no distingue los 835.000 que son base de los
+  va a mostrar incluye el pago de 0 COP de Mario y no distingue los 835.000 que son base de los
   55.000 que son cola.
 
 ---

@@ -75,7 +75,7 @@ ya había aprendido a ignorar.
      deniegan de más, no de menos), así que hoy no es un hueco de seguridad — es una mina para el
      día que el negocio crezca, y confirma que «2 coaches» como número no describe lo que hay hoy.
    - Intenté tumbarlo así: crucé `user_data.role='coach'` contra `auth.users` por email — el UID
-     `0a6484ed-…` resuelve a `camilo06197@gmail.com` (el correo del PO), y el segundo `coach` es
+     `0a6484ed-…` resuelve a `oculto@gmail.com` (el correo del PO), y el segundo `coach` es
      literalmente la cuenta rotulada `🧪 QA COACH (harness — no borrar)`. No hay ningún tercer
      coach escondido con otro criterio (probé también `community_moderators`, que solo tiene a
      Camilo, y `coach_settings is not null`, que da la misma pareja).
@@ -117,15 +117,15 @@ ya había aprendido a ignorar.
 - 🟢 **`push_subscriptions`: los 2 duplicados que quedan después de v535 son de la clase correcta
   (endpoints DISTINTOS), no la que v535 cerró.** Confirmado: el trigger `push_dedupe_endpoint`
   (migración `20260824_push_dedupe_endpoint.sql`) sigue vivo y colapsa por `(client_id, endpoint)`.
-  Las 12 filas / 10 `client_id` de hoy tienen, en los 2 casos con más de una fila (Samuel y
-  Natalia), endpoints **distintos** — el control que la propia migración documenta para separar
+  Las 12 filas / 10 `client_id` de hoy tienen, en los 2 casos con más de una fila (Salomón y
+  Nadia), endpoints **distintos** — el control que la propia migración documenta para separar
   "duplicado real" de "dos aparatos". Respondiendo la pregunta del briefing — **sí, la fila queda
   huérfana cuando el endpoint ROTA por completo** (no solo cuando rotan las claves bajo el mismo
   endpoint, que es lo que v535 sí cubre): el trigger deduplica por endpoint, así que un aparato
   que obtiene un endpoint nuevo de verdad (reinstalar la PWA, limpiar datos del sitio, cambiar de
   gestor de push) dejará viva la fila del endpoint viejo hasta que `send-push`/`daily-notifs`
   reciban un 410/404 al intentar usarla — que puede tardar mucho o no llegar nunca si el proveedor
-  de push no libera el token. El caso de Natalia (filas del 7-ago y de hoy, 25 días de separación)
+  de push no libera el token. El caso de Nadia (filas del 7-ago y de hoy, 25 días de separación)
   es compatible con esta lectura, aunque no puedo probar sin acceso al dispositivo si es un
   segundo aparato real o uno abandonado. No es una fuga de datos: es una fuente lenta de pushes
   redundantes.
@@ -159,7 +159,7 @@ ya había aprendido a ignorar.
   No alcancé a diagnosticar la causa raíz (necesitaría los archivos servidos exactos de cada build
   y no es del alcance de A2), pero es un patrón recurrente sin dueño — nadie lo ha investigado
   nunca porque nadie había mirado `app_errors` como conjunto.
-- 🟢 **Diana Ramírez (`c78c9817-…`), la única fila con `coach_id` nulo, es un caso SANO de RLS —
+- 🟢 **Dora Ramírez (`c78c9817-…`), la única fila con `coach_id` nulo, es un caso SANO de RLS —
   no un hueco.** Es autoregistrada, tier `libre`, nunca pidió coach (`wantsCoach: null`), con 3
   rutinas auto-generadas y actividad hasta el 26-ago. Bajo la policy de `user_data`
   (`auth.uid()=user_id OR auth.uid()=coach_id`), con `coach_id=null` **nadie más que ella misma**
@@ -196,7 +196,7 @@ ya había aprendido a ignorar.
   (4 versiones distintas) huele a una carga parcial de script bajo red móvil o a un choque con el
   Service Worker durante una actualización — no lo medí a fondo (necesitaría los `sourcemap`/
   archivos exactos de esas versiones, fuera del alcance de A2).
-- No pude confirmar si la segunda fila de `push_subscriptions` de Natalia es un segundo aparato
+- No pude confirmar si la segunda fila de `push_subscriptions` de Nadia es un segundo aparato
   real o un aparato abandonado — solo puedo ver la base de datos, no su teléfono.
 - No verifiqué si existen más lugares en el código (fuera de los tres que encontré) con el UID de
   Camilo escrito a mano — busqué por el literal `0a6484ed` en `.sql` y `.ts` pero no en los 8

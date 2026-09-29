@@ -502,7 +502,7 @@ leyendo dónde viven las secciones `cn-*` del asesorado; probable app-5/app-6):*
 - **NADA de comunidad entra a `SB_KEYS`** (no es parte del sync offline-first; vive en sus
   tablas). Caché de última vista en `ax_cmty_cache` (LOCAL, por dispositivo) SOLO para el
   estado offline, marcada «puede estar desactualizado».
-- **SELLO DE NUBE (lección Samuel 2026-07-08, NO negociable):** en localhost las escrituras
+- **SELLO DE NUBE (lección Salomón 2026-07-08, NO negociable):** en localhost las escrituras
   de CMTY quedan selladas igual que `cloudWriteSealed` sella `UD.*` — extender el sello o
   replicar el mecanismo, y PROBARLO en el harness (un write con el sello puesto NO llega).
 - **UI — pestaña `#cn-community`** (ícono `users` de aviIcon) con estados:
@@ -825,9 +825,9 @@ Opus entrega este diseño → **Fable planifica la RLS del modelo Instagram (13.
 > **Autor:** Fable, 2026-07-20. Verificado contra el esquema REAL (MCP Supabase read-only, proyecto
 > `eoebhrxbokyllqalyecj`) y contra datos reales: `community_profiles` tiene **2 filas existentes**
 > (opt-in de Fase 1, ya en prod — un default nuevo NO puede exponerlas retroactivamente); `user_data`
-> tiene **asesorados reales de 16, 17 y 18 años** (Santiago Santos 17, Valery Valbuena 16, Sharith
-> Sofía 16, Felipe/Sofía/Cristian/Hernan/jhojan a los 18 — frontera legal) y varios con `age: null`
-> (auto-registrados: Stevan Guerrero). La publicación `supabase_realtime` existe pero **con CERO
+> tiene **asesorados reales de 16, 17 y 18 años** (Sebastián Suárez 17, Vanesa Vargas 16, Sonia
+> Sofía 16, Fabio/Sofía/César/Hugo/jairo a los 18 — frontera legal) y varios con `age: null`
+> (auto-registrados: Simón G.). La publicación `supabase_realtime` existe pero **con CERO
 > tablas añadidas** — Realtime no está habilitado en NADA todavía. `c1_community_foundations.sql`
 > hoy da `grant select on community_profiles to authenticated` **de TABLA COMPLETA** (no por columna)
 > — esto importa mucho para §13-BIS.3. Este documento ejecuta la regla del proyecto: *Fable planifica
@@ -1376,13 +1376,13 @@ desaparecen y la función queda con la misma higiene que `_can_dm`.
 
 Impersonación por JWT (`set local role authenticated` + `set_config('request.jwt.claims',...)`) en
 transacciones `BEGIN…ROLLBACK`, actores reales (F1, F2, un compañero de gym de F2 sin amistad —
-Astrid `c52b90af…` vía gym de F1— y un extraño real sin relación, `qa-harness` `9418640a…`):
+Andrea `c52b90af…` vía gym de F1— y un extraño real sin relación, `qa-harness` `9418640a…`):
 - **#7a** extraño→F1 sin relación: rechazado por RLS (`new row violates row-level security policy`).
 - **#7b** con amistad `pending` (creada real en la tx): sigue rechazado — `_are_friends` exige
   `accepted`, `pending` no cuenta.
 - **#8** extraño hace `SELECT` del hilo F1↔F2 por filtro directo: 0 filas. `SELECT *` sin `where`
   sobre toda la tabla: también 0 filas (RLS, no solo el filtro de la app).
-- **positivo (control):** compañero de gym SIN amistad (Astrid→F2, solo `_same_community`) SÍ puede
+- **positivo (control):** compañero de gym SIN amistad (Andrea→F2, solo `_same_community`) SÍ puede
   insertar — confirma que la vía "mismo gym" del candado funciona, no solo la de amistad.
 - **#10** F2 bloquea a F1 (`status='blocked'`): el INSERT posterior de F1→F2 se rechaza; el hilo VIEJO
   sigue legible para AMBOS (`n=1` en las dos direcciones) — el bloqueo corta DM nuevo, no borra
@@ -1520,7 +1520,7 @@ mismo-gym-sin-bloqueo).
 
 Repetí el ataque que Opus dice haber encontrado y cerrado: en una tx con rollback, **re-otorgué
 `grant select on public.community_profiles to authenticated`** (exactamente el estado pre-`c7b`) y
-consulté `last_active` crudo como **F2 (Samuel, amigo aceptado de F1 — alguien que SÍ puede ver la
+consulté `last_active` crudo como **F2 (Salomón, amigo aceptado de F1 — alguien que SÍ puede ver la
 fila vía `cp_sel`)**. Resultado: **fuga real, devolvió el timestamp `2026-07-21 09:00:00+00`
 sembrado.** Revoqué el grant de tabla (dejando solo los grants de columna del fix) y repetí la misma
 consulta: **`permission denied`.** Esto prueba que `c7b` no es cosmético — es la única barrera real
@@ -1545,7 +1545,7 @@ resultado final.)
 Prod confirmada limpia tras cada bloque (`last_active`/`show_last_active` de F1 y F2 en su valor real
 original, membresía de gym del extraño restaurada, `relacl` de `community_profiles` sin SELECT de
 tabla para `authenticated`, temp tables descartadas). Los actores reales usados fueron F1=Camilo
-(`0a6484ed…`) y F2=Samuel (`31bf6d19…`, amistad `accepted` verificada antes de empezar); el extraño
+(`0a6484ed…`) y F2=Salomón (`31bf6d19…`, amistad `accepted` verificada antes de empezar); el extraño
 `6e54e22b…` es miembro real del gym de F1, por eso su fila de `community_gym_members` se quitó y
 restauró dentro de la misma transacción (gotcha del encargo, confirmado necesario: sin este paso no
 queda un extraño real en los datos de Camilo).
@@ -1695,38 +1695,38 @@ FK `no action` de `coach_id` antes de borrar al "coach" QA — orden de borrado 
 
 ### 16.5 Matriz de sabotajes DB (tx→rollback única, actores reales + 1 menor real + 1 extraño real)
 
-Actores: F1=Camilo (`0a6484ed…`, coach real, perfil público adulto real en prod) · F2=Samuel
-(`31bf6d19…`, amigo `accepted` de F1, perfil privado) · extraño=nataly (`6e54e22b…`, se le quitó su
+Actores: F1=Camilo (`0a6484ed…`, coach real, perfil público adulto real en prod) · F2=Salomón
+(`31bf6d19…`, amigo `accepted` de F1, perfil privado) · extraño=nayla (`6e54e22b…`, se le quitó su
 membresía real de `community_gym_members` con F1 **dentro de la misma tx** para que quedara extraña de
-verdad, como exigía el encargo — sin esto comparte gym con F1 y con F2) · menor=Sharith Sofía
+verdad, como exigía el encargo — sin esto comparte gym con F1 y con F2) · menor=Sonia Sofía
 (`1f4f6a74…`, 16 años reales, asesorada real de Camilo; recibió una fila `community_profiles` temporal
 solo para esta transacción). Todo en **una sola** transacción con `ROLLBACK` final.
 
 | # | Prueba | Resultado |
 |---|---|---|
-| #1 | Extraño lee perfil PRIVADO (Samuel) | 0 filas ✅ |
-| #2 | Extraño lee perfil de MENOR (Sharith) | 0 filas ✅ |
+| #1 | Extraño lee perfil PRIVADO (Salomón) | 0 filas ✅ |
+| #2 | Extraño lee perfil de MENOR (Sonia) | 0 filas ✅ |
 | #3 | Extraño lee `birth_date` crudo de perfil PÚBLICO (F1) | `permission denied` ✅ |
 | #6a | Extraño lee `share_code` crudo (perfil público) | `permission denied` ✅ |
 | #6b | Extraño lee `consent_v`/`consent_at` crudos | `permission denied` ✅ |
 | #6c | Extraño hace `select(*)` explícito sobre perfil público | `permission denied` (columnas ocultas, ni con `*`) ✅ |
 | #5 | Menor hace `UPDATE is_private=false` | el UPDATE no da error, pero el **SELECT posterior** confirma `is_private` sigue `true` ✅ |
-| #13a | Extraño sigue a un PRIVADO (Samuel) | nace `pending` ✅ |
+| #13a | Extraño sigue a un PRIVADO (Salomón) | nace `pending` ✅ |
 | #13b | El SOLICITANTE (extraño) intenta pasar su propia solicitud a `active` | rechazado (`only followee accepts`) ✅ |
-| control | El FOLLOWEE real (Samuel) SÍ aprueba `pending→active` | ✅ (positivo, no quedó sobre-restringido) |
+| control | El FOLLOWEE real (Salomón) SÍ aprueba `pending→active` | ✅ (positivo, no quedó sobre-restringido) |
 | #13c | Un BLOQUEADO (F1 bloquea al extraño, sembrado en la misma tx) intenta `INSERT` un follow hacia F1 | rechazado (`blocked`) ✅ |
 | #14 | Extraño lee un par `follows` REAL sembrado (F1→F2, no es parte) | 0 filas — confirmado que la fila SÍ existía (control vía `postgres`, para que el 0 no sea un falso-positivo de tabla vacía) ✅ |
 | EXTRA | Trigger de menor **con dientes**: deshabilitado, la menor SÍ logra ponerse pública (`is_private=false` real) → confirma que la protección depende de verdad del trigger, no es decorativa | ✅ (reactivado después, vuelve a forzar `true`) |
-| EXTRA | Grant hardening **con dientes**: re-otorgado el SELECT ancho de tabla completa → el AMIGO (Samuel, quien SÍ ve la fila por `cp_sel`) leyó `birth_date`/`share_code` de F1 reales | ✅ fuga reproducida, confirmando que el grant de `c10` es load-bearing; grant restaurado → el mismo amigo vuelve a recibir `permission denied` |
+| EXTRA | Grant hardening **con dientes**: re-otorgado el SELECT ancho de tabla completa → el AMIGO (Salomón, quien SÍ ve la fila por `cp_sel`) leyó `birth_date`/`share_code` de F1 reales | ✅ fuga reproducida, confirmando que el grant de `c10` es load-bearing; grant restaurado → el mismo amigo vuelve a recibir `permission denied` |
 
 **18/18.** Prod confirmada limpia tras el `ROLLBACK`: `community_profiles` sin filas de prueba (`handle
-like '%fable-test%'` → 0), membresía de gym de nataly restaurada (`community_gym_members` → 23 filas,
+like '%fable-test%'` → 0), membresía de gym de nayla restaurada (`community_gym_members` → 23 filas,
 la suya presente), `friendships` sin fila `blocked` residual, `follows` de vuelta a como estaba, grant
 de columnas idéntico al de `c10` (verificado columna por columna post-rollback), `is_private`/`role`/
 `birth_date` de F1 y F2 en su valor real original. **Nota metodológica:** a mitad de la verificación
 encontré `community_profiles` con 3 filas en vez de las 2 esperadas y, antes de investigarlo a fondo,
 parecía un leak de mi transacción — resultó ser actividad REAL y concurrente (una asesorada real,
-Natalia Martínez, `78ea069c…`, activó su perfil y siguió a Camilo mientras yo probaba). Lo distinguí
+Nadia Mejía, `78ea069c…`, activó su perfil y siguió a Camilo mientras yo probaba). Lo distinguí
 confirmando que su UUID no coincidía con ningún actor mío y que su cuenta existe desde el 3 de junio —
 lo documento porque la duda y su resolución son parte de la evidencia, no un detalle a omitir.
 

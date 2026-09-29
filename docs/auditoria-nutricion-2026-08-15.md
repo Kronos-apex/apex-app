@@ -9,7 +9,7 @@
 
 1. 🔴 **CONFIRMADO con datos reales: Valery (15 años, premium) tiene un plan escrito por el coach de 1.775 kcal contra un gasto de 1.910 — come un 7% por debajo de lo que gasta, siendo menor.** La regla «ningún menor por debajo de su gasto» vive SOLO en la calculadora automática; el plan escrito a mano no pasa por ella.
 2. 🔴 Encima, su pantalla le explica **«Estás comiendo en balance: lo que gastas»** — el rótulo dice balance sobre un déficit real.
-3. 🟡 El aviso al coach existe, pero **solo se enciende dentro del editor del plan**: los 4 planes ya guardados que se contradicen (Luz −22%, Kathe −20%, Valery −7%, Samuel +12%) están mudos hasta que él los reabra.
+3. 🟡 El aviso al coach existe, pero **solo se enciende dentro del editor del plan**: los 4 planes ya guardados que se contradicen (Luisa −22%, Karen −20%, Valery −7%, Salomón +12%) están mudos hasta que él los reabra.
 4. 🟢 Lo que sí está cerrado: el candado del **TEXTO** para menores funciona en sus 3 rutas (verificado), y el titular del plan **ya no miente** (0 de 10 planes con desfase titular-vs-macros; antes eran 6 de 10).
 5. 🟠 Frente ② (tabla de alimentos): **la yuca del recetario dice 112 kcal «verificado» sin citar contra qué, la TCAC dice 157, y hay un test de la suite que DEFIENDE el 112** — con 11 de 22 personas comiendo yuca en su semana. Y **0 de los 50 alimentos del recetario citan fuente**, mientras el catálogo de búsqueda (`foods.json`) sí la exige alimento por alimento.
 
@@ -46,10 +46,10 @@ Las seis leen de `nutBaseFor`. **El mecanismo roto es uno solo: el candado numé
 **Medido sobre los 10 planes escritos a mano (backup 12-ago), 4 contradicen lo que su rótulo anuncia:**
 | Persona | Edad | Rótulo que lee | kcal del plan | Gasto (recalculado) | Dirección real |
 |---|---|---|---|---|---|
-| Luz Rodríguez | 39 | «balance» | 1.731 | 2.230 | **déficit −22%** |
-| Kathe Beltrán | 28 | «balance» | 1.931 | 2.399 | **déficit −20%** |
+| Luisa R. | 39 | «balance» | 1.731 | 2.230 | **déficit −22%** |
+| Karen Bernal | 28 | «balance» | 1.931 | 2.399 | **déficit −20%** |
 | **Valery** | **15** | «balance» | 1.775 | 1.910 | **déficit −7%** |
-| Samuel Cifuentes | 28 | «balance» | 3.535 | 3.148 | **superávit +12%** |
+| Salomón Cárdenas | 28 | «balance» | 3.535 | 3.148 | **superávit +12%** |
 
 (La memoria del proyecto decía «4 de 9»; en este backup son **4 de 10** — un plan más entró a la base desde esa medición. La dirección del hallazgo se sostiene.)
 
@@ -79,7 +79,7 @@ Las seis leen de `nutBaseFor`. **El mecanismo roto es uno solo: el candado numé
 
 - ✅ **El candado de TEXTO para menores funciona en sus 3 rutas.** (1) Estimación automática: `nutGoalForClient` pasa por `nutMinorSafeGoal` (`avi-core.js:3519-3521`); (2) plan guardado: `nutWhyKey` pasa por el mismo candado (`:3537-3541`); (3) pantalla de entreno: `weekEditorial` tiene su propia compuerta de menor (`:6687`). El aviso del editor al coach usa el MISMO oráculo (`nutWhyKey`, `app-5-salud.js:146`), así que él ve lo que ella va a leer. Enumeré los llamadores en los 7 módulos `app-*.js`: no encontré una cuarta ruta viva que elija ese texto sin pasar por el candado.
 - ✅ **El candado numérico de la CALCULADORA funciona.** Control positivo medido: para los 3 menores con datos completos, `nutritionEstimate` devuelve déficit 0 (Valery 16: 1.910→1.910; y a los de objetivo «Ganar músculo» les da superávit, que sí está permitido).
-- ✅ **El titular del plan ya NO miente: 0 de 10 planes con desfase titular-vs-macros** (umbral 25 kcal). El defecto de «6 de 10» (Nataly 3.200 vs 2.960) quedó cerrado por la derivación `nutMacroKcal` en `nutBaseFor` — verificado sobre los 10 planes reales del backup. **El frente ③ del encargo queda cerrado en verde.** Las pantallas que muestran ese número son las 6 de la tabla del Hallazgo 1, todas leyendo el derivado.
+- ✅ **El titular del plan ya NO miente: 0 de 10 planes con desfase titular-vs-macros** (umbral 25 kcal). El defecto de «6 de 10» (Nayla 3.200 vs 2.960) quedó cerrado por la derivación `nutMacroKcal` en `nutBaseFor` — verificado sobre los 10 planes reales del backup. **El frente ③ del encargo queda cerrado en verde.** Las pantallas que muestran ese número son las 6 de la tabla del Hallazgo 1, todas leyendo el derivado.
 - ✅ **Mifflin no se usa en menores:** `calcTMB` bifurca a Schofield bajo 18 (`avi-core.js:3583-3595`), y `isMenor` es una sola definición para todo el motor (`:3598-3601`).
 
 ## Lo que NO alcancé a mirar

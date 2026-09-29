@@ -95,7 +95,7 @@ cómo quedó escrita:
 1. **«Se mostró» es más de lo que se midió** — no hay telemetría; solo se sabe que la ficha *habría*
    pintado eso al abrirla, y la única fila afectada es la del propio coach.
 2. **Las 6 cifras del 03-ago están fechadas mal**: son del revisor de HOY. Con el código de ese día
-   (v436) son **+670 · +1.002 · +470 · +348 · −979 · −1.362**. Nataly cambia **+48%**.
+   (v436) son **+670 · +1.002 · +470 · +348 · −979 · −1.362**. Nayla cambia **+48%**.
 3. **«Al día siguiente quedaba 1» exagera la cola**: por `updatedAt` el 6→4 pasó **27 minutos**
    después de desplegar v435, y quedó en 1 el 5-ago a las 15:20.
 4. **No fueron 6 planes reescritos sino 5.** El sexto (Andrés) se re-guardó con los mismos
@@ -114,7 +114,7 @@ Y un hueco de método que Julián encontró y Mateo verificó por su cuenta: la 
   falló: vive a la salida del generador, y este plan está escrito a mano.
   **Arreglo: «✨ Generar» + «Guardar» en su ficha → 2.009 / 114 P / 278 C / 49 G**, que la deja en
   `ok` con gap 0. Verificado que su factor 1,375 es el correcto: **7 sesiones en tres semanas**.
-- 🟡 **Miguel Pulido** — plan sin tocar desde el **27-may**, `proteina_fuera` +59 estable en las 9 fotos.
+- 🟡 **Mario Parra** — plan sin tocar desde el **27-may**, `proteina_fuera` +59 estable en las 9 fotos.
 - 🟡 **El 19-ago solo 2 de los 10 planes estaban `ok`.** Avisar en 8 de 10 fichas es cómo se enseña
   a ignorar el aviso.
 

@@ -47,7 +47,7 @@ const MONTAR = `((opts) => {try{
   const hoy=days[new Date().getDay()];
   const iso=n=>new Date(Date.now()+n*86400000).toISOString();
   const ex=i=>({id:'e'+i,name:'Ejercicio '+i,muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'});
-  const client={id:'ren',name:'Claudia Valbuena',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
+  const client={id:'ren',name:'Carla Vargas',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
     weight:62,height:163,age:31,activityFactor:1.55,createdAt:iso(-120),
     routines:[{id:'r1',name:'Pierna y glúteo',day:hoy,restSec:90,exercises:[0,1,2,3].map(ex)}],
     habits:{water:{},steps:{}}};

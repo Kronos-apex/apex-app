@@ -1,5 +1,5 @@
 // _repro-cmty-identity.mjs — REPRO del bug reportado por el PO (2026-07-25):
-// «vi la pantalla de comunidad de Astrid y en el perfil de ella aparecía el MÍO en la parte superior».
+// «vi la pantalla de comunidad de Andrea y en el perfil de ella aparecía el MÍO en la parte superior».
 //
 // CAUSA RAÍZ (no es del servidor: la consulta del perfil es `.eq('user_id', uid)` y la RLS
 // no dejaría leer otra fila). Es identidad PEGADA en el cliente, por dos vías independientes:
@@ -93,16 +93,16 @@ check('P2 al «Salir» no queda NADA de la cuenta anterior (ni perfil, ni DMs, n
   JSON.stringify(p2));
 
 // ── PASO 3: entra ASTRID en la misma pestaña y abre Comunidad
-console.log('  3) entra Astrid:', await ev(ENTRAR(UID_ASTRID, 'Astrid', 'hola astrid')));
+console.log('  3) entra Andrea:', await ev(ENTRAR(UID_ASTRID, 'Andrea', 'hola andrea')));
 await ev(`(()=>{ const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent)); if(t)t.click(); })()`); await sleep(1200);
 await ev(`cmtyGoView('settings')`); await sleep(600);
 const p3 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=(h.innerText||'').replace(/\\s+/g,' ');
   return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,loaded:CMTY.loaded,
-    saleElCoach:/Andres/.test(t),saleAstrid:/Astrid/.test(t),txt:t.slice(0,110)};})()`);
+    saleElCoach:/Andres/.test(t),saleAstrid:/Andrea/.test(t),txt:t.slice(0,110)};})()`);
 
-// El BUG: Astrid ve el perfil del coach. Este check está escrito para PASAR cuando esté ARREGLADO.
-check('🔴 P3 Astrid debe ver SU perfil, no el del coach',
-  p3.perfil === 'Astrid' && p3.saleElCoach === false, JSON.stringify(p3));
+// El BUG: Andrea ve el perfil del coach. Este check está escrito para PASAR cuando esté ARREGLADO.
+check('🔴 P3 Andrea debe ver SU perfil, no el del coach',
+  p3.perfil === 'Andrea' && p3.saleElCoach === false, JSON.stringify(p3));
 
 const shot = async n => { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(`${OUT}/${n}.png`, Buffer.from(r.data, 'base64')); console.log('  shot', n); };
 await shot('repro-cmty-identidad-pegada');
@@ -111,7 +111,7 @@ await shot('repro-cmty-identidad-pegada');
 const p4 = await ev(`(()=>{ const c=JSON.parse(localStorage.getItem('ax_cmty_cache')||'null');
   return {hay:!!c, deQuien:(c&&c.profile&&c.profile.handle)||null}; })()`);
 check('🔴 P4 la caché de disco no debe conservar el perfil de la cuenta anterior',
-  !p4.hay || p4.deQuien === 'Astrid', JSON.stringify(p4));
+  !p4.hay || p4.deQuien === 'Andrea', JSON.stringify(p4));
 
 // ── PASO 5: cambio de cuenta SIN pasar por `logout()` (sesión que expira y entra otro, vuelta de
 // OAuth, otra pestaña que cerró sesión). Aquí `renderCommunity()` NO recarga —corta por
@@ -120,7 +120,7 @@ console.log('  5) vuelve el coach SIN logout:', await ev(ENTRAR(UID_COACH, 'Andr
 await ev(`(()=>{ const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent)); if(t)t.click(); })()`); await sleep(1400);
 await ev(`cmtyGoView('settings')`); await sleep(600);
 const p5 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=(h.innerText||'').replace(/\\s+/g,' ');
-  return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,saleAstrid:/Astrid/.test(t),saleElCoach:/Andres/.test(t),txt:t.slice(0,110)};})()`);
+  return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,saleAstrid:/Andrea/.test(t),saleElCoach:/Andres/.test(t),txt:t.slice(0,110)};})()`);
 check('🔴 P5 cambio de cuenta SIN «Salir»: no se hereda la identidad anterior',
   p5.perfil === 'Andres' && p5.uid === UID_COACH && p5.saleAstrid === false && p5.saleElCoach === true,
   JSON.stringify(p5));
@@ -129,11 +129,11 @@ await shot('repro-cmty-identidad-sin-logout');
 // ── PASO 6: las claves de disco van por dueño. Cada cuenta tiene la suya y la global no se usa.
 const p6 = await ev(`(()=>{const g=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return (v&&v.profile&&v.profile.handle)||null;}catch(e){return 'ilegible';}};
   return {global:localStorage.getItem('ax_cmty_cache'),
-    coach:g('ax_cmty_cache_${UID_COACH}'), astrid:g('ax_cmty_cache_${UID_ASTRID}'),
+    coach:g('ax_cmty_cache_${UID_COACH}'), andrea:g('ax_cmty_cache_${UID_ASTRID}'),
     sondaGlobal:localStorage.getItem('ax_cmty_probe'), nudgeGlobal:localStorage.getItem('ax_cmtynudge')};})()`);
 check('🔴 P6 cada cuenta escribe en SU clave (y las globales del dispositivo quedaron muertas)',
   p6.global === null && p6.sondaGlobal === null && p6.nudgeGlobal === null &&
-  p6.coach === 'Andres' && p6.astrid === 'Astrid', JSON.stringify(p6));
+  p6.coach === 'Andres' && p6.astrid === 'Andrea', JSON.stringify(p6));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

@@ -3,9 +3,9 @@
 -- ============================================================================
 -- Pedido del PO (2026-08-30): «en la tarjeta debería aparecer el objetivo de cada quien».
 --
--- 🔴 POR QUÉ NO ES DECORACIÓN: sin el objetivo, la MISMA cifra dice cosas opuestas. Nataly subió
+-- 🔴 POR QUÉ NO ES DECORACIÓN: sin el objetivo, la MISMA cifra dice cosas opuestas. Nayla subió
 -- de 54 a 59,5 kg y eso es un ÉXITO —su objetivo es ganar músculo— pero en una tarjeta muda un
--- «+5,5 kg» en una página de venta se lee como que engordó. Y al revés: Kathe y Claudia buscan
+-- «+5,5 kg» en una página de venta se lee como que engordó. Y al revés: Karen y Carla buscan
 -- recomposición, así que su historia no es la báscula sino los kilos que mueven. El objetivo es
 -- la LENTE con la que se leen los números que ya están en la tarjeta.
 --

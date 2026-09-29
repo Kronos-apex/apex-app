@@ -44,7 +44,7 @@ await sleep(2500);
 
 const setup = await ev(`(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const c={id:'cP',name:'Samuel Cifuentes',email:'samuel.cifuentes@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,height:176,sex:'M',age:29,
+  const c={id:'cP',name:'Salomón Cárdenas',email:'salomon.cifuentes@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,height:176,sex:'M',age:29,
     notes:'Cuida la zona lumbar en peso muerto; progresa despacio y avísame si hay molestia.',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:'2026-08-01',amount:120000,note:'Mensualidad julio'}],
     routines:[{id:'r1',name:'Full Body A',day:'Lunes',exercises:[{id:'e1',name:'Sentadilla',muscle:'Cuádriceps',type:'Compuesto',sets:4,reps:10}]}]};
@@ -70,7 +70,7 @@ check('El perfil abre sin lanzar (nada de ReferenceError a media función)', jsE
 // Google: si la función se cae ahí, el peso corporal (que va después) nunca se escribe.
 const pintado = await ev(`(()=>{const p=document.getElementById('cn-profile');
   const txt=p?p.innerText.replace(/\\s+/g,' '):'';
-  return {largo:txt.length, peso:/78[.,]2/.test(txt), nombre:/Samuel/.test(txt)};})()`);
+  return {largo:txt.length, peso:/78[.,]2/.test(txt), nombre:/Salomón/.test(txt)};})()`);
 check('El perfil se pintó de verdad (llega hasta el peso corporal, que va después del punto que fallaba)',
   pintado.largo > 200 && pintado.peso === true, JSON.stringify(pintado));
 console.log('\n──── PERFIL DEL ASESORADO ────');

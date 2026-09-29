@@ -88,7 +88,7 @@ La ronda anterior (22/24-ago, `docs/auditoria-areas-2026-08-22/`) auditó **v418
 | v532 | La descarga se programa (fecha, duración, a varios de una pasada) |
 | v533 | La duración deja de mentir; se retira la promesa que no se sostenía |
 | v534 | El gate del arranque dejaba pasar el caso que existe para cazar |
-| v535 | Los 8 avisos duplicados de Nataly |
+| v535 | Los 8 avisos duplicados de Nayla |
 | v536 | El nivel se corrige también hacia atrás |
 | v537/v538 | Higiene de candados; el reorden se perdía al recargar |
 | **v539/v540** | **Cortesía («a esta persona no le cobro») y recordatorio de renovación 3 días antes — el módulo de plata es NUEVO** |

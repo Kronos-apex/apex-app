@@ -3,7 +3,7 @@
 // así que un cliente necesita una fila en auth.users para poder entrar — y la anon key del
 // cliente no existe aún. Esta función usa el SERVICE ROLE para:
 //   1) crear la cuenta auth YA CONFIRMADA (email_confirm:true → entra sin link de correo,
-//      por eso sirven correos ficticios como claudia@avi.com),
+//      por eso sirven correos ficticios como oculto@avi.com),
 //   2) sembrar su fila user_data (coach_id = el coach, role = client, profile + routines
 //      tal cual los manda el coach — NO regenera nada).
 //

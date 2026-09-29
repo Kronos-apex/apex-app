@@ -1,5 +1,5 @@
 // Verificación E2E del REPORTE DE DOLOR + NUDGE DE PUSH (2026-07-07, pedido Camilo).
-// Login real (samuel). pushToClient se ESPÍA (que el coach no reciba fantasmas) y al
+// Login real (salomon). pushToClient se ESPÍA (que el coach no reciba fantasmas) y al
 // final se limpia painCare + el mensaje de prueba del chat.
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';

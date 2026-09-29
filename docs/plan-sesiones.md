@@ -742,7 +742,7 @@ Verificado HOY: el borrado self-service YA existe ✓ (requisito Play cumplido e
   cachea la verificación de assetlinks).
 
 ## 🧍 Tareas de CAMILO (paralelas, sin código — recordar en cada cierre)
-- Probar en su celular: plan de choque multi (v355) · «recuperar ritmo» con Astrid (v356-358)
+- Probar en su celular: plan de choque multi (v355) · «recuperar ritmo» con Andrea (v356-358)
   · abrir la app para recibir v359 (fin del spam de leads).
 - **Trabajar los 21 leads** cuando la Sesión H se los ordene por antigüedad.
 - Videos (106 faltantes) y fotos versión mujer — contenido, pipeline aparte.
@@ -906,7 +906,7 @@ un backup" (auditoría 2026-07-07 — sigue pendiente y es el mayor riesgo real)
 - ~~Supabase leaked-password protection~~ ✅ CERRADO 2026-07-13 (es Pro-only, se decidió no
   pagar Pro por eso — ignorar ese advisor, no volver a listarlo).
 - ⚖️ Abogado para `legal/` (el botón eliminar-cuenta YA existe; descargar-datos = Sesión M2).
-- 📉 Retención: ~8/22 nunca entrenaron; lead caliente josegutierrezpe19@gmail.com.
+- 📉 Retención: ~8/22 nunca entrenaron; lead caliente oculto@gmail.com.
 
 ## 📦 CONTEXTO RÁPIDO DE LO RECIÉN DESPLEGADO (v313→v316)
 

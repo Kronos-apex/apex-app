@@ -17,13 +17,13 @@ entre el 13-ago y el 3-sep, en 10 builds distintos.
 
 **Evidencia.**
 - SQL (`app_errors`, ids 34-46): los 5 `uid` afectados son `0a6484ed…` (Andrés, el coach),
-  `73c3452a…` (Valery), `c52b90af…` (Astrid Beltrán — 6 veces, la más repetida), `31bf6d19…`
-  (Samuel Cifuentes) y `efcab7b2…` (Claudia Valbuena). Los 5 con `ctx.standalone:true` — app
+  `73c3452a…` (Valery), `c52b90af…` (Andrea Bernal — 6 veces, la más repetida), `31bf6d19…`
+  (Salomón Cárdenas) y `efcab7b2…` (Carla Vargas). Los 5 con `ctx.standalone:true` — app
   instalada, no pestaña de navegador.
 - Crucé esos 5 `uid` contra `user_data.profile->'dev'` (el latido de versión de v541,
   `avi-core.js:4689`, que cada teléfono escribe al abrir la app): **hoy los 5 están entre v556 y
   v572**, contra la v573 real en producción — ninguno quedó congelado en v481 ni en ninguna de
-  las versiones donde falló. Astrid, la de más fallos (6 en 3 semanas), está en v570.
+  las versiones donde falló. Andrea, la de más fallos (6 en 3 semanas), está en v570.
 - `sw.js:74-88`: el manejador de fetch para los JS/CSS de la app es **network-first con
   `cache:'no-cache'`** — pide siempre a la red primero, sin importar si el propio Service Worker
   logró auto-actualizarse. Es decir: aunque el registro del SW se quede en una versión vieja, el

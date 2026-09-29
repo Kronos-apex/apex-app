@@ -21,7 +21,7 @@ const APP2 = new URL('../../app-2-login.js', import.meta.url);
 
 const SABOTAJES = [
   // ── la función pura ──
-  [CORE, '1· el titular vuelve a ser la ÚLTIMA sesión (el defecto original: Astrid, 4,5 kg)',
+  [CORE, '1· el titular vuelve a ser la ÚLTIMA sesión (el defecto original: Andrea, 4,5 kg)',
     '  const record = Math.max.apply(null, vals);',
     '  const record = vals[vals.length - 1];'],
   [CORE, '2· la tendencia vuelve a medirse contra la última sesión (los 9 «↓ bajando» falsos)',

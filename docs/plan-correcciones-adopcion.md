@@ -25,7 +25,7 @@
 > `ax_cmty_msask_<uid>` ni `ax_cmty_minor_<uid>` al salir — ya van con uid (no filtran) y borrarlas
 > debilitaría el candado anti-molestia de R1.6 y la marca de menor de edad. Pendiente de Fable.
 
-**Reporte (Camilo, 2026-07-25):** *«vi la pantalla de comunidad de Astrid y en el perfil de ella
+**Reporte (Camilo, 2026-07-25):** *«vi la pantalla de comunidad de Andrea y en el perfil de ella
 aparecía el MÍO en la parte superior»*.
 
 **REPRODUCIDO** → `scripts/e2e/_repro-cmty-identity.mjs` (exit 1 mientras el bug siga vivo).
@@ -78,7 +78,7 @@ Pero A2 amplió la misma clase al añadir `ax_cmty_probe`, que ahora pinta datos
 
 ### F1 · A2 — La sonda filtra apodos y caras de terceros entre cuentas
 `ax_cmty_probe` guarda handles, `avatar_url` e `is_private` de otras personas y **no se borra en
-`logout()`**. La cuenta B ve en su «Hoy»: *«Astrid, Natalia y 1 más de tu gym ya están aquí»* —
+`logout()`**. La cuenta B ve en su «Hoy»: *«Andrea, Nadia y 1 más de tu gym ya están aquí»* —
 gente del gym de A. Reproducido. Misma raíz que P0 → **se cierra con el mismo fix**.
 `ax_cmtynudge` (silencio de 30 días) también se hereda.
 

@@ -88,15 +88,15 @@ try {
   // ── N1: el caso REAL del 6-sep (media lista en gracia) ──
   log('\n=== N1: el día 6, con media lista en gracia ===');
   await escenario([
-    { nombre: 'Astrid', venceEnDias: -4, monto: 150000 },
-    { nombre: 'Kathe', venceEnDias: -4, monto: 150000 },
-    { nombre: 'Claudia', venceEnDias: -4, monto: 130000 },
-    { nombre: 'Samuel', venceEnDias: -1, monto: 125000 },
-    { nombre: 'Danilo', venceEnDias: 14, monto: 150000 },   // al día
+    { nombre: 'Andrea', venceEnDias: -4, monto: 150000 },
+    { nombre: 'Karen', venceEnDias: -4, monto: 150000 },
+    { nombre: 'Carla', venceEnDias: -4, monto: 130000 },
+    { nombre: 'Salomón', venceEnDias: -1, monto: 125000 },
+    { nombre: 'Darío', venceEnDias: 14, monto: 150000 },   // al día
   ]);
   let v = await leer();
   log('    ' + JSON.stringify({ ingr: v.ingr, actv: v.actv, n1: v.notaIngr.txt, n2: v.notaActv.txt }));
-  // 🔁 v636: esperaba «$0» a secas, y el pago de prueba de Danilo (vence en 14 días → pagó hace 16)
+  // 🔁 v636: esperaba «$0» a secas, y el pago de prueba de Darío (vence en 14 días → pagó hace 16)
   // cae DENTRO del mes en curso a partir del día 17: el check se ponía rojo según el calendario, con
   // la app bien (gotcha de los fixtures con fechas). Lo esperado se CALCULA igual que el fixture:
   // la caja es la suma de los pagos hechos este mes, y las renovaciones pendientes no entran.
@@ -127,8 +127,8 @@ try {
   // ── N2: CONTROL · sin nadie en gracia NO se fabrica ruido ──
   log('\n=== N2: CONTROL · nadie en gracia ===');
   await escenario([
-    { nombre: 'Danilo', venceEnDias: 14, monto: 150000 },
-    { nombre: 'Diana', venceEnDias: 27, monto: 120000 },
+    { nombre: 'Darío', venceEnDias: 14, monto: 150000 },
+    { nombre: 'Dora', venceEnDias: 27, monto: 120000 },
   ]);
   v = await leer();
   check('N2a sin renovaciones pendientes las dos notas desaparecen',
@@ -149,14 +149,14 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 2, mobile: true });
   await ev(`(()=>{try{setTheme('light');}catch(e){document.body.classList.remove('dark');}})()`);
   await escenario([
-    { nombre: 'Astrid', venceEnDias: -4, monto: 150000 },
-    { nombre: 'Kathe', venceEnDias: -4, monto: 150000 },
-    { nombre: 'Claudia', venceEnDias: -4, monto: 130000 },
-    { nombre: 'Samuel', venceEnDias: -1, monto: 125000 },
-    { nombre: 'Luz', venceEnDias: -4, monto: 130000 },
-    { nombre: 'Nataly', venceEnDias: -6, monto: 30000 },
-    { nombre: 'Miguel', venceEnDias: -3, monto: 0 },
-    { nombre: 'Danilo', venceEnDias: 14, monto: 150000 },
+    { nombre: 'Andrea', venceEnDias: -4, monto: 150000 },
+    { nombre: 'Karen', venceEnDias: -4, monto: 150000 },
+    { nombre: 'Carla', venceEnDias: -4, monto: 130000 },
+    { nombre: 'Salomón', venceEnDias: -1, monto: 125000 },
+    { nombre: 'Luisa', venceEnDias: -4, monto: 130000 },
+    { nombre: 'Nayla', venceEnDias: -6, monto: 30000 },
+    { nombre: 'Mario', venceEnDias: -3, monto: 0 },
+    { nombre: 'Darío', venceEnDias: 14, monto: 150000 },
   ]);
   v = await leer();
   check('N4a el caso real completo (7 en gracia, uno con pago de $0)', /7 por renovar/.test(v.notaIngr.txt) && /≈\$715\.000/.test(v.notaIngr.txt), v.notaIngr.txt);

@@ -4,7 +4,7 @@
 //
 // Hallazgo D2-3 (auditoría 7-sep): «Tren Superior — Espalda, Pecho y Hombros» son
 // e6, e83, e51, e84, e24 → 3 de espalda + 2 de pecho y CERO de hombro. Se la aplicó a 3
-// personas y a Kathe la dejó sin un solo ejercicio de hombro en todo su plan (corregido a mano
+// personas y a Karen la dejó sin un solo ejercicio de hombro en todo su plan (corregido a mano
 // el 7-sep). La plantilla, en cambio, sigue igual para la próxima persona.
 //
 // Esto mide las DOS caras, porque el arreglo no puede ser solo el dato:

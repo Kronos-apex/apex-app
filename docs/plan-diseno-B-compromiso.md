@@ -37,8 +37,8 @@ evaluando las MISMAS funciones puras de `avi-core.js` que corre la app):
   el futuro). Nunca subió de 6 en dos semanas.
 - **Los lunes bajan a 5 y nadie llega a 6**, porque «el día que se corrió» no puede dispararse un
   lunes (no hay días pasados en la semana). De martes a domingo vuelve a 6.
-- **A quien le cae son las 8 que MÁS entrenan** (Astrid, Kathe, Luz, Samuel, Nataly, Claudia,
-  Miguel, Valery). No es un problema de los que no usan la app: es de las mejores.
+- **A quien le cae son las 8 que MÁS entrenan** (Andrea, Karen, Luisa, Salomón, Nayla, Carla,
+  Mario, Valery). No es un problema de los que no usan la app: es de las mejores.
 - **Tres tarjetas no son medibles desde la nube** (aviso de push, novedades, puerta a Comunidad):
   viven en `localStorage`. Solo **SUMAN**. Los silenciados locales solo restan. Así que **6 es el
   piso de lo peor, no el techo.**
@@ -133,7 +133,7 @@ Esta es zona caliente y ya costó rechazos. Todo esto es de `GOTCHAS VIGENTES` y
 ## 6 · LO QUE QUEDÓ ABIERTO, APARTE DE B
 
 - 🟡 **«El día que se corrió» se dispara en 15 de 15** de los que entrenan. Verificado contra datos
-  reales: **la tarjeta dice la verdad** (Astrid entrenó el martes y se saltó el lunes; Samuel se
+  reales: **la tarjeta dice la verdad** (Andrea entrenó el martes y se saltó el lunes; Salomón se
   saltó lunes y martes). Pero algo que le sale a todo el mundo cada semana deja de ser aviso y pasa
   a ser decoración — misma familia que el detector de estancamiento de v433. **Mirarlo aparte.**
 - 🟡 **`BRAND.md` está caducado y ya hizo daño**: dice que el verde primario es `#2D6A4F` —el valor
@@ -210,7 +210,7 @@ justificar trabajo, medirla en el DOM.**
   funciones puras de la app). En los 7 backups de la ventana viva del defecto (v435 04-ago → v506
   19-ago) el aviso equivocado cayó siempre en la misma ficha: **Andrés, «ajusta el titular, 25 kcal»
   tapando −1.418 kcal de desviación (57×)**. 💎 **Una foto de hoy habría contestado mal**: el caso de
-  Luz que motivó v506 ya no está en el backup del 19-ago porque su plan se reescribió el 04-ago. La
+  Luisa que motivó v506 ya no está en el backup del 19-ago porque su plan se reescribió el 04-ago. La
   serie enseña que el día que nació la tarjeta había **6 descuadrados y los 6 tapaban algo**, y que
   **al día siguiente quedaba 1** — el coach corrigió esos 6 planes en 24-48 h. Detalle en la bitácora.
 - 🟡 **`_prodcheck` puede dar un rojo falso** justo tras desplegar (espera a `initPWA`, que lo define

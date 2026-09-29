@@ -54,8 +54,8 @@ const montaje = await ev(`(()=>{try{
   AUTH_MODE=true; AUTH_ROLE='coach'; COACH_SELF=false; _authUid='coach-uid';
   if(typeof AUTH==='object'&&AUTH) AUTH.ready=()=>true;
   DB.clients=[
-    {id:'cc1',name:'Samuel Cifuentes',tier:'coach',level:'Intermedio',days:3,routines:[]},
-    {id:'cc2',name:'Kathe Beltran',tier:'coach',level:'Intermedio',days:3,routines:[]},
+    {id:'cc1',name:'Salomón Cárdenas',tier:'coach',level:'Intermedio',days:3,routines:[]},
+    {id:'cc2',name:'Karen Bernal',tier:'coach',level:'Intermedio',days:3,routines:[]},
   ];
   DB.msgs={cc1:[{from:'coach',text:'Nos vemos el martes',date:'2026-09-01T10:00:00.000Z'}],cc2:[]};
   DB.history={cc1:[],cc2:[]}; DB.prs={cc1:{},cc2:{}}; DB.bodyweight={cc1:[],cc2:[]};
@@ -128,7 +128,7 @@ check('R2 lo pendiente vive en el disco, no en memoria: sobrevive a que Android 
 
 // ══ R3 · VUELVE LA SEÑAL: se sube FUSIONANDO con lo que ella escribió mientras tanto ══
 const r3 = await ev(`(async()=>{
-  // Mientras el coach estaba sin señal, Kathe... no; SAMUEL escribió desde su teléfono.
+  // Mientras el coach estaba sin señal, Karen... no; SAMUEL escribió desde su teléfono.
   window.__nube.fila.cc1.msgs.push({from:'client',text:'Listo profe, ahí estaré',date:'2026-09-02T11:00:00.000Z'});
   window.__nube.fila.cc1.updated_at='2026-09-02T11:00:00.000Z';
   window.__nube.caida=false;
@@ -150,7 +150,7 @@ await shot('cola-reconectado');
 
 // ══ R4 · CONTROL DE LA REGLA DURA: no se pisa lo que cambió después del intento fallido ══
 const r4 = await ev(`(async()=>{
-  // El coach le registra un entreno a Kathe sin señal…
+  // El coach le registra un entreno a Karen sin señal…
   window.__nube.caida=true;
   DB.history.cc2=[{id:'h1',date:'2026-09-08T09:00:00.000Z',routineId:'r1',exercises:[]}];
   await svNow('ax_hist',DB.history);

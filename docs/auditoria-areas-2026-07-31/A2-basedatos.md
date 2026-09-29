@@ -102,12 +102,12 @@ pasar por coach.** Ser "coach" de una fila exige que esa fila tenga tu uid en `c
   cambia nada real) + bajar la poda a cada hora en el cron. Si se quiere de raíz: mover el insert
   a una RPC `SECURITY DEFINER` con rate-limit por IP, como ya se hizo con `_cm_rate`.
 
-### H3 · 🟡 Astrid —la asesorada más constante, 32 sesiones— no tiene peso ni altura, y la personalización se apaga en silencio
-- **Qué pasa:** 2 asesorados reales (Astrid Beltran, Stevan Guerrero) no tienen `weight` ni
+### H3 · 🟡 Andrea —la asesorada más constante, 32 sesiones— no tiene peso ni altura, y la personalización se apaga en silencio
+- **Qué pasa:** 2 asesorados reales (Andrea Bernal, Simón G.) no tienen `weight` ni
   `height` en su `profile`. Nada se rompe visiblemente — y por eso nadie lo ha notado.
 - **Dónde:** query sobre `user_data`; `avi-core.js:401` (`bmiFrom`), `:407` (`bodyLoadProfile`),
   `:1614` (`waterGoalGlasses`).
-- **Evidencia:** de 24 filas de asesorado, 3 sin peso/altura — una es la cuenta QA. Astrid:
+- **Evidencia:** de 24 filas de asesorado, 3 sin peso/altura — una es la cuenta QA. Andrea:
   `peso —, altura —, 5 rutinas, 32 sesiones, último login 21-jul`.
 - **Intenté tumbarlo así:** el briefing decía que esto "rompe el IMC y `bodyLoadProfile`". **Fui a
   leer las funciones y NO rompe nada**: `bmiFrom` devuelve `null` si falta cualquiera de los dos, y
@@ -115,7 +115,7 @@ pasar por coach.** Ser "coach" de una fila exige que esa fila tenga tu uid en `c
   excepciones, cero pantalla rota. Así que **bajé la severidad de 🔴 a 🟡**: el daño real es que a
   la persona más constante de la app el generador nunca le considera la composición corporal y su
   meta de agua es genérica.
-- **A quién le pasa:** a Astrid (32 sesiones) y a Stevan. Silencioso para el coach.
+- **A quién le pasa:** a Andrea (32 sesiones) y a Simón. Silencioso para el coach.
 - **Costo del arreglo:** cero backend. Es de producto: que el perfil pida peso/altura cuando
   faltan, o que el coach lo vea marcado en la ficha. **No se arregla en Supabase** — la app es
   offline-first y el teléfono pisaría el dato (gotcha vigente).
@@ -150,9 +150,9 @@ Medido: **13 de 17 filas traen un uid real**, de **5 personas distintas**, y tod
 |---|---|---|---|
 | 27-jul | `Uncaught ReferenceError: _dia1 is not defined` | avi-v403 | **Andres Martínez** |
 | 29-jul | `Uncaught SyntaxError: Unexpected end of input` | avi-v410 | Andres Martínez |
-| 31-jul | `Failed to update a ServiceWorker` | avi-v417 | **Astrid Beltran** |
-| 30-jul | `Failed to update a ServiceWorker` | avi-v416 | Samuel Cifuentes |
-| 22-jul | `Uncaught SyntaxError` | avi-v383 | Luz Rodríguez |
+| 31-jul | `Failed to update a ServiceWorker` | avi-v417 | **Andrea Bernal** |
+| 30-jul | `Failed to update a ServiceWorker` | avi-v416 | Salomón Cárdenas |
+| 22-jul | `Uncaught SyntaxError` | avi-v383 | Luisa R. |
 
 Las 4 filas sin uid son de gente **no logueada** — que es el comportamiento correcto.
 **Consecuencia práctica:** no hay que "arreglar" la telemetría para que identifique; ya identifica.
@@ -178,7 +178,7 @@ posterior. Cerrado.
 
 1. **Los fallos de actualización del Service Worker podrían explicar el bug del perfil de coach
    «que le aparece a todos».** 7 de 17 filas de telemetría son `Failed to update a ServiceWorker …
-   An unknown error occurred when fetching the script`, en Astrid, Samuel y Natalia, **una por
+   An unknown error occurred when fetching the script`, en Andrea, Salomón y Nadia, **una por
    despliegue aproximadamente, la última HOY en v417**. Si la actualización falla, el teléfono se
    queda con el bundle viejo en caché — que es exactamente la hipótesis del PO. **No lo probé:**
    el mensaje es compatible con una caída de red transitoria que se reintenta al siguiente arranque,

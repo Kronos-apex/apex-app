@@ -11,9 +11,9 @@
 **El dinero real.** Desde que existe el registro (3-may → 31-jul) entraron **1.416.000 COP en
 total**, de **10 personas**, en 15 pagos. Mes a mes: **mayo 515.000 · junio 155.000 · julio
 746.000**. El número que sirve para tomar decisiones **no es ninguno de esos tres**: es la
-**base recurrente = 725.000 COP/mes de 6 personas** (Astrid 150.000 · Kathe 150.000 · Samuel
-125.000 · Claudia 100.000 · Luz 100.000 · Valery 100.000). Esas 6 son el **97,2 % de todo lo
-cobrado en julio**. El resto —Nataly 30.000, Yeison 20.000, Natalia 1.000, Miguel 10.000— suma
+**base recurrente = 725.000 COP/mes de 6 personas** (Andrea 150.000 · Karen 150.000 · Salomón
+125.000 · Carla 100.000 · Luisa 100.000 · Valery 100.000). Esas 6 son el **97,2 % de todo lo
+cobrado en julio**. El resto —Nayla 30.000, Yamid 20.000, Nadia 1.000, Mario 10.000— suma
 21.000 COP en julio: ruido. A ~4.000 COP/USD, el negocio son **≈ US$180/mes**.
 
 **Las personas reales.** 22 asesorados. Se parten en dos mundos que no se tocan:
@@ -99,21 +99,21 @@ y ya las tiene todas**.
   *antes* de esa fecha):
   ```
   nombre            sesiones con plan VENCIDO   desde        hasta
-  Astrid Beltran            9                  2026-06-18   2026-07-02
-  Kathe Beltran             4                  2026-06-25   2026-07-02
-  Miguel Pulido             4                  2026-06-24   2026-06-30
-  Samuel Cifuentes          2                  2026-06-03   2026-06-06
-  Nataly                    1                  2026-06-30   2026-06-30
+  Andrea Bernal            9                  2026-06-18   2026-07-02
+  Karen Bernal             4                  2026-06-25   2026-07-02
+  Mario Parra             4                  2026-06-24   2026-06-30
+  Salomón Cárdenas          2                  2026-06-03   2026-06-06
+  Nayla                    1                  2026-06-30   2026-06-30
   ```
-  **20 entrenos completos, 5 personas.** Astrid entrenó 9 veces con hasta **14,8 días** de plan
+  **20 entrenos completos, 5 personas.** Andrea entrenó 9 veces con hasta **14,8 días** de plan
   vencido — y es la mejor clienta del negocio.
 
 - **Intenté tumbarlo así:** mi primera lectura fue «el candado nunca ha funcionado». **Falso, y me
   lo tumbó el propio git.** El gate murió en el cutover a Auth y lo repusieron en
   `d3ebb88 2026-07-01T20:09:11-05:00` (avi-v241) — o sea `2026-07-02T01:09Z`. Casi todas esas 20
   sesiones son **anteriores** a ese commit, así que **no prueban un bypass de hoy**. Al filtrar por
-  el instante exacto quedan **2 que sí lo son**: Astrid `2026-07-02 13:17:45Z` (14,8 días vencida) y
-  Kathe `2026-07-02 13:56:40Z` (7,9 días vencida), **12 horas después de que el candado estuviera
+  el instante exacto quedan **2 que sí lo son**: Andrea `2026-07-02 13:17:45Z` (14,8 días vencida) y
+  Karen `2026-07-02 13:56:40Z` (7,9 días vencida), **12 horas después de que el candado estuviera
   en producción**, y ambas antes de que se registrara su pago ese mismo día a las 17:00Z. Dos
   explicaciones posibles y ninguna salva el candado: o el teléfono corría una caché vieja
   (el informe A3 midió teléfonos hasta **18 versiones** por detrás), o la app ya estaba abierta y
@@ -152,21 +152,21 @@ y ya las tiene todas**.
 
 - **Evidencia:** vencimientos vigentes leídos de producción hoy (31-jul):
   ```
-  Claudia Valbuena   vence 2026-07-31 17:00Z   ← HOY
-  Luz Rodríguez      vence 2026-07-31 17:00Z   ← HOY
-  YEISON VALBUENA    vence 2026-07-31 17:00Z   ← HOY
-  Kathe Beltran      vence 2026-08-01 17:00Z   ← MAÑANA
-  Astrid Beltran     vence 2026-08-01 17:00Z   ← MAÑANA
-  Valery Valbuena    vence 2026-08-01 17:00Z   ← MAÑANA
-  Samuel Cifuentes   vence 2026-08-05
-  Natalia Martinez   vence 2026-08-10
-  Nataly             vence 2026-07-30 ← YA VENCIDA
-  Miguel Pulido      vence 2026-06-23 ← vencido hace 38 días
+  Carla Vargas   vence 2026-07-31 17:00Z   ← HOY
+  Luisa R.      vence 2026-07-31 17:00Z   ← HOY
+  YAMID VARGAS    vence 2026-07-31 17:00Z   ← HOY
+  Karen Bernal      vence 2026-08-01 17:00Z   ← MAÑANA
+  Andrea Bernal     vence 2026-08-01 17:00Z   ← MAÑANA
+  Vanesa Vargas    vence 2026-08-01 17:00Z   ← MAÑANA
+  Salomón Cárdenas   vence 2026-08-05
+  Nadia Mejía   vence 2026-08-10
+  Nayla             vence 2026-07-30 ← YA VENCIDA
+  Mario Parra      vence 2026-06-23 ← vencido hace 38 días
   ```
-  De los **7 activos** (Samuel, Astrid, Kathe, Claudia, Luz, Nataly, Natalia — los 7 con sesión en
+  De los **7 activos** (Salomón, Andrea, Karen, Carla, Luisa, Nayla, Nadia — los 7 con sesión en
   los últimos 7 días), **6 vencen entre hoy y mañana**.
   El precedente medido, con los huecos reales entre vencimiento y siguiente pago:
-  Natalia 18 días · Astrid 15 · Kathe 8 · Nataly 6 · Samuel 5 · Miguel 38 y contando =
+  Nadia 18 días · Andrea 15 · Karen 8 · Nayla 6 · Salomón 5 · Mario 38 y contando =
   **90 días-persona de bloqueo en ~90 días de operación**. Es decir, en promedio **siempre hay
   alguien encerrado afuera**, y en junio le tocó a la nº1 y a la nº3 del negocio.
 
@@ -177,8 +177,8 @@ y ya las tiene todas**.
   (H1 muestra que a veces no muerde): **eso lo empeora, no lo mejora** — significa que el bloqueo
   castiga de forma aleatoria según qué versión tenga cacheada cada teléfono.
 
-- **A quién le pasa:** a Astrid, Kathe, Claudia, Luz, Valery y Yeison, entre hoy y mañana, si el
-  coach no alcanza a registrar sus pagos el mismo día. Y a Nataly, ya.
+- **A quién le pasa:** a Andrea, Karen, Carla, Luisa, Valery y Yamid, entre hoy y mañana, si el
+  coach no alcanza a registrar sus pagos el mismo día. Y a Nayla, ya.
 
 - **Costo del arreglo:** **~2 horas** para la versión buena: en `MS`, un estado `grace` (0-7 días
   vencido) que `canLogin` **sí** deje entrar, en modo de solo lectura — ve su historial y su
@@ -207,15 +207,15 @@ y ya las tiene todas**.
   2026-06    2       2      155000   30000   125000
   2026-07    8       8      746000    1000   150000
   ```
-  La base de clientes no cambió entre mayo y junio (nadie se fue en junio; Miguel se fue después).
-  Y dentro del 746.000 de julio hay **1.000 COP** (Natalia, 11-jul) y en mayo hay un pago de
-  **0 COP** (Kathe, 25-may) que el tablero suma como si fueran ingresos.
+  La base de clientes no cambió entre mayo y junio (nadie se fue en junio; Mario se fue después).
+  Y dentro del 746.000 de julio hay **1.000 COP** (Nadia, 11-jul) y en mayo hay un pago de
+  **0 COP** (Karen, 25-may) que el tablero suma como si fueran ingresos.
 
 - **Por qué existen esos importes:** `registerPayment` (`app-6-extra.js:2339`) hace
   `parseFloat(...)||0` **sin ninguna validación de monto** — exige las dos fechas
   (`:2344-2353`) pero acepta 0 y 1.000 en silencio. Leído en contexto, esos dos registros no son
   errores: son **el coach usando «registrar pago» como botón de «extenderle el plazo»** para que
-  la persona no quede bloqueada (el pago de 0 COP de Kathe corre su vencimiento del 22 al 24 de
+  la persona no quede bloqueada (el pago de 0 COP de Karen corre su vencimiento del 22 al 24 de
   junio). Es decir: **el coach ya inventó a mano el modo de gracia del H2, y el precio de su
   parche es que su propio número de ingresos queda contaminado.**
 
@@ -254,19 +254,19 @@ y ya las tiene todas**.
   El detalle que remata: **para los 13 auto-registrados, `auth.users.last_sign_in_at` es
   exactamente igual a `created_at`.** Los 13. Crearon la cuenta y no volvieron a iniciar sesión
   jamás. Los 5 que llegaron a entrenar algo lo hicieron todo en ese primer día:
-  Stevan (alta 9-jun, última sesión 9-jun), jhojan (24-jun/24-jun), jose Daniel (6-jul/6-jul),
-  Sharith (20-jul/21-jul). **La única excepción es Yeison** — volvió el 10-jul... y es
+  Simón (alta 9-jun, última sesión 9-jun), jairo (24-jun/24-jun), jorge David (6-jul/6-jul),
+  Sonia (20-jul/21-jul). **La única excepción es Yamid** — volvió el 10-jul... y es
   **el único auto-registrado que pagó** (20.000 COP el 1-jul). Volver y pagar van juntos.
 
 - **Intenté tumbarlo así:** tres intentos.
   (1) *«Son más nuevos, no les ha dado tiempo»* — **falso**: 5 de los 13 llevan **37-52 días**
-  (Stevan 52, diana 52, FELIPE 48, Sofía Vega 44, Daniel 38) con cero sesiones, mientras que
-  Claudia y Luz, creadas por el coach hace 32 días, llevan **18 sesiones cada una**.
+  (Simón 52, diana 52, FABIO 48, Sara Vélez 44, David 38) con cero sesiones, mientras que
+  Carla y Luisa, creadas por el coach hace 32 días, llevan **18 sesiones cada una**.
   (2) *«`last_sign_in_at` no prueba nada, una sesión viva se refresca sola sin actualizarlo»* —
   **cierto, y por eso no lo uso solo**: la prueba dura es el historial de entrenos, que es
   independiente y dice lo mismo. Dejo el matiz escrito porque es real.
   (3) *«No les llegó la rutina»* — **falso**: 12 de los 13 tienen rutinas generadas (3 a 6 cada
-  uno); solo Hernán tiene 0. La app hizo su parte; la persona no volvió.
+  uno); solo Hugo tiene 0. La app hizo su parte; la persona no volvió.
 
 - **A quién le pasa:** a 13 personas que dijeron que querían entrenar y a las que el producto no
   volvió a ver. Y al coach, que tiene la lista llena de nombres que no son clientes.
@@ -298,11 +298,11 @@ y ya las tiene todas**.
   ```
   Y quién:
   - Los **8 perfiles** son el coach + **7 asesorados**, y esos 7 son **exactamente los 7 activos**
-    (Samuel, Astrid, Kathe, Claudia, Luz, Nataly, Natalia). Solapamiento **100 %**.
+    (Salomón, Andrea, Karen, Carla, Luisa, Nayla, Nadia). Solapamiento **100 %**.
     **Cero de los 13 auto-registrados tiene perfil.** Cero de los 8 que nunca entrenaron.
   - De los **10 posts**, **4 los emite el servidor solo** (3 `streak` + 1 `level`) y **3 son del
-    coach**. Los asesorados han publicado **3 cosas en total, desde siempre**: Samuel una rutina,
-    Astrid dos entrenos.
+    coach**. Los asesorados han publicado **3 cosas en total, desde siempre**: Salomón una rutina,
+    Andrea dos entrenos.
   - En las **dos semanas** del sprint de Comunidad entraron **0 clientes nuevos** y **0 pesos
     nuevos** (el último primer-pago de alguien fue el 2-jul, dos semanas antes de empezar).
 
@@ -343,9 +343,9 @@ y ya las tiene todas**.
     120.833 COP (~US$30/mes) — muy por encima de los ~40.000 que asumía mi propio archivo de rol;
     **ese supuesto estaba mal y el dato lo corrige**.
   - **Nivel «app»: 141.000 COP históricos, 8 personas** = **10 % del ingreso con el 36 % de la
-    base** — y **ahí está el 100 % de la fuga**: Miguel se fue (vencido hace 38 días), Nataly bajó
-    de 50.000 a 30.000 y está vencida, Natalia bajó de 30.000 a 1.000, Yeison vence hoy.
-  - **3 cuentas con acceso completo, gratis:** jhojan, Sharith y Sofía Vega tienen `tier:'premium'`
+    base** — y **ahí está el 100 % de la fuga**: Mario se fue (vencido hace 38 días), Nayla bajó
+    de 50.000 a 30.000 y está vencida, Nadia bajó de 30.000 a 1.000, Yamid vence hoy.
+  - **3 cuentas con acceso completo, gratis:** jairo, Sonia y Sara Vélez tienen `tier:'premium'`
     (se lo puso el coach, seguramente por `convertToPremium` al pedir coach), **nunca pagaron y
     tienen 0-1 sesiones**. Regalar el nivel caro a un lead que no volvió no convirtió a ninguno.
 
@@ -379,16 +379,16 @@ y ya las tiene todas**.
 | Entrenos que ocurrieron igual con el plan vencido | **20** (el candado falla de forma aleatoria) |
 | Veces que el coach ya lo esquivó a mano | **2** (pagos de 0 y 1.000 COP, H3) |
 | Recaudo que el bloqueo ha forzado | **no medible, y probablemente 0**: todos los que se retrasaron pagaron después por WhatsApp, no por el bloqueo |
-| Personas que se fueron durante el bloqueo | **1** (Miguel, 38 días vencido; el bloqueo no lo trajo de vuelta) |
+| Personas que se fueron durante el bloqueo | **1** (Mario, 38 días vencido; el bloqueo no lo trajo de vuelta) |
 
 **Mi recomendación: modo de solo lectura, con gracia de 7 días. Argumentada, no salomónica.**
 
 1. **El bloqueo total no está cobrando.** No hay un solo caso donde alguien pagara *porque* lo
-   bloquearon; lo que sí hay es Astrid —150.000 COP/mes, la nº1— sin poder abrir su app durante
+   bloquearon; lo que sí hay es Andrea —150.000 COP/mes, la nº1— sin poder abrir su app durante
    15 días. El apalancamiento real del cobro en este negocio es **el coach por WhatsApp**, no una
    pantalla.
 2. **El historial que ya pagó no es tuyo para apagarlo.** Apagar el registro de 32 entrenos que
-   Astrid ya pagó no es una palanca de cobro: es quitarle algo que compró. En un pueblo donde el
+   Andrea ya pagó no es una palanca de cobro: es quitarle algo que compró. En un pueblo donde el
    negocio es la relación, eso cuesta más de lo que recauda. Y legalmente es el terreno más feo
    posible junto a los textos legales que aún esperan abogado.
 3. **El bloqueo total ni siquiera funciona** (H1): quien tenga la app abierta o una caché vieja
@@ -514,13 +514,13 @@ tres palancas de arriba quepan en el mes.
 
 ## Sospechas sin probar
 
-1. **El pago de 1.000 COP de Natalia podría ser un dedo gordo (100.000 → 1.000), no un parche.**
+1. **El pago de 1.000 COP de Nadia podría ser un dedo gordo (100.000 → 1.000), no un parche.**
    No puedo distinguirlo desde los datos: solo el coach sabe si esa plata entró. En cualquiera de
    los dos casos el número del tablero es inservible, así que la recomendación de H3 no cambia.
    *Para probarlo: preguntarle al coach.*
-2. **Sospecho que el bloqueo por vencimiento contribuyó a que Miguel se fuera** (14 sesiones, se
+2. **Sospecho que el bloqueo por vencimiento contribuyó a que Mario se fuera** (14 sesiones, se
    venció el 23-jun, entrenó 4 veces vencido y no volvió después del 30-jun). Pero es un solo caso
-   y hay explicaciones más simples. *Para probarlo: preguntarle a Miguel; con n=1 no hay dato.*
+   y hay explicaciones más simples. *Para probarlo: preguntarle a Mario; con n=1 no hay dato.*
 3. **Sospecho que los 6 clientes de 100-150.000 aguantarían un alza a 160-180.000** (retención del
    100 % durante 3 meses, tolerancia a 15 días sin app, todos renovaron tras el retraso). **No lo
    recomiendo todavía y no lo escribo como hallazgo**: subirle el precio a la única base sana del
@@ -539,7 +539,7 @@ tres palancas de arriba quepan en el mes.
 ## Lo que revisé y está SANO
 
 - **La retención del núcleo es excelente.** Los 6 que pagan 100-150.000 llevan 3 meses sin una sola
-  baja; Samuel pagó los 3 meses seguidos. Churn del nivel «coach» = **0 %** en 3 meses. Para un
+  baja; Salomón pagó los 3 meses seguidos. Churn del nivel «coach» = **0 %** en 3 meses. Para un
   coach independiente, eso es 🟢 según cualquier vara.
 - **La calidad del cliente creado por el coach es inmejorable:** 9 de 9 pagaron, 7 de 9 siguen
   activos, promedio de **18 sesiones** por persona. El modelo funciona; solo está subalimentado.

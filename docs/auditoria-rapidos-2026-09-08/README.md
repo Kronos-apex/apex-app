@@ -12,7 +12,7 @@ producción o reproducido con un harness; lo que es lectura de código va dicho 
 | | |
 |---|---|
 | sesiones de rápidos | **44** (id de rutina `qw*`), la última **hoy** |
-| personas que los usan | **9** — Claudia 11, Luz 11, Astrid 7, Kathe 6, Danilo 3, Natalia 2, Samuel 2, Diana Paola 1, Yeison 1 |
+| personas que los usan | **9** — Carla 11, Luisa 11, Andrea 7, Karen 6, Darío 3, Nadia 2, Salomón 2, Dora Paola 1, Yamid 1 |
 | presets usados | **HIIT en Máquina 35** · Abdomen Express 8 · Glúteo & Pierna 1 |
 | presets NUNCA usados | los 4 restantes, **incluidos los dos de alto impacto** (`qw_plio`, `qw_hiit_casa`) |
 | exposición | 4 menores · 5 personas con IMC ≥ 30 · 12 principiantes · **0 reportes de dolor vigentes hoy** |
@@ -37,9 +37,9 @@ Medido sobre **7.116 series con repeticiones** de toda la base, con el mismo cri
 
 | persona | ejercicio | día | series | |
 |---|---|---|---|---|
-| **Luz Rodríguez** | Dead Bug | 28-ago | `10 / 110` | 🔴 **es su récord** |
-| **Luz Rodríguez** | Dead Bug | 2-sep | `10 / 110` | 🔴 **es su récord** |
-| Astrid Beltran | Prensa de Pierna | 2-sep | `10 / 110 / 10 / 8` | no llegó a récord (el suyo va en kg) |
+| **Luisa R.** | Dead Bug | 28-ago | `10 / 110` | 🔴 **es su récord** |
+| **Luisa R.** | Dead Bug | 2-sep | `10 / 110` | 🔴 **es su récord** |
+| Andrea Bernal | Prensa de Pierna | 2-sep | `10 / 110 / 10 / 8` | no llegó a récord (el suyo va en kg) |
 
 **3 sospechosas de 7.116 (0,04 %)**, y dos son el mismo caso. Su plan dice **2×10**: el 110 es un
 1 de más.
@@ -82,7 +82,7 @@ de carga (`bodyLoadProfile`), ni el entorno**. El generador sí los aplica; esta
 - **Nivel:** `qw_plio` («Cardio Pliométrico · Alto impacto») incluye `e185`/`e186`, que v513 movió
   a nivel **avanzado**. Cualquiera de los **12 principiantes** lo puede arrancar de un toque.
 - **Perfil de carga:** el generador excluye el alto impacto a quien tiene IMC ≥ 30 (`GEN_HIIMPACT_RE`).
-  Aquí no. Son **5 personas** — y **Claudia (30,4) y Luz (33,7) son justamente las dos que más
+  Aquí no. Son **5 personas** — y **Carla (30,4) y Luisa (33,7) son justamente las dos que más
   usan los rápidos**, a un toque de un preset que su propio generador jamás les daría.
 - 🟢 **Lo que SÍ funciona:** el chip de cuidado por dolor **se pinta también en un rápido** —
   comparten el motor de «Hoy», así que `_painForEx` marca igual. Verificado leyendo las dos
@@ -99,7 +99,7 @@ persona se marca. Quién manda aquí lo decide el PO, y si toca lista clínica, 
 ## 🟡 4 · «HIIT Quema-grasa» le aparece a los cuatro menores
 
 El preset `qw_hiit_casa` se llama **«HIIT Quema-grasa»** y esa biblioteca no tiene ningún gate por
-edad. En la base hay **4 menores** (Sharith 16, Santiago 17, Samuel 15, Valery 15) y **Samuel ya
+edad. En la base hay **4 menores** (Sonia 16, Sebastián 17, Salomón 15, Valery 15) y **Salomón ya
 usa los rápidos** (2 sesiones).
 
 «Quema-grasa» es **lenguaje de composición corporal**, que el repo tiene prohibido para menores

@@ -78,16 +78,16 @@ en sí mismo.**
 - Repartidas MUY desigual:
   | persona | sesiones | sin cerrar | % | sin cerrar últimos 30d |
   |---|---|---|---|---|
-  | **Nataly** | 21 | **20** | **95%** | 9 |
+  | **Nayla** | 21 | **20** | **95%** | 9 |
   | Andres Martínez (el coach) | 42 | 11 | 26% | 4 |
-  | Natalia Martinez | 25 | 8 | 32% | 3 |
-  | Astrid Beltran | 37 | 6 | 16% | 3 |
-  | Luz Rodríguez | 39 | 5 | 13% | 0 |
-  | Samuel Cifuentes | 16 | 5 | 31% | 0 |
-  | Claudia Valbuena | 39 | 4 | 10% | 0 |
-  | Kathe Beltran | 31 | 4 | 13% | 0 |
+  | Nadia Mejía | 25 | 8 | 32% | 3 |
+  | Andrea Bernal | 37 | 6 | 16% | 3 |
+  | Luisa R. | 39 | 5 | 13% | 0 |
+  | Salomón Cárdenas | 16 | 5 | 31% | 0 |
+  | Carla Vargas | 39 | 4 | 10% | 0 |
+  | Karen Bernal | 31 | 4 | 13% | 0 |
   | Valery | 14 | 2 | 14% | 1 |
-  | Danilo · Yovan · Sharith · Diana | — | 1 c/u | — | 3 |
+  | Darío · Yesid · Sonia · Dora | — | 1 c/u | — | 3 |
 - Integridad del historial: **0 sesiones con id duplicado, 0 sin id, 0 con fecha futura.**
 
 **Las cuentas (para C2)**
@@ -97,7 +97,7 @@ en sí mismo.**
   |---|---|---|---|
   | google (`ste***`) | 2026-06-09 | 2026-06-09 | sí |
   | google (`jos***`) | 2026-06-23 | 2026-06-23 | sí |
-  | email (`val***ry@avi.com`) | 2026-07-02 | 2026-07-07 | sí |
+  | email (`val***oculto@avi.com`) | 2026-07-02 | 2026-07-07 | sí |
   | google (`her***`) | 2026-07-06 | 2026-07-06 | sí |
   | email (`pin***`) | 2026-07-25 | **nunca entró** | **no** |
 - 15 cuentas por Google, 18 por email/contraseña. 5 creadas en los últimos 30 días.

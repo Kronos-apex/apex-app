@@ -107,14 +107,14 @@ Las 6 con lista propia, tal cual están hoy:
 | persona | rutina | día | n | ids | ejercicios | creada |
 |---|---|---|---|---|---|---|
 | Andres Martínez (el coach, su propio plan) | Full body funcional | Libre | 14 | wh1 wh2 wc1 wc2 wr1 wr2 wt1 wt2 wm1 wm2 we5 we1 wa1 wai3 | 11 | **10-sep-2026** |
-| Claudia Valbuena | Pierna | Lunes | 8 | wc1 wr1 wt1 wt2 wai2 we5 we2 wac3 | 6 | 29-jun-2026 |
-| Claudia Valbuena | Gluteo | Jueves | 9 | wc1 wc2 wr1 wr2 wt1 wt2 we2 wai1 wai3 | 6 | 29-jun-2026 |
-| Danilo | Hombros y Brazos | Jueves | 11 | wh1 wh2 wm1 we1 we2 wc1 wc2 wa1 wa3 wac1 wac2 | 8 | 22-ago-2026 |
-| Estella Rodríguez | Pierna | Lunes | 8 | wc1 wr1 wt1 wt2 wai2 we5 we2 wac3 | 6 | 29-jun-2026 |
-| Estella Rodríguez | Gluteo | Jueves | 9 | wc1 wc2 wr1 wr2 wt1 wt2 we2 wai1 wai3 | 6 | 29-jun-2026 |
+| Carla Vargas | Pierna | Lunes | 8 | wc1 wr1 wt1 wt2 wai2 we5 we2 wac3 | 6 | 29-jun-2026 |
+| Carla Vargas | Gluteo | Jueves | 9 | wc1 wc2 wr1 wr2 wt1 wt2 we2 wai1 wai3 | 6 | 29-jun-2026 |
+| Darío | Hombros y Brazos | Jueves | 11 | wh1 wh2 wm1 we1 we2 wc1 wc2 wa1 wa3 wac1 wac2 | 8 | 22-ago-2026 |
+| Elena Romero | Pierna | Lunes | 8 | wc1 wr1 wt1 wt2 wai2 we5 we2 wac3 | 6 | 29-jun-2026 |
+| Elena Romero | Gluteo | Jueves | 9 | wc1 wc2 wr1 wr2 wt1 wt2 we2 wai1 wai3 | 6 | 29-jun-2026 |
 
 - **Los 49 ids usados existen los 49 en `WARMUP_LIBRARY`.** Hoy no hay ninguno huérfano.
-- Las 4 listas de Claudia y Estella son **idénticas entre sí y se crearon el 29-jun**, o sea
+- Las 4 listas de Carla y Elena son **idénticas entre sí y se crearon el 29-jun**, o sea
   **antes de que el filtro de lesiones cubriera el calentamiento** (v424, 2-ago) y antes del chip de
   aviso del selector.
 
@@ -139,9 +139,9 @@ quién** (¿el coach necesita saberlo? ¿Laura? ¿vale el costo de guardarlo?).
   detrás izquierdo, nivel 3, con bandera roja `R5`**, 14-sep, sobre `e14` «Peso Muerto Rumano»
   (triaje 4, `corregido:true` el 15-sep — antes decía «muslo por dentro (aductores)»).
   Su lista propia se creó el **10-sep**, o sea **cuatro días antes de ese reporte**.
-- **Danilo** (20 sesiones) — `profile.notes`: *«Hernia lumbar L5 / Hernia umbilical / Pero Danilo
+- **Darío** (20 sesiones) — `profile.notes`: *«Hernia lumbar L5 / Hernia umbilical / Pero Darío
   dice que estas hernias no son una limitación a la hora de entrenar»*. Sin `painCare`.
-- **Claudia Valbuena** (57 sesiones) y **Estella Rodríguez** (58 sesiones) — `notes` vacío, sin
+- **Carla Vargas** (57 sesiones) y **Elena Romero** (58 sesiones) — `notes` vacío, sin
   `painCare`.
 
 **El dato duro que esto pone sobre la mesa, y que E2 tiene que resolver con evidencia:** el

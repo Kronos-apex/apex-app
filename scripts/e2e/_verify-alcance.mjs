@@ -42,7 +42,7 @@ const MONTAR = `(()=>{try{
     cli('a1','Ana Con Celular','3001234567'),
     cli('a2','Beto Con Celular','+57 300 765 4321'),
     cli('a3','Carlos Sin Celular',''),
-    cli('a4','Diana Sin Celular',''),
+    cli('a4','Dora Sin Celular',''),
     cli('a5','Elena Al Día','3009998888'),
   ];
   const ses=(rid,d)=>({id:'s'+rid+d,sessionId:'x'+rid+d,routineId:rid,routineName:'R',date:hace(d),finishedAt:hace(d),doneSets:4,totalSets:4,exercises:[]});

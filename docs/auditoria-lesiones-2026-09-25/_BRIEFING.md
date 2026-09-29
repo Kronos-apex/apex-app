@@ -85,12 +85,12 @@ Las tres en negrita son APROXIMACIONES (una zona usa las reglas de otra): hay qu
 - **El PO (Andrés Martínez, 37)** — dolor REPORTADO: *muslo por detrás izquierdo, nivel 3, bandera roja `R5`,
   triaje 4, 14-sep* (sobre Peso Muerto Rumano, corregido el 15-sep desde «aductores») → **vigente hoy**:
   `limitationsFor` devuelve `lumbar` + `isquios`. Un reporte de codo del 17-ago ya venció. Entrena hoy.
-- **Danilo (51)** — notas: *«Hernia lumbar L5 / Hernia umbilical / Pero Danilo dice que estas hernias no son
+- **Darío (51)** — notas: *«Hernia lumbar L5 / Hernia umbilical / Pero Darío dice que estas hernias no son
   una limitación»* → el lector encuentra `lumbar`. Entrenó el 23-sep.
-- **Laura Ramírez Rueda (29)** — notas: *«Rodillas desgastadas, dolor en la espalda alta, dolor en los
+- **Lucía Ríos (29)** — notas: *«Rodillas desgastadas, dolor en la espalda alta, dolor en los
   codos»* → **el lector solo encuentra `rodilla`**. Entrenó hoy. ⚠️ PISTA del orquestador, NO un hallazgo:
   «espalda alta» y «codos» no están en `GEN_LIMIT_KWS`. Qué le llega de verdad a ella es trabajo de G2.
-- Miguel Pulido (29, **suspendido**) — *«rodilla derecha operada»* → `rodilla` + `generic`.
+- Mario Parra (29, **suspendido**) — *«rodilla derecha operada»* → `rodilla` + `generic`.
 - ⚠️ **Trampa ya pagada por el orquestador hoy**: el reporte de dolor guarda la fecha en `at` (no `date`). Una
   sonda con el campo equivocado da «sin dolor vigente» sobre alguien que sí lo tiene.
 

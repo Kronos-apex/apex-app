@@ -69,7 +69,7 @@ la app se lo dice al subirla, ni la política legal lo menciona.
 - **A quién le pasa HOY, con nombre:** a los **8 de 27 asesorados con foto de perfil** (medido el
   22-sep, cifra que cita el propio código en v661) cada vez que terminan un entreno o desbloquean un
   logro — entre ellos personas adultas que jamás leyeron que su foto se usaría así. Hoy **ninguno de
-  los 4 menores** (Sharith 16, Santiago 17, Samuel 15, Valery 15) tiene foto de perfil, así que hoy
+  los 4 menores** (Sonia 16, Sebastián 17, Salomón 15, Valery 15) tiene foto de perfil, así que hoy
   no hay un menor concreto expuesto por esta vía — pero el día que uno la suba, su foto sale a
   sangre en su propia pantalla de cierre y en la tarjeta de logro **sin ningún candado**, porque esas
   dos superficies fueron diseñadas para no tenerlo.
@@ -102,7 +102,7 @@ la app se lo dice al subirla, ni la política legal lo menciona.
   una persona lo rompe como respaldo» — refiriéndose solo al de la nube; el local ni se menciona
   porque la función no tiene forma de tocarlo (vive fuera de Supabase, en el PC del PO).
 - **A quién le pasa HOY, con nombre:** cualquiera de las personas cuya foto viaja hoy en base64
-  dentro de la fila (ver pregunta 5: jhojan hernandez, Miguel Pulido, Nicolás Andrés Gutiérrez
+  dentro de la fila (ver pregunta 5: jairo herrera, Mario Parra, Nelson Andrés Gutiérrez
   Serrano) queda con su foto en TODOS los backups locales de los últimos 45 días que ya se tomaron,
   y si alguna de esas 3 personas borrara su cuenta mañana, su foto seguiría en esos archivos hasta
   que caduquen — un plazo que la política legal no le informa a nadie.
@@ -139,7 +139,7 @@ la app se lo dice al subirla, ni la política legal lo menciona.
 | 🟢 | `avi_showcase` (4 tarjetas): solo primer nombre + kg de ejercicio, sin apellido/edad/peso/foto; ninguna es de un menor; INSERT solo por moderador, sin grant de UPDATE | SQL contra producción | No — SANO |
 | 🟢 | Capturas viejas de la web (incluida la que saludaba a un menor) ya no se sirven — confirmado con `curl` contra `avientrena.com` en vivo; las nuevas son de una persona 100% inventada («Mariana»), generada localmente sin tocar datos reales | `avi-web/public/shots/2026-09/`, `scripts/e2e/_capturas-web.mjs` | No — SANO |
 | 🟢 | `avatars` (bucket público) tiene 2 objetos: el avatar del propio coach (Comunidad) y un archivo de 344 B de la cuenta QA de pruebas — ninguno es un asesorado real | SQL contra producción | No — SANO |
-| 🟢 | 3 fotos de progreso en base64 dentro de la fila (jhojan hernandez, Miguel Pulido, Nicolás Gutiérrez — ninguno menor) están protegidas por la misma RLS de `user_data` (dueño+coach); no hay camino de código hacia nada público | SQL + lectura de `clientProgressStory`/`showcaseRow` | No — privadas, pero probablemente nunca se muden (ver abajo) |
+| 🟢 | 3 fotos de progreso en base64 dentro de la fila (jairo herrera, Mario Parra, Nelson Gutiérrez — ninguno menor) están protegidas por la misma RLS de `user_data` (dueño+coach); no hay camino de código hacia nada público | SQL + lectura de `clientProgressStory`/`showcaseRow` | No — privadas, pero probablemente nunca se muden (ver abajo) |
 | 🟢 | `app_errors.ctx`: 0 de 31 filas con pista de foto/URL firmada/token; las subidas fallidas de foto solo van a `console.warn`, nunca a `app_errors` | SQL + `app-1-infra.js:469-503` | No — SANO |
 | 🟢 | Ninguna de las 3 imágenes imprime % de grasa, peso corporal, medidas o dolor — solo duración/calorías/series/volumen/PRs (carga de ejercicio, que sí conserva color por regla explícita del repo) | `app-4-entreno.js:2760-2765`, `avi-core.js:6199-6203`, `app-3-coach.js:2178-2196` | No — SANO |
 
@@ -157,11 +157,11 @@ coach); LEER es libre para cualquiera con la URL porque el bucket es **público 
 (Comunidad, decisión congelada — falso positivo conocido).
 
 **Probado con impersonación real (transacción con rollback, roles reales) contra `progress-photos`:**
-- CONTROL (debe pasar): Andrés (coach real) lee la carpeta de Samuel, su asesorado → **5 filas** ✅
-- CONTROL (debe pasar): Claudia lee su propia carpeta → **1 fila** ✅
-- ATAQUE: coach QA (`d69a24f5…`) lee la carpeta de Samuel (asesorado de OTRO coach) → **0 filas** ✅ bloqueado
-- ATAQUE: Claudia (asesorada A) lee la carpeta de Samuel (asesorado B, mismo coach) → **0 filas** ✅ bloqueado
-- ATAQUE: Claudia lee `chat-media` de Natalia → **0 filas** ✅ bloqueado
+- CONTROL (debe pasar): Andrés (coach real) lee la carpeta de Salomón, su asesorado → **5 filas** ✅
+- CONTROL (debe pasar): Carla lee su propia carpeta → **1 fila** ✅
+- ATAQUE: coach QA (`d69a24f5…`) lee la carpeta de Salomón (asesorado de OTRO coach) → **0 filas** ✅ bloqueado
+- ATAQUE: Carla (asesorada A) lee la carpeta de Salomón (asesorado B, mismo coach) → **0 filas** ✅ bloqueado
+- ATAQUE: Carla lee `chat-media` de Nadia → **0 filas** ✅ bloqueado
 - ATAQUE: anónimo lee `progress-photos`/`chat-media`/`apex-photos` completos → **0/0/0** ✅ bloqueado
 - Control de cobertura del propio anónimo: el mismo rol anon SÍ lee `avi_showcase` (**4 filas**) →
   confirma que la impersonación de `anon` funciona de verdad y que los ceros de arriba son RLS, no
@@ -189,7 +189,7 @@ Los tres (chat, foto de progreso, foto de perfil) usan la MISMA función `_chatM
 - **Pero hay un cabo suelto de la MISMA familia de bug del teléfono compartido**: `_chatMediaUrls`
   (la caché de URLs firmadas EN MEMORIA, `app-1-infra.js:289`) y el DOM del panel anterior no se
   limpian en `logout()` — a diferencia de `_pushCtx`/`CMTY`/`_authUid`, que sí siguen el patrón
-  anti-fuga que v398 dejó escrito para exactamente este escenario («en el perfil de Astrid aparecía
+  anti-fuga que v398 dejó escrito para exactamente este escenario («en el perfil de Andrea aparecía
   el mío»). No pude confirmar una fuga visible sin navegador (fuera de mi alcance en esta ronda);
   ver «Sospechas sin medir».
 
@@ -242,8 +242,8 @@ que la política NO dice es la existencia del respaldo local de 45 días.
 
 **5. Las 3 fotos en base64 dentro de la fila.**
 
-Identificadas: **jhojan hernandez** (18 años, 1 foto), **Miguel Pulido** (29, 1 base64 + 1 ya
-migrada), **Nicolás Andrés Gutiérrez Serrano** (34) — ninguno menor. `¿Abren la app?`: su
+Identificadas: **jairo herrera** (18 años, 1 foto), **Mario Parra** (29, 1 base64 + 1 ya
+migrada), **Nelson G.** (34) — ninguno menor. `¿Abren la app?`: su
 `updated_at` es reciente (18-21 sep) pero su ÚLTIMA SESIÓN de entreno es vieja (24-jun, 30-jun,
 7-ago) — probablemente no están abriendo su propio perfil lo suficiente como para disparar
 `migrateProgressPhotosPrivate()` (que exige `CUR.clientId===_authUid===cid`, o sea que la persona
@@ -261,7 +261,7 @@ accidente.
 
 **7. La vitrina pública y las capturas de la web.**
 
-`avi_showcase` (4 tarjetas, verificado con SQL): Kathe, Claudia, Nataly, Astrid — solo primer
+`avi_showcase` (4 tarjetas, verificado con SQL): Karen, Carla, Nayla, Andrea — solo primer
 nombre + kg de ejercicios concretos (no peso corporal); ninguna es menor; `objetivo` es el único
 campo nuevo y no es dato sensible. SANO. Las capturas de `avi-web/public/shots/`: el historial de
 git (`git log`) muestra un único commit de reemplazo (`734dd04`, 23-sep) cuyo propio mensaje
@@ -311,7 +311,7 @@ hay forma de que se cuele un dato real. SANO en ambas partes de la pregunta.
 
 - **`_chatMediaUrls` (caché de URLs firmadas en memoria) y el DOM del panel anterior no se limpian
   en `logout()`.** Es el mismo patrón de bug que v398 ya cerró para `CMTY`/`_pushCtx`/`_authUid`
-  («en el perfil de Astrid aparecía el mío»), pero para fotos privadas nadie lo cerró. Sin embargo,
+  («en el perfil de Andrea aparecía el mío»), pero para fotos privadas nadie lo cerró. Sin embargo,
   al leer el código encontré DOS mitigaciones que probablemente lo hacen inofensivo en la práctica:
   (1) los `<img data-ppath>` nacen SIN `src` hasta que `hydratePrivatePhotos` resuelve la URL de
   forma asíncrona, y esa resolución comprueba `img.isConnected` antes de escribir — si un re-render

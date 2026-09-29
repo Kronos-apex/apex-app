@@ -41,7 +41,7 @@ const MONTAR = `((o) => {try{
   const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const di=new Date().getDay(), hoy=days[di], pasado=days[di===0?6:(di-1)];
   const ex=(i)=>({id:'e'+i,name:'Ejercicio '+i,muscle:'Pierna',type:'Compuesto',sets:4,reps:'10'});
-  const client={id:'mud',name:'Claudia Valbuena',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
+  const client={id:'mud',name:'Carla Vargas',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:4,
     weight:62,height:163,age:31,activityFactor:1.55,createdAt:'2026-04-01T10:00:00.000Z',
     routines:[{id:'r1',name:'Pierna y glúteo',day:hoy,restSec:90,exercises:[0,1,2,3].map(ex)},
               {id:'r2',name:'Tren superior',day:pasado,restSec:90,exercises:[0,1,2].map(ex)}],

@@ -4,7 +4,7 @@
 // su fallo y aun así deja la suite en verde).
 //
 // Por qué hace falta versionada: el defecto que la motivó salió de una pregunta de dos asesoradas
-// reales (Luz y Claudia, 27-ago-2026) sobre por qué el mismo HIIT con las mismas rondas les daba
+// reales (Luisa y Carla, 27-ago-2026) sobre por qué el mismo HIIT con las mismas rondas les daba
 // duraciones y calorías distintas. La app no calculaba mal: medía el reloj de pared, así que una
 // pausa —o el celular bloqueado, que en Android congela el temporizador— contaba como entreno y
 // se convertía en calorías. La suite estaba verde todo el tiempo.

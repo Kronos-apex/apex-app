@@ -36,7 +36,7 @@ const MONTAR = (edad) => `(()=>{try{
       {id:'e45',name:'Abducción de Cadera en Máquina',sets:[{kg:abd,reps:15}]}]});
   const h=[ses(85,40,90,25),ses(70,50,95,25),ses(55,60,100,30),ses(40,70,100,35),
            ses(28,80,105,35),ses(18,85,110,40),ses(10,90,110,40),ses(3,95,110,40)];
-  const c={id:'st1',name:'Astrid Beltrán',sex:'F',age:${edad},level:'Intermedio',goal:'Ganar músculo',days:5,phone:'3001234567',
+  const c={id:'st1',name:'Andrea Bernal',sex:'F',age:${edad},level:'Intermedio',goal:'Ganar músculo',days:5,phone:'3001234567',
     payments:[{date:hace(5),dueDate:new Date(Date.now()+25*86400000).toISOString(),amount:150000,note:''}]};
   DB.clients=[c]; DB.history={st1:h}; DB.prs=DB.prs||{}; CUR.clientId='st1';
   showScreen('s-coach');
@@ -57,7 +57,7 @@ await sleep(500);
 const txt = await ev(`(()=>{const e=document.getElementById('d-story');return e&&e.offsetParent!==null?e.textContent.replace(/\\s+/g,' ').trim():''})()`);
 console.log('  tarjeta:', JSON.stringify(txt.slice(0, 200)));
 check('S1 la tarjeta aparece en la ficha', txt.length > 20, txt.slice(0, 50));
-check('S2 nombra a la persona y sus entrenos', /Astrid/.test(txt) && /8 entrenos/.test(txt));
+check('S2 nombra a la persona y sus entrenos', /Andrea/.test(txt) && /8 entrenos/.test(txt));
 check('S3 muestra las subidas de carga con sus kilos', /40 → 95 kg/.test(txt), txt.slice(0, 120));
 check('S4 dice en cuántos ejercicios subió', /subió carga en 3 de 3/.test(txt));
 check('S5 tiene el botón de crear la imagen', /Crear la imagen/.test(txt));

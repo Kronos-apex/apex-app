@@ -10,7 +10,7 @@
 //
 // 🛑 ANTES DE GUARDAR se comprueba el SELLO v298 (`cloudWriteSealed`): en localhost ningún harness
 // puede escribir a producción. El incidente del 8-jul (un harness borró las 4 rutinas reales de
-// Samuel) empezó exactamente así. Si el sello no está, esto ABORTA sin tocar nada.
+// Salomón) empezó exactamente así. Si el sello no está, esto ABORTA sin tocar nada.
 // Corre: node scripts/e2e/_verify-v598.mjs
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';

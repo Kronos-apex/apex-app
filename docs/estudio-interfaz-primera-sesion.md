@@ -22,7 +22,7 @@ De las **23 personas del directorio del gimnasio**:
 | Entrenan y están en la Comunidad | 7 |
 | **Tienen rutina asignada y NUNCA completaron un entreno** | **8** |
 | Entrenaron alguna vez y se fueron (último entreno hace 15-45 días) | 7 |
-| Activa hoy y fuera de la Comunidad | 1 (Claudia) |
+| Activa hoy y fuera de la Comunidad | 1 (Carla) |
 
 Los 8 **sí abrieron la app** (tienen su fila sincronizada con las rutinas que les armaste). No es un
 problema de instalación ni de acceso: **abrieron, vieron su plan y no completaron una sola sesión.**
@@ -48,7 +48,7 @@ Reproducido con el harness `scripts/e2e/_shot-day1.mjs` (rutinas asignadas, hist
 MIRADO, no supuesto. Capturas en `Temp/avi-day1`.
 
 **El primer pantallazo (390×844, lo que cabe sin desplazar):**
-1. Saludo «Buenas noches, Santiago 👋» + píldora «Empieza tu racha esta semana».
+1. Saludo «Buenas noches, Sebastián 👋» + píldora «Empieza tu racha esta semana».
 2. Una barra de progreso que dice **«Sentadilla · Serie 1/3 — 0%»**… antes de haber empezado nada.
 3. **«¿Cómo te sientes hoy?»** con 5 caras, ocupando media pantalla.
 4. Empieza una foto grande.

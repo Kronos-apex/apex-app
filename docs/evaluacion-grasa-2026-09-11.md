@@ -40,7 +40,7 @@ porcentaje de grasa corporal. No lo es. Y la app **ya tenía** las entradas para
 | Estado | Personas |
 |---|---|
 | Se puede estimar hoy | **1** (el PO: 24,4%) |
-| Solo les falta **el cuello** | **5** (Claudia, Natalia, Kathe, Luz, Nicolás) |
+| Solo les falta **el cuello** | **5** (Carla, Nadia, Karen, Luisa, Nelson) |
 | Sin ninguna toma de medidas | 16 |
 | Menores (bloqueados por diseño) | 4 |
 | Sin talla en la ficha | 2 |

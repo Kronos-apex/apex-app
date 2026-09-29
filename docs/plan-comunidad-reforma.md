@@ -200,7 +200,7 @@ planificó la RLS arriba → Opus ejecuta tal cual → Fable verifica con sabota
 cerrado.**
 </details>
 
-### R3 — Pulido — ✅ HECHO (avi-v384, 2026-07-22, PENDIENTE re-verificación de Fable)
+### R3 — Parra — ✅ HECHO (avi-v384, 2026-07-22, PENDIENTE re-verificación de Fable)
 - **Estado vacío UNIFICADO — hecho.** Motor puro `communityEmptyState(counts)` en avi-core
   (`'none'|'quiet'|'lonely'`) + `_cmtyCounts()`/`_cmtyEmptyHtml(state)` en app-7; `_cmtyFriendsHtml`
   ya no pinta vacío propio. 'lonely' trae sus 2 acciones (compartir código / pegar código).

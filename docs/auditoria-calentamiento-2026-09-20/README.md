@@ -38,7 +38,7 @@ local contra el de Pages). Suite **1271**, CI verde, `_prodcheck 641` verde.
 → **118 de 124 (95%) muestran el calentamiento que decide el código, no el coach.**
 
 Los **49 ids** usados en esas 6 listas **existen los 49** en `WARMUP_LIBRARY`: hoy no hay ninguno
-huérfano. Las 4 listas de Claudia y Estella son idénticas entre sí y se crearon el **29-jun**, o sea
+huérfano. Las 4 listas de Carla y Elena son idénticas entre sí y se crearon el **29-jun**, o sea
 antes de que el filtro de lesiones cubriera el calentamiento (v424, 2-ago).
 
 ### 🔴 La ceguera — el dato más importante de la ronda
@@ -62,8 +62,8 @@ el briefing prohíbe convertir en hallazgo (misma clase que el cero de las plant
 | # | Hallazgo | Quién lo encontró | ¿Víctima HOY? | Verificado por el orquestador |
 |---|---|---|---|---|
 | 1 | **El calentamiento MANUAL no avisa en la pantalla donde se entrena.** El chip «ojo con su zona» vive solo en el editor del coach; `renderWarmup` nunca llama a `warmupWarnZones`. | **E2 y E3, por separado** | **Sí: el propio coach.** Lista armada el 10-sep con `we5` y `wai3`; bandera roja R5 (muslo por detrás) reportada el 14-sep, activa hasta el 28-sep | Sí — el chip solo aparece en `app-3-coach.js`; la lista del coach y las fechas, contra producción |
-| 2 | **`wc3` (90/90) asciende al calentamiento de quien tiene la rodilla dañada.** `wc2` sale por la palabra «estocada» (regla del ENTRENO) y el `slice(0,2)` promueve a `wc3`, que el dictamen del 8-ago nunca revisó para esa zona. | E2 (Laura) | **Sí: Laura Ramirez Rueda y Miguel Pulido** | Sí — regex `rodilla` incluye `estocada` (`avi-core.js:418`); las dos personas declaran rodilla en `notes` |
-| 3 | **Entrenar dos veces la misma rutina el mismo día abre el entreno ya palomeado.** `todayTrainAgain` solo levanta una bandera y repinta: no limpia `done_`, ni `wu_`, ni acuña sesión nueva. | E1 | Mecanismo sí; **4 casos reales** de misma rutina/mismo día (Samuel, Estella, Natalia, el coach) | Sí — `app-4-entreno.js:1063`; solo `checkAndResetSession` y `resetSession` limpian |
+| 2 | **`wc3` (90/90) asciende al calentamiento de quien tiene la rodilla dañada.** `wc2` sale por la palabra «estocada» (regla del ENTRENO) y el `slice(0,2)` promueve a `wc3`, que el dictamen del 8-ago nunca revisó para esa zona. | E2 (Laura) | **Sí: Lucía Ríos y Mario Parra** | Sí — regex `rodilla` incluye `estocada` (`avi-core.js:418`); las dos personas declaran rodilla en `notes` |
+| 3 | **Entrenar dos veces la misma rutina el mismo día abre el entreno ya palomeado.** `todayTrainAgain` solo levanta una bandera y repinta: no limpia `done_`, ni `wu_`, ni acuña sesión nueva. | E1 | Mecanismo sí; **4 casos reales** de misma rutina/mismo día (Salomón, Elena, Nadia, el coach) | Sí — `app-4-entreno.js:1063`; solo `checkAndResetSession` y `resetSession` limpian |
 | 4 | **El título «⚡ Activación muscular» se puede pintar con cero ejercicios debajo.** | E1 | No hoy (hace falta lumbar + tobillo en la misma persona) | — |
 | 5 | **14 de 34 piezas (41%) nunca llegan a nadie** por auto-derivación, medido contra las 118 rutinas reales. La variedad de «9 pools» es en parte ilusoria. | E2 | No (es de fondo) | — |
 | 6 | **El selector de movimientos se cierra en cada toque** (`rfWarmAdd` llama `cm('m-warmpick')` sin condición): 8 toques en vez de 5. | E3 | El coach, en fricción | Sí — `app-3-coach.js:3645` |
@@ -74,11 +74,11 @@ el briefing prohíbe convertir en hallazgo (misma clase que el cero de las plant
   instrumento). **E3 lo respetó**: midió dos proxies, los declaró inconclusos (N=3, bajo el mínimo
   de 10) y señaló que el «100% completado» del grupo con lista manual es probablemente causalidad
   inversa. **Veredicto: no instrumentar hoy.**
-- **Danilo como víctima.** Hernia lumbar L5 declarada y lista manual armada el 22-ago: E2 corrió el
+- **Darío como víctima.** Hernia lumbar L5 declarada y lista manual armada el 22-ago: E2 corrió el
   filtro real contra sus 11 movimientos y **los 11 pasan**. Es el control negativo de la ronda.
 - **«El filtro de lesiones ignora el calentamiento»** (falso positivo conocido): E1 lo verificó
   contra HEAD y está bien cerrado desde v424/v454.
-- Las 4 listas de Claudia y Estella (29-jun, anteriores al filtro): **no hay víctima hoy** porque
+- Las 4 listas de Carla y Elena (29-jun, anteriores al filtro): **no hay víctima hoy** porque
   ninguna de las dos declara nada — pero sus listas sí tienen piezas que caerían bajo
   lumbar/rodilla/aductor el día que declaren algo. Queda en «sospechas».
 

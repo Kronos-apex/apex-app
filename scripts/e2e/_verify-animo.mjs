@@ -35,7 +35,7 @@ const MEDIR = `(()=>{
   document.querySelectorAll('#s-client .cnp').forEach(p=>p.classList.remove('on'));
   const tod=document.getElementById('cn-today'); tod.classList.add('on');
   let box=document.getElementById('prueba-animo'); if(!box){box=document.createElement('div');box.id='prueba-animo';tod.prepend(box);}
-  box.innerHTML=moodChooserHtml({id:'x',name:'Luz',sex:'F'},'pickMood');
+  box.innerHTML=moodChooserHtml({id:'x',name:'Luisa',sex:'F'},'pickMood');
   const lum=c=>{const m=String(c).match(/[\\d.]+/g).map(Number);const f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(m[0])+0.7152*f(m[1])+0.0722*f(m[2]);};
   const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);};
   const btns=[...box.querySelectorAll('.mood-btn')];
@@ -73,7 +73,7 @@ try {
   check('N4b tocar un estado lo elige (Cansado → cansado)', eligio === 'cansado', String(eligio));
   // N5 · CONTROL: sin el módulo de íconos, vuelve el emoji — nunca un círculo vacío
   const sin = await ev(`(()=>{const o=window.aviIcon; window.aviIcon=undefined;
-    const h=moodChooserHtml({id:'x',name:'Luz',sex:'F'},'pickMood'); window.aviIcon=o;
+    const h=moodChooserHtml({id:'x',name:'Luisa',sex:'F'},'pickMood'); window.aviIcon=o;
     const d=document.createElement('div'); d.innerHTML=h;
     return [...d.querySelectorAll('.mood-emoji')].map(s=>({svg:!!s.querySelector('svg'),txt:s.textContent.trim(),ic:s.classList.contains('mood-ic')}));})()`);
   check('N5 CONTROL: sin módulo de íconos vuelve el emoji (sin círculo vacío)', sin.length === 6 && sin.every(x => !x.svg && x.txt.length > 0 && !x.ic), JSON.stringify(sin.map(x => x.txt)));

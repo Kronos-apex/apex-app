@@ -21,7 +21,7 @@ export const FIXTURE = `(()=>{try{
       startedAt:d.toISOString(),finishedAt:d.toISOString(),totalVol:vol,doneSets:12,totalSets:12,
       exercises:[{name:'Sentadilla',muscle:'piernas',track:'peso_reps',sets:[{done:true,kg:'60',reps:'12'},{done:true,kg:'65',reps:'10'}]},
                  {name:'Press de Banca con Barra',muscle:'pecho',track:'peso_reps',sets:[{done:true,kg:'40',reps:'10'}]}]};};
-  const cli={id:'cA',name:'Santiago Rivera',email:'santiago.rivera@gmail.com',goal:'Ganar músculo',level:'Intermedio',
+  const cli={id:'cA',name:'Sebastián Rincón',email:'oculto@gmail.com',goal:'Ganar músculo',level:'Intermedio',
     days:3,weight:78,height:176,age:29,sex:'M',phone:'3001234567',tier:'premium',
     notes:'Cuida la zona lumbar en peso muerto.',
     payments:[{date:_dk(44),dueDate:_dk(-20),amount:120000,note:'Mensualidad julio'}],
@@ -42,7 +42,7 @@ export const FIXTURE = `(()=>{try{
   DB.history={cA:[ses('cA',0,4800),ses('cA',2,4600),ses('cA',5,4400),ses('cA',7,4200),ses('cA',9,4000)],cB:[ses('cB',1,3200)]};
   DB.prs={cA:{e1:{name:'Sentadilla',kg:120,reps:5,date:'2026-07-20',val:120,unit:'kg'},e2:{name:'Press de Banca con Barra',kg:85,reps:5,date:'2026-07-10',val:85,unit:'kg'}}};
   DB.bodyweight={cA:[{date:_dk(0),kg:78.2},{date:_dk(7),kg:78.9},{date:_dk(14),kg:79.4}]};
-  DB.msgs={cA:[{from:'coach',text:'¡Buen trabajo hoy Santiago!',date:new Date(Date.now()-5*3.6e6).toISOString()},
+  DB.msgs={cA:[{from:'coach',text:'¡Buen trabajo hoy Sebastián!',date:new Date(Date.now()-5*3.6e6).toISOString()},
                {from:'client',text:'Gracias coach, me sentí fuerte 💪',date:new Date(Date.now()-3*3.6e6).toISOString()}],
            cB:[{from:'client',text:'Coach, me dolió un poco la rodilla en la sentadilla',date:new Date(Date.now()-2*3.6e6).toISOString()}]};
   DB.nutrition={cA:{water:8,kcal:2600,prot:160,carb:280,fat:80,meals:[{name:'Desayuno',items:'Huevos, avena, fruta'},{name:'Almuerzo',items:'Pollo, arroz, ensalada'}]}};

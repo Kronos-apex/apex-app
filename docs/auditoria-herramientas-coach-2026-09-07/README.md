@@ -21,7 +21,7 @@ nadie lo había mirado jamás.**
 
 Esto es lo más valioso de la ronda para la próxima, así que va arriba y no enterrado:
 
-1. **«Natalia y Kathe escribieron y nadie contestó» — FALSO.** Los dos últimos mensajes suyos son
+1. **«Nadia y Karen escribieron y nadie contestó» — FALSO.** Los dos últimos mensajes suyos son
    **avisos automáticos** de la app (`system:true`: *«🩺 X marcó que hoy entrena con dolor…»*), no
    algo que ellas teclearan. La consulta del baseline agrupó por `from='client'` **sin mirar la
    bandera `system`**: le faltaba el control de discriminación. Se le llegó a reportar al PO y se
@@ -34,7 +34,7 @@ Esto es lo más valioso de la ronda para la próxima, así que va arriba y no en
    ejercicios.
 
 Y una corrección del orquestador **a un agente**: D2 dice que la plantilla sin hombros está
-aplicada a 4 personas; son **3** (maria rubio, Astrid Beltran, Kathe Beltran). Nataly tiene otra
+aplicada a 4 personas; son **3** (marta rojas, Andrea Bernal, Karen Bernal). Nayla tiene otra
 rutina de nombre casi igual —«Tren Superior — **Pecho, Espalda** y Hombros»— que **sí** trae dos
 ejercicios de hombro.
 
@@ -45,7 +45,7 @@ No se le pasa nada al PO sin medirlo aparte. De los hallazgos que deciden trabaj
 - **D1-1** — `renderClientMsgs` (`app-4-entreno.js`) reemplaza el hilo ENTERO por
   `premiumLockHTML` cuando `!clientHasCoach`, y `sendCoachChatMsg` (`app-3-coach.js:3449`) manda
   el push con el texto real igual. Alcance medido: **5 de las 11 conversaciones bajo candado hoy**
-  (Samuel `libre` con 40 mensajes; Nataly, Miguel, Natalia y Cristian en `app`) = **68 de los 95
+  (Salomón `libre` con 40 mensajes; Nayla, Mario, Nadia y César en `app`) = **68 de los 95
   mensajes que existen, el 72%.** ✅ confirmado. → **ARREGLADO en v584.**
 - **D1-2** — `_persistCoachWrite` (`app-1-infra.js:1079-1083`) solo hace `warn()` en el catch: ni
   `_setAuthDirty` ni respaldo local, mientras la rama del CLIENTE sí tiene *«Respaldo local
@@ -58,12 +58,12 @@ No se le pasa nada al PO sin medirlo aparte. De los hallazgos que deciden trabaj
   catálogo, 0 ejercicios propios).
 - **D2-3** — la plantilla «Tren Superior — Espalda, Pecho y Hombros» = `e6, e83, e51, e84, e24` →
   3 espalda + 2 pecho, **0 hombros**. ✅ confirmado. Alcance corregido a 3 personas, y la víctima
-  real es **Kathe Beltran: 0 ejercicios de hombro en su plan entero** (4 rutinas, 25 ejercicios);
-  Astrid y maria rubio sí entrenan hombro en «Brazo y abdomen».
+  real es **Karen Bernal: 0 ejercicios de hombro en su plan entero** (4 rutinas, 25 ejercicios);
+  Andrea y marta rojas sí entrenan hombro en «Brazo y abdomen».
 - **D3-1** — `renderProgressPanel` pinta `pts[pts.length-1].maxKg` (la ÚLTIMA sesión) como
-  titular y calcula la tendencia contra `pts[0]` (la PRIMERA). Astrid: sentadilla con récord
+  titular y calcula la tendencia contra `pts[0]` (la PRIMERA). Andrea: sentadilla con récord
   **42,5 kg** y última sesión **4,5 kg** (1-sep). ✅ confirmado contra el historial real.
-- **D3-2** — Nataly, «Curl Femoral Acostado en Máquina»: `prs` dice **20 kg del 25-may**; su
+- **D3-2** — Nayla, «Curl Femoral Acostado en Máquina»: `prs` dice **20 kg del 25-may**; su
   historial tiene **30 kg el 25-jul**. ✅ confirmado.
 
 ## Los hallazgos, en una línea cada uno
@@ -82,8 +82,8 @@ No se le pasa nada al PO sin medirlo aparte. De los hallazgos que deciden trabaj
    ejercicio del catálogo que el coach haya editado. Sin víctima hoy.
 6. 🔴 Abrir una conversación **vuelve a subir los 374 ejercicios** (247 KB) por empaquetarlo todo
    en un solo bloque.
-7. 🟡 La plantilla que promete hombros **no tiene ni un ejercicio de hombro** (3 personas; Kathe
-   se queda en cero). **RESUELTO para Kathe el 7-sep** (ver abajo).
+7. 🟡 La plantilla que promete hombros **no tiene ni un ejercicio de hombro** (3 personas; Karen
+   se queda en cero). **RESUELTO para Karen el 7-sep** (ver abajo).
 8. 🟡 Aplicar una plantilla puede **heredar el calentamiento** de la última rutina editada, de
    otro asesorado.
 9. 🟢 Las plantillas **sí se usan**: 21 de 108 rutinas, en 10 de 25 asesorados, son copia por
@@ -92,7 +92,7 @@ No se le pasa nada al PO sin medirlo aparte. De los hallazgos que deciden trabaj
 **D3 · Cargas y el fondo del detalle**
 10. 🔴 «Cargas» muestra **el peso de la última sesión**, no el récord: no coincide en el 33% de
     241 ejercicios, y 14 casos salen marcados «↓ bajando» cuando hubo progreso.
-11. 🔴 Los récords **se quedan atascados** meses (Nataly: 20 kg de mayo cuando hizo 30 en julio).
+11. 🔴 Los récords **se quedan atascados** meses (Nayla: 20 kg de mayo cuando hizo 30 en julio).
 12. 🔴 **El coach no ve ni una sola foto de progreso** en ningún panel; 6 personas tienen fotos
     guardadas.
 13. 🔴 El **peso corporal** no se pide ni se recuerda nunca: 7 de 26 no tienen ninguno, y quien
@@ -132,10 +132,10 @@ El PO mandó atacar los cuatro puntos que quedaban. **Los cuatro están en produ
 
 **Diagnóstico, salvo dos cosas que el PO mandó hacer el mismo día:**
 
-- ✅ **v584 — el historial de Samuel.** El candado ya no se come la conversación: se lee en solo
+- ✅ **v584 — el historial de Salomón.** El candado ya no se come la conversación: se lee en solo
   lectura y el candado baja al sitio de la caja de escribir. Escribir sigue siendo premium.
-- ✅ **Kathe entrena hombro.** Se le añadieron **Press Militar con Mancuernas (4×10)** y
+- ✅ **Karen entrena hombro.** Se le añadieron **Press Militar con Mancuernas (4×10)** y
   **Elevaciones Laterales (4×15)** a su rutina del martes, escritos directo en producción con
-  respaldo previo en `~/.avi/kathe-rutinas-antes-2026-09-07.json`.
+  respaldo previo en `~/.avi/karen-rutinas-antes-2026-09-07.json`.
 
 El resto **no está arreglado**: las prioridades las decide el PO.

@@ -53,7 +53,7 @@ const shockCard = `(()=>{const el=document.getElementById('d-shock');
     warns:[...card.querySelectorAll('div')].filter(d=>/--orl/.test(d.getAttribute('style')||'')).length,
     text:el.innerText};})()`;
 
-// Astrid, estancada en "Jalón al Pecho". v433: el detector pide ≥8 semanas de datos y ≥7 sesiones
+// Andrea, estancada en "Jalón al Pecho". v433: el detector pide ≥8 semanas de datos y ≥7 sesiones
 // del ejercicio, así que el fixture son 25 sesiones cada 3 días con el techo de 62 kg en la 2ª
 // (zona de referencia) y el resto por debajo. El historial de la app va nuevo→viejo (de ahí el
 // reverse). `startDate` de hace 200 días = pasa también los pisos de la DESCARGA.
@@ -64,7 +64,7 @@ const fixture = (extra) => `(()=>{try{
   const kgs=(${stKgsJs})(62,60,60);
   const sess=kgs.map((kg,i)=>({date:new Date(Date.now()-(${ST_N}-1-i)*3*86400000).toISOString(),routineName:'Espalda',
     exercises:[{name:'Jalón al Pecho',muscle:'espalda',track:'peso_reps',sets:[{done:true,kg:String(kg),reps:'8'}]}]})).reverse();
-  const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+  const c={id:'a1',name:'Andrea Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
     startDate:new Date(Date.now()-200*86400000).toISOString(),
     payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
     routines:[{id:'r1',name:'Espalda A',day:'Lunes',restSec:60,exercises:[
@@ -96,7 +96,7 @@ const multiFixture = (specs, spacingDays = 3, endOffset = 2, extraClient = '') =
   for(let i=0;i<N;i++){ out.push({date:new Date(Date.now()-(EO+(N-1-i)*SP)*86400000).toISOString(),routineName:'R',
     exercises:specs.map(s=>({name:s.name,muscle:s.muscle,track:'peso_reps',sets:[{done:true,kg:String(s.kgs[i]),reps:'8'}]}))}); }
   const sess=out.reverse();
-  const c={id:'a1',name:'Astrid Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
+  const c={id:'a1',name:'Andrea Prueba',level:'Intermedio',days:3,tier:'premium',goal:'Ganar músculo',notes:'',
     startDate:new Date(Date.now()-200*86400000).toISOString(),
     payments:[{date:'2026-06-15',dueDate:'2026-09-01',amount:120000}],
     routines:[{id:'r1',name:'R',day:'Lunes',restSec:60,exercises:specs.map((s,i)=>({id:'e'+i,name:s.name,muscle:s.muscle,sets:4,reps:8,restSec:90}))},
@@ -173,7 +173,7 @@ try {
       msgs:((DB.msgs&&DB.msgs.a1)||[]).length, disabled:ta?!!ta.disabled:null};})()`);
   check('🔒 S4 el chat se abre PRELLENADO y editable', chat.open && chat.val.length > 20 && chat.disabled === false, JSON.stringify({ open: chat.open, len: chat.val.length }));
   check('🔒 S4b NADA se envió solo (0 mensajes en la conversación)', chat.msgs === 0, 'msgs=' + chat.msgs);
-  check('S4c el mensaje va en voz del coach (nombre + kg)', /Astrid/.test(chat.val) && /62/.test(chat.val), chat.val.slice(0, 80));
+  check('S4c el mensaje va en voz del coach (nombre + kg)', /Andrea/.test(chat.val) && /62/.test(chat.val), chat.val.slice(0, 80));
   await shot('S4-chat-prellenado');
   await ev(`(()=>{const el=document.getElementById('coach-chat');if(el)el.classList.remove('on');})()`);
 
@@ -339,7 +339,7 @@ try {
   check('S13 mutear un target deja VISIBLE el otro (mute por ejercicio)', s13r.shown && s13r.remaining.length === 1 && s13r.remaining[0] !== s13r.t0, JSON.stringify(s13r.remaining));
 
   // ── S14 (CANDADO CONSTANCIA): 3 estancados pero A SALTOS (spacing 8 = cadencia baja) → REBUILD,
-  // NO descarga. La descarga a quien ya entrena poco es el consejo equivocado (caso real de Astrid). ──
+  // NO descarga. La descarga a quien ya entrena poco es el consejo equivocado (caso real de Andrea). ──
   const s14 = await ev(multiFixture([
     { name: 'Jalón al Pecho', muscle: 'espalda', kgs: KG_CAIDA },
     { name: 'Press Banca', muscle: 'pecho', kgs: KG_CAIDA },

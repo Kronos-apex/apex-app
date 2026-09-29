@@ -93,7 +93,7 @@ create policy showcase_sel on public.avi_showcase for select to anon, authentica
 -- que cualquiera con cuenta insertaba sus propias tarjetas. Y como la pagina publica pide las 6
 -- mas recientes SIN filtrar por coach, con 6 filas (su propio tope) desplazaba TODAS las reales
 -- de la pagina que el coach comparte en Instagram. Reproducido contra produccion en transaccion
--- con rollback: la tarjeta del atacante salia PRIMERA, encima de la de Astrid.
+-- con rollback: la tarjeta del atacante salia PRIMERA, encima de la de Andrea.
 -- Misma familia que F7 y c13c: no se gatea con algo que el cliente controla. El gate bueno ya
 -- existia — `community_moderators`, el mismo de los records — y no es falsificable desde el cliente.
 create policy showcase_ins on public.avi_showcase for insert to authenticated

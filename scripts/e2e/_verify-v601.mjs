@@ -3,7 +3,7 @@
 // El PO: «solo se ven 3 ejercicios de 15 mejoras… si utilizamos una gráfica y lo vendemos mejor
 // como en %… pero quiero que la imagen se vea top».
 //
-// Dibuja el lienzo REAL con los datos REALES de Luz (leídos de producción y volcados a
+// Dibuja el lienzo REAL con los datos REALES de Luisa (leídos de producción y volcados a
 // `luz-story.json`), mide el resultado y GUARDA EL PNG para mirarlo — que es la única forma de
 // juzgar si «se ve top». Y sus controles:
 //   G1 el lienzo se genera 1080×1920 y sale el blob
@@ -22,7 +22,7 @@ const PROFILE = process.env.TEMP + '/cdp-v601-' + Date.now();
 const RAIZ = 'C:/Users/KRONOS/Desktop/AVI/apex-app';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(...a);
-// Los datos REALES de Luz. Si no están, el harness no inventa una historia bonita: para.
+// Los datos REALES de Luisa. Si no están, el harness no inventa una historia bonita: para.
 let STORY;
 try { STORY = JSON.parse(readFileSync(process.env.TEMP + '/luz-story.json', 'utf8')); }
 catch { log('ERROR: falta %TEMP%/luz-story.json (lo genera scratchpad/luz-story.py)'); process.exit(1); }
@@ -134,7 +134,7 @@ try {
   check('F3 y de verdad se APLICA: el ancho con la marca difiere del de la fuente del sistema',
     tipo.wm > 0 && tipo.ws > 0 && tipo.wm !== tipo.ws, `marca=${tipo.wm}px sistema=${tipo.ws}px`);
 
-  // ── La tarjeta de Luz, con sus numeros REALES ──
+  // ── La tarjeta de Luisa, con sus numeros REALES ──
   const g = await pintar(STORY, 'v601-luz.png');
   check('G1 el lienzo se genera 1080×1920 y sale el blob',
     g.blob === true && g.w === 1080 && g.h === 1920 && !g.err, JSON.stringify(g).slice(0, 150));

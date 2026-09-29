@@ -9,7 +9,7 @@
 // SEGURIDAD:
 //  • Todas las ESCRITURAS pasan por AUTH.client() (RLS con el JWT real, se refresca solo) —
 //    jamás fetch crudo con Bearer manual (gotcha v323). Y quedan SELLADAS en localhost
-//    (_cmtySealed → cloudWriteSealed) para que ningún harness toque la nube (lección Samuel).
+//    (_cmtySealed → cloudWriteSealed) para que ningún harness toque la nube (lección Salomón).
 //  • esc() en TODO innerHTML con handle/bio (texto de OTROS usuarios).
 //  • Avatares solo se pintan si cmtyAvatarOk(url) (prefijo del bucket propio; defensa doble
 //    del CHECK cp_avatar_url_bucket) → un amigo no puede apuntar el <img> a una URL externa.
@@ -131,7 +131,7 @@ function cmtyResetIdentity(){
 function _cw(){ return (typeof warn === 'function') ? warn : function(){}; }
 function _cmtyClient(){ return (typeof AUTH !== 'undefined' && AUTH.client) ? AUTH.client() : null; }
 async function _cmtyUid(){ try{ const u = await AUTH.getUser(); return (u && u.id) || null; }catch(e){ return null; } }
-// Sello anti-harness: en localhost NINGUNA escritura de comunidad toca la nube (lección Samuel).
+// Sello anti-harness: en localhost NINGUNA escritura de comunidad toca la nube (lección Salomón).
 function _cmtySealed(){ return typeof cloudWriteSealed === 'function' && cloudWriteSealed(location.hostname, window.AVI_ALLOW_CLOUD_WRITE); }
 
 function _cmtyErr(e){

@@ -182,9 +182,9 @@
   ellas reciben 5 o 6 claras en una sola comida, **incluida la asesorada de 15 años** (4 claras).
 
   Comidas pegadas, generadas ahora:
-  - **Chema · Desayuno:** «4 huevos (200 g) + **4 arepas (320 g)** + Tomate»
+  - **Chucho · Desayuno:** «4 huevos (200 g) + **4 arepas (320 g)** + Tomate»
   - **Andrés (el coach) · Desayuno:** «**6 claras (198 g)** + media taza + medio banano + 1 puñado»
-  - **Astrid · Almuerzo:** «1½ tazas + 1½ cucharadas + **4 octavos de aguacate** + ensalada»
+  - **Andrea · Almuerzo:** «1½ tazas + 1½ cucharadas + **4 octavos de aguacate** + ensalada»
 - **Lo que NO está roto, y hay que decirlo:** el plato **entrega lo que promete**. Sobre esos 252
   días: kcal **92,1 % – 109,5 %** (mediana 100,8) y proteína **93,4 % – 119,0 %** (mediana 105,6),
   las dos dentro de la franja ±12 % que la app ya declara. Esto es un defecto de **cómo se lee**,
@@ -194,7 +194,7 @@
   cuando el campo es `it.grams`, así que todas las raciones salían en 0 medidas. Puse un control
   («items resueltos: 3.825; si fuera 0 la medición no vale») y volvió el número real. Sin ese
   control habría reportado «cerrado» sobre una sonda muerta. (b) ¿es que las 12 personas tienen
-  la proteína muy alta? No: le pasa igual a **Luz (111 g)** y a **Nataly (119 g)**, que son las
+  la proteína muy alta? No: le pasa igual a **Luisa (111 g)** y a **Nayla (119 g)**, que son las
   dos más bajas — con 4 claras. (c) ¿lo arregla bajar `NUT_PROT_MIN_SHARE`? Ya se midió en v490
   que bajarlo de 0,70 a 0,60 **no movió ni una décima** de la esquina, y el comentario del código
   lo dice: el exceso de esa esquina es GRASA, no proteína. (d) ¿es el aguacate un problema? 4
@@ -214,7 +214,7 @@
 
 - **Qué pasa:** el motor de HOY no comete el fallo (**0 violaciones en 5.760 planes**, verificado
   abajo), pero **nada regenera ni cura los planes ya escritos**. Lo reporté el 31-jul como H7 con
-  4 casos; 24 días después **siguen ahí los mismos dos de Felipe**, y encima hay uno **NUEVO que
+  4 casos; 24 días después **siguen ahí los mismos dos de Fabio**, y encima hay uno **NUEVO que
   creó la propia corrección de v513**.
 - **Dónde:** `avi-core.js:1124` (`EX_LEVEL`) · `avi-core.js:1246` (`_levelGate`) · las rutinas
   viven en `user_data.routines` y no se recalculan nunca. `e92` pasó de `'I'` a `'A'` en v513.
@@ -222,17 +222,17 @@
 
   | Persona | Nivel declarado | Rutina | Ejercicio | Nivel hoy |
   |---|---|---|---|---|
-  | FELIPE R.L (auto-reg, 18 a) | Principiante | Full Body | **Pike Push-up** | A |
-  | FELIPE R.L | Principiante | Full Body | **Rueda Abdominal (Ab Wheel)** | A |
-  | FELIPE R.L | Principiante | Full Body 3 | **Pike Push-up** | A |
-  | **Sofía Vega triana** (auto-reg, 18 a) | Intermedio | Glúteo y Piernas A | **Hip Thrust Unilateral (e92)** | **A** |
+  | FABIO (auto-reg, 18 a) | Principiante | Full Body | **Pike Push-up** | A |
+  | FABIO | Principiante | Full Body | **Rueda Abdominal (Ab Wheel)** | A |
+  | FABIO | Principiante | Full Body 3 | **Pike Push-up** | A |
+  | **Sara Vélez** (auto-reg, 18 a) | Intermedio | Glúteo y Piernas A | **Hip Thrust Unilateral (e92)** | **A** |
 
   Las 4 rutinas están marcadas `generated:true`. **Ninguna rutina hecha a mano por el coach
   viola el gate.**
 
   > ✅ **Re-verificado por el orquestador (24-ago, contra producción, cruzando los 18 ids de
   > nivel `A` de `EX_LEVEL` con `user_data.routines`): salen esas 4 filas y ninguna más.** Y un dato
-  > que cambia la urgencia sin cambiar el hallazgo: **Felipe y Sofía tienen 0 sesiones cada uno —
+  > que cambia la urgencia sin cambiar el hallazgo: **Fabio y Sofía tienen 0 sesiones cada uno —
   > nadie ha ejecutado hoy ninguno de estos 4 ejercicios.** El defecto es real y no está lastimando
   > a nadie ahora mismo; el riesgo es que el día que uno de los dos abra la app, ya nadie va a
   > estar mirando. Es el mismo argumento con el que se puso el candado de menores de v522.
@@ -251,7 +251,7 @@
   (`dedupeExercises`), pero **ninguna para el nivel** — lo verifiqué grepeando. (d) ¿le pasa a
   alguien que entrene? Las dos personas tienen **0 sesiones**, y por eso lo dejo en 🟠 y no en 🔴:
   hoy nadie se ha hecho daño. Pero el plan está en su teléfono esperando el día que abran la app.
-- **A quién le pasa:** a Felipe (principiante que nunca entrenó, con dos avanzados) y a Sofía
+- **A quién le pasa:** a Fabio (principiante que nunca entrenó, con dos avanzados) y a Sofía
   (que se apuntó a **Fuerza**, o sea la que más probable es que cargue). Y a cualquiera cuyo plan
   se generara antes de la próxima re-etiquetación.
 - **Costo del arreglo:** dos niveles, y el barato ya está diseñado en el repo.
@@ -317,42 +317,42 @@
   `kcalTargetFor` y el botón «✨ Generar» del coach.
 - **Evidencia:**
   1. **El público cambió.** De los 13 auto-registrados, **9 tienen hoy tier `premium` o `app`**
-     (Chema, Sofía Vega, Sharith, Santiago, jhojan, Cristian, YEISON, jose Daniel, Valery) — o
+     (Chucho, Sara Vélez, Sonia, Sebastián, jairo, César, YAMID, jorge David, Valery) — o
      sea que **sí ven la nutrición**. Solo 4 quedan en `libre`.
   2. **La diferencia, con sus perfiles reales:**
 
      | Persona | kcal con 1,55 (lo que la app le puso) | con 1,375 | con 1,2 | diferencia |
      |---|---|---|---|---|
-     | Chema (M, 25, 79 kg) | **3.114** | 2.802 | 2.490 | **624 kcal/día** |
-     | jhojan (M, 18, 65,5 kg) | 2.909 | 2.620 | 2.331 | 578 |
-     | Sharith (F, **16**, 72 kg) | 2.697 | 2.393 | 2.089 | 608 |
-     | Sofía Vega (F, 18, 64 kg) | 2.401 | 2.153 | 1.904 | 497 |
+     | Chucho (M, 25, 79 kg) | **3.114** | 2.802 | 2.490 | **624 kcal/día** |
+     | jairo (M, 18, 65,5 kg) | 2.909 | 2.620 | 2.331 | 578 |
+     | Sonia (F, **16**, 72 kg) | 2.697 | 2.393 | 2.089 | 608 |
+     | Sara Vélez (F, 18, 64 kg) | 2.401 | 2.153 | 1.904 | 497 |
 
-  3. **Y ya no es hipotético: está escrito.** **Chema tiene plan nutricional guardado de
+  3. **Y ya no es hipotético: está escrito.** **Chucho tiene plan nutricional guardado de
      3.114 kcal** — exactamente el número que sale de 1,55 — **con 0 sesiones entrenadas**. Su
      rótulo es `volumen`. Contra un TDEE de 1,55 eso es un superávit sano de +350; contra el TDEE
      que le correspondería a alguien que no entrena (~2.140) son **+975 kcal/día**, que a razón
      de ~1 kg/semana es casi todo grasa. Es la misma prescripción que reporté en julio para
-     Nataly, con una diferencia importante: **el número de Nataly lo puso un botón de plantilla y
+     Nayla, con una diferencia importante: **el número de Nayla lo puso un botón de plantilla y
      este lo puso el motor**, a partir de un dato que nadie le preguntó.
 - **Intenté tumbarlo así:** (a) **¿puede corregirlo el asesorado?** Sí, y esto es lo que baja el
   hallazgo de 🔴 a 🟠: `_NUT_ACTS` (`app-5-salud.js:346`) pinta cinco botones Sedentario/Ligero/
   Moderado/Activo/Muy activo y `setNutActivity` los aplica — **dos toques**. (b) Pero eso NO salva
-  el plan ya guardado: el de Chema quedó escrito con 1,55 y cambiar los botones no reescribe el
+  el plan ya guardado: el de Chucho quedó escrito con 1,55 y cambiar los botones no reescribe el
   plan del coach. (c) ¿el revisor lo caza? No: `nutPlanReview` compara el plan contra
   `nutritionEstimate`, que usa **el mismo 1,55**, así que los dos se equivocan juntos — es un
   oráculo que llama a la función bajo prueba (el gotcha de F7 del repo). Corrí `nutPlanReview`
-  sobre las 12 personas con plan: **las 12 dan `ok`**, Chema incluido. (d) ¿le pasa a alguien que
+  sobre las 12 personas con plan: **las 12 dan `ok`**, Chucho incluido. (d) ¿le pasa a alguien que
   el coach creó a mano? No: ahí el coach elige el factor en `#cf-activity`. Sobrevive.
 - **A quién le pasa:** a los 9 auto-registrados con tier premium/app, y a todo el que se registre
-  mañana. Con más filo a **Sharith, 16 años** (menor: la banda de v485/v493 se calcula sobre este
+  mañana. Con más filo a **Sonia, 16 años** (menor: la banda de v485/v493 se calcula sobre este
   mismo TDEE inflado, así que su piso y su techo salen los dos altos).
 - **Costo del arreglo:** hay dos, y yo haría los dos.
   **(1) Una línea, hoy:** bajar el default de `1.55` a **`1.375`** («ligeramente activo»), que es
   lo honesto para quien está empezando y deja el error del lado seguro. **(2) Un paso más en el
   wizard** (media jornada): ya hay cinco chips escritos y probados en `_NUT_ACTS` — es copiarlos
   al paso 06, que ya pregunta edad/peso/talla. ⚠️ **Y de paso hay que decidir qué hacer con el
-  plan de Chema**, que ya está en su teléfono: eso es una decisión del coach, no del código.
+  plan de Chucho**, que ya está en su teléfono: eso es una decisión del coach, no del código.
 
 ### H7 · 🟠 Ahora el wizard SÍ pregunta por lesiones — pero el plan que sale de ahí se sella como «revisado» y nadie le avisa al coach
 
@@ -381,7 +381,7 @@
     un `nerveAdvice` de **derivación médica** — que queda escrito dentro de la nota de la rutina y
     **no se le empuja a nadie**.
 - **Intenté tumbarlo así:** (a) ¿el filtro protege igual aunque nadie revise? **Sí, y esto es lo
-  que lo baja de 🔴 a 🟠** — lo verifiqué con el plan REAL de **Danilo** (51 años, *«Hernia lumbar
+  que lo baja de 🔴 a 🟠** — lo verifiqué con el plan REAL de **Darío** (51 años, *«Hernia lumbar
   L5, hernia umbilical»*, 5 rutinas todas `generated:true`): su semana entera no trae **ni un
   crunch, ni un Russian Twist, ni un peso muerto**, y su core son Plancha, Plancha Lateral,
   Dead Bug, Bird Dog y **Press Pallof** — exactamente el trabajo antiextensión/antirrotación que
@@ -459,7 +459,7 @@ y los cerró de verdad, con evidencia reproducible.
   de **2.880 planes** con `notes:'Tengo hernia discal lumbar'` → **0 ejercicios de riesgo**
   (crunch, Russian twist, elevación de piernas, peso muerto, hiperextensión). **Con su control:**
   los mismos 2.880 planes SIN la nota entregan **3.875**. En julio la cifra era 1.246 → 1.246.
-  Confirmado además sobre gente real: el plan de **Danilo** (51 años, hernia L5, 5 rutinas todas
+  Confirmado además sobre gente real: el plan de **Darío** (51 años, hernia L5, 5 rutinas todas
   auto-generadas) no trae ni uno, y su core es Plancha · Plancha Lateral · Dead Bug · Bird Dog ·
   **Press Pallof**. `GEN_ZONE_EXCL` cubre hoy 8 zonas y cada estrechamiento lleva su razón
   clínica escrita al lado, firmada por Laura.
@@ -487,19 +487,19 @@ y los cerró de verdad, con evidencia reproducible.
 
   | Persona | julio | hoy | su TDEE |
   |---|---|---|---|
-  | **Nataly** (F, 40, 59,5 kg, ganar músculo) | **3.200** «Volumen» | **2.198** | 1.933 |
-  | **Kathe** (F, 28, 83 kg, perder grasa) | 2.400 «Mantenimiento» | **1.899** | 2.399 |
-  | Claudia (F, 34, 74 kg) | 2.400 «Mantenimiento» | 2.145 | 2.145 |
-  | Natalia (F, 34, 65 kg) | 2.400 «Mantenimiento» | 2.083 | 2.083 |
+  | **Nayla** (F, 40, 59,5 kg, ganar músculo) | **3.200** «Volumen» | **2.198** | 1.933 |
+  | **Karen** (F, 28, 83 kg, perder grasa) | 2.400 «Mantenimiento» | **1.899** | 2.399 |
+  | Carla (F, 34, 74 kg) | 2.400 «Mantenimiento» | 2.145 | 2.145 |
+  | Nadia (F, 34, 65 kg) | 2.400 «Mantenimiento» | 2.083 | 2.083 |
 
-  Los +1.300 kcal/día de superávit de Nataly —la peor prescripción que encontré en julio— hoy son
+  Los +1.300 kcal/día de superávit de Nayla —la peor prescripción que encontré en julio— hoy son
   **+265**. Es lo que más ha mejorado del área.
 - ✅ **H1 de julio — el registro no preguntaba por lesiones.** El campo existe (`#su-notes`,
   `index.html:297`) y entra por las dos vías (correo y Google). Queda abierta solo la otra mitad,
   la de «alguien revisa» → **H7**.
 - ✅ **El peso que alimenta la nutrición es el ÚLTIMO registrado, no el de la ficha** (5.ª
-  superficie del peso, v448/v511). Verificado en los 12: Nataly va con 59,5 y no con 56; Kathe con
-  83 y no con 85; Samuel con 86 y no con 78.
+  superficie del peso, v448/v511). Verificado en los 12: Nayla va con 59,5 y no con 56; Karen con
+  83 y no con 85; Salomón con 86 y no con 78.
 
 ### Verificado sano hoy (cosas que en julio no alcancé a mirar)
 
@@ -512,7 +512,7 @@ y los cerró de verdad, con evidencia reproducible.
   arreglo de v424): con `lumbar` declarada desaparece «Rollitos sobre colchoneta» (flexión de
   columna) y entra «Rotación torácica en el suelo». Puerta y ventana, las dos cerradas.
 - ✅ **El sistema CORRECTIVO**, que no existía en julio. El motor ya no solo quita lo que hace
-  daño: **añade** lo que falta. Verificado en producción: Danilo lleva **Press Pallof con Banda
+  daño: **añade** lo que falta. Verificado en producción: Darío lleva **Press Pallof con Banda
   2×10 en 4 de sus 5 días**, con su `correctiveWhy` explicando de dónde salió. Y trae su candado:
   con dolor de nivel 3 (impide entrenar) **no se prescribe nada** — añadirle un ejercicio a quien
   acabas de decirle que pare es contradecirse en la misma pantalla.
@@ -521,8 +521,8 @@ y los cerró de verdad, con evidencia reproducible.
   `N=1296` y 1.296 líneas leídas) y corrí `stallReport` y `shockTargets`: **7 personas evaluables,
   28 ejercicios marcados, 7 en regresión y CERO descargas globales disparadas.** En julio el
   frente daba 41 marcados y 4 descargas sobre gente que estaba mejorando. Las compuertas de
-  persona funcionan y son legibles: Claudia, Luz y Valery salen «principiante en adaptación» (no
-  se les opina), y a **Astrid —el caso real que originó v433— hoy no se le dispara ninguna
+  persona funcionan y son legibles: Carla, Luisa y Valery salen «principiante en adaptación» (no
+  se les opina), y a **Andrea —el caso real que originó v433— hoy no se le dispara ninguna
   descarga.**
 - ✅ **El plato entrega lo que promete.** 252 días-plan de las 12 personas reales, 1.260 comidas:
   kcal **92,1 %–109,5 %** (mediana 100,8) y proteína **93,4 %–119,0 %** (mediana 105,6), las dos

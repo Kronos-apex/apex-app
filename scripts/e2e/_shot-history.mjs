@@ -37,7 +37,7 @@ await sleep(2500);
 
 const setup = await ev(`(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const c={id:'cH',name:'Samuel Cifuentes',email:'samuel@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,sex:'M',tier:'premium',
+  const c={id:'cH',name:'Salomón Cárdenas',email:'salomon@ejemplo.com',goal:'Ganar músculo',level:'Intermedio',days:4,weight:78,sex:'M',tier:'premium',
     payments:[{date:'2026-06-15',dueDate:'2026-08-01',amount:120000}],routines:[{id:'r1',name:'Full Body A',day:'Lunes',exercises:[]}]};
   DB.clients=[c];
   const mkEx=(nm,mus,kg,reps)=>({id:nm,name:nm,muscle:mus,track:'peso_reps',sets:[{kg,reps,done:true},{kg,reps:reps-1,done:true},{kg:kg-5,reps,done:true}]});

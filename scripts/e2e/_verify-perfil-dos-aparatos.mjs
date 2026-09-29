@@ -52,7 +52,7 @@ const MONTAJE = `(()=>{
   const clon=o=>JSON.parse(JSON.stringify(o));
   window.__nube={profile:null,routines:[],escrituras:0};
   window.__reset=()=>{
-    window.__nube.profile={name:'Astrid Beltran',sex:'F',age:33,weight:70,level:'Intermedio',
+    window.__nube.profile={name:'Andrea Bernal',sex:'F',age:33,weight:70,level:'Intermedio',
       habits:{water:{'2026-09-17':3}},
       payments:[{date:'2026-08-15',dueDate:'2026-09-15',amount:100000}]};
     window.__nube.routines=[{id:'r1',name:'Glúteo A',day:'Lunes',
@@ -96,7 +96,7 @@ const MONTAJE = `(()=>{
       if(typeof COACH_OWN_ROW!=='undefined') COACH_OWN_ROW=null;
     } else {
       CUR.loggedAs='client'; CUR.clientId='cli-1';
-      _authUid='uid-astrid';
+      _authUid='uid-andrea';
       _authBaseSet({profile:clon(fila.profile),routines:clon(fila.routines)});
     }
     return DB.clients[0].name;

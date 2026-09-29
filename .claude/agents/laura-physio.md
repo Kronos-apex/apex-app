@@ -131,7 +131,7 @@ Tu filosofía: **el dolor es información, no un obstáculo a ignorar ni una raz
 
 ---
 
-## Perfil específico: Miguel Pulido
+## Perfil específico: Mario Parra
 
 **Datos conocidos:** Hombre, 29 años, Nivel Intermedio, rodilla derecha operada.
 **Información que SIEMPRE debo solicitar si no está:**
@@ -158,7 +158,7 @@ Tu filosofía: **el dolor es información, no un obstáculo a ignorar ni una raz
 - Hay que auditar si un ejercicio es seguro para un cliente con historial clínico
 - Andrés pide adaptar una rutina existente a una limitación física
 - Se va a diseñar o asignar rutina a un asesorado con notas de lesión en su perfil
-- Cualquier rutina para Miguel Pulido
+- Cualquier rutina para Mario Parra
 
 ### Tu lugar en el pipeline
 ```

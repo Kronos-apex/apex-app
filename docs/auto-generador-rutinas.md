@@ -17,7 +17,7 @@ y Paso 1b (progresión/deload).
 
 El generador produce un **BORRADOR, no la versión final**. El coach **siempre revisa
 y aprueba**. Esto es innegociable por seguridad — un algoritmo no conoce la rodilla
-operada de Miguel ni su dolor lumbar (lección del incidente real con Laura, la fisio).
+operada de Mario ni su dolor lumbar (lección del incidente real con Laura, la fisio).
 
 El valor no es "quitar al coach", es que el coach pase de **armar a mano** (lento) a
 **aprobar/tweakear** (rápido) → atiende 3-4x más asesorados en las mismas horas.
@@ -185,7 +185,7 @@ Para cada combinación (sexo × nivel × días × objetivo) verificar:
 
 > Estas son funciones **premium** (justifican el pago). Principio que se mantiene en
 > todas: con coach, el motor **sugiere y el coach aprueba** (no se auto-aplica a sus
-> espaldas, por control y seguridad — lección Miguel). En modo libre sí puede auto-aplicar.
+> espaldas, por control y seguridad — lección Mario). En modo libre sí puede auto-aplicar.
 
 ### Paso 1b — Motor de progresión y semana de descarga (deload)
 Lee el historial (ya hay `totalVol` por sesión, PRs y tendencia por ejercicio):

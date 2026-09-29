@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// _repro-safearea-volver.mjs — «VOLVER» BAJO LA ISLA DINÁMICA (reporte de Kathe, iPhone)
+// _repro-safearea-volver.mjs — «VOLVER» BAJO LA ISLA DINÁMICA (reporte de Karen, iPhone)
 //
-// EL REPORTE: Kathe entra a una habitación y no puede salir. El botón «‹ Volver» está tan pegado
+// EL REPORTE: Karen entra a una habitación y no puede salir. El botón «‹ Volver» está tan pegado
 // arriba que no lo alcanza, y para regresar a la rutina tiene que CERRAR Y ABRIR la app.
 //
 // LA HIPÓTESIS QUE SE MIDE: AVI se instala como PWA (`"display":"standalone"` en manifest.json) y
@@ -17,7 +17,7 @@
 // 🔴 POR QUÉ NO BASTA EL HIT-TESTING QUE YA TIENE `_repro-sroom-fs.mjs`: `elementFromPoint` vive
 // dentro del viewport del navegador y el viewport SÍ incluye la franja del sistema. Un botón
 // tapado por el reloj del iPhone sale «alcanzable» en esa prueba — y por eso lleva meses verde
-// mientras Kathe no puede volver. Lo que hay que medir es GEOMETRÍA contra la línea del área
+// mientras Karen no puede volver. Lo que hay que medir es GEOMETRÍA contra la línea del área
 // segura, no si un punto pertenece al elemento.
 //
 // QUÉ AFIRMA:
@@ -151,7 +151,7 @@ const ctrlApp = await ev(`(()=>{
 A.ok(ctrlApp.top === INSET + 8, `CONTROL app: «×» del visor SÍ respeta el área segura — arranca en y=${ctrlApp.top} (esperado ${INSET + 8})`, ctrlApp);
 
 // ── LA SONDA ─────────────────────────────────────────────────────────────────
-// No pregunta «¿el punto central pertenece al botón?» (eso ya sale verde hoy y Kathe sigue
+// No pregunta «¿el punto central pertenece al botón?» (eso ya sale verde hoy y Karen sigue
 // atrapada). Pregunta dónde está el botón respecto de la franja que gobierna el sistema.
 // El ALTO PULSABLE no es `rect.height`: el ::after invisible extiende el área más allá del pill.
 // Se mide barriendo con `elementFromPoint`, que es lo que hace el dedo — cuántas filas de píxeles
@@ -176,7 +176,7 @@ const VOLVER = `(()=>{
 
 
 // ── BARRIDO DE LA CLASE ──────────────────────────────────────────────────────
-// «Volver» es el caso que reportó Kathe; la CLASE es «un control pulsable pintado debajo de la
+// «Volver» es el caso que reportó Karen; la CLASE es «un control pulsable pintado debajo de la
 // franja del sistema». No se puede decidir leyendo el CSS —`.prog-anchors` es sticky en top:0 y
 // está PERFECTA, porque su scroller (`.cnbody`) empieza debajo de una barra que sí reserva el
 // área— así que se mide en el DOM vivo, superficie por superficie.
@@ -260,7 +260,7 @@ A.ok(chicas === 0, `«Volver» ofrece al menos ${HIG_MIN}px de alto pulsable (gu
 
 // ── 3) LA MISMA CLASE DE DEFECTO EN EL PANEL DEL COACH ───────────────────────
 // `.sidebar` es `position:fixed;top:0` con `padding:16px` fijo: su primer hijo (el logo «AVI ·
-// Panel del Coach») cae en la misma franja. No es la pantalla de Kathe, pero es el mismo error.
+// Panel del Coach») cae en la misma franja. No es la pantalla de Karen, pero es el mismo error.
 await ev(`document.querySelectorAll('.sroom.on').forEach(r=>r.classList.remove('on'));try{AVINAV.layers=0;}catch(e){}`);
 const nav = await ev(`(()=>{
   const n=document.createElement('nav'); n.className='sidebar open';

@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════════════════════════════════
 // MATRIZ DE SABOTAJE — v570 · «quitar no puede depender de poder publicar»
 //
-// Samuel se registro declarando 28 anos y tiene 15. Con esa edad falsa la app le publico la
+// Salomón se registro declarando 28 anos y tiene 15. Con esa edad falsa la app le publico la
 // tarjeta el 29-ago: el candado de menores de `clientProgressStory` nunca se activo porque le
 // pregunto a la cifra equivocada. Lo grave aparecio al ir a corregirlo: el UNICO boton para
 // QUITAR una tarjeta vive dentro de la ficha y solo se dibuja cuando la historia SI es
@@ -33,7 +33,7 @@ const CASOS = [
     to: "      return Object.assign(base, { estado: 'ok' });",
   },
   {
-    n: 'S3 · quien hoy NO se publicaria se da por bueno (el caso de Samuel)',
+    n: 'S3 · quien hoy NO se publicaria se da por bueno (el caso de Salomón)',
     file: 'avi-core.js',
     from: "      estado: 'revisar', clienteId: c.id, razon: (st && st.razon) || 'desconocida',",
     to: "      estado: 'ok', clienteId: c.id,",

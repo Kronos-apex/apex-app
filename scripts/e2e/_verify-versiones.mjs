@@ -2,7 +2,7 @@
 //
 // Decisión del PO (25-ago): instrumentarlo. Hasta hoy la app **solo registraba su versión cuando
 // había un ERROR** (`app_errors.build`), así que después de desplegar un arreglo no se podía
-// saber si le llegó a alguien — la pregunta que quedó sin responder con el reporte de Kathe.
+// saber si le llegó a alguien — la pregunta que quedó sin responder con el reporte de Karen.
 //
 // LO QUE PROTEGE:
 //   1. la tarjeta APARECE cuando alguien está atrasado, y lo NOMBRA (V1)
@@ -44,11 +44,11 @@ const MONTAR = `((caso) => {try{
   const base=(id,name,dev)=>({id,name,email:id+'@x.com',goal:'Ganar músculo',level:'Intermedio',days:4,
     age:30,sex:'F',weight:62,height:163,activityFactor:1.55,tier:'premium',payments:[],routines:[],dev});
   const sets={
-    mezcla:[ base('c1','Kathe Beltran',{b:B-2,at:iso(30)}),
-             base('c2','Astrid Beltran',{b:B,at:iso(1)}),
-             base('c3','Chema',null) ],
-    aldia:[  base('c2','Astrid Beltran',{b:B,at:iso(1)}) ],
-    sindato:[base('c3','Chema',null), base('c4','Daniel',null) ],
+    mezcla:[ base('c1','Karen Bernal',{b:B-2,at:iso(30)}),
+             base('c2','Andrea Bernal',{b:B,at:iso(1)}),
+             base('c3','Chucho',null) ],
+    aldia:[  base('c2','Andrea Bernal',{b:B,at:iso(1)}) ],
+    sindato:[base('c3','Chucho',null), base('c4','David',null) ],
   };
   DB.clients=sets[caso]; DB.history={}; DB.bodyweight={}; DB.nutrition={};
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
@@ -81,12 +81,12 @@ check('V0 el harness sabe con qué versión corre (no la lleva clavada)', BUILD 
 await montar('mezcla');
 let t = await evj(TARJETA);
 check('V1 con un teléfono atrasado la tarjeta APARECE y dice de quién es',
-  t.existe && t.visible && /Kathe/.test(t.txt) && new RegExp('versión ' + (BUILD - 2)).test(t.txt),
+  t.existe && t.visible && /Karen/.test(t.txt) && new RegExp('versión ' + (BUILD - 2)).test(t.txt),
   t.txt.slice(0, 150));
 check('V1b dice en qué versión está ÉL, que es la referencia honesta',
   new RegExp('\\b' + BUILD + '\\b').test(t.txt), t.txt.slice(0, 90));
 check('V1c y NO acusa a quien está al día ni a quien no tiene dato todavía',
-  !/Astrid/.test(t.txt) && !/Chema/.test(t.txt) && /1 al día/.test(t.txt) && /1 sin datos/.test(t.txt),
+  !/Andrea/.test(t.txt) && !/Chucho/.test(t.txt) && /1 al día/.test(t.txt) && /1 sin datos/.test(t.txt),
   t.txt.slice(0, 150));
 await shot('versiones', 'light'); await shot('versiones', 'dark');
 

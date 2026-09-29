@@ -35,7 +35,7 @@ const setup = await ev(`(()=>{try{
   window._pushCtx={clientId:'cF',days:[1,3,5],shifts:null};
   const wf=document.getElementById('workout-finish');
   document.getElementById('wf-photo').style.backgroundImage=\`url('\${window.WF_DEFAULT_PHOTO||'media/loading-bg.jpg'}')\`;
-  document.getElementById('wf-title').textContent='¡Lo lograste, Samuel!';
+  document.getElementById('wf-title').textContent='¡Lo lograste, Salomón!';
   document.getElementById('wf-sub').textContent='Full Body A · lunes, 12 de julio';
   document.getElementById('wf-stats').innerHTML=[['Duración','42 min'],['Calorías','320 kcal'],['Series','8/8'],['Volumen','4,850 kg']].map(([l,v])=>\`<div class="wf-stat"><div class="wf-stat-val">\${v}</div><div class="wf-stat-lbl">\${l}</div></div>\`).join('');
   document.getElementById('wf-prs').innerHTML=[['Sentadilla','120 kg × 5 reps'],['Press banca','85 kg × 5 reps']].map(([nm,det])=>\`<div class="wf-pr"><span class="wf-pr-ico">🏆</span><div style="flex:1;min-width:0"><div class="wf-pr-name">¡Nuevo récord! \${nm}</div><div class="wf-pr-det">\${det}</div></div></div>\`).join('');

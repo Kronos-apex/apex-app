@@ -50,7 +50,7 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: CONTROL · el formulario de entrada está a la vista`, abierto);
 
   // ── 1 · correo sin confirmar ──────────────────────────────────────────────
-  await ev(`(()=>{ document.getElementById('lu').value='edwin.prueba@gmail.com'; document.getElementById('lp').value='Clave1234'; document.querySelector('.lbtn').click(); return 1; })()`);
+  await ev(`(()=>{ document.getElementById('lu').value='oculto@gmail.com'; document.getElementById('lp').value='Clave1234'; document.querySelector('.lbtn').click(); return 1; })()`);
   await sleep(700);
   const s1 = await ev(`(()=>{ const e=document.getElementById('lerr'); const b=e&&e.querySelector('.lerr-btn'); const r=b&&b.getBoundingClientRect();
     const hit=r?document.elementFromPoint(r.x+r.width/2,r.y+r.height/2):null;
@@ -64,7 +64,7 @@ for (const tema of ['claro', 'oscuro']) {
 
   await ev(`document.querySelector('#lerr .lerr-btn').click()`); await sleep(500);
   const s2 = await ev(`({ calls: __calls.filter(c=>c[0]==='resend'), msg: (document.getElementById('l-forgot-msg')||{}).textContent||'' })`);
-  check(`${tema}: «Reenviar correo» pide el correo de confirmación de ESA dirección`, s2.calls.length === 1 && s2.calls[0][1] === 'edwin.prueba@gmail.com', JSON.stringify(s2.calls));
+  check(`${tema}: «Reenviar correo» pide el correo de confirmación de ESA dirección`, s2.calls.length === 1 && s2.calls[0][1] === 'oculto@gmail.com', JSON.stringify(s2.calls));
   check(`${tema}: y dice que se lo volvimos a mandar`, /volvimos a mandar/.test(s2.msg), s2.msg.slice(0, 70));
   await ev(`(()=>{ const f=document.getElementById('lerr'); if(f) f.classList.remove('on'); window.reenviarConfirmacion(); return 1; })()`); await sleep(300);
   const s3 = await ev(`({ n: __calls.filter(c=>c[0]==='resend').length, msg: (document.getElementById('l-forgot-msg')||{}).textContent||'' })`);
@@ -77,7 +77,7 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: CONTROL · la clave mala sigue diciendo «incorrectos» y gastando el intento`, /incorrect/.test(c1.txt) && c1.gastados === '1' && !c1.boton, JSON.stringify(c1));
 
   // ── 2 · olvidé mi contraseña con un dominio ajeno ─────────────────────────
-  await ev(`(()=>{ __calls.length=0; document.getElementById('lu').value='claudia.prueba@avi.com'; document.getElementById('l-forgot').click(); return 1; })()`);
+  await ev(`(()=>{ __calls.length=0; document.getElementById('lu').value='carla.prueba@avi.com'; document.getElementById('l-forgot').click(); return 1; })()`);
   await sleep(500);
   const r1 = await ev(`({ n: __calls.filter(c=>c[0]==='reset').length, msg:(document.getElementById('l-forgot-msg')||{}).textContent||'' })`);
   check(`${tema}: dominio ajeno → NO se manda el enlace`, r1.n === 0, JSON.stringify(r1.n));

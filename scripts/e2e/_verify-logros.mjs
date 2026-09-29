@@ -38,7 +38,7 @@ async function shot(name, sel) {
 // entreno de HOY es el tercero → completa la semana. Semanas relativas a hoy, nunca fechas fijas.
 const MONTAR = `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const client={id:'lg',name:'Nataly Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:3,
+  const client={id:'lg',name:'Nayla Ospina',sex:'F',level:'Intermedio',goal:'Ganar músculo',days:3,
     routines:[{id:'r1',name:'Pierna',day:'Lunes',exercises:[]},{id:'r2',name:'Torso',day:'Miércoles',exercises:[]},{id:'r3',name:'Full',day:'Viernes',exercises:[]}]};
   const lunes=new Date(weekStartTs(new Date()));
   const dia=(semanas,off)=>{const d=new Date(lunes);d.setDate(d.getDate()-7*semanas+off);d.setHours(10,0,0,0);return d.toISOString();};

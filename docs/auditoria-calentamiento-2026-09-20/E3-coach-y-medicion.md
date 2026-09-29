@@ -91,7 +91,7 @@ huérfanas porque su rutina se editó/regeneró desde entonces — no son eviden
 de cobertura). De esas, 378 traían `durationSec`.
 
 **Control de discriminación — Y AQUÍ SE CAE EL PROXY:** el grupo "lista manual" con sesiones reales
-son solo **3 personas** (Claudia, Estella, Danilo — la lista del propio coach es del 10-sep y no
+son solo **3 personas** (Carla, Elena, Darío — la lista del propio coach es del 10-sep y no
 tiene ni una sesión registrada todavía, es demasiado nueva). Con N=3 personas no hay manera de
 separar "calienta distinto" de "esta persona en particular entrena distinto" — la mediana de
 duración es prácticamente IDÉNTICA entre los dos grupos (61,6 vs 62,1 min, 0,8% de diferencia) y la
@@ -108,7 +108,7 @@ propia: N=1 nunca es tendencia).
 
 Esto SE VE como una señal fuerte a favor del calentamiento manual. **La tumbé antes de creérmela**:
 es casi con certeza **causalidad al revés**. El coach le arma calentamientos a mano a las personas
-en las que ya invierte más atención (Claudia y Estella llevan meses de plan estable, con 57 y 58
+en las que ya invierte más atención (Carla y Elena llevan meses de plan estable, con 57 y 58
 sesiones históricas cada una) — no es que la lista manual las vuelva más disciplinadas, es que ya
 eran las más disciplinadas y por eso se ganaron una lista a medida. Con N=3 no hay forma de separar
 esto. **Reportar esto como "el calentamiento manual mejora la adherencia" sería exactamente el
@@ -221,8 +221,8 @@ progreso sin perder su lugar). Cambio de una línea; sin riesgo, sin necesidad d
   lista propia?** No lo pude medir — no hay telemetría de cuántas veces alguien abrió el selector y
   desistió. La hipótesis más simple sigue siendo que el auto-derivado ya es suficientemente bueno.
 - **¿Hay más casos como el del coach entre las otras 5 listas manuales?** Medí específicamente la
-  del coach porque su reporte de dolor es el único con bandera roja de toda la base. Claudia,
-  Estella y Danilo no tienen `painCare` activo hoy (Danilo tiene `notes` con una hernia, pero sin
+  del coach porque su reporte de dolor es el único con bandera roja de toda la base. Carla,
+  Elena y Darío no tienen `painCare` activo hoy (Darío tiene `notes` con una hernia, pero sin
   reglas de exclusión de WARMUP_LIBRARY para ese texto libre) — así que hoy no hay un segundo caso,
   pero no corrí el cruce completo id-por-id contra las 4 listas restantes porque el briefing asigna
   esa pregunta exacta a E2.
@@ -236,7 +236,7 @@ progreso sin perder su lugar). Cambio de una línea; sin riesgo, sin necesidad d
 - **No repetí la medición del catálogo (34 piezas, duplicado wh5/wm1, filtro de lesiones) que ya
   hizo el orquestador** — el briefing pide creerle al baseline y solo reportar si mi trabajo lo
   contradice; no encontré ninguna contradicción.
-- **No audité si las 4 listas manuales restantes (Claudia/Estella, creadas 29-jun, antes del chip)
+- **No audité si las 4 listas manuales restantes (Carla/Elena, creadas 29-jun, antes del chip)
   contienen hoy algo contraindicado contra las zonas de dolor VIGENTES de esas personas** — es
   exactamente la pregunta que el briefing le asigna a E2 ("¿Hay hoy alguien recibiendo un movimiento
   que el filtro le quitaría? Con nombre, id y la regla exacta"), y duplicarla habría sido pisar su

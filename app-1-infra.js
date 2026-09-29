@@ -494,7 +494,7 @@ function _coachSettingsObj(){
 const VAPID_PUBLIC='BDf4sPyqahfUqJxuWpgCwFopVoX5jivStXpjyrrtDG1QP9Bxf3pVbcFSisPBsFL3bCac9c-jrkLvGgchgPfg7d8';
 
 // ══════════ TELEMETRÍA DE ERRORES (v282) ══════════
-// Los errores de producción fallaban EN SILENCIO (caso Luz 2026-07-02: el vínculo Google
+// Los errores de producción fallaban EN SILENCIO (caso Luisa 2026-07-02: el vínculo Google
 // quedó a medias y nadie se enteró por días). window error + unhandledrejection → INSERT
 // en app_errors (RLS: insert-only para anon/auth; solo el coach lee). El limitador
 // errReportGate (avi-core, puro, testeado) aplica dedupe + 5 por sesión + 20 por día
@@ -551,7 +551,7 @@ let _sbc=null;
 // Captura TEMPRANA (al parsear este script, ANTES de crear el cliente) del retorno de
 // OAuth: detectSessionInUrl consume/limpia el hash, y los errores reales del vínculo
 // Google (identity_already_exists, etc.) llegan AQUÍ — no en el return de linkIdentity.
-// Ver _handleGoogleLinkReturn (app-2-login.js). Caso Luz 2026-07-02.
+// Ver _handleGoogleLinkReturn (app-2-login.js). Caso Luisa 2026-07-02.
 const _OAUTH_RET=(typeof parseOAuthReturn==='function'&&typeof location!=='undefined')
   ? parseOAuthReturn(location.hash,location.search)
   : {error:'',code:'',desc:''};
@@ -765,7 +765,7 @@ async function subscribePush(clientId, trainingDays=[], shiftMap=null, force=fal
     // re-suscribir el mismo endpoint ACTUALIZA en vez de duplicar». **Era FALSO**, y es la frase
     // que hizo que nadie volviera a mirar durante meses: `subscription` incluye `keys.p256dh` y
     // `keys.auth`, que el navegador **ROTA** en cada re-suscripción, así que el conflicto no casa
-    // NUNCA e inserta una fila nueva. Medido en producción: **Nataly, 8 filas para UN endpoint**,
+    // NUNCA e inserta una fila nueva. Medido en producción: **Nayla, 8 filas para UN endpoint**,
     // ~1 por apertura de la app, y 7 de los 17 envíos de cada ronda diaria eran basura.
     // Quien deduplica ahora es el SERVIDOR: un trigger `before insert` colapsa por
     // `(client_id, endpoint)` — que es la identidad real de una suscripción — más un índice único

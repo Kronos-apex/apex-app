@@ -2,7 +2,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // records-atascados.mjs — ¿cuántos récords guardados los batió una sesión POSTERIOR?
 //
-// Nace del hallazgo D3-2 (auditoría 7-sep): «Nataly, Curl Femoral Acostado: `prs` dice 20 kg
+// Nace del hallazgo D3-2 (auditoría 7-sep): «Nayla, Curl Femoral Acostado: `prs` dice 20 kg
 // del 25-may y su historial tiene 30 kg el 25-jul». v585 lo esquivó en el panel «Cargas»
 // (calcula el récord del historial), pero `ax_pr` sigue alimentando el PESO SUGERIDO y la
 // pantalla de récords del asesorado.

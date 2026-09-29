@@ -8,7 +8,7 @@ Todo lo de la primera sección se hace **sin escribir una línea de código**.
 ## 0 · Esta semana, sin código
 
 ### 🔴 El 2 de septiembre se vencen cuatro el mismo día — 560.000 COP
-**Astrid, Claudia, Kathe y Luz.** Antes: **Nataly el 31 de agosto**. Después: Miguel el 3, Samuel
+**Andrea, Carla, Karen y Luisa.** Antes: **Nayla el 31 de agosto**. Después: Mario el 3, Salomón
 el 5. **Siete cobros en seis días, y el 63 % de tu recurrente cae en uno solo.**
 Es una fecha en tu calendario, no una tarea de desarrollo. Lo demás de esta lista puede esperar;
 esto no.
@@ -29,7 +29,7 @@ desde la ficha de cada uno.
 
 ### 🔴 El día 1 sigue cayendo en «día de descanso» — el 43 % de los días
 El plan se reparte de lunes a viernes; quien se registra un sábado abre la app y lo primero que lee
-es que **hoy no entrene**. **Le pasó a Chema el sábado 22 de agosto**, con plan de pago y cero
+es que **hoy no entrene**. **Le pasó a Chucho el sábado 22 de agosto**, con plan de pago y cero
 sesiones. Y el rediseño de «Hoy» que elegiste (v503-v508) **está apagado a propósito para el día 1**,
 así que a quien más falta le hace, no le llegó.
 👉 **Choca de frente con tu decisión de vender a nuevos.** Es lo primero que arreglaría del producto.
@@ -57,7 +57,7 @@ siempre.
 
 ## 2 · Lo que se está degradando solo
 
-### 🟠 A Nataly cada recordatorio le llega 8 veces
+### 🟠 A Nayla cada recordatorio le llega 8 veces
 Un mismo teléfono acumula filas de notificación. La tabla pasó de 10 a 18 filas en tres semanas y
 **7 de esas 18 son duplicados de una sola persona**. Lo encontraron A2 y A3 por separado.
 **Cinco líneas.**
@@ -96,7 +96,7 @@ costo de oportunidad más grande del delta.
 
 1. **¿Se instrumenta la versión que trae cada teléfono?** Hoy la app solo la registra cuando hay un
    error, así que **no hay forma de confirmar que un arreglo llegó**. Es la pregunta de fondo detrás
-   del reporte de Kathe.
+   del reporte de Karen.
 2. **¿La rampa calórica se construye?** Sigue sin construirse y A4 dice que **hay que re-medir el
    argumento antes de decidir**: los números con los que se planteó ya no son los de hoy.
 3. **¿El registro de alimentos se congela?** Y si sí, con qué disparador para volver a abrirlo.

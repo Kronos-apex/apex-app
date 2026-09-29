@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════════════════════════════════
 // REPRO — v573 · la puerta del acudiente para publicar a un MENOR
 //
-// EL DEFECTO. Samuel se registro declarando 28 anios y tiene 15. Con esa edad falsa la app le
+// EL DEFECTO. Salomón se registro declarando 28 anios y tiene 15. Con esa edad falsa la app le
 // publico la tarjeta el 29-ago. Al corregirle la edad, `clientProgressStory` empezo a devolver
 // `menor` y la ficha se quedo SIN NINGUNA SALIDA UTIL: explicaba por que no se podia y no
 // ofrecia nada. O sea que un coach CON el permiso del acudiente en la mano quedaba exactamente
@@ -82,7 +82,7 @@ const montar = async () => ev(`(()=>{
   if(!window.__svReal){ window.__svReal=window.sv; window.sv=function(){ window.__guardados++; }; }
   window.__toasts=[];
   if(!window.__toastReal){ window.__toastReal=window.toast; window.toast=function(t){ window.__toasts.push(String(t)); }; }
-  DB.clients=[{id:'smx',name:'Samuel Cifuentes',age:15,sex:'m',
+  DB.clients=[{id:'smx',name:'Salomón Cárdenas',age:15,sex:'m',
     consent:{general:true,salud:true,menor:true,adulto:false,edad:15,
              acudiente:{nombre:'Marta Restrepo',tel:'573001234567'},v:'legal-3',at:'2026-09-01T10:00:00.000Z'}}];
   DB.history={smx:${HIST}};
@@ -204,7 +204,7 @@ for (const t of [{ n: 'iPhone 12 / Android medio', w: 390, h: 844 },
 // El mismo montaje con un ADULTO tiene que comportarse al reves: ni puerta ni casilla, y la
 // imagen disponible de una. Si esto no cambia, el harness no esta midiendo el candado.
 console.log('\n\u2500\u2500 CONTROL DE DISCRIMINACION (la misma pantalla con una adulta) \u2500\u2500');
-await ev(`DB.clients=[{id:'ax',name:'Astrid Beltran',age:33}];
+await ev(`DB.clients=[{id:'ax',name:'Andrea Bernal',age:33}];
           DB.history={ax:${HIST}}; CUR.clientId='ax'; window.__c=DB.clients[0];
           showScreen('s-coach'); gp('p-detail',null,'Detalle',true); renderStoryCard(window.__c);1`);
 const a = await leer();

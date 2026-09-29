@@ -41,7 +41,7 @@ await sleep(1500);
 // su techo — la puerta que v485 encontró abierta, ahora por el otro lado.
 const setup = await ev(`(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  DB.clients=[{id:'c1',name:'Sharith Sofía',email:'s@x.com',goal:'Ganar músculo',level:'Intermedio',days:4,
+  DB.clients=[{id:'c1',name:'Sonia Sofía',email:'s@x.com',goal:'Ganar músculo',level:'Intermedio',days:4,
     age:16,sex:'F',weight:72,height:165,activityFactor:1.55,tier:'premium',payments:[],routines:[]}];
   DB.nutrition={c1:{goal:'volumen',kcal:3200,prot:158,carbs:500,fat:80,water:10,meals:5}};
   DB.history={}; DB.bodyweight={}; window.CUR=window.CUR||{}; CUR.loggedAs='coach';
@@ -86,7 +86,7 @@ A.ok(!!N && N.desborde <= 1, 'C6 el aviso no se desborda a lo ancho', N);
 await ev(`(()=>{const n=document.getElementById('nut-goal-nota');if(n)n.scrollIntoView({block:'center'})})()`); await sleep(300);
 await shot('editor-techo');
 
-// ── v496: LA PROTEÍNA. Caso real (Claudia): calorías clavadas y 37 g de proteína de menos, que
+// ── v496: LA PROTEÍNA. Caso real (Carla): calorías clavadas y 37 g de proteína de menos, que
 // hasta v496 la ficha daba por «ok». Se monta encima del mismo fixture, sin recargar la app.
 // ⚠️ Y LO PRIMERO ES CERRAR EL MODAL DEL EDITOR, que quedó abierto de la fase anterior. Sin esto
 // las aserciones pasan igual (leen el DOM, que existe detrás) y la CAPTURA sale del modal: una foto
@@ -95,7 +95,7 @@ await ev(`(()=>{try{if(typeof cm==='function')cm('m-nut');}catch(e){}
   document.querySelectorAll('.mdbg.on,.md.on').forEach(m=>m.classList.remove('on'));})()`);
 await sleep(400);
 const setup2 = await ev(`(()=>{try{
-  DB.clients=[{id:'c1',name:'Claudia Valbuena',email:'c@x.com',goal:'Recomposición',level:'Intermedio',days:4,
+  DB.clients=[{id:'c1',name:'Carla Vargas',email:'c@x.com',goal:'Recomposición',level:'Intermedio',days:4,
     age:34,sex:'F',weight:74,height:156,activityFactor:1.55,tier:'premium',payments:[],routines:[]}];
   DB.nutrition={c1:{goal:'mantenimiento',kcal:2146,prot:107,carbs:268,fat:71,water:10,meals:4}};
   openDetail('c1'); return 'ok';

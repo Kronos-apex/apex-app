@@ -44,7 +44,7 @@ const setTheme = async t => { await ev(`(()=>{document.documentElement.setAttrib
 // Cliente con plan y descarga activa. `DL_OFF` = días desde que empezó (para probar «vencida»).
 const fixture = (offDays) => `(()=>{try{
   ['avi-loading','apex-loading'].forEach(x=>{const l=document.getElementById(x);if(l)l.style.display='none';});
-  const c={id:'a1',name:'Kathe Prueba',level:'Intermedio',days:4,tier:'premium',goal:'Ganar músculo',notes:'',
+  const c={id:'a1',name:'Karen Prueba',level:'Intermedio',days:4,tier:'premium',goal:'Ganar músculo',notes:'',
     weight:62,height:165,age:29,sex:'F',activityFactor:1.55,
     payments:[{date:'2026-06-15',dueDate:'2026-12-01',amount:120000}],
     routines:[{id:'r1',name:'Glúteo A',day:['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][(new Date().getDay()+6)%7],restSec:90,exercises:[
@@ -148,7 +148,7 @@ try {
 
   // ── D8: el récord se guarda SIN cerrar el entreno (v483) ──
   // 🔴 Hasta v483 el récord solo se escribía al llegar al 100% o al tocar «Finalizar». Medido en
-  // producción el 14-ago: **62% de las sesiones con peso NO se cierran nunca** → Nataly hizo
+  // producción el 14-ago: **62% de las sesiones con peso NO se cierran nunca** → Nayla hizo
   // Prensa de Pierna 100 kg ×15 en cinco sesiones y no tenía récord. Y la cadena sigue: sin
   // récord no hay peso sugerido, y sin peso sugerido la semana de descarga no tiene qué bajar.
   // Aquí se marca UNA sola serie de un ejercicio sin récord previo y se exige que quede guardado.
@@ -225,7 +225,7 @@ try {
     const el=document.getElementById('h-deload');
     return {vis:el.style.display!=='none', txt:el.innerText||''};})()`);
   await setTheme('light'); await shot('D4-coach-aviso-claro','#h-deload');
-  check('🔒 D4 el coach ve en Inicio a quién se le pasó la descarga', d4.vis && /Kathe/.test(d4.txt) && /termin/i.test(d4.txt), d4.txt.replace(/\n/g, ' ').slice(0, 90));
+  check('🔒 D4 el coach ve en Inicio a quién se le pasó la descarga', d4.vis && /Karen/.test(d4.txt) && /termin/i.test(d4.txt), d4.txt.replace(/\n/g, ' ').slice(0, 90));
   await setTheme('dark'); await shot('D4-coach-aviso-oscuro','#h-deload'); await setTheme('light');
 
   // ── D5: dentro de los 7 días el aviso NO molesta ──

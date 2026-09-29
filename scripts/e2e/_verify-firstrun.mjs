@@ -33,7 +33,7 @@ const NUEVO = `(()=>{try{
   const hoy=days[new Date().getDay()];
   const ex=(id,n,m,s,r)=>({id:id,name:n,muscle:m,type:'Compuesto',sets:s,reps:r});
   const rut=(id,n,d,exs)=>({id:id,name:n,day:d,restSec:90,exercises:exs});
-  const client={id:'nuevo',name:'Santiago',sex:'M',level:'Principiante',goal:'Bajar de peso',days:3,
+  const client={id:'nuevo',name:'Sebastián',sex:'M',level:'Principiante',goal:'Bajar de peso',days:3,
     createdAt:new Date().toISOString(),
     routines:[
       rut('r1','Full body A',hoy,[ex('e1','Sentadilla','Pierna',3,'12'),ex('e2','Press banca','Pecho',3,'10'),ex('e3','Remo con barra','Espalda',3,'10'),ex('e4','Plancha','Core',3,'30s')]),
@@ -200,7 +200,7 @@ await ev(`(()=>{DB.history={nuevo:[]};
 // 🔴 D6 RE-ENCUADRADO en v531. Antes afirmaba «sin entreno hoy la portada NO se pinta» — o sea,
 // afirmaba EL DEFECTO: el plan va de lunes a viernes, así que quien se registra sábado, domingo o
 // festivo (el 43 % de los días, medido) veía como primera pantalla de su vida en la app un banner
-// que le dice que hoy no entrene. Le pasó a Chema el 22-ago con plan de pago y cero sesiones.
+// que le dice que hoy no entrene. Le pasó a Chucho el 22-ago con plan de pago y cero sesiones.
 // Ahora la portada SÍ se pinta, en su variante «tu plan empieza el <día>».
 const d6 = await ev(`(()=>{
   const el=document.getElementById('cn-firstrun');

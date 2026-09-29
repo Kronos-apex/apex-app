@@ -141,7 +141,7 @@ function initClientView(client){
   }catch(e){ if(typeof warn==='function')warn('AVI: descarga programada (asesorado):',e&&e.message); }
   // 📟 EL LATIDO DE VERSIÓN (v541). Hasta ahora la app solo registraba qué versión corre un
   // teléfono CUANDO FALLA (`app_errors.build`), así que después de desplegar un arreglo no había
-  // forma de saber si le llegó a alguien — la pregunta que quedó abierta con el reporte de Kathe.
+  // forma de saber si le llegó a alguien — la pregunta que quedó abierta con el reporte de Karen.
   // Va aquí, en la misma puerta que la descarga programada y la cura de nivel: es lo que corre
   // cuando un asesorado abre su app. La decisión de escribir o no vive en `deviceStamp` (pura);
   // esto solo le pasa el número REAL con el que el navegador pidió los scripts.
@@ -962,7 +962,7 @@ function _todayHeroHTML(greet,chip,m){
 // `routine` = la rutina de HOY. Si viene null se entra en la variante «todavía no te toca»
 // (v531): el plan cae de lunes a viernes, así que quien se registra sábado, domingo o festivo
 // —el **43 % de los días**, medido por la auditoría de experiencia— abría la app y su primera
-// pantalla era «hoy es tu día de descanso». Le pasó a Chema el 22-ago, con plan de pago y cero
+// pantalla era «hoy es tu día de descanso». Le pasó a Chucho el 22-ago, con plan de pago y cero
 // sesiones. Ahora se le dice CUÁNDO empieza y se le enseña con qué, que es lo que responde la
 // pregunta que trae encima: «¿y entonces yo qué hago?».
 function renderFirstRun(client, routine, opts){
@@ -1144,8 +1144,8 @@ function _trainedTodayCardHTML(client){
 // Hasta hoy esto solo levantaba la bandera y repintaba: las series seguían marcadas y el
 // calentamiento seguía en ✓, así que la persona pedía «otra vez» y le aparecía un entreno YA
 // TERMINADO — tenía que buscar «Reiniciar» para poder empezar. Medido el 20-sep contra el
-// historial real: **4 personas ya entrenaron dos veces la misma rutina el mismo día** (Samuel,
-// Estella, Natalia y el propio PO), así que no es hipotético.
+// historial real: **4 personas ya entrenaron dos veces la misma rutina el mismo día** (Salomón,
+// Elena, Nadia y el propio PO), así que no es hipotético.
 // 🔒 Por qué aquí sí se limpia sin preguntar y en `startRoutineNow` NO: aquí la intención es
 // inequívoca (tocó «Entrenar otra vez» sobre «¡Ya entrenaste hoy!»), mientras que elegir una
 // rutina desde «Rutinas» también se usa para MIRARLA — borrarle ahí las marcas a quien solo está
@@ -2598,7 +2598,7 @@ function updateClientProgress(routine){
   // retiraron en F5b; el progreso visible lo pinta el guiado con gmUpdateProgress.)
   if(done===total&&total>0){
     saveSessionToHistory(routine,totalVol,done,true,true); // finalizada al 100% → marca finishedAt
-    // Blindaje (caso Claudia 2026-07-07: historial guardado 19/19 pero SIN pantalla de fin):
+    // Blindaje (caso Carla 2026-07-07: historial guardado 19/19 pero SIN pantalla de fin):
     // si algo entre el guardado y la celebración lanza, la celebración NO puede morir en
     // silencio — se atrapa, se reporta a app_errors y la pantalla sale igual.
     let newPRs=[];
@@ -2614,7 +2614,7 @@ function updateClientProgress(routine){
     saveSessionToHistory(routine,totalVol,done,false);
     // 🔴 v483 — LOS RÉCORDS VAN AQUÍ TAMBIÉN, no solo al terminar. El historial se guardaba desde
     // la 1ª serie pero el récord solo al 100% o con «Finalizar»: medido el 14-ago, **62% de las
-    // sesiones con peso no se cierran nunca** → Nataly hizo Prensa de Pierna 100 kg ×15 en CINCO
+    // sesiones con peso no se cierran nunca** → Nayla hizo Prensa de Pierna 100 kg ×15 en CINCO
     // sesiones y no tenía récord. Sin récord no hay peso sugerido, y sin peso sugerido la semana
     // de descarga (v482) no tiene sobre qué bajar. El esfuerzo quedaba registrado y sin premiar.
     // Lo que se logre aquí se APARTA para que la celebración del final lo siga anunciando.
@@ -2714,7 +2714,7 @@ function finishSessionEarly(){
   if(done===0){toast('Marca al menos una serie para guardar tu entreno 💪');return null;}
   if(done<total && !confirm(`Llevas ${done} de ${total} series. ¿Guardar tu entrenamiento de hoy con lo que llevas?`))return null;
   saveSessionToHistory(routine,totalVol,done,true,true); // "Finalizar temprano" → marca finishedAt (sesión cerrada, no parcial)
-  // Mismo blindaje que updateClientProgress (caso Claudia 2026-07-07): ahora que de esto cuelga
+  // Mismo blindaje que updateClientProgress (caso Carla 2026-07-07): ahora que de esto cuelga
   // la celebración, un throw aquí NO puede dejar a la persona sin su pantalla de cierre.
   let newPRs=[];
   try{ newPRs=_prsMergeSession(routine,checkAndUpdatePRs(routine)||[])||[]; } // cierra la sesión → vacía lo apartado
@@ -2771,7 +2771,7 @@ function showWorkoutFinish(routine,stats){
   if(_wfShownFor===key)return;
   // OJO: el guard se fija AL FINAL (junto al classList.add). Si se fijara aquí y algo
   // lanzara a mitad de la función, el día entero quedaría sin celebración aunque el
-  // usuario re-marque (caso Claudia 2026-07-07: guardado OK, pantalla nunca salió).
+  // usuario re-marque (caso Carla 2026-07-07: guardado OK, pantalla nunca salió).
   const c=DB.clients.find(x=>x.id===CUR.clientId);
   const name=((c&&c.name)||'').trim().split(/\s+/)[0]||'';
   const done=(stats&&stats.done)||0, total=(stats&&stats.total)||0;
@@ -2788,7 +2788,7 @@ function showWorkoutFinish(routine,stats){
     // honesta en una sesión de fuerza, donde el descanso lo pone la persona.
     const reloj=Math.max(60,Math.min(4*3600,Math.round((Date.now()-Date.parse(entry.startedAt))/1000)));
     // …salvo si la sesión es 100% HIIT: ahí el tiempo lo decide el PROTOCOLO, no el reloj. Ver
-    // hiitProtocolSec (avi-core) para el caso real que lo motivó (Luz y Claudia, 27-ago).
+    // hiitProtocolSec (avi-core) para el caso real que lo motivó (Luisa y Carla, 27-ago).
     const proto=hiitProtocolSec(routine,_roundsDoneByEx(routine));
     durationSec=proto!=null?proto:reloj;
     const w=parseFloat(_entrenoPesoDe(c))||70;      // kg; fallback 70 si no hay peso
@@ -4435,7 +4435,7 @@ function renderClientMsgs(clientId){
   const quick=document.getElementById('cn-msg-quick'); // v316: respuestas rápidas
   // El chat es SOLO-COACH (Premium + Coach). ESCRIBIR sigue siendo lo premium; LEER lo que ya
   // se habló, no. `chatViewMode` (avi-core, puro) decide cuál de los 3 estados toca — ver ahí
-  // por qué el candado ya no se come el historial (v584, caso Samuel: 40 mensajes ocultos).
+  // por qué el candado ya no se come el historial (v584, caso Salomón: 40 mensajes ocultos).
   const _vista=chatViewMode(DB.clients.find(x=>x.id===clientId),msgs);
   if(del){ _clientChatDelDisarm(del); del.style.display=(msgs.length&&_vista!=='lock')?'':'none'; }
   if(_vista!=='open'){
