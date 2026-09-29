@@ -576,6 +576,10 @@ const AUTH={
   client(){return sbAuthClient();},
   async getSession(){const c=sbAuthClient();if(!c)return null;const {data}=await c.auth.getSession();return (data&&data.session)||null;},
   async getUser(){const c=sbAuthClient();if(!c)return null;const {data}=await c.auth.getUser();return (data&&data.user)||null;},
+  // v688 · El usuario de la sesión GUARDADA, leído tal cual, sin preguntarle a la red ni renovar nada. Sirve
+  // para saber si hay sesión cuando la red no contesta (bootAuthDecision). Si la librería la borró porque ya no
+  // vale, aquí ya no está. La clave es la `storageKey` del cliente de arriba.
+  storedUser(){ try{ const o=JSON.parse(localStorage.getItem('avi_auth')||'null'); return (o&&o.user&&o.user.id)?o.user:null; }catch(e){ return null; } },
   async signUpEmail(email,password,meta){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signUp({email,password,options:{data:meta||{}}});},
   async signInEmail(email,password){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithPassword({email,password});},
   async signInGoogle(){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});},

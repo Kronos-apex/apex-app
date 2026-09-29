@@ -1345,7 +1345,20 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
   let _teniaSesion=false;
   try{
     if(AUTH.ready()){
-      const session=await AUTH.getSession();
+      // 🔴 v688 · Sin red y con el token vencido (una hora sin usar la app), `getSession()` responde «no hay
+      //    sesión» y esta cadena mandaba al LOGIN a quien tenía la sesión guardada; con la WiFi colgada,
+      //    esperaba sin límite. Con copia local de sus datos, la nube tiene BOOT_NET_MS para contestar y, si
+      //    no lo hace, se entra con lo guardado (bootAuthDecision, en avi-core). Sin copia local, se espera
+      //    como siempre: un primer ingreso en un teléfono nuevo necesita la nube.
+      const _antes=(typeof AUTH.storedUser==='function')?AUTH.storedUser():null;
+      const _respaldo=!!(_antes&&typeof _readAuthRow==='function'&&_readAuthRow(_antes.id));
+      const _pedido=AUTH.getSession().catch(()=>null);
+      const _resp=(_respaldo&&typeof conTope==='function')?await conTope(_pedido,(typeof bootNetWait==='function')?bootNetWait(navigator.onLine):BOOT_NET_MS,undefined):await _pedido;
+      const _dec=(typeof bootAuthDecision==='function')
+        ?bootAuthDecision({session:_resp,antes:_antes,despues:_respaldo?AUTH.storedUser():null,respaldo:_respaldo})
+        :((_resp&&_resp.user)?{user:_resp.user,sinRed:false}:null);
+      const session=_dec?((_resp&&_resp.user)?_resp:{user:_dec.user}):null;
+      const _sinRed=!!(_dec&&_dec.sinRed);
       // Guard anti doble-entrada (regresión cazada 2026-07-06 con _test-coach-back):
       // si el usuario alcanzó a hacer login MIENTRAS esta cadena async del boot seguía
       // pendiente (red lenta + autofill; el harness E2E lo dispara siempre), getSession
@@ -1367,7 +1380,7 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
         // `.catch` — así que un ASESORADO con sesión guardada acababa en el login por culpa de un
         // módulo que él no usa. Lo encontró el check ESTÁTICO de la cadena de arranque, no el gate
         // dinámico: ése corre sin sesión guardada y por eso no puede ver este camino.
-        if(typeof _enterAuthSession==='function'){ await _enterAuthSession(session.user); authEntered=true; }
+        if(typeof _enterAuthSession==='function'){ await _enterAuthSession(session.user,{sinRed:_sinRed}); authEntered=true; }
         else warn('AVI: app-3 no cargó — la sesión guardada no se pudo restaurar');
       } else if(session&&session.user&&AUTH_MODE){
         authEntered=true; // el login manual ya entró — no pisar su sesión ni su navegación

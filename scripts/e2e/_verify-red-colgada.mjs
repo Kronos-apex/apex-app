@@ -82,7 +82,9 @@ tipos.set(P, 'page'); await enganchar(P, 'page');
 await send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, P);
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true }, P); return r && r.result ? r.result.value : null; };
-const redNormal = async () => { congelar = null; for (const p of pausados.splice(0)) await send('Fetch.continueRequest', { requestId: p.rid }, p.s).catch(() => {});
+// Lo que quedó colgado se CORTA, no se suelta: un refresco de token que llegara tarde al servidor lo rotaría
+// y el siguiente uso del viejo revocaría la sesión de prueba (Supabase detecta la reutilización).
+const redNormal = async () => { congelar = null; for (const p of pausados.splice(0)) await send('Fetch.failRequest', { requestId: p.rid, errorReason: 'Aborted' }, p.s).catch(() => {});
   for (const s of sesiones) await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }, s).catch(() => {}); };
 
 // «Arrancó» = el símbolo que solo existe cuando corrió la cadena del arranque (no el DOM, que está al parsear).
@@ -90,16 +92,20 @@ const ESTADO = `(()=>{ const vis=id=>{const e=document.getElementById(id);return
   return { listo:!!window._aviUpdateBusy, rs:document.readyState, splash:!!document.getElementById('avi-loading'),
     fallo:!!document.getElementById('avi-bootfail'), cliente:vis('s-client'), login:vis('s-login'),
     sw:!!(navigator.serviceWorker&&navigator.serviceWorker.controller) }; })()`;
+let vioLogin = false;
 async function abrir(nombre, { hasta = s => s.listo, ms = 20000 } = {}) {
   pausados.length = 0;
   const t0 = Date.now(); await send('Page.reload', { ignoreCache: false }, P);
-  let t = null, ultimo = null;
+  let t = null, ultimo = null; vioLogin = false;
   while (Date.now() - t0 < ms) {
     const s = await ev(ESTADO); ultimo = s || ultimo;
+    // El login a la vista SIN la marca encima: a quien tiene sesión eso le dice «sal y vuelve a entrar».
+    if (s && s.login && !s.splash && !s.cliente && s.listo) vioLogin = true;
     if (s && hasta(s)) { t = Date.now() - t0; break; }
     await sleep(200);
   }
-  console.log(`   ${nombre.padEnd(40)} → ${t == null ? 'NO abrió en ' + ms + ' ms' : 'abrió en ' + t + ' ms'} · readyState ${ultimo && ultimo.rs}`);
+  const ve = ultimo ? (ultimo.cliente ? 'su pantalla' : ultimo.fallo ? 'el aviso de fallo' : ultimo.splash ? 'la marca de carga' : ultimo.login ? 'EL LOGIN' : '?') : '?';
+  console.log(`   ${nombre.padEnd(40)} → ${t == null ? 'NO abrió en ' + ms + ' ms' : 'abrió en ' + t + ' ms'} · se ve: ${ve}${vioLogin ? ' · ⚠️ se vio el login antes' : ''}`);
   for (const p of pausados) console.log(`        sin respuesta (${p.quien}) +${p.t - t0} ms  ${p.url.replace(/^https?:\/\/[^/]+/, '')}`);
   return t;
 }
@@ -146,16 +152,41 @@ if (CON_SESION) {
   ok(dentro, 'montaje: el login con red deja a la cuenta QA dentro');
   if (dentro) {
     await sleep(2500);
-    const bNormal = await abrir('red normal (control)', { hasta: s => s.listo && s.cliente });
+    const entra = s => s.listo && s.cliente;
+    // El token de acceso dura una hora: quien abre la app al día siguiente trae uno VENCIDO. Se simula
+    // corriendo la hora de vencimiento de la sesión guardada, con la red ya cortada (si no, la librería lo
+    // renovaría en el acto y la prueba no probaría nada).
+    const vencer = () => ev(`(()=>{ const k='avi_auth'; const o=JSON.parse(localStorage.getItem(k)||'null'); if(!o||!o.expires_at) return false;
+      o.expires_at=Math.floor(Date.now()/1000)-3600; localStorage.setItem(k, JSON.stringify(o)); return true; })()`);
+    const offline = async v => { for (const s of sesiones) await send('Network.emulateNetworkConditions', { offline: v, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }, s).catch(() => {}); };
+    const caso = async (nombre, { red, vencido }) => {
+      if (red === 'sin') await offline(true);
+      if (red === 'colgada') congelar = () => true;
+      if (red === 'nube') congelar = u => /supabase\.co/.test(u);
+      if (vencido) ok(await vencer(), `montaje: la sesión guardada quedó vencida (${nombre})`);
+      const t = await abrir(nombre, { hasta: entra, ms: 25000 });
+      if (t != null) ok(!vioLogin, `mientras espera, no se le muestra el login (${nombre})`);
+      await offline(false); await redNormal();
+      return t;
+    };
+    const bNormal = await abrir('red normal (control)', { hasta: entra });
     ok(bNormal != null, 'control: con sesión y red normal entra a su pantalla');
-    congelar = () => true;
-    const bColgada = await abrir('WiFi colgada: nada responde', { hasta: s => s.listo && s.cliente, ms: 25000 });
-    ok(bColgada != null && bColgada <= LIMITE_MS, `con sesión y la red colgada entra a su pantalla antes de ${LIMITE_MS} ms`);
-    await redNormal();
-    congelar = u => /supabase\.co/.test(u);
-    const bNube = await abrir('solo la nube colgada', { hasta: s => s.listo && s.cliente, ms: 25000 });
-    ok(bNube != null && bNube <= LIMITE_MS, `con sesión y solo la nube colgada entra antes de ${LIMITE_MS} ms`);
-    await redNormal();
+    const bSinFresco = await caso('sin red · sesión fresca (control)', { red: 'sin' });
+    ok(bSinFresco != null, 'control: sin red y con la sesión fresca entra (lo medido en septiembre)');
+    const bSinVencido = await caso('sin red · sesión VENCIDA', { red: 'sin', vencido: true });
+    ok(bSinVencido != null && bSinVencido <= LIMITE_MS, `sin red y con la sesión vencida entra a su pantalla antes de ${LIMITE_MS} ms`);
+    // Volver a red normal renueva el token de verdad antes del caso siguiente.
+    await abrir('red normal (renueva la sesión)', { hasta: entra });
+    const bColgada = await caso('WiFi colgada · sesión fresca', { red: 'colgada' });
+    ok(bColgada != null && bColgada <= LIMITE_MS, `con la red colgada y la sesión fresca entra antes de ${LIMITE_MS} ms`);
+    await abrir('red normal (renueva la sesión)', { hasta: entra });
+    const bColgadaV = await caso('WiFi colgada · sesión VENCIDA', { red: 'colgada', vencido: true });
+    ok(bColgadaV != null && bColgadaV <= LIMITE_MS, `con la red colgada y la sesión vencida entra antes de ${LIMITE_MS} ms`);
+    await abrir('red normal (renueva la sesión)', { hasta: entra });
+    const bNube = await caso('solo la nube colgada', { red: 'nube' });
+    ok(bNube != null && bNube <= LIMITE_MS, `con solo la nube colgada entra antes de ${LIMITE_MS} ms`);
+    const bFin = await abrir('red normal al final (control)', { hasta: entra });
+    ok(bFin != null, 'control: al final, con red, la sesión sigue viva (la prueba no la rompió)');
   }
 }
 

@@ -692,20 +692,31 @@ function showPlanReveal(client, onContinue){
 // Entra a la app en modo auth para un usuario con sesión Supabase. Carga su fila (o la
 // provisiona si es su 1er ingreso). Por ahora todos los auth users son asesorados libres;
 // el rol coach se conecta en 2.2e.
-async function _enterAuthSession(authUser){
+async function _enterAuthSession(authUser,opts){
   AUTH_MODE=true;
   _authUid=(authUser&&authUser.id)||null;
   // Hidrata el flag dirty persistido: si la sesión anterior dejó cambios sin confirmar,
   // el reintento al reconectar (_flushAuthOnline) debe saberlo aunque arranquemos offline.
   _authDirty=_readAuthDirty(_authUid);
-  let row=await UD.loadOwn();   // null si no hay red (loadOwn ya no lanza)
+  // 🔴 v688 · Con la WiFi colgada, `loadOwn` esperaba a la nube SIN LÍMITE y la persona acababa en el login.
+  //    Con copia local, la nube tiene BOOT_NET_MS; si no contesta, se sigue como sin red (con la copia).
+  //    Si el arranque YA sabe que no hay red (`sinRed`), ni se pregunta. Sin copia local se espera como
+  //    siempre: con `row` vacío este camino CREA una cuenta nueva, y eso no se decide por un tope.
+  const _sinRedTope={};
+  let sinRed=!!(opts&&opts.sinRed);
+  const _conCopia=!!_readAuthRow(_authUid);
+  let row=null;
+  if(!(sinRed&&_conCopia)){
+    const _r=(_conCopia&&typeof conTope==='function')?await conTope(UD.loadOwn(),(typeof bootNetWait==='function')?bootNetWait(navigator.onLine):BOOT_NET_MS,_sinRedTope):await UD.loadOwn();   // null si no hay red (loadOwn ya no lanza)
+    if(_r===_sinRedTope)sinRed=true; else row=_r;
+  }
   const online=!!row;
   // Sin fila desde la nube: ¿es porque no hay red? → cae al respaldo local para
   // poder entrenar offline. Si no hay respaldo tampoco, sigue el flujo normal
   // (usuario realmente nuevo → onboarding / pedir crear cuenta).
   if(!row){ const cached=_readAuthRow(_authUid); if(cached){ row=cached; log('AVI: sin red — usando respaldo local de tu fila'); } }
   // Rol coach: carga SOLO sus clientes (filas con coach_id = su uid) y abre el panel.
-  if(row&&row.role==='coach'){ AUTH_ROLE='coach'; return await _enterCoachAuth(authUser,row); }
+  if(row&&row.role==='coach'){ AUTH_ROLE='coach'; return await _enterCoachAuth(authUser,row,{sinRed:sinRed}); }
   AUTH_ROLE='client';
   let client;
   // P0-2 (auditoría 2026-07-01): si el arranque anterior dejó cambios SIN confirmar
@@ -1207,8 +1218,14 @@ function _hydrateSelfClient(){
     _heavyLoaded[id] =true;                            // su fila ya viene completa: no hay que re-pedirla
   }catch(e){ warn('AVI: hidratar mi propio perfil falló (no bloquea el panel):',e&&e.message); }
 }
-async function _loadCoachClientsIntoDB(){
-  const rows=await UD.loadCoachClients();
+async function _loadCoachClientsIntoDB(opts){
+  // v688 · Al ARRANCAR, con la lista guardada, la nube tiene BOOT_NET_MS (y si ya se sabe que no hay red, ni se
+  // pregunta): con la WiFi colgada el panel esperaba sin límite. Los demás llamadores esperan como siempre.
+  const _cache=(opts&&opts.arranque)?_readCoachCache():null;
+  const _conCopia=!!(_cache&&_cache.length);
+  const rows=(_conCopia&&opts.sinRed)?null
+    :(_conCopia&&typeof conTope==='function')?await conTope(UD.loadCoachClients(),(typeof bootNetWait==='function')?bootNetWait(navigator.onLine):BOOT_NET_MS,null)
+    :await UD.loadCoachClients();
   if(!rows){
     // Falló la carga (sin red/auth) → NO pisar la lista; caer al caché si lo hay.
     const cached=_readCoachCache();
@@ -1236,7 +1253,7 @@ async function _ensureClientHeavy(id){
   _heavyLoaded[id]=true;
 }
 
-async function _enterCoachAuth(authUser, ownRow){
+async function _enterCoachAuth(authUser, ownRow, opts){
   COACH_OWN_ROW=ownRow||null;                    // ya la cargamos aquí → "Mi entrenamiento" no re-pide red
   if(ownRow&&_authUid) _cacheAuthRow(_authUid,ownRow); // respaldo local (también sirve offline)
   // Plantillas del coach: viven en SU fila (columna `templates`). Cargarlas a DB para que el
@@ -1285,7 +1302,7 @@ async function _enterCoachAuth(authUser, ownRow){
       }
     }catch(e){ warn('AVI: hidratar coach_settings falló (no bloquea):',e&&e.message); }
   }
-  await _loadCoachClientsIntoDB();
+  await _loadCoachClientsIntoDB({arranque:true,sinRed:!!(opts&&opts.sinRed)});
   CUR.loggedAs='coach'; CUR.clientId=null; COACH_SELF=false;
   if(typeof coachStampName==='function')coachStampName();   // v640: su nombre, en la ficha de cada asesorado
   showScreen('s-coach');

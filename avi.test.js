@@ -20258,7 +20258,8 @@ test('v640 🔒 CABLEADO: el coach estampa al entrar y al guardar Ajustes; el as
   assert.ok(/sv\('ax_cn',[^;]*\);\s*coachStampName\(\);/.test(s), '🔴 guardar el nombre en Ajustes ya no se lo lleva a los asesorados');
   const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
   const e = a3.slice(a3.indexOf('async function _enterCoachAuth('), a3.indexOf('\nasync function ', a3.indexOf('async function _enterCoachAuth(') + 10));
-  assert.ok(/await _loadCoachClientsIntoDB\(\);[\s\S]{0,200}coachStampName\(\)/.test(e), '🔴 al entrar el coach ya no pone su nombre al día en las fichas');
+  // v688: la carga del arranque ganó opciones (tope de red); lo que se vigila es el ORDEN, no la aridad.
+  assert.ok(/await _loadCoachClientsIntoDB\([^;]*\);[\s\S]{0,200}coachStampName\(\)/.test(e), '🔴 al entrar el coach ya no pone su nombre al día en las fichas');
   const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
   const crudos = a4.split('\n').filter(l => /const coach=\(typeof getCoachName==='function'&&getCoachName\(\)\)/.test(l));
   assert.strictEqual(crudos.length, 0, '🔴 una pantalla del asesorado vuelve a leer el nombre local («Mi Coach» en su teléfono)');
@@ -22495,6 +22496,94 @@ test('📦 v687 · TODO archivo propio que index.html carga está en la lista de
   if (vendor && /BASE \+ SUPABASE_JS/.test(sw)) enShell.add(vendor);
   const faltan = propios.filter(f => !enShell.has(f));
   assert.deepStrictEqual(faltan, [], '🔴 estos archivos no se guardan al instalar: tras cada actualización quedan sin copia y sin red no cargan');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// v688 · QUIEN TIENE LA SESIÓN GUARDADA ENTRA AUNQUE LA RED NO CONTESTE
+// ═════════════════════════════════════════════════════════════════════════════
+const { bootAuthDecision, bootNetWait, BOOT_NET_MS, SPLASH_MAX_MS: _SPLASH_MAX } = core;
+// Reproducido el 29-sep (`_verify-red-colgada`): sin red y con el token vencido (una hora sin usar
+// la app) la persona veía el LOGIN; con la WiFi colgada, igual, a los 12 s. Es el «necesito
+// internet para entrar» de Claudia, que la medición de septiembre no reprodujo (sesión fresca).
+test('🔑 v688 · con respuesta de la nube, manda la nube', () => {
+  const u = { id: 'u1' };
+  assert.deepStrictEqual(bootAuthDecision({ session: { user: u }, antes: u, despues: u, respaldo: true }), { user: u, sinRed: false });
+  // Aunque no haya copia local: la nube contestó.
+  assert.deepStrictEqual(bootAuthDecision({ session: { user: u }, respaldo: false }), { user: u, sinRed: false });
+});
+
+test('🔑 v688 · sin respuesta (vencida sin red, o red colgada): entra con lo guardado', () => {
+  const u = { id: 'u1' };
+  // El tope venció: la librería ni contestó.
+  assert.deepStrictEqual(bootAuthDecision({ session: undefined, antes: u, despues: u, respaldo: true }), { user: u, sinRed: true },
+    '🔴 con la sesión guardada y su copia local, la mandó al login porque la red no contestó');
+  // La librería respondió «no hay sesión» (no pudo renovar el token) pero la sesión sigue guardada.
+  assert.deepStrictEqual(bootAuthDecision({ session: null, antes: u, despues: u, respaldo: true }), { user: u, sinRed: true },
+    '🔴 con el token vencido y sin red, la mandó al login (el caso de Claudia)');
+});
+
+test('🔒 v688 · NO se entra sin copia local ni con una sesión que la librería borró', () => {
+  const u = { id: 'u1' };
+  // Sin copia local: un primer ingreso en un teléfono nuevo NO puede tomarse por «persona sin datos»
+  // (con la fila vacía, el arranque CREA una cuenta nueva).
+  assert.strictEqual(bootAuthDecision({ session: null, antes: u, despues: u, respaldo: false }), null,
+    '🔴 entró sin copia local de sus datos');
+  // La librería BORRÓ la sesión mientras preguntaba: ya no vale (contraseña cambiada, cerrada en otro lado).
+  assert.strictEqual(bootAuthDecision({ session: null, antes: u, despues: null, respaldo: true }), null,
+    '🔴 entró con una sesión que la librería acababa de borrar');
+  assert.strictEqual(bootAuthDecision({ session: null, antes: u, despues: { id: 'otro' }, respaldo: true }), null,
+    '🔴 entró aunque la sesión guardada cambió de persona mientras preguntaba');
+  // Sin sesión guardada: al login, como siempre.
+  assert.strictEqual(bootAuthDecision({ session: null, antes: null, despues: null, respaldo: true }), null);
+  assert.strictEqual(bootAuthDecision(), null);
+});
+
+test('⏱️ v688 · la espera a la nube acaba antes de retirar la marca de carga, y sin conexión no se espera', () => {
+  // Si acabara después, el login se ve un instante antes de su pantalla (medido con 4 s: se veía).
+  assert.ok(BOOT_NET_MS + 500 <= _SPLASH_MAX, `BOOT_NET_MS (${BOOT_NET_MS}) no deja margen antes de SPLASH_MAX_MS (${_SPLASH_MAX})`);
+  assert.ok(BOOT_NET_MS >= 2000, 'un tope tan corto le quita la nube a quien la tiene lenta');
+  assert.strictEqual(bootNetWait(false), 0, '🔴 sin conexión de verdad sigue esperando a la nube');
+  assert.strictEqual(bootNetWait(true), BOOT_NET_MS);
+  assert.strictEqual(bootNetWait(undefined), BOOT_NET_MS, 'sin saber si hay red, se espera el tope normal');
+});
+
+test('🔒 v688 · CABLEADO del arranque: la decisión la toma bootAuthDecision, re-leyendo la sesión DESPUÉS', () => {
+  const fs = require('fs'), path = require('path');
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const i = a2.indexOf('if(AUTH.ready()){');
+  const b = a2.slice(i, a2.indexOf("}catch(e){ warn('AVI boot auth", i));
+  assert.ok(b.length > 200, 'no encontré el bloque de la sesión en el arranque');
+  assert.ok(/const _respaldo=!!\(_antes&&typeof _readAuthRow==='function'&&_readAuthRow\(_antes\.id\)\);/.test(b),
+    '🔴 el tope ya no depende de que haya copia local de sus datos');
+  assert.ok(/const _resp=\(_respaldo&&typeof conTope==='function'\)\?await conTope/.test(b),
+    '🔴 el tope a la sesión ya no depende de la copia local: sin copia, una red lenta mandaría al login a quien tiene sesión');
+  assert.ok(/despues:_respaldo\?AUTH\.storedUser\(\):null/.test(b), '🔴 ya no se re-lee la sesión DESPUÉS de preguntar: entraría con una sesión borrada');
+  assert.ok(/await conTope\(_pedido,\(typeof bootNetWait==='function'\)\?bootNetWait\(navigator\.onLine\):BOOT_NET_MS,undefined\)/.test(b),
+    'el arranque ya no le pone tope a la sesión');
+  assert.ok(/_enterAuthSession\(session\.user,\{sinRed:_sinRed\}\)/.test(b), 'el arranque ya no le dice a la entrada que no hay red');
+  // La sesión guardada se lee con la MISMA clave con la que la guarda el cliente de auth.
+  const a1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const clave = (a1.match(/storageKey:'([^']+)'/) || [])[1];
+  assert.ok(clave && a1.includes(`storedUser(){ try{ const o=JSON.parse(localStorage.getItem('${clave}')`),
+    '🔴 storedUser lee otra clave que la que usa el cliente de auth: nunca vería la sesión guardada');
+});
+
+test('🔒 v688 · CABLEADO de la entrada: sin copia local se espera a la nube como siempre (si no, crearía una cuenta nueva)', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = a3.indexOf('async function _enterAuthSession('); const e = a3.slice(i, a3.indexOf('\nasync function ', i + 10));
+  assert.ok(/const _conCopia=!!_readAuthRow\(_authUid\);/.test(e), 'la entrada ya no mira si hay copia local');
+  assert.ok(/\(_conCopia&&typeof conTope==='function'\)\?await conTope\(UD\.loadOwn\(\),[^;]*_sinRedTope\):await UD\.loadOwn\(\);/.test(e),
+    '🔴 el tope a la nube ya no depende de la copia local: un ingreso con red lenta en un teléfono nuevo CREARÍA una cuenta vacía');
+  assert.ok(/if\(!\(sinRed&&_conCopia\)\)\{/.test(e), '🔴 sabiendo que no hay red, igual le pregunta a la nube');
+  assert.ok(/_enterCoachAuth\(authUser,row,\{sinRed:sinRed\}\)/.test(e), 'el panel del coach ya no sabe que no hay red');
+  const j = a3.indexOf('async function _loadCoachClientsIntoDB('); const l = a3.slice(j, a3.indexOf('\n}', j));
+  assert.ok(/const _cache=\(opts&&opts\.arranque\)\?_readCoachCache\(\):null;/.test(l), '🔴 el tope de la lista de asesorados ya no se limita al arranque');
+  assert.ok(/\(_conCopia&&opts\.sinRed\)\?null/.test(l), 'sabiendo que no hay red, el panel igual espera a la nube');
+  const k = a3.indexOf('async function _enterCoachAuth('); const c = a3.slice(k, a3.indexOf('\nasync function ', k + 10));
+  assert.ok(/await _loadCoachClientsIntoDB\(\{arranque:true,sinRed:!!\(opts&&opts\.sinRed\)\}\);/.test(c), 'el arranque del coach no pasa sus opciones');
+  // Los demás llamadores esperan como siempre (volver al panel con red lenta no puede mostrar la lista vieja).
+  assert.ok(/async function backToCoachPanel\(\)\{[\s\S]*?await _loadCoachClientsIntoDB\(\);/.test(a3), 'volver al panel ya no espera a la nube');
 });
 
 // ══════════════════════════════════════════════════════

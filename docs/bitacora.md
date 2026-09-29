@@ -4,6 +4,39 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v688: quien tiene la sesión guardada entra aunque la red no conteste («necesito internet para entrar»)
+
+- **Reproducido** (`_verify-red-colgada`, cuenta QA, local): con la sesión guardada y **sin red**, quien abría la
+  app **más de una hora después de usarla veía el LOGIN**. El token de acceso dura una hora; al vencer, la
+  librería intenta renovarlo, sin red no puede, y `getSession()` responde «no hay sesión» **aunque la sesión
+  siga guardada** (leído en el código de supabase-js y confirmado en la prueba). Con la sesión FRESCA sí entraba
+  (0,3 s): es exactamente lo que midió septiembre, y por eso **el reporte de Claudia («necesito internet para
+  entrar») no se reproducía**. Con la WiFi colgada pasaba con cualquier sesión: el arranque esperaba a la nube
+  (`/auth/v1/user`, `/auth/v1/token`) sin límite y a los 12 s la red de seguridad mostraba el login.
+- **El panel del coach tenía la misma espera** (`loadCoachClients`) y se arregla igual.
+- **Arreglo:** `bootAuthDecision` (avi-core, pura). Con respuesta de la nube, manda la nube. Sin ella (tope
+  vencido, o «no hay sesión» por no poder renovar), se entra con la sesión guardada **solo si hay copia local de
+  los datos de esa persona**. Sin esa copia, un primer ingreso en un teléfono nuevo se tomaría por «persona sin
+  datos», y con la fila vacía el arranque CREA una cuenta. Además, **solo si la librería no la borró** mientras
+  tanto, porque si la borró es que la sesión ya no vale. El tope (`BOOT_NET_MS`, 3 s) **acaba antes de que se
+  retire la marca de carga**: con 4 s el login se veía un instante antes de su pantalla (medido). Sin conexión de
+  verdad (`navigator.onLine === false`) no se espera nada (`bootNetWait`). Si el arranque ya sabe que no hay red,
+  la entrada y el panel del coach ni preguntan.
+- **Resultado (local, cuenta QA):**
+
+  | Caso | Antes | Ahora |
+  |---|---|---|
+  | Sin red, sesión vencida | **el login** | **0,26 s**, su pantalla |
+  | WiFi colgada, sesión fresca | el login | 6,2 s |
+  | WiFi colgada, sesión vencida | el login | 6,4 s |
+  | Solo la nube colgada | el login | 3,2 s |
+
+  En ningún caso se ve el login mientras espera. Los controles (red normal, sin red con sesión fresca, y la
+  sesión todavía viva al final) siguen verdes.
+- ⚠️ **Sin probar en un teléfono de verdad:** la prueba vence el token corriendo su hora de vencimiento en el
+  almacenamiento, con la red cortada.
+- **QA:** suite 1385 → **1391** · `_sabotaje-v688` · `_verify-red-colgada` (A y B).
+
 ## ⏮️ 2026-09-29 — v687: con una WiFi «conectada pero sin internet» la app abre (radar R16, service worker)
 
 - **Medido primero, contra producción (v686), sin sesión:** con red normal abría en 1,5 s y sin red en 0,3 s,

@@ -1568,6 +1568,45 @@ function splashCapDelay(nowMs, shownAtMs) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// ENTRAR CON LA SESIÓN GUARDADA AUNQUE LA RED NO CONTESTE (v688)
+// ──────────────────────────────────────────────────────────────────────
+// 🔴 Reproducido el 29-sep (`_verify-red-colgada`): con la sesión guardada y SIN red, quien abría la
+//    app más de una hora después de usarla veía EL LOGIN. El token de acceso dura una hora; al
+//    vencer, la librería intenta renovarlo, sin red no puede, y `getSession()` responde «no hay
+//    sesión» aunque la sesión siga guardada. Con la sesión fresca (lo que midió septiembre) sí
+//    entraba: por eso el reporte de Claudia («necesito internet para entrar») no se reproducía.
+//    Con la WiFi colgada pasaba lo mismo con cualquier sesión: el arranque esperaba a la nube sin
+//    límite y a los 12 s la red de seguridad mostraba el login.
+// Lo que decide es esto: con respuesta de la nube, manda la nube. Sin ella, se entra con la sesión
+//    guardada SOLO si hay copia local de los datos de esa persona (si no, un primer ingreso en un
+//    teléfono nuevo se tomaría por «persona sin datos») y SOLO si la librería no la borró mientras
+//    tanto — si la borró, es que la sesión ya no vale (contraseña cambiada, cerrada en otro lado).
+// Cuánto se espera a la nube al arrancar, si hay copia local. Tiene que acabar ANTES de que se retire
+// la marca de carga (SPLASH_MAX_MS, 4 s): si no, el login se ve un instante antes de su pantalla —
+// medido con 4 s, lo veía. En 4G lenta la carga de su fila cabe de sobra (el arranque ENTERO tardaba
+// 3,7 s en R16), y si alguna vez no cabe, entra con su copia: no es un error, es la de ayer.
+const BOOT_NET_MS = 3000;
+// Sin conexión de verdad (`navigator.onLine === false`) no hay nada que esperar: la librería
+// reintenta renovar el token con pausas y tardaría hasta el tope sin poder lograrlo.
+function bootNetWait(online) { return online === false ? 0 : BOOT_NET_MS; }
+// Una promesa con tope: si no resolvió en `ms`, devuelve `siVence`. No cancela la original.
+function conTope(promesa, ms, siVence) {
+  let t = null;
+  const tope = new Promise(r => { t = setTimeout(() => r(siVence), ms); });
+  return Promise.race([Promise.resolve(promesa), tope]).finally(() => clearTimeout(t));
+}
+// r = { session: lo que respondió la librería (o nada si se venció el tope), antes/despues: el usuario de la
+//       sesión guardada leída antes y después de preguntar, respaldo: ¿hay copia local de sus datos? }
+// → { user, sinRed } para entrar, o null para ir al login.
+function bootAuthDecision(r) {
+  r = r || {};
+  if (r.session && r.session.user) return { user: r.session.user, sinRed: false };
+  if (!r.respaldo || !r.antes || !r.antes.id) return null;
+  if (!r.despues || r.despues.id !== r.antes.id) return null;
+  return { user: r.despues, sinRed: true };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // LAS REPS EN RESERVA (v682) — ver docs/plan-barra-rir.md
 // ──────────────────────────────────────────────────────────────────────
 // «¿Cuántas más te salían?» en la ÚLTIMA serie de cada ejercicio de peso, un toque y opcional (la
@@ -12242,6 +12281,10 @@ if (typeof module !== 'undefined' && module.exports) {
     SPLASH_MAX_MS,
     splashHideDelay,
     splashCapDelay,
+    BOOT_NET_MS,
+    bootNetWait,
+    conTope,
+    bootAuthDecision,
     RIR_CHOICES,
     rirValue,
     rirLabel,
