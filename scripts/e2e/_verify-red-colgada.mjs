@@ -13,6 +13,7 @@
 //   node scripts/e2e/_verify-red-colgada.mjs              local, con y sin sesión (cuenta QA)
 //   node scripts/e2e/_verify-red-colgada.mjs --sw-viejo   CONTROL: el sw.js de HEAD, sin sesión → debe FALLAR
 //   node scripts/e2e/_verify-red-colgada.mjs --prod       contra app.avientrena.com, sin sesión
+//   node scripts/e2e/_verify-red-colgada.mjs --prod --sesion   además con la cuenta QA en producción
 import WebSocket from 'ws';
 import { spawn, execSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -24,7 +25,8 @@ import { tmpdir } from 'node:os';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ARGS = process.argv.slice(2);
 const PROD = ARGS.includes('--prod'), SW_VIEJO = ARGS.includes('--sw-viejo');
-const CON_SESION = !PROD && !SW_VIEJO;
+// Con sesión: local siempre; en producción solo con `--sesion` (cuenta QA, que existe para esto).
+const CON_SESION = ARGS.includes('--sesion') || (!PROD && !SW_VIEJO);
 const LIMITE_MS = 12000;   // el aviso de «No pudimos cargar AVI» sale a los 12 s: abrir tiene que ganarle
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let fallos = 0;
