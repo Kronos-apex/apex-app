@@ -243,7 +243,7 @@ const _ICON_HEART='<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 
 const _ICON_DUMBBELL='<path d="M6.5 9v6"/><path d="M9 7v10"/><path d="M15 7v10"/><path d="M17.5 9v6"/><path d="M9 12h6"/>';
 // Vista anatómica que mejor muestra cada grupo en el ícono (frente o espalda).
 const MM_ICON_VIEW={pecho:'front',espalda:'back',hombros:'front',biceps:'front',triceps:'back',piernas:'front',gluteo:'back',core:'front'};
-function muscleIcon(muscle,size){
+function muscleIcon(muscle,size,comoImagen){
   const s=size||20;
   const m=muscle||'otro';
   const col=MC[m]||'var(--g)';
@@ -253,10 +253,33 @@ function muscleIcon(muscle,size){
   // A tamaño chico la silueta angosta se pierde; usamos un alto mínimo y silueta limpia
   // (sin líneas internas) para que el músculo resaltado se LEA. Si muscle-map.js no cargó,
   // caemos al ícono de bloques (respaldo seguro).
+  if(comoImagen&&_muscleImgHtml[m+'|'+s])return _muscleImgHtml[m+'|'+s];   // v685: ya armada para ese músculo
   if(typeof muscleMapSVG==='function'){
-    try{ return muscleMapSVG(m, [], {view:MM_ICON_VIEW[m]||'front', size:Math.max(s,30), prim:col, primStroke:col, body:'#52665a', stroke:'#2a3d33', sw:0.4}); }catch(_){}
+    try{
+      const svg=muscleMapSVG(m, [], {view:MM_ICON_VIEW[m]||'front', size:Math.max(s,30), prim:col, primStroke:col, body:'#52665a', stroke:'#2a3d33', sw:0.4});
+      return comoImagen?_muscleSvgImg(svg,m+'|'+s):svg;
+    }catch(_){}
   }
   return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true" style="display:block"><g fill="var(--t3)" opacity="0.42">${_BODY}</g><g fill="${col}">${MH[m]}</g></svg>`;
+}
+// v685 · LA MISMA silueta, como imagen reutilizable. Cada silueta son ~9.500 caracteres de SVG, y
+// «Cargas» pintaba una por fila: abrir la tarjeta de 42 ejercicios armaba 423 KB de HTML (~350 ms con
+// CPU ×4). Como imagen, el SVG se arma UNA vez por músculo y cada fila solo lleva un <img>. Mismo
+// dibujo: la silueta usa colores fijos, sin clases ni variables de la página (lo único que le falta
+// para vivir aparte es su `xmlns`). Si algo falla (sin Blob, un color de tema), se queda en línea.
+const _muscleImgUrls={}, _muscleImgHtml={};
+function _muscleSvgImg(svg,clave){
+  try{
+    if(/var\(/.test(svg)||typeof Blob!=='function'||typeof URL==='undefined'||typeof URL.createObjectURL!=='function')return svg;
+    let u=_muscleImgUrls[clave];
+    if(!u){
+      const doc=/\sxmlns=/.test(svg)?svg:svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+      u=_muscleImgUrls[clave]=URL.createObjectURL(new Blob([doc],{type:'image/svg+xml'}));
+    }
+    const raiz=(svg.match(/^<svg[^>]*>/)||[''])[0];
+    const w=(raiz.match(/\swidth="([\d.]+)"/)||[])[1], h=(raiz.match(/\sheight="([\d.]+)"/)||[])[1];
+    return (_muscleImgHtml[clave]=`<img src="${u}" alt="" aria-hidden="true" decoding="async"${w?` width="${w}"`:''}${h?` height="${h}"`:''} style="display:block">`);
+  }catch(e){ return svg; }
 }
 // Paleta de avatares. Las iniciales las pinta `avcInk` con la tinta que contraste con cada
 // color (`inkOn`, avi-core): con `color:white` fijo, 6 de los 8 no llegaban al mínimo de lectura

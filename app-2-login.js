@@ -1093,6 +1093,8 @@ function renderCoachExProgress(clientId){
 // ── PANEL CARGAS ────────────────────────────────────────────
 let _progFilter='all';
 const _progMatches={};
+// v685 · los puntos de cada gráfica, en memoria (antes viajaban como texto JSON en un atributo de cada fila).
+const _progPts={};
 
 function setProgFilter(f,el){
   _progFilter=f;
@@ -1101,96 +1103,128 @@ function setProgFilter(f,el){
   renderProgressPanel();
 }
 
+// v685 · «CARGAS» YA NO DEJA EL TELÉFONO PEGADO (R16 #3). Medido con los 26 asesorados reales y CPU ×4:
+// 780-820 ms en UNA sola tarea, de los que ~500 eran armar las 431 filas de 17 tarjetas CERRADAS y ~280
+// el cálculo. Ahora: el cálculo va por asesorado en tandas de ≤12 ms (el teléfono responde entre una y otra)
+// y cada tarjeta arma sus filas la PRIMERA vez que se abre. Devuelve una promesa que se cumple al terminar;
+// una pintada nueva (cambiar el filtro) cancela la anterior.
+const PROG_SLICE_MS=12;
+let _progSeq=0;
 function renderProgressPanel(){
   const con=document.getElementById('prog-list');
-  if(!con)return;
+  if(!con)return Promise.resolve(false);
   if(!DB.history)DB.history=ld('ax_hist',{});
-  const clients=DB.clients||[];
+  const clients=(DB.clients||[]).slice();
   if(!clients.length){
     con.innerHTML='<div class="empty" style="padding:36px"><div class="eico" style="color:var(--t3)">'+(typeof aviIcon==='function'?aviIcon('users',34):'👥')+'</div><div class="etxt">Sin asesorados todavía</div></div>';
-    return;
+    return Promise.resolve(true);
   }
-  con.innerHTML='';
-  let anyShown=false;
-  clients.forEach(c=>{
-    const exList=buildExerciseProgress(c.id);
-    if(!exList.length)return;
-    // El veredicto de estancamiento lo da el detector YA calibrado (v433), no un umbral
-    // nuevo de este panel; se casa por IDENTIDAD (v585), que es lo que evita perder marcas
-    // cuando el coach renombró el ejercicio en la rutina.
-    const stalledKeys=new Set();
-    if(typeof stalledExercises==='function'){
-      try{stalledExercises(c,(DB.history[c.id]||[]),Date.now()).forEach(s=>{if(s&&s.key)stalledKeys.add(s.key);});}catch(e){}
-    }
-    const models=exList.map(e=>progressRowModel(e,stalledKeys)).filter(Boolean);
-    const filtered=models.filter(m=>progressRowMatches(m,_progFilter));
-    if(!filtered.length)return;
-    anyShown=true;
-    const upCount=filtered.filter(m=>m.state==='up').length;
-    const stCount=filtered.filter(m=>m.state==='stalled').length;
-    const card=document.createElement('div');
-    card.className='pload-card';
-    const bodyId=`plb_${c.id}`;
-    card.innerHTML=`<div class="pload-hd" onclick="this.closest('.pload-card').classList.toggle('open')">
-      <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0;${avcStyle(c.name)}">${esc(ini(c.name))}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:1px">${filtered.length} ejercicio${filtered.length!==1?'s':''} con historial</div>
-      </div>
-      <div style="display:flex;gap:4px;margin-right:6px">
-        ${upCount?`<span class="tag tg" style="font-size:10px">↑ ${upCount}</span>`:''}
-        ${stCount?`<span class="tag to" style="font-size:10px">⏸ ${stCount}</span>`:''}
-      </div>
-      <div class="pload-chev">▼</div>
-    </div>
-    <div class="pload-body" id="${bodyId}"></div>`;
-    const body=card.querySelector(`#${bodyId}`);
-    filtered.forEach((m,idx)=>{
-      const ex=exList.find(e=>e.key===m.key)||{};
-      const pts=ex.points||[];
-      const unit=m.unit;
-      // El titular es el RÉCORD y va rotulado; la última sesión se muestra al lado SOLO
-      // cuando difiere (26% de los casos), porque es la que explica por qué la gráfica baja.
-      const trendColor=m.state==='stalled'?'var(--ort)':m.state==='up'?'var(--gt)':'var(--t3)';
-      const trendStr=m.state==='stalled'
-        ?(m.sinceRecord?`⏸ ${m.sinceRecord} ${m.sinceRecord===1?'sesión':'sesiones'} sin mejorarlo`:'⏸ se plantó en ese peso')
-        :m.state==='up'?`↑ +${fmtMetric(m.gain,unit)} desde que empezó`:'↔ sigue en su peso inicial';
-      const color=MC[ex.muscle]||'#0A7C5B';
-      const chartId=`plch_${c.id}_${idx}`;
-      const adjId=`plad_${c.id}_${idx}`;
-      const matches=[];
-      (c.routines||[]).forEach((r,ri)=>{
-        (r.exercises||[]).forEach((e,ei)=>{
-          if(e.name===ex.name)matches.push({ri,ei,rName:r.name,eSets:e.sets,eReps:e.reps});
-        });
-      });
-      _progMatches[adjId]=matches;
-      const wrap=document.createElement('div');
-      wrap.innerHTML=`<div class="pex-row" onclick="togglePexRow('${chartId}')">
-        <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(ex.name)}</div>
-          <div style="font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.sessions} ${m.sessions===1?'sesión':'sesiones'} · <span style="font-weight:600;color:${trendColor}">${trendStr}</span></div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-right:8px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(m.record,unit)}</div>
-          <div style="font-size:10px;color:var(--t3);line-height:1.3">récord</div>
-          ${m.atRecord?'':`<div style="font-size:10px;color:var(--t3);line-height:1.3;white-space:nowrap">última ${fmtMetric(m.last,unit)}</div>`}
-        </div>
-        ${matches.length?`<button class="btn bg bsm" style="padding:4px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();toggleAdjForm('${adjId}','${c.id}')">✏️ Ajustar</button>`:''}
-        <span style="font-size:10px;color:var(--t3);flex-shrink:0;margin-left:2px">▾</span>
-      </div>
-      <div class="pex-chart-wrap" id="${chartId}" data-color="${color}" data-unit="${unit}"></div>
-      <div class="pex-adj-form" id="${adjId}"></div>`;
-      const chartEl=wrap.querySelector(`#${chartId}`);
-      if(chartEl)chartEl.dataset.pts=JSON.stringify(pts);
-      body.appendChild(wrap);
-    });
-    con.appendChild(card);
+  con.innerHTML='<div class="prog-cargando" style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Revisando a tus asesorados…</div>';
+  const seq=++_progSeq; let i=0, anyShown=false;
+  return new Promise(resolve=>{
+    const paso=()=>{
+      if(seq!==_progSeq){ resolve(false); return; }
+      const t0=performance.now();
+      while(i<clients.length&&performance.now()-t0<PROG_SLICE_MS){
+        let card=null; try{ card=_progCardFor(clients[i]); }catch(e){ warn('AVI: una tarjeta de Cargas falló (se salta):',e&&e.message); }
+        i++;
+        if(card){ if(!anyShown){ con.innerHTML=''; anyShown=true; } con.appendChild(card); }
+      }
+      if(i<clients.length){ setTimeout(paso,0); return; }
+      if(!anyShown) con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Sin datos de progreso todavía. Los asesorados deben completar sesiones registradas.</div>';
+      resolve(true);
+    };
+    paso();
   });
-  if(!anyShown){
-    con.innerHTML='<div style="color:var(--t3);font-size:13px;text-align:center;padding:24px 0">Sin datos de progreso todavía. Los asesorados deben completar sesiones registradas.</div>';
+}
+// La tarjeta de UN asesorado (solo su cabecera). `null` si no tiene nada que mostrar con el filtro actual.
+function _progCardFor(c){
+  const exList=buildExerciseProgress(c.id);
+  if(!exList.length)return null;
+  // El veredicto de estancamiento lo da el detector YA calibrado (v433), no un umbral
+  // nuevo de este panel; se casa por IDENTIDAD (v585), que es lo que evita perder marcas
+  // cuando el coach renombró el ejercicio en la rutina.
+  const stalledKeys=new Set();
+  if(typeof stalledExercises==='function'){
+    try{stalledExercises(c,(DB.history[c.id]||[]),Date.now()).forEach(s=>{if(s&&s.key)stalledKeys.add(s.key);});}catch(e){}
   }
+  const models=exList.map(e=>progressRowModel(e,stalledKeys)).filter(Boolean);
+  const filtered=models.filter(m=>progressRowMatches(m,_progFilter));
+  if(!filtered.length)return null;
+  const upCount=filtered.filter(m=>m.state==='up').length;
+  const stCount=filtered.filter(m=>m.state==='stalled').length;
+  const card=document.createElement('div');
+  card.className='pload-card';
+  const bodyId=`plb_${c.id}`;
+  card.innerHTML=`<div class="pload-hd" onclick="openProgCard(this.closest('.pload-card'))">
+    <div class="cav" style="width:36px;height:36px;font-size:13px;flex-shrink:0;${avcStyle(c.name)}">${esc(ini(c.name))}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:1px">${filtered.length} ejercicio${filtered.length!==1?'s':''} con historial</div>
+    </div>
+    <div style="display:flex;gap:4px;margin-right:6px">
+      ${upCount?`<span class="tag tg" style="font-size:10px">↑ ${upCount}</span>`:''}
+      ${stCount?`<span class="tag to" style="font-size:10px">⏸ ${stCount}</span>`:''}
+    </div>
+    <div class="pload-chev">▼</div>
+  </div>
+  <div class="pload-body" id="${bodyId}"></div>`;
+  card._prog={c,exList,filtered};
+  return card;
+}
+// Las filas de una tarjeta: se arman la primera vez que se abre (antes se armaban TODAS, cerradas).
+function _progBuildBody(card){
+  const {c,exList,filtered}=card._prog;
+  const bodyId=`plb_${c.id}`;
+  const body=card.querySelector(`#${bodyId}`);
+  // v685 · todas las filas en UNA pasada de HTML (medido: abrir la
+  // tarjeta de 42 ejercicios costaba 350 ms con CPU ×4 armando fila por fila).
+  const html=[];
+  filtered.forEach((m,idx)=>{
+    const ex=exList.find(e=>e.key===m.key)||{};
+    const pts=ex.points||[];
+    const unit=m.unit;
+    // El titular es el RÉCORD y va rotulado; la última sesión se muestra al lado SOLO
+    // cuando difiere (26% de los casos), porque es la que explica por qué la gráfica baja.
+    const trendColor=m.state==='stalled'?'var(--ort)':m.state==='up'?'var(--gt)':'var(--t3)';
+    const trendStr=m.state==='stalled'
+      ?(m.sinceRecord?`⏸ ${m.sinceRecord} ${m.sinceRecord===1?'sesión':'sesiones'} sin mejorarlo`:'⏸ se plantó en ese peso')
+      :m.state==='up'?`↑ +${fmtMetric(m.gain,unit)} desde que empezó`:'↔ sigue en su peso inicial';
+    const color=MC[ex.muscle]||'#0A7C5B';
+    const chartId=`plch_${c.id}_${idx}`;
+    const adjId=`plad_${c.id}_${idx}`;
+    const matches=[];
+    (c.routines||[]).forEach((r,ri)=>{
+      (r.exercises||[]).forEach((e,ei)=>{
+        if(e.name===ex.name)matches.push({ri,ei,rName:r.name,eSets:e.sets,eReps:e.reps});
+      });
+    });
+    _progMatches[adjId]=matches;
+    html.push(`<div class="pex-item"><div class="pex-row" onclick="togglePexRow('${chartId}')">
+      <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16,true)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(ex.name)}</div>
+        <div style="font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.sessions} ${m.sessions===1?'sesión':'sesiones'} · <span style="font-weight:600;color:${trendColor}">${trendStr}</span></div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-right:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(m.record,unit)}</div>
+        <div style="font-size:10px;color:var(--t3);line-height:1.3">récord</div>
+        ${m.atRecord?'':`<div style="font-size:10px;color:var(--t3);line-height:1.3;white-space:nowrap">última ${fmtMetric(m.last,unit)}</div>`}
+      </div>
+      ${matches.length?`<button class="btn bg bsm" style="padding:4px 8px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation();toggleAdjForm('${adjId}','${c.id}')">✏️ Ajustar</button>`:''}
+      <span style="font-size:10px;color:var(--t3);flex-shrink:0;margin-left:2px">▾</span>
+    </div>
+    <div class="pex-chart-wrap" id="${chartId}" data-color="${color}" data-unit="${unit}"></div>
+    <div class="pex-adj-form" id="${adjId}"></div></div>`);
+    _progPts[chartId]=pts;
+  });
+  body.innerHTML=html.join('');
+  card._progBuilt=true;
+}
+function openProgCard(card){
+  if(!card)return;
+  if(!card._progBuilt&&card._prog)_progBuildBody(card);
+  card.classList.toggle('open');
 }
 
 function togglePexRow(chartId){
@@ -1198,7 +1232,7 @@ function togglePexRow(chartId){
   chart.classList.toggle('show');
   if(chart.classList.contains('show')&&!chart.dataset.drawn){
     chart.dataset.drawn='1';
-    drawExProgChart(chart,JSON.parse(chart.dataset.pts||'[]'),chart.dataset.color,chart.dataset.unit);
+    drawExProgChart(chart,_progPts[chartId]||JSON.parse(chart.dataset.pts||'[]'),chart.dataset.color,chart.dataset.unit);
   }
 }
 

@@ -4,6 +4,31 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v685: «Cargas» ya no deja el teléfono pegado (R16 #3)
+
+- **Pedido:** *«dale con el siguiente lote»* (R16 técnicos). **Medido con los 26 asesorados reales** (respaldo
+  del 27-sep, solo en memoria local) y CPU ×4: abrir «Cargas» eran **780-820 ms en UNA sola tarea**, de los que
+  ~500 eran armar las **431 filas de 17 tarjetas CERRADAS** y ~280 el cálculo.
+- **Ahora:** el cálculo va por asesorado en tandas de ≤12 ms (`PROG_SLICE_MS`) y el teléfono responde entre una
+  y otra; cada tarjeta arma sus filas la PRIMERA vez que se abre (`_progCardFor` / `_progBuildBody` /
+  `openProgCard`); `renderProgressPanel` devuelve una promesa y una pintada nueva cancela la vieja.
+- **Abrir la tarjeta más grande (42 ejercicios)** armaba **423 KB de HTML**: cada fila llevaba la silueta
+  anatómica SVG entera (~9.500 caracteres). `muscleIcon(m,s,true)` la devuelve como IMAGEN, armada una vez por
+  músculo (`_muscleSvgImg`, blob con su `xmlns`; mismo dibujo: colores fijos, sin clases ni variables); las
+  filas entran en UNA pasada de HTML, los puntos de la gráfica en memoria (`_progPts`) y las filas fuera de
+  pantalla no se dibujan (`content-visibility:auto`). 423 → **70 KB**; abrir: **10 ms** de trabajo real.
+- **Medido con datos reales:** tarea más larga **~800 → ≤82 ms**; total **780-820 → 240-350 ms**, repartido.
+- 🔴 **Dos cosas que parecían y no eran:** (1) el perfil culpaba a `getBoundingClientRect`: lo llama la píldora
+  de «Instalar» con cada toque, que FUERZA la disposición que igual iba a ocurrir; el costo real era el HTML;
+  (2) el clic simulado seguía en ~350 ms por `_unlockAudio` (en el navegador de prueba el audio nunca se
+  desbloquea y lo reintenta en cada clic; en un teléfono pasa una vez). Midiendo la apertura sin el clic: 10 ms.
+- **`_verify-cargas` se ajustó a lo que hace una persona:** abría las tarjetas poniéndoles la clase a mano; ahora
+  espera el panel y TOCA la cabecera (así arma sus filas). Las 15 afirmaciones son las mismas. El candado v585
+  del cableado amplió su alcance a las tres funciones del panel (misma propiedad, sin aflojar nada).
+- **QA:** suite 1376 → **1378** · `_sabotaje-v685` **11/11** · `_verify-cargas` **15/15** (claro, oscuro, 360 px,
+  letra grande) · `_test-coach-back` TODO OK · `_verify-arranque-modulos` 6/6 · captura mirada: las siluetas
+  se ven igual.
+
 ## ⏮️ 2026-09-28 — v684: el video del login solo se carga cuando el login se ve (R16 #2)
 
 - **Decisión del PO:** *«si vas a comprimir el vídeo que no pierda la calidad premium»*. **Medido primero:**

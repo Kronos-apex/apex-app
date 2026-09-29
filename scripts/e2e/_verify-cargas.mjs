@@ -55,7 +55,7 @@ if (!booted) { log('🔴 la app no arrancó (o los módulos no cargaron)'); proc
 // (2) Alguien cuya última sesión ES su récord → no hay nada que aclarar.
 // (3) Alguien PLANTADO: 10 sesiones al mismo peso en 9 semanas, que es lo que el detector de
 //     estancamiento (v433) sabe reconocer — sus compuertas piden ≥8 semanas de historial.
-const montaje = await ev(`(()=>{try{
+const montaje = await ev(`(async()=>{try{
   const dia=86400000, hoy=Date.now();
   const ses=(rid,exId,nom,musc,kg,offDias)=>({id:'s'+exId+offDias,routineId:rid,routineName:'Plan',
     date:new Date(hoy-offDias*dia).toISOString(),finishedAt:new Date(hoy-offDias*dia).toISOString(),
@@ -78,8 +78,8 @@ const montaje = await ev(`(()=>{try{
   };
   DB.prs={};
   _progFilter='all';
-  renderProgressPanel();
-  document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));
+  await renderProgressPanel();
+  document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); });
   return 'ok';
 }catch(e){return 'ERR: '+e.message}})()`);
 check('MONTAJE el fixture se planta y el panel se pinta', montaje === 'ok', String(montaje));
@@ -87,8 +87,8 @@ if (montaje !== 'ok') { log('\n🔴 sin montaje no se mide nada'); process.exit(
 
 // Hace visible el panel de Cargas de verdad (pantalla del coach + su panel), o se mediría
 // un contenedor apagado: `display:none` deja el innerText en blanco y la sonda aprobaría por vacío.
-await ev(`(()=>{try{showScreen('s-coach');gp('p-progress',null,'Cargas');
-  document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));
+await ev(`(async()=>{try{showScreen('s-coach');gp('p-progress',null,'Cargas');
+  await renderProgressPanel(); document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); });
   return 1;}catch(e){return 0}})()`);
 await sleep(400);
 
@@ -136,14 +136,14 @@ check('C7 y su titular también es su récord rotulado (25 kg)',
   /25/.test(fPlant || '') && /récord/i.test(fPlant || ''), '');
 
 // ── EL FILTRO ──
-const filtro = await ev(`(()=>{try{_progFilter='stalled';renderProgressPanel();
-  document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));
+const filtro = await ev(`(async()=>{try{_progFilter='stalled';await renderProgressPanel();
+  document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); });
   const t=document.getElementById('prog-list').innerText;
   return {plantada:/Plantada/.test(t),astrid:/Astrid/.test(t),record:/Enrecord/.test(t)};
 }catch(e){return {err:e.message}}})()`);
 check('C8 el filtro «Estancados» deja SOLO a quien lo está',
   filtro && filtro.plantada && !filtro.astrid && !filtro.record, JSON.stringify(filtro));
-await ev(`_progFilter='all';renderProgressPanel();document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));`);
+await ev(`(async()=>{ _progFilter='all'; await renderProgressPanel(); document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); }); return 1; })()`);
 await sleep(300);
 
 // ── LA BARRA PREMIUM: 360 px y letra grande, sin desborde lateral ──
@@ -154,7 +154,7 @@ const desborde = async () => await ev(`(()=>{const r=document.querySelector('#pr
   while(el&&el!==document.body){ if(el.scrollWidth>el.clientWidth+1) peor=Math.max(peor,el.scrollWidth-el.clientWidth); el=el.parentElement; }
   return peor;})()`);
 await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 2, mobile: true });
-await ev(`renderProgressPanel();document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));`);
+await ev(`(async()=>{ await renderProgressPanel(); document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); }); return 1; })()`);
 await sleep(300);
 const d360 = await desborde();
 check('C9 a 360 px la fila no obliga a arrastrar la pantalla de lado', d360 === 0, d360 + 'px');
@@ -186,7 +186,7 @@ check('C11 la fila se puede TOCAR de verdad: nada flotante se le pone encima', t
 // oscuro con el texto oscuro encima — invisible— y la captura habria aprobado eso.
 // El control mide el fondo de la SUPERFICIE donde vive la fila, no el del body (v453: una
 // regla se mide dentro de su contenedor real).
-const repinta = `renderProgressPanel();document.querySelectorAll('#prog-list .pload-card').forEach(c=>c.classList.add('open'));document.querySelector('#prog-list .pex-row')?.scrollIntoView({block:'center'});`;
+const repinta = `(async()=>{ await renderProgressPanel(); document.querySelectorAll('#prog-list .pload-card').forEach(c=>{ if(!c.classList.contains('open')) c.querySelector('.pload-hd').click(); }); document.querySelector('#prog-list .pex-row')?.scrollIntoView({block:'center'}); return 1; })()`;
 const fondoFila = async () => await ev(`(()=>{const r=document.querySelector('#prog-list .pex-row');
   if(!r)return ''; let el=r;
   while(el&&el!==document.documentElement){ const c=getComputedStyle(el).backgroundColor;

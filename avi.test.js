@@ -9108,10 +9108,11 @@ test('🔒 CABLEADO v585: el panel PINTA el récord, lo ROTULA y le pregunta al 
   // identificador citado en un comentario satisface la aserción (v552/v570).
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
-  const ini = src.indexOf('function renderProgressPanel(');
-  assert.ok(ini > 0, 'la función existe');
-  const fin = src.indexOf('\nfunction ', ini + 10);
-  const cuerpo = src.slice(ini, fin > 0 ? fin : src.length)
+  // v685: el panel se partió en tres (la pintada por tandas, la cabecera de cada tarjeta y sus filas,
+  // que se arman al abrirla). La propiedad es la misma; el alcance son las TRES funciones.
+  const tramo = n => { const ini = src.indexOf(n); assert.ok(ini > 0, 'la función existe: ' + n);
+    const fin = src.indexOf('\nfunction ', ini + 10); return src.slice(ini, fin > 0 ? fin : src.length); };
+  const cuerpo = ['function renderProgressPanel(', 'function _progCardFor(', 'function _progBuildBody('].map(tramo).join('\n')
     .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
   assert.ok(cuerpo.length > 500, 'control: se recortó la función, no medio archivo');
 
@@ -22330,6 +22331,55 @@ test('🔒 v684 · el video se carga SOLO con el login a la vista y sin la marca
   // Las dos puertas: al mostrar el login y al quitar la marca.
   assert.ok(/if\(id==='s-login'\)aviLoginVideo\(\);/.test(cuerpo(i2, 'function showScreen(')), 'mostrar el login no arranca su video');
   assert.ok(/typeof aviLoginVideo==='function'\)aviLoginVideo\(\);/.test(cuerpo(i1, 'function aviHideSplash(')), 'al quitar la marca el video del login no arranca');
+});
+
+// ══════════════════════════════════════════════════════
+// v685 · «CARGAS» YA NO DEJA EL TELÉFONO PEGADO (R16 #3)
+// ══════════════════════════════════════════════════════
+test('🔴 v685 · «Cargas» se pinta por tandas y cada tarjeta arma sus filas al abrirse', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const cuerpo = n => { const i = src.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const panel = cuerpo('function renderProgressPanel(');
+  // Por tandas cortas: el teléfono respira entre una y otra (medido: 780-820 ms en UNA tarea con 26 asesorados).
+  const slice = +((src.match(/const PROG_SLICE_MS=(\d+);/) || [])[1]);
+  assert.ok(slice > 0 && slice <= 16, '🔴 sin tandas cortas: vuelve a ser una sola tarea larga (' + slice + ')');
+  assert.ok(/while\(i<clients\.length&&performance\.now\(\)-t0<PROG_SLICE_MS\)/.test(panel) && /setTimeout\(paso,0\)/.test(panel),
+    '🔴 el panel ya no cede el hilo entre asesorados');
+  assert.ok(/if\(seq!==_progSeq\)\{ resolve\(false\); return; \}/.test(panel), 'una pintada vieja seguiría escribiendo encima de la nueva (filtro)');
+  assert.ok(/return new Promise\(/.test(panel), 'el panel no avisa cuándo terminó');
+  // Las filas NO se arman para tarjetas cerradas.
+  assert.ok(!/pex-row/.test(cuerpo('function _progCardFor(')), '🔴 las filas se vuelven a armar con la tarjeta cerrada');
+  assert.ok(/pex-row/.test(cuerpo('function _progBuildBody(')), 'las filas ya no se arman en ningún lado');
+  assert.ok(/onclick="openProgCard\(this\.closest\('\.pload-card'\)\)"/.test(cuerpo('function _progCardFor(')), 'abrir la tarjeta no arma sus filas');
+  assert.ok(/if\(!card\._progBuilt&&card\._prog\)_progBuildBody\(card\);/.test(cuerpo('function openProgCard(')), 'las filas se arman cada vez que se abre (o nunca)');
+  // Una tarjeta que falla no se lleva por delante las demás.
+  assert.ok(/try\{ card=_progCardFor\(clients\[i\]\); \}catch\(e\)/.test(panel), 'una tarjeta rota tumbaría el panel entero');
+  // Abrir la tarjeta: UNA pasada de HTML, la silueta como imagen reutilizable y los puntos en memoria
+  // (medido: la de 42 ejercicios armaba 423 KB de HTML; ahora 70).
+  const filas = cuerpo('function _progBuildBody(');
+  assert.ok(/\$\{muscleIcon\(ex\.muscle,16,true\)\}/.test(filas), '🔴 las filas vuelven a pintar la silueta SVG entera (9.500 caracteres cada una)');
+  assert.ok(/body\.innerHTML=html\.join\(''\);/.test(filas) && !/appendChild\(wrap\)/.test(filas), 'las filas vuelven a entrar una por una');
+  assert.ok(/_progPts\[chartId\]=pts;/.test(filas) && !/dataset\.pts=JSON\.stringify/.test(filas), 'los puntos vuelven a viajar como texto JSON por fila');
+  assert.ok(/class="pex-item"/.test(filas), 'las filas perdieron su clase (y con ella el no-dibujar fuera de pantalla)');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.pex-item\{content-visibility:auto;contain-intrinsic-size:auto 56px\}/.test(css), 'las filas fuera de pantalla se vuelven a dibujar todas');
+});
+
+test('🔒 v685 · la silueta como imagen: el MISMO dibujo, una vez por músculo, y en línea si algo falla', () => {
+  const fs = require('fs'), path = require('path');
+  const i1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const cuerpo = n => { const i = i1.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return i1.slice(i, i1.indexOf('\nfunction ', i + 10)); };
+  const mi = cuerpo('function muscleIcon(muscle,size,comoImagen){');
+  assert.ok(/return comoImagen\?_muscleSvgImg\(svg,m\+'\|'\+s\):svg;/.test(mi), 'la silueta como imagen no sale de la MISMA función que la dibuja en línea');
+  assert.ok(/if\(comoImagen&&_muscleImgHtml\[m\+'\|'\+s\]\)return _muscleImgHtml\[m\+'\|'\+s\];/.test(mi), 'la silueta se vuelve a armar en cada fila');
+  const img = cuerpo('function _muscleSvgImg(');
+  assert.ok(/if\(\/var\\\(\/\.test\(svg\)\|\|typeof Blob!=='function'/.test(img), 'con un color de tema o sin Blob, la imagen saldría rota (debe quedarse en línea)');
+  assert.ok(/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/.test(img), 'sin xmlns, el SVG no se ve como imagen');
+  assert.ok(/catch\(e\)\{ return svg; \}/.test(img), 'si la imagen falla, la fila se queda sin ícono');
+  // La CSP de la app permite imágenes blob: (si no, la silueta no se vería).
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/img-src[^;]*\bblob:/.test(html), '🔴 la regla de orígenes bloquearía la silueta como imagen');
 });
 
 // ══════════════════════════════════════════════════════

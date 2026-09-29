@@ -1701,6 +1701,9 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
 .gm-sinput-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;margin-top:2px}
 /* v681 · la barra: una línea que dice cuál se suma, y sus opciones (≥36px, tokens en los dos temas) */
+/* v685 · «Cargas»: una tarjeta abierta puede traer 40+ filas, cada una con la silueta anatómica en SVG. Las que
+   están fuera de la pantalla no se dibujan hasta acercarse (medido: abrir la de 42 costaba ~350 ms con CPU ×4). */
+.pex-item{content-visibility:auto;contain-intrinsic-size:auto 56px}
 .gm-bar{display:flex;flex-direction:column;gap:6px;margin:0 0 4px}
 .gm-bar-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;width:100%;padding:6px 10px;border-radius:10px;border:1px dashed var(--br2);background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer}
 .gm-bar-edit{flex-shrink:0;color:var(--gt);font-weight:800}

@@ -41,6 +41,9 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
   más de un 30 % (medido con VMAF), así que no se tocó un pixel. Ya no lo baja quien tiene sesión ni compite
   con el código en la primera visita.
 
+- **#3 (v685):** «Cargas» por tandas y cada tarjeta arma sus filas al abrirse; la silueta como imagen. Con los datos
+  reales, la tarea más larga ~800 → ≤82 ms.
+
 ## Orden recomendado
 1. **Decisiones del PO:** la pantalla de carga (#1) y el video (#2). Son las dos que más se sienten y las
    dos más baratas.
