@@ -13,7 +13,7 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
 | 1 | **Cada vez que se abre AVI, la pantalla de carga se queda 2,8 s a propósito** (`app-1-infra.js:1751`, `setTimeout(2800/3200)`, «+1 s a la pantalla de carga» del 8-jun). Toda la app espera DETRÁS de ella, sin hacer nada. | Todos, todos los días | 2.800 ms de los 5.217 ms que tarda en abrir con sesión guardada (54 %) | Que la app arranque MIENTRAS se ve la marca, y que la pantalla dure un mínimo corto (~1 s) → **~2 s menos en cada apertura** | **PO**: ¿cuánto quieres que se vea la marca? |
 | 2 | **Instalar AVI por primera vez baja 1,8 MB de video y fotos del login**, más que todo el código (1 MB). El video de fondo (1,4 MB) arranca solo (`autoplay`) y anula su `preload="metadata"`. | Cada asesorado nuevo, justo cuando menos señal suele tener | 1.822 de 2.918 KB; en 4G lenta, **~7 s** solo el video | Comprimir el video a ~200-400 KB (misma sensación) o que no arranque solo | **PO**: ¿el video es parte de la marca? |
 | 3 | **«Cargas» del coach deja la app sin responder medio segundo** cada vez que se abre (recorre el historial COMPLETO de los 26 asesorados de una vez). | El coach | **445-847 ms con los datos reales**; 1,4-1,9 s cuando el historial crezca | Pintar primero y calcular por tandas para que el teléfono respire | Técnica |
-| 4 | **Cada versión que publicamos obliga a todos a volver a bajar la app entera** (~1 MB comprimido), aunque cambien 2-3 archivos: la versión es una sola para todo (`?v=NNN`). Este mes: **34 versiones en 28 días**. El catálogo de ejercicios, que casi nunca cambia, es el 59 % de un archivo (235 KB). | Todos, la primera apertura después de cada publicación | ~1 MB por publicación (≈5 s en 4G lenta) — **ESTIMADO, por medir** | Versión por archivo: solo se baja lo que cambió | Técnica (medir primero) |
+| 4 | **Cada versión que publicamos obliga a todos a volver a bajar la app entera** (~1 MB comprimido), aunque cambien 2-3 archivos: la versión es una sola para todo (`?v=NNN`). Desde el 1-sep: **122 versiones** (v564 → v686, ~4 por día; el «34 en 28 días» de la primera versión de este informe estaba MAL contado: filtraba por el asunto del commit). El catálogo de ejercicios, que casi nunca cambia, es el 59 % de un archivo (235 KB). | Todos, la primera apertura después de cada publicación | ~1 MB por publicación (≈5 s en 4G lenta) — **ESTIMADO, por medir** | Versión por archivo: solo se baja lo que cambió | Técnica (medir primero) |
 | 5 | Las cuentas que recorren todo el historial se repiten en cada toque (marcar una serie, repintar el guiado, abrir una ficha). **Hoy no se siente**; crece con el historial. Incluye un costo que metí yo en v681 (la barra: 6-12 ms por toque). | Quien más entrena | Marcar serie **77-97 ms** hoy (borde de los 100); 180-345 ms con 365 sesiones | Calcular una vez por sesión y reusar | Técnica |
 | 6 | ❓ **Primera visita con red lenta: la app puede quedar a medio arrancar** (muestra el login a los ~15 s, pero sin tema, sin el guardia del botón atrás ni el service worker). Reproducido SOLO en emulación, con 5 controles; causa sin cerrar. | Quien instala con mala señal (si pasa en teléfonos reales) | — | **Investigar antes de tocar** (V1 no propone parche a ciegas) | Técnica |
 
@@ -46,6 +46,16 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
 
 - **#5, la parte de la barra (v686):** la identidad se arma una vez por guardado (17,1 → 9 ms). El resto de #5
   (memoizar la identidad para todas las cuentas) se deja: hoy no se siente y un caché global mal invalidado es riesgo.
+
+- **#4 MEDIDO (29-sep), decisión del PO pendiente:** en las últimas 30 publicaciones reales, bajar todo pesaba
+  **929 KB comprimidos por publicación**; con versión por archivo habrían sido **361 KB (−61 %)**. Con ~4
+  publicaciones por día, cada persona que abre a diario baja ~1 MB cada día que hubo publicación. No se construyó
+  sin el PO: toca el service worker (la promesa de abrir sin internet), el check 10 del hook y la publicación en
+  las dos direcciones.
+- 📡 **Visto al medir #4, sin medir aún:** el service worker pide cada `.js`/`.css` a la red con `no-cache` en
+  CADA apertura y SIN tope de tiempo (la navegación sí tiene 3 s). Con buena red son respuestas «no cambió»;
+  con la WiFi del gimnasio colgada, abrir la app espera esas 10 respuestas. Y las mediciones de «0 KB por red»
+  de V1 no ven los pedidos del service worker (van por otro canal de CDP): se revisa en la próxima ronda.
 
 ## Orden recomendado
 1. **Decisiones del PO:** la pantalla de carga (#1) y el video (#2). Son las dos que más se sienten y las
