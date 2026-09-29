@@ -44,6 +44,9 @@ Todo medido en un teléfono de gama media EMULADO (CPU ×4, «4G lenta» de 1,6 
 - **#3 (v685):** «Cargas» por tandas y cada tarjeta arma sus filas al abrirse; la silueta como imagen. Con los datos
   reales, la tarea más larga ~800 → ≤82 ms.
 
+- **#5, la parte de la barra (v686):** la identidad se arma una vez por guardado (17,1 → 9 ms). El resto de #5
+  (memoizar la identidad para todas las cuentas) se deja: hoy no se siente y un caché global mal invalidado es riesgo.
+
 ## Orden recomendado
 1. **Decisiones del PO:** la pantalla de carga (#1) y el video (#2). Son las dos que más se sienten y las
    dos más baratas.

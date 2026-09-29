@@ -1506,8 +1506,11 @@ function _barNum(v) {
 // historial para ese ejercicio —por IDENTIDAD, no por nombre (v585: un ejercicio renombrado es el
 // mismo)—; si nunca la anotó, la del catálogo. `null` si el ejercicio no lleva barra.
 // El historial puede venir en cualquier orden: manda la fecha.
-function exerciseBarKg(history, ex) {
-  const idt = exerciseIdentity(history || []);
+// v686 · `idtOpt` (opcional): la identidad YA calculada sobre ESE historial. Quien pregunta por varios
+// ejercicios del mismo historial (el guardado de cada serie) la arma una vez y la pasa: sin eso se
+// reconstruía entera una vez POR ejercicio con barra, en cada toque (R16 #5, costo de v681).
+function exerciseBarKg(history, ex, idtOpt) {
+  const idt = (idtOpt && typeof idtOpt.keyOf === 'function') ? idtOpt : exerciseIdentity(history || []);
   const key = idt.keyOf(ex || {});
   // Sin id propio, el puente nombre→id de la identidad dice qué ejercicio del catálogo es.
   const id = ex && ex.id ? String(ex.id) : (/^e\d+$/.test(key) ? key : '');

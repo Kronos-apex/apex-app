@@ -1996,11 +1996,11 @@ function toggleLastre(routine,ei){localStorage.setItem(`lastre_${routine.id}_${e
 // v681 · LA BARRA de este ejercicio en esta sesión: la que eligió hoy (`barra_<rid>_<ei>`, con el id
 // del ejercicio dentro para que no se le pegue a otro si el plan cambia) o, si no tocó nada, la que
 // dice su historial / el catálogo (`exerciseBarKg`, pura). `null` = el ejercicio no lleva barra.
-function sessionBarKg(routine,ei,ex){
+function sessionBarKg(routine,ei,ex,idt){
   if(!routine||!ex||typeof exerciseBarKg!=='function'||barDefaultKg(ex)==null) return null;
   const hoy=barSessionValue(localStorage.getItem(`barra_${routine.id}_${ei}`),ex);
   if(hoy!=null) return hoy;
-  return exerciseBarKg((DB.history&&DB.history[CUR.clientId])||[],ex);
+  return exerciseBarKg((DB.history&&DB.history[CUR.clientId])||[],ex,idt);
 }
 function setSessionBar(routine,ei,ex,kg){
   const v=barSessionEncode(ex,kg); if(!v) return;
@@ -2616,11 +2616,15 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
   // guardan en campos APARTE (warm/drop) — visibles para cliente y coach, pero SIN entrar
   // en volumen ni récords (misma regla que en vivo). Solo se incluyen si tienen datos.
   const auxVal=(ei,tok)=>{ const kg=getLog(routine.id,ei,tok,'kg'), reps=getLog(routine.id,ei,tok,'reps'); return (kg||reps)?{kg,reps}:null; };
+  // v686 · la identidad de ejercicios se arma UNA vez por guardado (y solo si hay algún ejercicio con barra),
+  // no una vez por ejercicio con barra: este guardado corre con CADA serie marcada.
+  const _barIdt=((routine.exercises||[]).some(e=>typeof barDefaultKg==='function'&&barDefaultKg(e)!=null)&&typeof exerciseIdentity==='function')
+    ?exerciseIdentity(DB.history[clientId]||[]):null;
   const setsData=(routine.exercises||[]).map((ex,ei)=>{
     const sets=parseInt(ex.sets)||3;
     const warm=auxVal(ei,WARM_SI);
     // v681: la barra de ese día viaja con el ejercicio (el `kg` de cada serie siguen siendo los DISCOS).
-    const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex):null;
+    const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex,_barIdt):null;
     return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
       // v682: las reps en reserva solo viajan en una serie HECHA (sin serie no hay «cuántas más»).
       const done=isDone(routine.id,ei,si);

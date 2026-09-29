@@ -84,6 +84,14 @@ console.log('Marcar serie 3:               ', await marcar());
 const barra = await medir(`(()=>{ const c=DB.clients.find(x=>x.id===${JSON.stringify(HEAVY_ID)}); const h=DB.history[c.id]; (GM.routine.exercises||[]).forEach(e=>{ if(barDefaultKg(e)!=null) exerciseBarKg(h,e); }); })()`);
 console.log('Solo la barra (v681), por toque:', barra);
 console.log('gmRender completo:            ', await medir(`gmRender()`));
+// v686 · la pieza exacta, en la MISMA página y 20 veces: la barra de los ejercicios de la rutina, antes
+// (identidad reconstruida por cada ejercicio con barra) y ahora (una sola identidad para todos).
+await send('Emulation.setCPUThrottlingRate', { rate: 4 });
+console.log('barra por guardado, 20 veces (ms):', JSON.stringify(await ev(`(()=>{ const c=DB.clients.find(x=>x.id===${JSON.stringify(HEAVY_ID)}); const h=DB.history[c.id]; const exs=(GM.routine.exercises||[]).filter(e=>barDefaultKg(e)!=null);
+  let t=performance.now(); for(let k=0;k<20;k++) exs.forEach(e=>exerciseBarKg(h,e)); const antes=performance.now()-t;
+  t=performance.now(); for(let k=0;k<20;k++){ const idt=exerciseIdentity(h); exs.forEach(e=>exerciseBarKg(h,e,idt)); } const ahora=performance.now()-t;
+  return {conBarra:exs.length, antesPorGuardado:+(antes/20).toFixed(1), ahoraPorGuardado:+(ahora/20).toFixed(1)}; })()`)));
+await send('Emulation.setCPUThrottlingRate', { rate: 1 });
 console.log('\njsErrors:', JSON.stringify(jsErrors.slice(0, 3)));
 try { ws.close(); } catch {} chrome.kill(); srv.kill();
 process.exit(0);

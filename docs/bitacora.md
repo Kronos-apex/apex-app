@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v686: la barra no recalcula la identidad en cada toque (R16 #5, costo propio de v681)
+
+- En v681 metí un costo por toque: al guardar cada serie, `exerciseBarKg` reconstruía `exerciseIdentity` sobre
+  TODO el historial una vez POR CADA ejercicio con barra. Ahora acepta la identidad ya calculada (`idtOpt`) y
+  el guardado la arma UNA vez, solo si la rutina tiene algún ejercicio con barra (`_barIdt`).
+- **Medido con los datos reales** (72 sesiones, 3 ejercicios con barra, CPU ×4, 20 repeticiones en la misma
+  página): **17,1 → 9 ms por guardado**.
+- 🔴 Una medición de «marcar serie» completo salió PEOR que la de ayer (125-177 vs 77-97 ms): era ruido del clic
+  simulado (`_unlockAudio` en el navegador de prueba). Se midió la pieza exacta, lado a lado, en la misma página.
+- El candado v681 del cableado se actualizó a la firma nueva (`sessionBarKg(routine,ei,ex,_barIdt)`): misma propiedad.
+- **QA:** suite 1378 → **1380** · `_sabotaje-v686` **5/5** · `_guiado-suite` TODO OK · `_verify-barra-rir` **87/87**.
+- ⏭️ Lo de V2 H3/H4 más allá de la barra (memoizar `exerciseIdentity` para todas las cuentas del historial) NO se
+  hizo: con los datos reales no se siente hoy y un caché global mal invalidado muestra pesos viejos. Se mide de
+  nuevo cuando el historial crezca.
+
 ## ⏮️ 2026-09-29 — v685: «Cargas» ya no deja el teléfono pegado (R16 #3)
 
 - **Pedido:** *«dale con el siguiente lote»* (R16 técnicos). **Medido con los 26 asesorados reales** (respaldo

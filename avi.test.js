@@ -22158,7 +22158,8 @@ test('🔒 v681 · el cableado: la barra viaja, se guarda con el entreno y entra
   assert.ok(!('otra_cosa' in r.carry), 'CONTROL: una clave cualquiera de ese tamaño no debería viajar');
   // El entreno guardado lleva la barra del día.
   const save = e4.slice(e4.indexOf('function saveSessionToHistory('), e4.indexOf('\nfunction ', e4.indexOf('function saveSessionToHistory(') + 10));
-  assert.ok(/const bar=\(typeof sessionBarKg==='function'\)\?sessionBarKg\(routine,ei,ex\):null;/.test(save) && /\.\.\.\(bar!=null\?\{bar\}:\{\}\)/.test(save),
+  // (v686: la llamada lleva la identidad ya calculada del guardado; la propiedad es la misma)
+  assert.ok(/const bar=\(typeof sessionBarKg==='function'\)\?sessionBarKg\(routine,ei,ex,_barIdt\):null;/.test(save) && /\.\.\.\(bar!=null\?\{bar\}:\{\}\)/.test(save),
     '🔴 el entreno se guarda sin la barra');
   // El 1RM estimado suma la barra en sus TRES pantallas…
   const conBarra = (e4.match(/estimate1RM\(\(parseFloat\([^)]*\)\|\|0\)\+_bar,pr\.reps\)/g) || []).length;
@@ -22380,6 +22381,36 @@ test('🔒 v685 · la silueta como imagen: el MISMO dibujo, una vez por músculo
   // La CSP de la app permite imágenes blob: (si no, la silueta no se vería).
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert.ok(/img-src[^;]*\bblob:/.test(html), '🔴 la regla de orígenes bloquearía la silueta como imagen');
+});
+
+// ══════════════════════════════════════════════════════
+// v686 · LA BARRA NO RECALCULA LA IDENTIDAD EN CADA TOQUE (R16 #5, costo de v681)
+// ══════════════════════════════════════════════════════
+test('🔴 v686 · la barra con la identidad YA calculada da lo mismo, y la usa de verdad', () => {
+  const { exerciseBarKg, exerciseIdentity } = core;
+  const s = (date, ex) => ({ date, exercises: [ex] });
+  const hist = [s('2026-09-01T10:00:00Z', { id: 'e42', name: 'Hip Thrust con Barra', bar: 20 }),
+    s('2026-09-23T10:00:00Z', { id: 'e42', name: 'Hip thrust (mi versión)', bar: 15 }),
+    s('2026-09-20T10:00:00Z', { id: 'e13', name: 'Sentadilla con Barra', bar: 0 })];
+  const idt = exerciseIdentity(hist);
+  for (const ex of [{ id: 'e42' }, { name: 'Hip Thrust con Barra' }, { id: 'e13' }, { id: 'e1' }, { id: 'e256' }]) {
+    assert.strictEqual(exerciseBarKg(hist, ex, idt), exerciseBarKg(hist, ex), 'con identidad dada cambia la respuesta: ' + JSON.stringify(ex));
+  }
+  // La USA: una identidad que dice que todo es el hip thrust hace que la sentadilla herede su barra.
+  const falsa = { keyOf: () => 'e42' };
+  assert.strictEqual(exerciseBarKg(hist, { id: 'e13' }, falsa), 15, '🔴 la identidad que se le pasa se ignora (se sigue reconstruyendo en cada llamada)');
+  // Algo que no es una identidad no se usa.
+  assert.strictEqual(exerciseBarKg(hist, { id: 'e42' }, { nada: 1 }), 15);
+});
+
+test('🔒 v686 · el guardado de cada serie arma la identidad UNA vez, y solo si hay barra', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = e4.indexOf('function saveSessionToHistory('); const save = e4.slice(i, e4.indexOf('\nfunction ', i + 10));
+  assert.strictEqual((save.match(/exerciseIdentity\(/g) || []).length, 1, '🔴 la identidad se arma más de una vez por guardado (o ninguna)');
+  assert.ok(/const _barIdt=\(\(routine\.exercises\|\|\[\]\)\.some\(e=>typeof barDefaultKg==='function'&&barDefaultKg\(e\)!=null\)/.test(save),
+    'la identidad se arma aunque la rutina no tenga ningún ejercicio con barra');
+  assert.ok(/return exerciseBarKg\(\(DB\.history&&DB\.history\[CUR\.clientId\]\)\|\|\[\],ex,idt\);/.test(e4), 'sessionBarKg no pasa la identidad');
 });
 
 // ══════════════════════════════════════════════════════
