@@ -22604,6 +22604,7 @@ test('📈 v689 · umbrales de Coach Pro: ≤55 % o ≥180 % Y al menos 15 kg de
   assert.strictEqual(jumpCheck(70, 8), 'baja', 'prensa 70 → 8 (un dedo)');
   // Lo que NO es un salto
   assert.strictEqual(jumpCheck(5, 2.5), null, '🔴 una mancuerna de 5 → 2,5 kg salta: sin el piso de 15 kg, ruido');
+  assert.strictEqual(jumpCheck(5, 10), null, '🔴 una mancuerna de 5 → 10 kg salta: sin el piso de 15 kg, ruido (también al SUBIR)');
   assert.strictEqual(jumpCheck(100, 85), null, '🔴 una semana de descarga (−15 %) se tomó por salto');
   assert.strictEqual(jumpCheck(100, 110), null, 'progresar no es saltar');
   assert.strictEqual(jumpCheck(0, 50), null); assert.strictEqual(jumpCheck(50, 0), null); assert.strictEqual(jumpCheck(null, 50), null);
@@ -22711,7 +22712,7 @@ test('🔒 v689 · CABLEADO del guiado: la subida al teclear, la bajada al cerra
   assert.ok(/const _enOrden=stepIdx===GM\.currentStep;/.test(gr) && gr.indexOf('const _enOrden=') < gr.indexOf('GM.currentStep=next;'),
     '«en orden» se mide DESPUÉS de avanzar el paso: nunca lo sería');
   assert.ok(/_gmRestSalto\(opts\.rirEi!=null\?opts\.rirEi:null\);/.test(e6), 'el descanso ya no muestra el aviso');
-  assert.strictEqual((e6.match(/^\s*_gmRestSalto\(null\);\s*$/gm) || []).length, 2, 'la plancha y el cardio deben esconder el aviso (usan el mismo recuadro)');
+  assert.strictEqual((e6.match(/^\s*_gmRestSalto\(null\);/gm) || []).length, 2, 'la plancha y el cardio deben esconder el aviso (usan el mismo recuadro)');
   const r = e6.indexOf('function gmSaltoResp('); const rs = e6.slice(r, e6.indexOf('\n}', r));
   assert.ok(/setSessionJump\(R,ei,ex,r==='si'\?'corte':'visto',st\.prevKg,st\.si\);/.test(rs), 'las respuestas ya no se guardan como corte / visto');
   assert.ok(/if\(r==='si'&&typeof resaveSessionPartial==='function'\) resaveSessionPartial\(R\);/.test(rs), '🔴 el «sí» no se lleva al entreno guardado');

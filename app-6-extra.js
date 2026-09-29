@@ -1357,7 +1357,7 @@ function gmHoldTimer(ei, si, secs){
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
   _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
-  _gmRestSalto(null);
+  _gmRestSalto(null);   // v689 · la plancha: ahí no hay salto que preguntar
   if(breEl) breEl.style.display='none';
   if(nextEl) nextEl.textContent='';
   if(titleEl) titleEl.textContent='💪 ¡Aguanta la posición!';
@@ -1504,7 +1504,7 @@ function gmCardioTimer(ei, mins, sets){
   const nextEl=document.getElementById('gm-rest-next');
   const breEl=document.getElementById('gm-rest-breath');
   _gmRestRir(null); // v682: el mismo recuadro sirve a la plancha y al cardio — ahí no se pregunta
-  _gmRestSalto(null);
+  _gmRestSalto(null);   // v689 · el cardio: ahí no hay salto que preguntar
   if(breEl)breEl.style.display='none';
   if(nextEl)nextEl.textContent='';
   if(titleEl)titleEl.textContent='🚴 ¡Dale! Cardio en marcha';
