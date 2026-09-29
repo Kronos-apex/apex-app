@@ -22413,6 +22413,90 @@ test('🔒 v686 · el guardado de cada serie arma la identidad UNA vez, y solo s
   assert.ok(/return exerciseBarKg\(\(DB\.history&&DB\.history\[CUR\.clientId\]\)\|\|\[\],ex,idt\);/.test(e4), 'sessionBarKg no pasa la identidad');
 });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// v687 · CON UNA WIFI «CONECTADA PERO SIN INTERNET» LA APP ABRE
+// ═════════════════════════════════════════════════════════════════════════════
+// Medido el 29-sep (`_verify-red-colgada`): con la red colgada la app NO ABRÍA NUNCA — el
+// service worker esperaba a la red sin límite por cada .js/.css, y styles.css bloquea el pintado.
+// Ahora los archivos VERSIONADOS salen de la copia de esa misma versión. Se extrae la función del
+// archivo real y se ejecuta con una caché y una red de mentira: prueba COMPORTAMIENTO.
+const _versionExacta = (() => {
+  const i = _SW_SRC.indexOf('function _versionExacta');
+  if (i < 0) return null;
+  const j = _SW_SRC.indexOf('\n}', i);
+  return (caches, fetch, _guardar) => new Function('caches', 'fetch', '_guardar',
+    'return (' + _SW_SRC.slice(i, j + 2) + ')')(caches, fetch, _guardar);
+})();
+// ⚠️ `test()` de esta suite es SÍNCRONO (gotcha v621): una prueba `async` sale verde sin haber
+//    esperado nada. Por eso la caché y la red de mentira devuelven PROMESAS SÍNCRONAS: `then` corre
+//    en el acto, y el resultado se lee antes de que termine el test.
+const _sp = v => (v && typeof v.then === 'function') ? v : ({
+  then(ok) { return _sp(ok ? ok(v) : v); }, catch() { return this; } });
+const _spNo = e => ({ then(ok, ko) { return ko ? _sp(ko(e)) : this; }, catch(fn) { return _sp(fn(e)); } });
+const _spNunca = { then() { return _spNunca; }, catch() { return _spNunca; } };   // la red que no contesta
+const _spLeer = t => { let out = '⏳ SIN RESOLVER'; t.then(v => { out = v; }); return out; };
+const _swCaja = (guardado) => {
+  const reg = { fetch: [], guardar: [], match: [] };
+  const caches = { match: (req, opt) => { reg.match.push([req, opt]); return _sp(guardado(req, opt)); } };
+  return { reg, caches };
+};
+
+test('📶 v687 · un .js/.css con versión sale de la copia guardada SIN esperar a la red', () => {
+  assert.ok(typeof _versionExacta === 'function', 'no pude extraer _versionExacta de sw.js');
+  const { reg, caches } = _swCaja((req, opt) => (!opt && req === 'styles.css?v=687') ? 'COPIA-687' : undefined);
+  // Una red que NO contesta nunca: si la función la esperara, este test no terminaría.
+  const fetch = (req, init) => { reg.fetch.push([req, init]); return _spNunca; };
+  const f = _versionExacta(caches, fetch, () => reg.guardar.push(1));
+  const r = _spLeer(f('styles.css?v=687'));
+  assert.strictEqual(r, 'COPIA-687', '🔴 con la copia de esa versión guardada, no la sirvió');
+  assert.strictEqual(reg.fetch.length, 0, '🔴 le preguntó a la red teniendo la copia exacta: con la red colgada, la app no abre');
+});
+
+test('📶 v687 · una versión NUEVA (no guardada) se pide a la red, y se guarda', () => {
+  const { reg, caches } = _swCaja(() => undefined);
+  const fetch = (req, init) => { reg.fetch.push([req, init]); return _sp('RED'); };
+  const r = _spLeer(_versionExacta(caches, fetch, () => reg.guardar.push(1))('app-1-infra.js?v=688'));
+  assert.strictEqual(r, 'RED');
+  assert.strictEqual(reg.fetch.length, 1, 'no pidió a la red la versión que no tenía');
+  assert.deepStrictEqual(reg.fetch[0][1], { cache: 'no-cache' }, 'sin no-cache el pedido podía devolver la copia vieja del caché HTTP');
+  assert.strictEqual(reg.guardar.length, 1, 'lo que trajo la red no se guardó para la próxima (y para abrir sin red)');
+  // 🔒 CONTROL: la copia de OTRA versión NO se sirve mientras la red responda — una versión
+  //    distinta junto al index.html de otra rompe la app.
+  assert.ok(!reg.match.some(([, o]) => o && o.ignoreSearch), '🔴 buscó una copia de otra versión con la red funcionando');
+});
+
+test('📶 v687 · sin red de verdad y sin la versión exacta: cualquier copia antes que pantalla rota', () => {
+  const { caches } = _swCaja((req, opt) => (opt && opt.ignoreSearch) ? 'COPIA-VIEJA' : undefined);
+  const r = _spLeer(_versionExacta(caches, () => _spNo(new TypeError('offline')), () => {})('app-7-community.js?v=688'));
+  assert.strictEqual(r, 'COPIA-VIEJA', '🔴 sin red y sin la versión exacta no cayó a la copia que había');
+});
+
+test('🔒 v687 · solo lo VERSIONADO sale de la copia; sin `?v=` sigue yendo primero a la red', () => {
+  const sw = sinComentarios(_SW_SRC);
+  const i = sw.indexOf("self.addEventListener('fetch'"); const h = sw.slice(i, sw.indexOf('\n});', i));
+  const k = h.indexOf('_versionExacta(e.request)');
+  assert.ok(k > 0, 'la rama de .js/.css dejó de usar la copia de la versión exacta');
+  assert.ok(/if\(url\.searchParams\.has\('v'\)\)\{ e\.respondWith\(_versionExacta\(e\.request\)\); return; \}/.test(h),
+    '🔴 la copia guardada se sirve también a pedidos SIN versión: ahí sí puede ser vieja (el caso de v230)');
+  // La navegación conserva su tope de 3 s: es lo que hace que el index.html guardado llegue.
+  assert.ok(/setTimeout\(\(\) => rej\(new Error\('timeout'\)\), 3000\)/.test(h), 'la navegación perdió su tope de 3 s');
+});
+
+test('📦 v687 · TODO archivo propio que index.html carga está en la lista del service worker', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const propios = [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"|<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)]
+    .map(m => m[1] || m[2]).filter(u => !/^https?:/.test(u)).map(u => u.split('?')[0]);
+  assert.ok(propios.length >= 12, `solo encontré ${propios.length} archivos propios en index.html: el extractor dejó de casar`);
+  const sw = sinComentarios(_SW_SRC);
+  const lista = (sw.match(/\.concat\(\[([^\]]*)\]/) || [])[1] || '';
+  const enShell = new Set([...lista.matchAll(/'([^']+)'/g)].map(m => m[1]));
+  const vendor = (sw.match(/const SUPABASE_JS = '([^']+)'/) || [])[1];
+  if (vendor && /BASE \+ SUPABASE_JS/.test(sw)) enShell.add(vendor);
+  const faltan = propios.filter(f => !enShell.has(f));
+  assert.deepStrictEqual(faltan, [], '🔴 estos archivos no se guardan al instalar: tras cada actualización quedan sin copia y sin red no cargan');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

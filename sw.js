@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v686';
+const CACHE_NAME = 'avi-v687';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -16,7 +16,10 @@ const SHELL = [BASE, BASE + 'index.html', BASE + 'manifest.json', BASE + 'icons/
   // `foods.json` = catálogo de búsqueda del registro de alimentos (E8). Va precacheado con
   // ?v= como los módulos: sin él, la primera visita sin red se quedaría sin buscador. Si aun
   // así falta, `foodCatalog(null)` cae a los 50 que viajan dentro de avi-core (E9).
-  .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js', 'foods.json']
+  // v687 · app-7-community.js faltaba desde que nació (v373): tras cada actualización quedaba sin
+  //    copia hasta volver a pedirlo con red, y sin red no cargaba. La suite exige que TODO
+  //    `<script src>` y `<link rel=stylesheet>` propio de index.html esté aquí.
+  .concat(['styles.css', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js', 'avi-core.js', 'muscle-map.js', 'exercise-muscles.js', 'foods.json']
     .map(f => BASE + f + '?v=' + V));
 self.addEventListener('install', e => {
   // SIN skipWaiting automático (v325): el SW nuevo ESPERA en 'waiting' hasta que la página
@@ -74,6 +77,29 @@ function _guardar(req, res){
   caches.open(CACHE_NAME).then(ca => ca.put(req, cl)).catch(() => {});
 }
 
+// v687 · JS de la app y styles.css: la copia guardada de ESA MISMA versión, sin esperar a la red.
+// 🔴 Medido el 29-sep (`_verify-red-colgada`): con una WiFi «conectada pero sin internet» los pedidos
+//    salen y nadie contesta. La navegación tiene su tope de 3 s y servía el index.html guardado…
+//    y después cada .js/.css se quedaba esperando a la red SIN LÍMITE. styles.css bloquea el
+//    pintado, así que la app NO ABRÍA NUNCA: pantalla en blanco, sin cuadro que pintar y sin el
+//    aviso de «No pudimos cargar AVI» (ese script va después de la hoja y tampoco corría). Sin red
+//    de verdad abría en 0,3 s; con la red colgada, jamás. Un tope por archivo tampoco servía: los
+//    once se piden de a uno, y 1,5 s × 11 son 19 s de pantalla en blanco (medido).
+// Por qué ya no hace falta preguntarle a la red: estos archivos van VERSIONADOS (`?v=` en
+//    index.html, y el hook no deja desplegar sin subir la versión), así que la copia de ESA versión
+//    ES lo que traería la red. La razón vieja del network-first (v230, «agrandé el texto y sigue
+//    igual») era de cuando se pedían SIN versión y la copia vieja se quedaba pegada: eso ya no
+//    puede pasar, porque una versión nueva es una dirección nueva que no está guardada.
+// Si no está la exacta (versión nueva), se pide a la red. Solo si la red FALLA de verdad se acepta
+//    cualquier copia del archivo antes que una pantalla rota, como hasta ahora.
+// cache:'no-cache' → sin él, el pedido a la red podía devolver la copia del caché HTTP
+//    (max-age=600 de Pages) hasta 10 min tras un deploy. Con ETag el 304 es barato.
+function _versionExacta(req){
+  return caches.match(req).then(c => c || fetch(req, {cache:'no-cache'})
+    .then(r => { _guardar(req, r); return r; })
+    .catch(() => caches.match(req, {ignoreSearch:true})));
+}
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if(url.hostname.includes('supabase.co')){
@@ -117,14 +143,11 @@ self.addEventListener('fetch', e => {
   // tras un update (styles.css se quedaba pegado en la versión vieja → "agrandé el texto y
   // sigue igual" de Camilo 2026-06-29). Network-first evita ese desfase y refresca al recargar.
   if(url.origin === self.location.origin && (/\/(app-\d-[\w-]+|avi-core|muscle-map|exercise-muscles)\.js$/.test(url.pathname) || /\/styles\.css$/.test(url.pathname))){
-    // cache:'no-cache' → sin él, "network-first" devolvía la copia del caché HTTP
-    // (max-age=600 de Pages) hasta 10 min tras un deploy. Con ETag el 304 es barato.
-    e.respondWith(
-      fetch(e.request, {cache:'no-cache'}).then(r => { _guardar(e.request, r); return r; })
-        // Offline: primero la MISMA versión (?v= exacto); si no está (SW recién actualizado
-        // sin red), cualquier copia cacheada del archivo antes que pantalla rota.
-        .catch(() => caches.match(e.request).then(c => c || caches.match(e.request, {ignoreSearch:true})))
-    );
+    // Solo lo que trae versión: un pedido SIN `?v=` sigue yendo primero a la red, porque ahí la
+    // copia guardada SÍ puede ser vieja (es exactamente el caso de v230).
+    if(url.searchParams.has('v')){ e.respondWith(_versionExacta(e.request)); return; }
+    e.respondWith(fetch(e.request, {cache:'no-cache'}).then(r => { _guardar(e.request, r); return r; })
+      .catch(() => caches.match(e.request)));
     return;
   }
   // Videos de ejercicio (.mp4): network primero para que las peticiones por rango

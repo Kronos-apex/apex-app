@@ -4,6 +4,32 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — v687: con una WiFi «conectada pero sin internet» la app abre (radar R16, service worker)
+
+- **Medido primero, contra producción (v686), sin sesión:** con red normal abría en 1,5 s y sin red en 0,3 s,
+  pero **con la red colgada** (los pedidos salen y nadie contesta: la WiFi del gimnasio) **no abría NUNCA**. La
+  navegación caía a su copia a los 3 s y después `styles.css` esperaba a la red sin límite. Es una hoja que
+  bloquea el pintado, así que el resultado era una pantalla en blanco **sin un solo cuadro pintado** y sin el aviso de «No
+  pudimos cargar AVI», porque ese script va después de la hoja y tampoco corría.
+- 🔴 **Un tope por archivo no servía** (probado): los once se piden de a uno y 1,5 s × 11 = **19 s** en blanco.
+  Lo que sí sirve: los `.js`/`.css` van **versionados** (`?v=`, y el hook no deja desplegar sin subirla), así que
+  la copia de ESA versión es lo mismo que traería la red. Salen de la copia exacta (`_versionExacta`, en `sw.js`);
+  una versión nueva se pide a la red; sin red de verdad, cualquier copia antes que una pantalla rota (como antes).
+  La razón vieja del network-first (v230) era de cuando se pedían **sin** versión: un pedido sin `?v=` sigue
+  yendo primero a la red.
+- **De paso:** `app-7-community.js` **nunca estuvo** en la lista de archivos que el service worker guarda al
+  instalar (desde v373). La suite exige ahora que todo `<script src>`/`<link rel=stylesheet>` propio esté ahí.
+- **Resultado (local, `_verify-red-colgada`):** red colgada, sin sesión: **nunca → 3,2 s**, y la misma prueba
+  con el `sw.js` de HEAD (`--sw-viejo`) sigue sin abrir: es el control. Abrir con red normal también
+  bajó (**786 → 564 ms** sin sesión, **891 → 491 ms** con sesión), porque ya no se revalidan once archivos.
+- ⏭️ **Queda abierto y es lo siguiente (v688): CON SESIÓN la app sigue sin abrir con la red colgada.** El arranque
+  espera a `/auth/v1/user` sin límite y a los 12 s la red de seguridad le muestra **el login a quien ya tenía
+  sesión**. Hay una segunda puerta, que es hipótesis sacada del código de la librería (sin reproducir todavía):
+  si el token venció (una hora sin usar la app) y no hay red, `getSession()` responde «no hay sesión». Las dos
+  encajan con el reporte de Claudia («necesito internet para entrar»), que la medición de septiembre no reprodujo
+  porque usaba una sesión recién creada y sin red de verdad.
+- **QA:** suite 1380 → **1385** · `_sabotaje-v687` · `_verify-red-colgada` (A: 3/3 + control).
+
 ## ⏮️ 2026-09-29 — v686: la barra no recalcula la identidad en cada toque (R16 #5, costo propio de v681)
 
 - En v681 metí un costo por toque: al guardar cada serie, `exerciseBarKg` reconstruía `exerciseIdentity` sobre
