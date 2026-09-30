@@ -119,7 +119,7 @@ function renderClients(){
   if(_term&&typeof filterClients==='function')filterClients(_term);
 }
 
-function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';cfLoadConsent(null);om('m-client')}
+function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);_cfPassReset('Mín. 8 · sin su nombre');document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';cfLoadConsent(null);om('m-client')}
 
 // Muestra u oculta los campos que solo tienen sentido para un ASESORADO (correo y clave de
 // acceso, WhatsApp). En mi propio perfil no aplican: entro como coach y no me escribo.
@@ -157,6 +157,26 @@ function cfLoadConsent(c){
   cfSyncConsentAge();
 }
 
+// v692 · El campo de contraseña del alta vuelve a su estado: vacío, oculto, con el ojo cerrado y
+// el ejemplo de ese modo. El ejemplo era un nombre con el año: la app ENSEÑABA el patrón adivinable.
+function _cfPassReset(ejemplo){
+  const el=document.getElementById('cf-pass'); if(!el)return;
+  el.value=''; el.type='password'; el.placeholder=ejemplo;
+  const ojo=el.parentElement&&el.parentElement.querySelector('button use');
+  if(ojo)ojo.setAttribute('href','#i-eye');
+}
+// v692 · «Generar una»: una contraseña al azar que se puede dictar (`generatePassword`), A LA VISTA
+// para copiarla y mandársela. Cuenta como cambio de clave también al editar.
+function cfGenPass(){
+  if(typeof generatePassword!=='function')return;                 // guard caché vieja
+  const el=document.getElementById('cf-pass'); if(!el)return;
+  const v=id=>(document.getElementById(id)||{}).value||'';
+  const p=generatePassword({name:v('cf-name')+' '+v('cf-last'),email:v('cf-email')}); if(!p)return;
+  el.value=p; el.type='text'; el.dataset.unchanged='0';
+  const ojo=el.parentElement&&el.parentElement.querySelector('button use');
+  if(ojo)ojo.setAttribute('href','#i-eye-off');
+  toast('🔑 Contraseña lista: cópiala para mandársela');
+}
 function openEditClient(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
   _mcToggleAccountFields(!isSelfClient(c));
@@ -164,7 +184,7 @@ function openEditClient(){
   const ps=c.name.split(' ');document.getElementById('cf-name').value=ps[0]||'';document.getElementById('cf-last').value=ps.slice(1).join(' ')||'';
   document.getElementById('cf-email').value=c.email||'';
   const passEl=document.getElementById('cf-pass');
-  passEl.value='';passEl.placeholder='••••••• (dejar en blanco para no cambiar)';
+  _cfPassReset('••••••• (dejar en blanco para no cambiar)');
   passEl.dataset.unchanged='1';
   passEl.oninput=()=>{passEl.dataset.unchanged='0';};
   document.getElementById('cf-goal').value=c.goal||'Perder grasa';
@@ -213,12 +233,16 @@ async function _provisionClientAccount(client, rawPass){
   }
   // Rechazo PERMANENTE (la edge respondió con un motivo de negocio) → no reintentar.
   const code=(data&&data.error)||'';
-  const PERMA={email_taken:'ese correo ya pertenece a otra cuenta',forbidden_not_coach:'no autorizado',invalid_email:'correo inválido',weak_password:'contraseña muy corta'};
+  const PERMA=_ACCOUNT_ERR;
   if(PERMA[code]){ toast('⚠️ No se pudo crear el acceso: '+PERMA[code]); return false; }
   // Transitorio (sin red / 5xx / función caída) → se reintenta al reconectar.
   toast('⚠️ No se pudo crear el acceso ahora: '+((error&&error.message)||code||'error de red'));
   return null;
 }
+// Motivos PERMANENTES de la edge coach-create-client, en español. v692 · `weak_password` decía «muy
+// corta» aunque fallara por la mayúscula, y `password_has_name` es nuevo (el nombre en la clave).
+const _ACCOUNT_ERR={email_taken:'ese correo ya pertenece a otra cuenta',forbidden_not_coach:'no autorizado',invalid_email:'correo inválido',
+  weak_password:'la contraseña necesita 8 o más, con mayúscula, minúscula y número',password_has_name:'la contraseña lleva su nombre o su correo'};
 // Edición de un asesorado YA provisionado (su id es uuid): cambiar su CLAVE y/o CORREO de
 // acceso real (Supabase Auth) vía la edge admin en modo update (por user_id). Sin esto era un
 // no-op silencioso: clientToRow descarta `password` y updateClientRow nunca toca auth.users
@@ -234,7 +258,8 @@ async function _updateClientAccount(client, changes){
     user_id:client.id, email:email||undefined, password:password||undefined
   }})); }catch(e){ error=e; }
   if(error || !data || !data.ok){
-    toast('⚠️ No se pudo actualizar el acceso: '+((data&&data.error)||(error&&error.message)||'error de red'));
+    const _code=(data&&data.error)||'';
+    toast('⚠️ No se pudo actualizar el acceso: '+(_ACCOUNT_ERR[_code]||_code||(error&&error.message)||'error de red'));
     return false;
   }
   return true;
@@ -255,7 +280,8 @@ async function saveClient(){
     const _ae=document.getElementById('cf-age'); if(_ae)_ae.focus();
     return;
   }
-  const _pp=pass?passwordProblem(pass):null; if(_pp){toast('⚠️ '+_pp);return}
+  // v692 · con su nombre y su correo: 6 de 16 cuentas tenían «Nombre2026/1234» (medido el 30-sep).
+  const _pp=pass?passwordProblem(pass,{name:fn+' '+ln,email}):null; if(_pp){toast('⚠️ '+_pp+(/nombre/.test(_pp)?'. Toca «Generar una».':''));return}
   const dup=DB.clients.find(c=>clientIsBillable(c)&&c.email&&c.email.toLowerCase()===email&&c.id!==CUR.editClientId);
   if(dup){toast('⚠️ Ya existe un asesorado con ese email');return}
   const clientId=CUR.editClientId||uid();

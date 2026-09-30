@@ -467,6 +467,13 @@ function openNewPassModal(){
   om('m-newpass');
   if(a)setTimeout(()=>a.focus(),120);
 }
+// v692 · Quién soy, para que mi contraseña no lleve mi nombre ni mi correo. El coach, de sus ajustes;
+// el asesorado, de su ficha. Si no se sabe todavía (recuperación antes de hidratar), la regla de siempre.
+function _pwWhoMe(){
+  if(AUTH_ROLE==='coach') return {name:getCoachName(),email:getCoachEmail(),self:true};
+  const c=(typeof DB!=='undefined'&&DB.clients||[]).find(x=>x&&x.id===CUR.clientId);
+  return c?{name:c.name,email:c.email,self:true}:null;
+}
 async function saveNewPass(){
   const err=document.getElementById('np-err');
   const nueva=(document.getElementById('np-new')||{}).value||'';
@@ -474,7 +481,8 @@ async function saveNewPass(){
   const falla=t=>{ if(err){err.textContent=t;err.classList.add('on');} };
   // La regla de contraseña es UNA (`passwordProblem`, avi-core) y es el ESPEJO de la que aplica
   // el servidor: escribir aquí otra distinta sería prometer algo que Supabase rechaza después.
-  const problema=(typeof passwordProblem==='function')?passwordProblem(nueva):(nueva.length<8?'Mínimo 8 caracteres':null);
+  // v692 · con el nombre y el correo de quien la crea: «Nombre2026» es lo primero que alguien probaría.
+  const problema=(typeof passwordProblem==='function')?passwordProblem(nueva,_pwWhoMe()):(nueva.length<8?'Mínimo 8 caracteres':null);
   if(problema){ falla(problema); return; }
   if(nueva!==rep){ falla('Las dos contraseñas no son iguales.'); return; }
   const btn=document.getElementById('np-save');
@@ -577,7 +585,10 @@ async function saveSettings(){
   if(cur||nw||rep){
     const curOk=await verifyCoachPass(cur);
     if(!curOk){perr.textContent='La contraseña actual no es correcta';perr.style.display='block';return;}
-    if(nw.length<6){perr.textContent='La nueva contraseña debe tener mínimo 6 caracteres';perr.style.display='block';return;}
+    // v692 · era «mínimo 6» y el servidor exige 8 con mayúscula, minúscula y número: la misma regla
+    // que todas (`passwordProblem`), con su propio nombre y correo.
+    const _pp=passwordProblem(nw,{name,email,self:true});
+    if(_pp){perr.textContent=_pp;perr.style.display='block';return;}
     if(nw!==rep){perr.textContent='Las contraseñas nuevas no coinciden';perr.style.display='block';return;}
     try{ await saveCoachPass(nw); }
     catch(e){ perr.textContent='No se pudo cambiar la contraseña: '+((e&&e.message)||'error de red')+'. Intenta de nuevo.'; perr.style.display='block'; return; }

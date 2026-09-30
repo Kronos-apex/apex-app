@@ -34,6 +34,26 @@ const conCors = (h: (req: Request) => Promise<Response>) => async (req: Request)
 
 const COACH_UID = "0a6484ed-42af-449d-9903-e440ac683ecf";
 
+// v692 · ¿La contraseña lleva el nombre o el correo? ESPEJO EXACTO de avi-core `passwordMentionsPerson`
+// (la suite compara las dos con los mismos casos): cambiar una sin la otra = dos reglas de «clave válida».
+const PW_PARTICULAS = ["del", "las", "los", "san", "van", "von"];
+const PW_LEET: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "@": "a", "$": "s" };
+const pwFold = (s: string) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function mentionsPerson(pass: string, name: string, mail: string): boolean {
+  if (!pass) return false;
+  const piezas: string[] = [];
+  for (const src of [name, String(mail || "").split("@")[0]]) {
+    for (const t of pwFold(src).match(/[a-z]+/g) || []) {
+      if (t.length >= 3 && !PW_PARTICULAS.includes(t) && !piezas.includes(t)) piezas.push(t);
+    }
+  }
+  if (!piezas.length) return false;
+  const base = pwFold(pass);
+  const tramos = (base.match(/[a-z]+/g) || []).concat(base.replace(/[0134578@$]/g, (c) => PW_LEET[c]).match(/[a-z]+/g) || []);
+  return tramos.some((r) => piezas.some((t) =>
+    (t.length >= 4 ? r.includes(t) : r.startsWith(t)) || (r.length >= 4 && t.startsWith(r))));
+}
+
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -73,6 +93,10 @@ Deno.serve(conCors(async (req) => {
   // que crea el coach. Se replica la regla de avi-core passwordProblem para que las claves
   // de asesorados tengan la misma fuerza que las de auto-registro (Camilo 2026-07-07).
   const weakPass = (p: string) => p.length < 8 || !/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/[0-9]/.test(p);
+  // v692 · y sin el nombre ni el correo de la persona (espejo de avi-core `passwordMentionsPerson`):
+  // 6 de 16 cuentas tenían «Nombre2026/1234» el 30-sep. Responde 200 + ok:false, como `email_taken`,
+  // para que la app lea el motivo y no lo encole a reintentar para siempre.
+  const nameInPass = (p: string, name: unknown, mail: unknown) => mentionsPerson(p, String(name || ""), String(mail || ""));
 
   // ── Modo UPDATE: edición de un asesorado YA provisionado (cambio de clave y/o correo de
   // acceso). Se enruta por user_id (no por correo) para que cambiar el email actualice la
@@ -81,6 +105,12 @@ Deno.serve(conCors(async (req) => {
   if (updateId) {
     if (!password && !email) return json({ error: "nothing_to_update" }, 400);
     if (password && weakPass(password)) return json({ error: "weak_password" }, 400);
+    if (password) {
+      const { data: cur } = await admin.auth.admin.getUserById(updateId);
+      const { data: row } = await admin.from("user_data").select("profile").eq("user_id", updateId).maybeSingle();
+      const nombre = [(row?.profile as any)?.name, (cur?.user?.user_metadata as any)?.name].filter(Boolean).join(" ");
+      if (nameInPass(password, nombre, email || cur?.user?.email)) return json({ ok: false, error: "password_has_name" }, 200);
+    }
     if (email && !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
     const patch: Record<string, unknown> = { email_confirm: true };
     if (password) patch.password = password;
@@ -92,6 +122,7 @@ Deno.serve(conCors(async (req) => {
 
   if (!email || !emailRe.test(email)) return json({ error: "invalid_email" }, 400);
   if (!password || weakPass(password)) return json({ error: "weak_password" }, 400);
+  if (nameInPass(password, (profile as any)?.name, email)) return json({ ok: false, error: "password_has_name" }, 200);
 
   try {
     // 1) Crear la cuenta auth pre-confirmada. Si el correo ya existe, recuperarla.

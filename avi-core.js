@@ -4034,12 +4034,72 @@ function myTrainingSummary(client, sessions, now) {
 // el registro pasaría aquí y Supabase lo rechazaría con un error EN INGLÉS confuso.
 // Fuente única: la usan validateSignup (auto-registro) y el alta de asesorados del coach.
 // Devuelve null si la contraseña cumple, o el mensaje de error (en español) si no.
-function passwordProblem(pass) {
+// v692 · `who` ({name, email, self}) es opcional: con él, además se rechaza la contraseña que
+// lleva el nombre o el correo de la persona (`passwordMentionsPerson`). Sin él, la regla de siempre.
+function passwordProblem(pass, who) {
   pass = pass || '';
   if (pass.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
   if (!/[a-z]/.test(pass)) return 'La contraseña debe incluir una letra minúscula';
   if (!/[A-Z]/.test(pass)) return 'La contraseña debe incluir una letra mayúscula';
   if (!/[0-9]/.test(pass)) return 'La contraseña debe incluir un número';
+  if (who && passwordMentionsPerson(pass, who)) {
+    return who.self
+      ? 'Tu contraseña no puede llevar tu nombre ni tu correo: es lo primero que alguien probaría'
+      : 'La contraseña no puede llevar su nombre ni su correo: es lo primero que alguien probaría';
+  }
+  return null;
+}
+
+// ── ¿La contraseña lleva el nombre o el correo de la persona? (v692) — pura, testeable ──
+// Medido el 30-sep-2026: 6 de 16 cuentas tenían «Nombre2026» o «Nombre1234», y el alta del coach
+// traía de ejemplo «Ej: Maria2026». Es lo primero que alguien probaría, y los nombres de los
+// asesorados estuvieron en el repo público hasta v690.
+// Piezas de la persona: cada tramo de letras de 3+ del nombre y de lo que va antes de la @ (sin
+// tildes, sin partículas como «del»). Tramos de la contraseña: los de letras TAL CUAL («Aleja1234» →
+// «aleja») y los que salen al deshacer los cambios de letra por número («Andr3a» → «andrea»): hacen
+// falta los dos, porque deshacer el «1» de «Aleja1234» lo pega al nombre («alejai») y lo esconde.
+// · pieza de 4+ letras DENTRO de un tramo → sí («MiAstrid26»)
+// · pieza de 3 al EMPIEZO de un tramo → sí («Ana2026x»); en medio no, o «Manzana99» caería por Ana
+// · tramo de 4+ que es el comienzo de una pieza → sí: el diminutivo («Samu2026», «Aleja1234»)
+// 🔴 Espejo en supabase/functions/coach-create-client (`mentionsPerson`): cambiar las dos.
+const PW_PARTICULAS = ['del', 'las', 'los', 'san', 'van', 'von'];
+const PW_LEET = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's' };
+function _pwFold(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+function passwordMentionsPerson(pass, who) {
+  if (!pass || !who) return false;
+  const piezas = [];
+  [who.name, String(who.email || '').split('@')[0]].forEach(src => {
+    (_pwFold(src).match(/[a-z]+/g) || []).forEach(t => {
+      if (t.length >= 3 && PW_PARTICULAS.indexOf(t) === -1 && piezas.indexOf(t) === -1) piezas.push(t);
+    });
+  });
+  if (!piezas.length) return false;
+  const base = _pwFold(pass);
+  const tramos = (base.match(/[a-z]+/g) || []).concat(base.replace(/[0134578@$]/g, c => PW_LEET[c]).match(/[a-z]+/g) || []);
+  return tramos.some(r => piezas.some(t =>
+    (t.length >= 4 ? r.indexOf(t) !== -1 : r.indexOf(t) === 0) || (r.length >= 4 && t.indexOf(r) === 0)));
+}
+
+// ── Contraseña al azar LEGIBLE (v692) — para «Generar una» del alta del coach ──
+// Se dicta por WhatsApp y se teclea en el teléfono: dos palabras inventadas de sílabas + 2 cifras,
+// sin l/0/1 (se confunden). ~43 bits: de sobra contra adivinar en línea. Nunca lleva el nombre de
+// `who` (se sortea otra). `rnd(n)` → entero en [0,n) inyectable para las pruebas; por defecto
+// crypto.getRandomValues — NUNCA Math.random, que no sirve para una contraseña.
+const PW_CONS = 'bcdfghjkmnprstvz', PW_VOC = 'aeiou', PW_DIG = '23456789';
+function generatePassword(who, rnd) {
+  rnd = rnd || function (n) { const a = new Uint32Array(1); globalThis.crypto.getRandomValues(a); return a[0] % n; };
+  const palabra = () => {
+    let w = '';
+    for (let i = 0; i < 3; i++) w += PW_CONS[rnd(PW_CONS.length)] + PW_VOC[rnd(PW_VOC.length)];
+    return w;
+  };
+  for (let intento = 0; intento < 20; intento++) {
+    const a = palabra();
+    const p = a[0].toUpperCase() + a.slice(1) + palabra() + PW_DIG[rnd(PW_DIG.length)] + PW_DIG[rnd(PW_DIG.length)];
+    if (!passwordProblem(p, who)) return p;
+  }
   return null;
 }
 
@@ -4055,7 +4115,7 @@ function validateSignup(data, clients, coachEmail) {
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'Escribe un email válido' };
   if (coachEmail && email === String(coachEmail).trim().toLowerCase()) return { ok: false, error: 'Ese email no está disponible' };
   if ((clients || []).some(c => c && c.email && c.email.toLowerCase() === email)) return { ok: false, error: 'Ya existe una cuenta con ese email. Inicia sesión.' };
-  const pp = passwordProblem(pass);
+  const pp = passwordProblem(pass, { name: name, email: email, self: true });
   if (pp) return { ok: false, error: pp };
   return { ok: true };
 }
@@ -12433,6 +12493,8 @@ if (typeof module !== 'undefined' && module.exports) {
     bodyLoadProfile,
     validateSignup,
     passwordProblem,
+    passwordMentionsPerson,
+    generatePassword,
     consentEvidence,
     consentNeedsGuardian,
     tombNormalize,

@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-30 — v692: la contraseña no lleva el nombre ni el correo de la persona
+
+- **Lo medido** (solo lectura, `crypt` contra el hash, sin iniciar sesión): **6 de las 16 cuentas con nombre** tenían
+  «Nombre2026» (5) o «Nombre1234» (1). El patrón estaba a la vista en el historial público (la contraseña de Salomón del
+  check [7], ver la entrada del 29-sep) y los nombres reales también, hasta v690. A una de las seis, además, su correo
+  completo le quedó en el historial (`docs/auditoria-areas-2026-07-31/A5-experiencia.md`, 31-jul → 29-sep).
+- **Sin señales de intrusión**: las sesiones vivas de las seis vienen de sus teléfonos y de los lugares de siempre.
+  `auth.audit_log_entries` está vacía (los registros de auth ya no se guardan ahí), así que no se puede descartar del todo.
+- **La raíz estaba en la app**: el campo de contraseña del alta del coach traía de ejemplo **«Ej: Maria2026»**.
+- **Arreglo — una regla, cuatro puertas y el servidor**: `passwordMentionsPerson` (avi-core) rechaza la contraseña que
+  lleva el nombre, el apellido o lo de antes de la @, sin tildes, con los números deshechos («Andr3a») y el diminutivo
+  («Manu2026»); tres letras solo al empiezo («Manzana99» no cae por Ana). `passwordProblem(pass, who)` la usa si recibe
+  `who` — el alta del coach, el registro (`validateSignup`), «crear contraseña nueva» (`_pwWhoMe`) y los ajustes del
+  coach, que además pasan de «mínimo 6» a la regla del servidor. `coach-create-client` tiene el ESPEJO (`mentionsPerson`)
+  en crear y en editar y responde `password_has_name` con **200 + ok:false** (con 400 la app lo encolaría para siempre).
+  El alta ofrece **«Generar una»** (`generatePassword`: dos palabras de sílabas + 2 cifras, sin l/0/1, con
+  `crypto.getRandomValues`), a la vista para copiarla.
+- 🔴 **Dos cosas que cazaron las pruebas y no yo**: deshacer el «1» de «Aleja1234» lo pegaba al nombre («alejai») y lo
+  escondía — hacen falta los tramos TAL CUAL y los deshechos; y la prueba del ejemplo encontró «Maria2026» en MI
+  comentario (la lección de v588 al revés: esta vez el comentario ponía roja la prueba, no verde).
+- 🔴 **Cambiar la contraseña de alguien CIERRA sus sesiones** (Supabase, «sessions»): las seis tienen Google conectado y
+  vuelven con «Continuar con Google». Rotarlas es acto del PO (a mí me bloquean cambiar contraseñas y escribir el script
+  que lo hace): «Editar asesorado» → «Generar una».
+
 ## ⏮️ 2026-09-29 — credenciales en el repo público: la alerta de GitGuardian y la que no vio nadie
 
 - **La alerta** (GitGuardian, «Company Email Password»): `scripts/e2e/_r16-v1-sesion-coach.mjs` (commit `a640996`,

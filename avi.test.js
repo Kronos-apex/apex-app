@@ -137,6 +137,8 @@ const {
   BW_STALE_DAYS,
   validateSignup,
   passwordProblem,
+  passwordMentionsPerson,
+  generatePassword,
   consentEvidence,
   consentNeedsGuardian,
   MED_FIELDS,
@@ -4028,6 +4030,121 @@ test('passwordProblem: exige 8+ con minúscula, mayúscula y dígito (política 
   assert.ok(/número/.test(passwordProblem('ClaveSegura')));
   assert.ok(passwordProblem(''));
   assert.ok(passwordProblem(null));
+});
+
+// ── v692 · LA CONTRASEÑA NO LLEVA EL NOMBRE NI EL CORREO DE LA PERSONA ──
+// Medido el 30-sep-2026 (crypt contra el hash, solo lectura): 6 de 16 cuentas con nombre tenían
+// «Nombre2026» o «Nombre1234», y el alta del coach traía de ejemplo «Ej: Maria2026».
+test('🔒 v692 · passwordMentionsPerson atrapa el nombre, el apellido, el correo y sus disfraces', () => {
+  const andrea = { name: 'Andrea Bernal Muñoz', email: 'andrea.b@gmail.com' };
+  for (const p of ['Andrea2026', 'ANDREA1234x', 'Andr3a2026', '4ndrea2026', 'MiAndrea99', 'Bernal2026', 'Munoz2026'])
+    assert.ok(passwordMentionsPerson(p, andrea), p + ' lleva su nombre y pasó');
+  // El diminutivo también es el nombre.
+  assert.ok(passwordMentionsPerson('Manu2026', { name: 'Manuel' }), 'Manu2026 pasó para Manuel');
+  assert.ok(passwordMentionsPerson('Aleja1234', { name: 'Alejandra Ríos' }), 'Aleja1234 pasó para Alejandra');
+  // Las tildes no lo esconden, en ninguno de los dos lados.
+  assert.ok(passwordMentionsPerson('Andres2026', { name: 'Andrés' }));
+  assert.ok(passwordMentionsPerson('Andrés2026', { name: 'Andres' }));
+  // Lo de antes de la @ cuenta aunque no esté en el nombre (y el dominio no).
+  assert.ok(passwordMentionsPerson('Pablo99x', { name: '', email: 'pablo0619@gmail.com' }));
+  assert.ok(!passwordMentionsPerson('Gmail2026x', { name: 'Eva', email: 'eva@gmail.com' }), 'el DOMINIO no es la persona');
+  // Tres letras: solo al empiezo — si no, «Manzana99» caería por Ana.
+  assert.ok(passwordMentionsPerson('Ana2026x', { name: 'Ana' }));
+  assert.ok(!passwordMentionsPerson('Manzana99', { name: 'Ana' }), 'Manzana99 cayó por «ana» en medio: regla demasiado ancha');
+  // Las partículas no son la persona: «María del Mar» no le prohíbe «Delfin2026».
+  assert.ok(!passwordMentionsPerson('Delfin2026', { name: 'María del Mar' }));
+  // Una clave ajena a la persona pasa; sin datos de la persona no hay nada que comparar.
+  assert.ok(!passwordMentionsPerson('Pakemolirusa38', andrea));
+  assert.ok(!passwordMentionsPerson('Andrea2026', { name: '', email: '' }));
+  assert.ok(!passwordMentionsPerson('Andrea2026', null));
+});
+
+test('🔒 v692 · passwordProblem con `who` rechaza el nombre y lo dice según quién escribe', () => {
+  // Sin `who`, la regla de siempre: ninguna llamada vieja cambia de comportamiento.
+  assert.strictEqual(passwordProblem('Andrea2026'), null);
+  const coach = passwordProblem('Andrea2026', { name: 'Andrea' });
+  assert.ok(/su nombre/.test(coach), 'al coach se le habla de «su» nombre: ' + coach);
+  const yo = passwordProblem('Andrea2026', { name: 'Andrea', self: true });
+  assert.ok(/tu nombre/.test(yo), 'a quien crea la suya se le habla de «tu» nombre: ' + yo);
+  // La política del servidor sigue primero: una corta dice «corta», no «nombre».
+  assert.ok(/8 caracteres/.test(passwordProblem('Ana1', { name: 'Ana' })));
+  // Los dos patrones medidos el 30-sep (nombre + 2026, nombre + 1234) caen con cualquier nombre.
+  for (const [n, p] of [['Andrea', 'Andrea2026'], ['Dario', 'Dario2026'], ['Irene', 'Irene2026'], ['Noelia', 'Noelia2026'], ['Manuel', 'Manuel2026'], ['Carla', 'Carla1234']])
+    assert.ok(passwordProblem(p, { name: n }), p + ' volvió a ser aceptada');
+});
+
+test('🔒 v692 · el registro rechaza la contraseña con el propio nombre o correo', () => {
+  // La clave entra por parámetro: un literal asignado a «password» lo frena el check [14] del hook.
+  const alta = clave => validateSignup({ name: 'María Inés', email: 'mainez@mail.com', password: clave }, [], COACH);
+  const r = alta('Maria2026');
+  assert.strictEqual(r.ok, false);
+  assert.ok(/tu nombre/.test(r.error), r.error);
+  assert.strictEqual(alta('Mainez2026x').ok, false);
+  assert.strictEqual(alta('Pakemolirusa38').ok, true);
+});
+
+test('🔒 v692 · generatePassword: legible, cumple la regla, nunca lleva el nombre y usa el azar del navegador', () => {
+  const who = { name: 'Andrea Bernal', email: 'andrea@gmail.com' };
+  const vistas = new Set();
+  for (let i = 0; i < 300; i++) {
+    const p = generatePassword(who);
+    assert.ok(/^[A-Z][a-z]{11}[2-9]{2}$/.test(p), 'forma inesperada: ' + p);
+    assert.ok(!/[l01]/.test(p), 'lleva un carácter que se confunde al dictarlo: ' + p);
+    assert.strictEqual(passwordProblem(p, who), null, 'la generada no cumple su propia regla: ' + p);
+    vistas.add(p);
+  }
+  assert.ok(vistas.size > 295, 'el azar se repite demasiado: ' + vistas.size + ' distintas de 300');
+  // Con un azar que SOLO produce el nombre, devuelve null antes que una clave con el nombre.
+  assert.strictEqual(generatePassword({ name: 'Bababa' }, () => 0), null);
+  assert.ok(generatePassword({ name: 'Zuzu' }, () => 0), 'con un nombre ajeno, el mismo azar sí sirve');
+  // La fuente del azar: crypto, nunca Math.random.
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const i = src.indexOf('function generatePassword(');
+  const cuerpo = src.slice(i, src.indexOf('\n}', i));
+  assert.ok(/crypto\.getRandomValues/.test(cuerpo), 'generatePassword dejó de usar crypto.getRandomValues');
+  assert.ok(!/Math\.random/.test(cuerpo), '🔴 generatePassword usa Math.random: no sirve para una contraseña');
+});
+
+test('🔒 v692 · la regla del SERVIDOR es la misma que la de la app (mismos casos, misma respuesta)', () => {
+  const ts = require('fs').readFileSync(require('path').join(__dirname, 'supabase', 'functions', 'coach-create-client', 'index.ts'), 'utf8');
+  const a = ts.indexOf('const PW_PARTICULAS'), b = ts.indexOf('\nfunction json(');
+  assert.ok(a > 0 && b > a, 'desapareció el espejo `mentionsPerson` de coach-create-client');
+  const js = ts.slice(a, b)
+    .replace(/: Record<string, string>/g, '').replace(/\): boolean \{/g, ') {')
+    .replace(/: string\[\]/g, '').replace(/(\w+): string/g, '$1');
+  const servidor = new Function(js + '\nreturn mentionsPerson;')();
+  const casos = [['Andrea2026', 'Andrea Bernal', ''], ['Andr3a2026', 'Andrea', ''], ['Manu2026', 'Manuel', ''], ['Andres2026', 'Andrés', ''],
+    ['Pablo99x', '', 'pablo0619@gmail.com'], ['Gmail2026x', 'Eva', 'eva@gmail.com'], ['Ana2026x', 'Ana', ''], ['Manzana99', 'Ana', ''],
+    ['Delfin2026', 'María del Mar', ''], ['Pakemolirusa38', 'Andrea', 'andrea@gmail.com'], ['Carla1234', 'Carla Vega', ''], ['Aleja1234', 'Alejandra', ''],
+    ['Munoz2026', 'Inés Muñoz', ''], ['Bernal2026', 'Andrea Bernal', '']];
+  for (const [p, n, m] of casos)
+    assert.strictEqual(servidor(p, n, m), passwordMentionsPerson(p, { name: n, email: m }), 'la app y el servidor no coinciden en ' + p + ' / ' + n);
+  // Y las dos puertas del servidor la usan y responden de forma que la app lea el motivo.
+  assert.strictEqual((ts.match(/nameInPass\(password,/g) || []).length, 2, 'una de las dos puertas (crear / editar) no comprueba el nombre');
+  assert.strictEqual((ts.match(/error: "password_has_name" \}, 200\)/g) || []).length, 2, 'password_has_name debe ir con 200 + ok:false, como email_taken');
+});
+
+test('🔒 v692 · las 4 puertas de una contraseña pasan el nombre, y el alta ya no enseña «Maria2026»', () => {
+  const _lee = f => require('fs').readFileSync(require('path').join(__dirname, f), 'utf8');
+  const app3 = _lee('app-3-coach.js'), app2 = _lee('app-2-login.js');
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, n) => { const i = src.indexOf('function ' + n + '('); assert.ok(i > 0, n + ' desapareció'); return src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'); };
+  assert.ok(/passwordProblem\(pass,\{name:fn\+' '\+ln,email\}\)/.test(cuerpo(app3, 'saveClient')), '🔴 el alta del coach dejó de pasar el nombre del asesorado');
+  assert.ok(/passwordProblem\(nueva,_pwWhoMe\(\)\)/.test(cuerpo(app2, 'saveNewPass')), '🔴 «crear contraseña nueva» dejó de pasar quién la crea');
+  const ajustes = cuerpo(app2, 'saveSettings');
+  assert.ok(/passwordProblem\(nw,\{name,email,self:true\}\)/.test(ajustes), '🔴 los ajustes del coach dejaron de usar la regla única');
+  assert.ok(!/nw\.length<6/.test(ajustes), '🔴 volvió el «mínimo 6» de los ajustes: el servidor exige 8');
+  // validateSignup (el registro) lo cubre el test de arriba EJECUTÁNDOLO.
+  // Ningún ejemplo de contraseña con nombre + año en toda la app.
+  const sinComent = t => t.replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(!/Maria2026/.test(html + sinComent(app3)), '🔴 volvió el ejemplo «Maria2026»');
+  const phs = html.match(/placeholder="[^"]*"/g) || [];
+  assert.ok(!phs.some(ph => /[A-ZÁÉÍÓÚ][a-záéíóúñ]+20\d\d/.test(ph)), 'un placeholder enseña nombre + año: ' + phs.filter(ph => /20\d\d/.test(ph)).join(' '));
+  assert.ok(/id="cf-pass-gen"[^>]*onclick="cfGenPass\(\)"/.test(html), 'se perdió el botón «Generar una» del alta');
+  assert.ok(/generatePassword\(/.test(cuerpo(app3, 'cfGenPass')), 'cfGenPass dejó de usar generatePassword');
+  // El motivo del servidor se lee en español en las dos vías (crear y editar).
+  assert.ok(/password_has_name:'[^']+'/.test(app3), 'falta el texto de password_has_name');
+  assert.ok(/_ACCOUNT_ERR\[_code\]/.test(cuerpo(app3, '_updateClientAccount')), 'editar muestra el código crudo del servidor');
 });
 
 test('validateSignup: rechaza contraseña que no cumple la política y lo dice en español', () => {
@@ -17100,8 +17217,9 @@ test('🔒 v582 · la vuelta del correo tiene pantalla, y la regla de contraseñ
   const cuerpo = _fn2(src, 'saveNewPass');
   // Sin esta pantalla «olvidé mi contraseña» sería media feature: el enlace deja la sesión
   // abierta, así que entraría una vez y volvería a quedarse afuera mañana.
-  assert.ok(/passwordProblem\(nueva\)/.test(cuerpo),
-    '🔴 la contraseña nueva dejó de pasar por passwordProblem: dos definiciones de «clave válida», y la del servidor manda');
+  // v692 · la misma regla, ahora con quién la crea (`_pwWhoMe`): sin eso, «Nombre2026» pasaría aquí.
+  assert.ok(/passwordProblem\(nueva,_pwWhoMe\(\)\)/.test(cuerpo),
+    '🔴 la contraseña nueva dejó de pasar por passwordProblem con su nombre: dos definiciones de «clave válida»');
   assert.ok(/nueva!==rep/.test(cuerpo), 'se perdió la comprobación de que las dos coincidan');
   // El COACH lleva además un hash local que su propio «cambiar contraseña» verifica: cambiarle
   // solo la de la nube dejaría ese formulario sin reconocerle la nueva.
