@@ -4,6 +4,29 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-29 — credenciales en el repo público: la alerta de GitGuardian y la que no vio nadie
+
+- **La alerta** (GitGuardian, «Company Email Password»): `scripts/e2e/_r16-v1-sesion-coach.mjs` (commit `a640996`,
+  28-sep, un script de la ronda R16) traía en claro el correo **y la contraseña del coach QA**. Es una cuenta de
+  prueba aislada (2 asesorados de prueba), pero la contraseña quedó pública y la historia no se reescribe.
+- **La que no vio nadie, y es peor**: `scripts/hooks/pre-commit` llevaba **desde el 6-jul** (`709555f`) la contraseña
+  vieja de la cuenta REAL de Salomón (un menor) escrita como patrón «a bloquear» — el propio candado la publicaba — y en
+  la misma línea su correo de acceso de entonces. Medido en la base (sin iniciar sesión, comparando contra el hash):
+  **esa contraseña sigue abriendo su cuenta**. Atenuantes medidos: su correo de acceso es un Gmail desde el 28-sep que
+  **nunca estuvo en el repo**, y **ninguna** de sus sesiones se abrió con contraseña después del 10-jul (las 47 son de
+  4-10 jul: los harness de esta PC y su teléfono). O sea: expuesta de verdad del 6-jul al 28-sep, sin rastro de uso.
+- **Barrido**: todos los secretos de `~/.avi` contra la historia completa (`git log -S`): la llave de servicio, la de FDC
+  y la del asesorado QA **no aparecen nunca**; solo estas dos.
+- **Arreglo en el código**: el script lee la cuenta de `~/.avi/qa-accounts.txt` (patrón de `_verify-rls-aislamiento`);
+  el literal sale del check [7]; y nace el **check [14]** — (a) todo secreto que vive en `~/.avi` se busca literal en lo
+  añadido, (b) una contraseña literal asignada en el código bloquea el commit, con las excepciones declaradas una por una
+  (`Clave123`, `corta1` de la suite) y sin contar lo que se concatena (las claves desechables de `_verify-borrado-*`).
+  Probado contra 6 diffs (3 bloquean, 3 controles pasan) y 3 sabotajes que muerden.
+- ⏭️ **Lo que falta y NO pude hacer yo** (el clasificador bloquea cambiar contraseñas en producción): rotar la del coach
+  QA (`node scripts/_rotar-qa-coach.mjs`, local e ignorado por git: la cambia, la guarda en `~/.avi` y comprueba que la
+  vieja ya no entra) y **cambiar la de Salomón** desde su ficha («Editar asesorado»). Él tiene Google enlazado con ese
+  mismo Gmail, así que si lo saca de la sesión puede volver a entrar con «Continuar con Google».
+
 ## ⏮️ 2026-09-29 — v691: cada tarjeta pública atada a su persona (sin publicarlo)
 
 - **El defecto** (visto al borrar las 6 cuentas inactivas): `avi_showcase` guarda solo el primer nombre (a propósito:

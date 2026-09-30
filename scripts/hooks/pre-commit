@@ -176,7 +176,9 @@ secret_patterns = [
     (r'VAPID_PRIVATE\s*=\s*["\'][^"\']{10}', 'VAPID_PRIVATE key en frontend'),
     (r'service_role\s*[=:]\s*["\'][^"\']{20}', 'Supabase service_role key'),
     (r'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{50,}', 'JWT token hardcodeado'),
-    (r'Samuel2026|salomon@apex\.com', 'credenciales de la cuenta de prueba E2E'),
+    # 29-sep-2026: aquí vivía la contraseña VIEJA de la cuenta E2E escrita como patrón «a bloquear» —
+    # o sea, publicada en el repo por el propio candado. Las credenciales conocidas las vigila ahora el
+    # check [14] leyéndolas de ~/.avi, sin escribirlas nunca en este archivo.
 ]
 secret_found = False
 for pattern, label in secret_patterns:
@@ -411,8 +413,77 @@ else:
     except Exception as _e:
         fail(f'no pude leer ~/.avi/nombres-reales.json: {_e}')
 
+# ── [14] Credenciales en lo añadido (el repo es PÚBLICO) ─────────────────────────
+# 29-sep-2026, alerta de GitGuardian: un script de R16 traía en claro la contraseña del coach QA junto a su
+# correo, y el check [7] no la vio porque solo busca LLAVES (JWT, service_role, VAPID). Peor: el propio [7]
+# llevaba desde el 6-jul la contraseña vieja de una cuenta REAL escrita como patrón a bloquear. Dos vías:
+#  (a) LOCAL — todo secreto que vive en ~/.avi (campos «pass*» de sus .json, líneas «pass:» de
+#      qa-accounts.txt, archivos .key) se busca LITERAL en lo añadido. El valor se lee, jamás se escribe aquí.
+#  (b) EN TODAS PARTES — una contraseña literal asignada en el código (una clave «pass» o «password» seguida de un texto entre comillas).
+#      Un literal que se CONCATENA no cuenta (así se arman las claves desechables de _verify-borrado-*).
+#      Las excepciones se DECLARAN una por una con su razón (lección v537: un umbral esconde, una lista se audita).
+print(f'\n{BOLD}[14] Credenciales en lo añadido{RESET}')
+FIXTURES_OK = {
+    'Clave123',  # avi.test.js — validateSignup: contraseña de ejemplo que cumple la política; no abre nada
+    'corta1',    # avi.test.js — validateSignup: el caso que la política RECHAZA
+}
+_rx_pass = re.compile(r'''(?i)(?:pass(?:word|wd)?|contrase[ñn]a|clave)["']?\s*[:=]\s*["'`]([^"'`\s$]{6,})["'`](?!\s*\+)''')
+_secretos = []
+_avi = os.path.join(os.path.expanduser('~'), '.avi')
+if os.path.isdir(_avi):
+    for _f in os.listdir(_avi):
+        _p = os.path.join(_avi, _f)
+        if not os.path.isfile(_p):
+            continue
+        try:
+            if _f.endswith('.json'):
+                with open(_p, encoding='utf-8') as _fh:
+                    _j = json.load(_fh)
+                _pila = [_j]
+                while _pila:
+                    _o = _pila.pop()
+                    if isinstance(_o, dict):
+                        for _k, _v in _o.items():
+                            if isinstance(_v, str) and re.search(r'(?i)pass', _k):
+                                _secretos.append(_v)
+                            elif isinstance(_v, (dict, list)):
+                                _pila.append(_v)
+                    elif isinstance(_o, list):
+                        _pila.extend(_o)
+            elif _f == 'qa-accounts.txt':
+                with open(_p, encoding='utf-8') as _fh:
+                    _secretos += re.findall(r'pass:\s*(\S+)', _fh.read())
+            elif _f.endswith('.key'):
+                with open(_p, encoding='utf-8') as _fh:
+                    _secretos.append(_fh.read().strip())
+        except Exception:
+            pass
+_secretos = sorted({s for s in _secretos if len(s) >= 6})
+_diff14 = subprocess.run(['git', 'diff', '--cached', '-U0', '--no-color'], cwd=ROOT, capture_output=True,
+                         text=True, encoding='utf-8', errors='replace').stdout
+_cred = []; _arch = ''
+for _l in _diff14.splitlines():
+    if _l.startswith('+++ '):
+        _arch = _l[6:] if _l.startswith('+++ b/') else ''
+        continue
+    if not _l.startswith('+') or not _arch:
+        continue
+    _t = _l[1:]
+    if any(_s in _t for _s in _secretos):
+        _cred.append(f'{_arch}: un secreto de ~/.avi escrito tal cual')
+    for _m in _rx_pass.finditer(_t):
+        if _m.group(1) not in FIXTURES_OK:
+            _cred.append(f'{_arch}: contraseña literal asignada a «{_t[max(0, _m.start() - 12):_m.start(1)].strip()}…»')
+if _cred:
+    fail('Credencial en lo que vas a subir (el repo es público; léela de ~/.avi como _verify-rls-aislamiento):\n    '
+         + '\n    '.join(sorted(set(_cred))[:15]))
+elif not _secretos:
+    warn(f'~/.avi sin secretos legibles en esta máquina — solo corrió la vía genérica')
+else:
+    ok(f'ninguna credencial en lo añadido ({len(_secretos)} secretos de ~/.avi + patrón genérico)')
+
 # ── RESUMEN ───────────────────────────────────────────────────────────────────
-total = 13
+total = 14
 failed = len(errors)
 warned = len(warnings)
 

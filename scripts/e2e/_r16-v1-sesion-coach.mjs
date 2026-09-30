@@ -3,11 +3,19 @@
 // routines, history, msgs, bodyweight — SIN fotos/prs/medidas/nutrition, que son carga perezosa).
 // Login UNA vez con la cuenta QA de coach (rate limit respetado). SOLO LECTURA. Puerto CDP 9484.
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import WebSocket from 'ws';
 
 const URL = 'https://app.avientrena.com/';
 const PUERTO = 9484;
-const CREDS = { email: 'qa-coach@apex.com', pass: 'QaCoach2026x' };
+// La cuenta del coach QA sale de ~/.avi (patrón de _verify-rls-aislamiento). JAMÁS escrita aquí: una
+// versión anterior de este archivo la traía en claro y quedó en el repo público (29-sep, GitGuardian).
+const _qa = [...readFileSync(join(homedir(), '.avi', 'qa-accounts.txt'), 'utf8')
+  .matchAll(/email:\s*(\S+)\s*\r?\n\s*pass:\s*(\S+)/g)];
+if (_qa.length < 2) { console.log('🔴 no encontré la cuenta del coach QA en ~/.avi/qa-accounts.txt'); process.exit(1); }
+const CREDS = { email: _qa[1][1], pass: _qa[1][2] };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', [
