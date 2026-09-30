@@ -4116,6 +4116,9 @@ test('🔒 v695 · las tres pantallas del 1RM usan la barra del récord y el gua
   const e4 = _lee('app-4-entreno.js').replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
   assert.strictEqual((e4.match(/\?\(_barForRecord\(clientId,/g) || []).length, 3, '🔴 alguna pantalla del 1RM no usa la barra del récord');
   assert.ok(!/_barFor\(/.test(e4), 'queda una pantalla con la barra de hoy para todos los récords');
+  // Y la función de las tres pide la barra DEL DÍA del récord (el sabotaje de v695 la cambiaba por la de hoy y nada lo notaba).
+  const bfr = e4.slice(e4.indexOf('function _barForRecord('), e4.indexOf('\nfunction ', e4.indexOf('function _barForRecord(') + 10));
+  assert.ok(/return recordBarKg\(hist,\{id,name:exName\|\|''\},fecha\);/.test(bfr), '🔴 _barForRecord dejó de pedir la barra DEL DÍA del récord');
   const conf = e4.slice(e4.indexOf('function sessionBarConfirmed('), e4.indexOf('\nfunction ', e4.indexOf('function sessionBarConfirmed(') + 10));
   assert.ok(/barSessionValue\(localStorage\.getItem\(`barra_\$\{routine\.id\}_\$\{ei\}`\),ex\)!=null\) return true;/.test(conf), 'tocarla hoy dejó de contar como elegida');
   assert.ok(/soloConfirmada:true/.test(conf) && /conf===bar/.test(conf), 'la heredada de una elección anterior dejó de contar');
