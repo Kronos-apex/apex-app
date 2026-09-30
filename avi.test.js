@@ -4067,6 +4067,77 @@ test('🔒 v694 · buscar versión nueva no deja una promesa rechazada suelta (r
   assert.ok(!/try\{ reg\.update\(\); \}catch/.test(src), 'volvió el try que no atrapa la promesa');
 });
 
+// ── v695 · EL 1RM SOLO SUMA LA BARRA QUE LA PERSONA ELIGIÓ, Y LA DE ESE DÍA (R17 A2, decisión del PO) ──
+test('🔒 v695 · barConfirmed: la marca manda; sin marca, solo una barra distinta a la del catálogo', () => {
+  const { barConfirmed } = core;
+  assert.strictEqual(barConfirmed({ bar: 20, barOk: true }, 20), true, 'eligió la de 20 (tocándola)');
+  assert.strictEqual(barConfirmed({ bar: 20 }, 20), false, '🔴 la del catálogo guardada sola contó como elegida');
+  assert.strictEqual(barConfirmed({ bar: 15 }, 20), true, 'una distinta a la del catálogo solo pudo salir de un toque');
+  assert.strictEqual(barConfirmed({ bar: 0 }, 20), true, '«sin barra» elegido');
+  assert.strictEqual(barConfirmed({}, 20), false);
+  assert.strictEqual(barConfirmed(null, 20), false);
+});
+
+test('🔒 v695 · exerciseBarKg: «soloConfirmada» y, para proponer, la confirmada gana a la guardada sola', () => {
+  const { exerciseBarKg } = core;
+  const HT = { id: 'e42', name: 'Hip Thrust' };
+  const s = (date, ex) => ({ date, exercises: [ex] });
+  const hist = [s('2026-09-28T10:00:00Z', { id: 'e42', name: 'x', bar: 15 }), s('2026-09-29T10:00:00Z', { id: 'e42', name: 'x', bar: 20 })];
+  // La del 29 es la del catálogo sin marca: no es elección. La elegida es la de 15 (distinta al catálogo).
+  assert.strictEqual(exerciseBarKg(hist, HT, null, { soloConfirmada: true }), 15);
+  assert.strictEqual(exerciseBarKg(hist, HT), 15, 'para proponer, la elegida gana a la que se guardó sola después');
+  assert.strictEqual(exerciseBarKg([s('2026-09-29T10:00:00Z', { id: 'e42', name: 'x', bar: 20 })], HT, null, { soloConfirmada: true }), null,
+    '🔴 la del catálogo guardada sola se toma por elegida');
+  assert.strictEqual(exerciseBarKg([], HT), 20, 'sin historial se propone la del catálogo');
+});
+
+test('🔒 v695 · recordBarKg: cada récord suma la barra CONFIRMADA de su día, o nada', () => {
+  const { recordBarKg } = core;
+  const HT = { id: 'e42', name: 'Hip Thrust' };
+  const s = (date, ex) => ({ date, exercises: [ex] });
+  const hist = [
+    s('2026-09-20T12:00:00Z', { id: 'e42', name: 'x', bar: 10 }),              // eligió 10 (≠ catálogo)
+    s('2026-09-25T12:00:00Z', { id: 'e42', name: 'x', bar: 20 }),              // la del catálogo, sin tocar
+    s('2026-09-30T12:00:00Z', { id: 'e42', name: 'x', bar: 20, barOk: true }), // eligió 20
+  ];
+  assert.strictEqual(recordBarKg(hist, HT, '2026-09-20T12:40:00Z'), 10, 'el récord del 20 se hizo con la de 10');
+  assert.strictEqual(recordBarKg(hist, HT, '2026-09-25T12:30:00Z'), null, '🔴 se le sumó la barra del catálogo a un récord sin barra elegida');
+  assert.strictEqual(recordBarKg(hist, HT, '2026-09-30T13:00:00Z'), 20);
+  // Antes se recalculaban todos con la más reciente: el del 20 NO puede salir con la de 20 del 30.
+  assert.notStrictEqual(recordBarKg(hist, HT, '2026-09-20T12:40:00Z'), 20, 'el récord viejo se recalculó con la barra de hoy');
+  // Sin sesión cerca (±36 h) no hay barra; un ejercicio sin barra, tampoco; una fecha rota, tampoco.
+  assert.strictEqual(recordBarKg(hist, HT, '2026-09-10T12:00:00Z'), null);
+  assert.strictEqual(recordBarKg(hist, { id: 'e2', name: 'Curl' }, '2026-09-20T12:40:00Z'), null);
+  assert.strictEqual(recordBarKg(hist, HT, 'no es fecha'), null);
+});
+
+test('🔒 v695 · las tres pantallas del 1RM usan la barra del récord y el guardado marca la elegida', () => {
+  const _lee = f => require('fs').readFileSync(require('path').join(__dirname, f), 'utf8');
+  const e4 = _lee('app-4-entreno.js').replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  assert.strictEqual((e4.match(/\?\(_barForRecord\(clientId,/g) || []).length, 3, '🔴 alguna pantalla del 1RM no usa la barra del récord');
+  assert.ok(!/_barFor\(/.test(e4), 'queda una pantalla con la barra de hoy para todos los récords');
+  const conf = e4.slice(e4.indexOf('function sessionBarConfirmed('), e4.indexOf('\nfunction ', e4.indexOf('function sessionBarConfirmed(') + 10));
+  assert.ok(/barSessionValue\(localStorage\.getItem\(`barra_\$\{routine\.id\}_\$\{ei\}`\),ex\)!=null\) return true;/.test(conf), 'tocarla hoy dejó de contar como elegida');
+  assert.ok(/soloConfirmada:true/.test(conf) && /conf===bar/.test(conf), 'la heredada de una elección anterior dejó de contar');
+  const save = e4.slice(e4.indexOf('function saveSessionToHistory('), e4.indexOf('\nfunction ', e4.indexOf('function saveSessionToHistory(') + 10));
+  assert.ok(/const barOk=bar!=null&&sessionBarConfirmed\(routine,ei,ex,bar,_barIdt\);/.test(save), '🔴 el guardado no marca si la barra fue elegida');
+});
+
+test('🔒 v695 · el entreno PREGUNTA la barra una vez cuando no la ha elegido, sin marcar ninguna', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8').replace(/\r/g, '');
+  const i = src.indexOf('function gmBarLine('); assert.ok(i > 0, 'gmBarLine desapareció');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(/const elegida=\(typeof sessionBarConfirmed==='function'\)\?sessionBarConfirmed\(GM\.routine,ei,ex,bk\):true;/.test(cuerpo),
+    '🔴 la línea de la barra dejó de preguntar si la persona ya la eligió');
+  const iAsk = cuerpo.indexOf('if(!elegida){'), iLinea = cuerpo.indexOf('Barra de ${bk} kg');
+  assert.ok(iAsk > 0 && iLinea > iAsk, 'la pregunta tiene que ir ANTES de la línea de siempre');
+  const ask = cuerpo.slice(iAsk, iLinea);
+  assert.ok(/¿Con qué barra lo haces\?/.test(ask), 'la pregunta no dice qué se pregunta');
+  assert.ok(/barChoices\(ex\)/.test(ask) && /gmPickBar\(\$\{ei\},\$\{k\}\)/.test(ask), 'las opciones de la pregunta no eligen la barra');
+  assert.ok(!/gm-bar-opt on|gm-bar-opt\$\{|aria-pressed="true"|k===bk/.test(ask), '🔴 la pregunta marca una opción: la persona creería que ya eligió');
+  assert.ok(/return el;/.test(ask), 'con la pregunta a la vista también se pinta la línea');
+});
+
 // ── v693 · CUANDO EL SERVIDOR CIERRA LA SESIÓN (R17 A1) ──
 // Medido el 30-sep con la cuenta QA: revocada la sesión, la app entraba «como sin red», lo que se anotaba
 // no subía y nadie avisaba (`AUTH.onChange` no lo llamaba ningún módulo).
@@ -22363,7 +22434,8 @@ test('🔒 v681 · el cableado: la barra viaja, se guarda con el entreno y entra
   // El entreno guardado lleva la barra del día.
   const save = e4.slice(e4.indexOf('function saveSessionToHistory('), e4.indexOf('\nfunction ', e4.indexOf('function saveSessionToHistory(') + 10));
   // (v686: la llamada lleva la identidad ya calculada del guardado; la propiedad es la misma)
-  assert.ok(/const bar=\(typeof sessionBarKg==='function'\)\?sessionBarKg\(routine,ei,ex,_barIdt\):null;/.test(save) && /\.\.\.\(bar!=null\?\{bar\}:\{\}\)/.test(save),
+  // (v694: la barra viaja con la marca de si la persona la ELIGIÓ — `barOk` —; sigue viajando siempre)
+  assert.ok(/const bar=\(typeof sessionBarKg==='function'\)\?sessionBarKg\(routine,ei,ex,_barIdt\):null;/.test(save) && /\.\.\.\(bar!=null\?\{bar,\.\.\.\(barOk\?\{barOk:true\}:\{\}\)\}:\{\}\)/.test(save),
     '🔴 el entreno se guarda sin la barra');
   // El 1RM estimado suma la barra en sus TRES pantallas…
   const conBarra = (e4.match(/estimate1RM\(\(parseFloat\([^)]*\)\|\|0\)\+_bar,pr\.reps\)/g) || []).length;

@@ -1509,14 +1509,16 @@ function _barNum(v) {
 // v686 · `idtOpt` (opcional): la identidad YA calculada sobre ESE historial. Quien pregunta por varios
 // ejercicios del mismo historial (el guardado de cada serie) la arma una vez y la pasa: sin eso se
 // reconstruía entera una vez POR ejercicio con barra, en cada toque (R16 #5, costo de v681).
-function exerciseBarKg(history, ex, idtOpt) {
+// v694 · `opts.soloConfirmada`: solo la barra que la persona ELIGIÓ (null si nunca). Sin opción, manda la
+// última confirmada; si no hay, la última guardada; si no, la del catálogo (es lo que se le PROPONE).
+function exerciseBarKg(history, ex, idtOpt, opts) {
   const idt = (idtOpt && typeof idtOpt.keyOf === 'function') ? idtOpt : exerciseIdentity(history || []);
   const key = idt.keyOf(ex || {});
   // Sin id propio, el puente nombre→id de la identidad dice qué ejercicio del catálogo es.
   const id = ex && ex.id ? String(ex.id) : (/^e\d+$/.test(key) ? key : '');
   const def = barDefaultKg({ id });
   if (def == null) return null;
-  let best = null, bt = -Infinity;
+  let best = null, bt = -Infinity, conf = null, ct = -Infinity;
   (history || []).forEach(s => {
     const t = new Date(s && s.date).getTime();
     ((s && s.exercises) || []).forEach(x => {
@@ -1525,9 +1527,48 @@ function exerciseBarKg(history, ex, idtOpt) {
       if (b == null) return;
       const tt = isNaN(t) ? -Infinity : t;   // sin fecha: cuenta, pero pierde contra cualquiera con fecha
       if (best == null || tt > bt) { best = b; bt = tt; }
+      if (barConfirmed(x, def) && (conf == null || tt > ct)) { conf = b; ct = tt; }
     });
   });
-  return best != null ? best : def;
+  if (opts && opts.soloConfirmada) return conf;
+  return conf != null ? conf : (best != null ? best : def);
+}
+// ── v694 · ¿La persona ELIGIÓ esta barra, o es la del catálogo que se guardó sola? (R17 A2, decisión del PO)
+// De v681 a v693 cada sesión guardaba una barra aunque nadie la tocara (la del catálogo, casi siempre 20),
+// y el «1RM est. con barra» sumaba esos 20 kg a quien pudo haber usado una barra liviana: 16 récords de
+// 11 personas salían 2,6-3,2 veces lo anotado. Desde v694 la elección de ese día viaja como `barOk`.
+// Lo viejo, sin `barOk`: una barra DISTINTA a la del catálogo solo pudo salir de un toque (cuenta); una
+// igual a la del catálogo no se distingue de «nadie la tocó» (no cuenta).
+function barConfirmed(x, def) {
+  if (!x) return false;
+  const b = _barNum(x.bar);
+  if (b == null) return false;
+  if (x.barOk === true) return true;
+  return def != null && b !== def;
+}
+// La barra CONFIRMADA del día de un récord (`fecha`), o null. Para el 1RM del récord: cada récord suma la
+// barra con la que se hizo, no la de hoy (antes se recalculaban todos con la más reciente). Si ese día no
+// la confirmó, el 1RM es de lo anotado. Busca la sesión de ese ejercicio más cercana a `fecha` (±36 h: un
+// récord se estampa en la hora de la serie, la sesión en la de su comienzo).
+function recordBarKg(history, ex, fecha, idtOpt) {
+  const tRec = new Date(fecha).getTime();
+  if (isNaN(tRec)) return null;
+  const idt = (idtOpt && typeof idtOpt.keyOf === 'function') ? idtOpt : exerciseIdentity(history || []);
+  const key = idt.keyOf(ex || {});
+  const id = ex && ex.id ? String(ex.id) : (/^e\d+$/.test(key) ? key : '');
+  const def = barDefaultKg({ id });
+  if (def == null) return null;
+  let mejor = null, dist = Infinity;
+  (history || []).forEach(s => {
+    const t = new Date(s && s.date).getTime();
+    if (isNaN(t) || Math.abs(t - tRec) > 36 * 3600 * 1000) return;
+    ((s && s.exercises) || []).forEach(x => {
+      if (!x || idt.keyOf(x) !== key) return;
+      const d = Math.abs(t - tRec);
+      if (d < dist) { dist = d; mejor = x; }
+    });
+  });
+  return (mejor && barConfirmed(mejor, def)) ? _barNum(mejor.bar) : null;
 }
 // La elección del día se guarda como «<id del ejercicio>|<kg>» en `barra_<rid>_<ei>`: si el plan
 // cambia y en ese índice queda OTRO ejercicio, la barra vieja no se le pega (clase de v538).
@@ -12461,6 +12502,8 @@ if (typeof module !== 'undefined' && module.exports) {
     barDefaultKg,
     barChoices,
     exerciseBarKg,
+    barConfirmed,
+    recordBarKg,
     barSessionEncode,
     barSessionValue,
     SPLASH_MIN_MS,

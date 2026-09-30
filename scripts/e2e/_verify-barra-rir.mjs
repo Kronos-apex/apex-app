@@ -81,7 +81,9 @@ const MEDIR = `(()=>{
     const lab=c.querySelector('#gm-set-'+ei+'-0 .gm-sinput[data-field="kg"] + .gm-sinput-label, #gm-set-'+ei+'-0 [data-field="kg"]');
     const kgLab=(()=>{const inp=c.querySelector('#gm-set-'+ei+'-0 .gm-sinput[data-field="kg"]'); return inp&&inp.parentElement.querySelector('.gm-sinput-label'); })();
     const r=btn&&btn.getBoundingClientRect();
-    return { linea: btn?btn.innerText.replace(/\\s+/g,' ').trim():null, lineaAlto: r?Math.round(r.height):0, lineaDer: r?Math.round(r.right):0,
+    const q=c.querySelector('.gm-bar-q');
+    return { pregunta: q?q.innerText.replace(/\\s+/g,' ').trim():null, qRatio: q?ratio(q):0,
+      linea: btn?btn.innerText.replace(/\\s+/g,' ').trim():null, lineaAlto: r?Math.round(r.height):0, lineaDer: r?Math.round(r.right):0,
       lineaRatio: btn?Math.min(ratio(btn.querySelector('span')), ratio(btn.querySelector('.gm-bar-edit'))):0,
       opciones: opts.map(o=>({t:o.innerText.trim(), on:o.getAttribute('aria-pressed')==='true', alto:Math.round(o.getBoundingClientRect().height),
         der:Math.round(o.getBoundingClientRect().right), ratio:ratio(o)})),
@@ -102,7 +104,11 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: CONTROL · el guiado pinta los 4 ejercicios`, r.guiado && r.e0 && r.e1 && r.e2 && r.e3, JSON.stringify({ g: r.guiado }));
   if (!r.e0) break;
   check(`${tema}: hip thrust dice la barra de SU historial (15), no la del catálogo`, /Barra de 15 kg/.test(r.e0.linea || ''), r.e0.linea);
-  check(`${tema}: sentadilla sin historial → la del catálogo (20)`, /Barra de 20 kg/.test(r.e1.linea || ''), r.e1.linea);
+  // v695 · sin barra ELEGIDA ya no se asume la del catálogo: se pregunta una vez, sin ninguna marcada.
+  check(`${tema}: sentadilla sin barra elegida → se le PREGUNTA (v695), sin línea`, /¿Con qué barra lo haces\?/.test(r.e1.pregunta || '') && r.e1.linea === null, String(r.e1.pregunta));
+  check(`${tema}: la pregunta ofrece 20 · 15 · 10 · Sin barra y no marca ninguna`, r.e1.opciones.map(o => o.t).join('|') === '20 kg|15 kg|10 kg|Sin barra' && !r.e1.opciones.some(o => o.on), r.e1.opciones.map(o => o.t + (o.on ? '*' : '')).join('|'));
+  check(`${tema}: la pregunta se lee (≥4,5:1)`, r.e1.qRatio >= 4.5, String(r.e1.qRatio));
+  check(`${tema}: CONTROL · el hip thrust, con barra ya elegida (15), NO pregunta`, r.e0.pregunta === null, String(r.e0.pregunta));
   check(`${tema}: CONTROL · el curl en polea NO lleva línea de barra`, r.e3.linea === null, String(r.e3.linea));
   check(`${tema}: con barra la casilla dice DISCOS`, r.e0.casilla === 'DISCOS' && r.e1.casilla === 'DISCOS', r.e0.casilla + '/' + r.e1.casilla);
   check(`${tema}: CONTROL · sin barra la casilla sigue diciendo KG`, r.e3.casilla === 'KG', String(r.e3.casilla));
@@ -125,11 +131,25 @@ for (const tema of ['claro', 'oscuro']) {
   await sleep(500);
   check(`${tema}: CONTROL · la captura tiene la barra en vista`, enVista === true, String(enVista));
   await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/barra-opciones-${tema}.png`, Buffer.from(s.data, 'base64')));
-  // La hexagonal ofrece su 25.
-  await ev(`(()=>{ document.querySelector('#gm-ex-2 .gm-bar-btn').click(); return 1; })()`); await sleep(400);
+  // La hexagonal (sin barra elegida) pregunta con su 25 primero, sin marcarlo (v695).
+  check(`${tema}: la hexagonal pregunta y ofrece 25 primero, sin marcarlo`, !!r.e2.pregunta && r.e2.opciones.length && r.e2.opciones[0].t === '25 kg' && !r.e2.opciones[0].on, r.e2.opciones.map(o => o.t + (o.on ? '*' : '')).join('|'));
+  // Captura de la PREGUNTA en vista, antes de contestarla (R2.6).
+  const qVista = await ev(`(()=>{ const e=document.querySelector('#gm-ex-1 .gm-bar'); if(!e) return false; e.scrollIntoView({block:'center'});
+    const r=e.getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight; })()`);
+  await sleep(400);
+  check(`${tema}: CONTROL · la captura tiene la pregunta en vista`, qVista === true, String(qVista));
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/barra-pregunta-${tema}.png`, Buffer.from(s.data, 'base64')));
+  // Contestar la pregunta de la sentadilla: queda en la clave del día y pasa a ser la línea de siempre.
+  await ev(`(()=>{ const b=[...document.querySelectorAll('#gm-ex-1 .gm-bar-opt')].find(o=>o.innerText.trim()==='20 kg'); b.click(); return 1; })()`); await sleep(500);
   r = await ev(MEDIR);
-  check(`${tema}: la hexagonal ofrece 25 y lo marca`, r.e2.opciones.length && r.e2.opciones[0].t === '25 kg' && r.e2.opciones[0].on, r.e2.opciones.map(o => o.t + (o.on ? '*' : '')).join('|'));
-  check(`${tema}: abrir otra cierra la primera (una a la vez)`, r.e0.opciones.length === 0, String(r.e0.opciones.length));
+  const clave1 = await ev(`localStorage.getItem('barra_rb1_1')`);
+  check(`${tema}: al contestar, la sentadilla deja de preguntar y dice su barra`, r.e1.pregunta === null && /Barra de 20 kg/.test(r.e1.linea || '') && clave1 === 'e13|20', JSON.stringify({ q: r.e1.pregunta, linea: r.e1.linea, clave1 }));
+  // Una a la vez: abrir la del hip thrust y luego la de la sentadilla cierra la primera.
+  await ev(`(()=>{ document.querySelector('#gm-ex-0 .gm-bar-btn').click(); return 1; })()`); await sleep(300);
+  await ev(`(()=>{ document.querySelector('#gm-ex-1 .gm-bar-btn').click(); return 1; })()`); await sleep(400);
+  r = await ev(MEDIR);
+  check(`${tema}: abrir otra cierra la primera (una a la vez)`, r.e0.opciones.length === 0 && r.e1.opciones.length > 0, String(r.e0.opciones.length) + '/' + String(r.e1.opciones.length));
+  await ev(`(()=>{ document.querySelector('#gm-ex-1 .gm-bar-btn').click(); return 1; })()`); await sleep(300);
 
   // Marcar una serie del hip thrust y elegir otra barra: el entreno guardado la lleva, sin celebrar.
   const tras = await ev(`(()=>{
@@ -155,9 +175,10 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: elegir NO vuelve a celebrar el cierre`, cambio.celebra === false, JSON.stringify(cambio));
   check(`${tema}: tras elegir se cierra y la línea dice la nueva`, cambio.abiertas === 0 && /Barra de 20 kg/.test(cambio.linea || ''), JSON.stringify(cambio));
 
-  // El 1RM que ve la persona lleva la barra: 120 × 10 con la de 20 → (140)·(1+10/30) ≈ 187.
+  // El 1RM que ve la persona lleva la barra DEL DÍA DEL RÉCORD (v695): 120 × 10 hecho con la de 15 → (135)·(1+10/30) = 180.
+  // (Hasta v694 salía ≈ 187: se recalculaba con la barra elegida HOY, la de 20, para todos los récords.)
   const pr = await ev(`(()=>({ ht:_prRowHtml(DB.prs['${CID}'].e42,'${CID}','e42'), polea:_prRowHtml(DB.prs['${CID}'].e256,'${CID}','e256') }))()`);
-  check(`${tema}: el 1RM del récord suma la barra (≈ 187 con barra)`, /≈ 187 kg · 1RM est\. con barra/.test(pr.ht), (pr.ht.match(/≈[^<]*/) || [''])[0]);
+  check(`${tema}: el 1RM del récord suma la barra de su día (≈ 180 con barra)`, /≈ 180 kg · 1RM est\. con barra/.test(pr.ht), (pr.ht.match(/≈[^<]*/) || [''])[0]);
   check(`${tema}: CONTROL · sin barra el 1RM no cambia ni dice «con barra»`, /≈ 40 kg · 1RM est\.</.test(pr.polea), (pr.polea.match(/≈[^<]*/) || [''])[0]);
 
   // ─── v682 · LAS REPS EN RESERVA ───

@@ -1129,6 +1129,18 @@ function gmBarLine(ei,ex){
   const open=GM.barOpen===ei;
   const el=document.createElement('div');
   el.className='gm-bar';
+  // v695 · Si todavía no ELIGIÓ la barra de este ejercicio (ni hoy ni en un entreno anterior), se le pregunta
+  //   UNA vez, con las opciones a la vista y ninguna marcada: sin la elección el 1RM no le suma la barra
+  //   (decisión del PO sobre R17 A2) y casi nadie abre «Cambiar». Un toque y queda para los próximos días.
+  const elegida=(typeof sessionBarConfirmed==='function')?sessionBarConfirmed(GM.routine,ei,ex,bk):true;
+  if(!elegida){
+    el.classList.add('gm-bar-ask');
+    el.innerHTML=`<div class="gm-bar-q" id="gm-bar-q-${ei}">¿Con qué barra lo haces?<span>Se suma a los discos que anotas.</span></div>`
+      +`<div class="gm-bar-opts" role="group" aria-labelledby="gm-bar-q-${ei}">`
+      +barChoices(ex).map(k=>`<button type="button" class="gm-bar-opt" onclick="gmPickBar(${ei},${k})">${k>0?k+' kg':'Sin barra'}</button>`).join('')
+      +`</div>`;
+    return el;
+  }
   // Sofía (28-sep): «todos» dice que se anota el TOTAL de discos, no los de un lado (un error de mitad
   // del peso que nadie notaría).
   const txt=bk>0?`Barra de ${bk} kg · se suma a todos los discos`:'Sin barra · solo cuentan los discos';

@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-30 — v695: el 1RM solo suma la barra que la persona ELIGIÓ, y el entreno se la pregunta una vez
+
+- **Lo medido** (R17 A2 y el orquestador, datos reales): de v681 a v694 CADA sesión guardaba una barra aunque nadie la
+  tocara (la del catálogo, casi siempre 20), y el «1RM est. con barra» sumaba esa y la MÁS RECIENTE a todos los récords.
+  48 de 52 récords con barra la sumaban; 16 récords de 11 personas que movieron menos de 20 kg salían 2,6-3,2×.
+- **La decisión del PO** (opción 2 de tres, con los números delante: con la regla sola, 45 de 52 récords de 15 personas
+  bajaban su 1RM porque nadie había elegido su barra): **la regla + preguntar una vez**.
+- **La regla**: `barConfirmed` (la marca `barOk`, o en lo viejo una barra DISTINTA a la del catálogo — solo pudo salir de un
+  toque); `recordBarKg` da la barra confirmada de la sesión del récord (±36 h) o nada; `exerciseBarKg(…, {soloConfirmada})`.
+  Las tres pantallas del 1RM usan `_barForRecord`. El guardado marca `barOk` (`sessionBarConfirmed`: la tocó hoy, o hereda
+  una elección anterior).
+- **La pregunta** (`gmBarLine`): si el ejercicio no tiene barra elegida, en vez de la línea sale «¿Con qué barra lo haces?
+  Se suma a los discos que anotas.» con las opciones a la vista y ninguna marcada. Un toque y queda para los días
+  siguientes. El entreno se puede hacer sin contestar: solo que ese 1RM no suma barra.
+- QA: suite 1422 · `_sabotaje-v695` · `_verify-barra-rir` 97/97 (adaptado: la sentadilla sin barra elegida PREGUNTA; el
+  récord de hace 3 días hecho con la de 15 da ≈180, no ≈187 — antes se recalculaba con la de 20 elegida hoy).
+
 ## ⏮️ 2026-09-30 — v694: el aviso de salto guarda también «lo corrijo» + el lote técnico de R17
 
 - **El aviso de salto** (decisión del PO sobre R17 A2): además del «sí» (`corte:true`), el ejercicio guardado lleva

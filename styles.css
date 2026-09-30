@@ -1708,6 +1708,9 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-bar-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:36px;width:100%;padding:6px 10px;border-radius:10px;border:1px dashed var(--br2);background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer}
 .gm-bar-edit{flex-shrink:0;color:var(--gt);font-weight:800}
 .gm-bar-opts{display:flex;flex-wrap:wrap;gap:6px}
+/* v695 · la pregunta de la barra, la primera vez que se hace el ejercicio */
+.gm-bar-q{font-size:13px;font-weight:700;color:var(--t1);padding:2px 2px 0;line-height:1.35}
+.gm-bar-q span{display:block;font-size:11.5px;font-weight:500;color:var(--t2);margin-top:1px}
 .gm-bar-opt{flex:1 1 60px;min-height:40px;padding:6px 8px;border-radius:10px;border:1.5px solid var(--br2);background:var(--w);color:var(--t1);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .gm-bar-opt.on{background:var(--gl);border-color:var(--g2);color:var(--gt)}
 .gm-bar-btn:focus-visible,.gm-bar-opt:focus-visible{outline:2px solid var(--g2);outline-offset:2px}

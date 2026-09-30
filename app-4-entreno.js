@@ -429,7 +429,7 @@ function _prRowHtml(pr,clientId,exId){
   // es el 1RM, y reps fuera de rango devuelven null (no se muestra). Es una estimación.
   const isKg=(pr.unit||'kg')==='kg';
   // v681: el récord está en DISCOS (así se anota); el 1RM es del peso REAL, con la barra.
-  const _bar=isKg?(_barFor(clientId,exId||pr.id,pr.name)||0):0;
+  const _bar=isKg?(_barForRecord(clientId,exId||pr.id,pr.name,pr.date)||0):0;   // v694: la barra confirmada ese día
   const e1=isKg&&pr.reps>1?estimate1RM((parseFloat(pr.val!=null?pr.val:pr.kg)||0)+_bar,pr.reps):null;
   const tap=clientId?` pr-row-door" onclick="openRecordRoom('${esc(String(clientId))}','${esc(pr.name)}')` :'';
   return `<div class="pr-row${tap}">
@@ -444,13 +444,15 @@ function _prRowHtml(pr,clientId,exId){
       ${e1?`<div style="font-size:9.5px;color:var(--t3);margin-top:1px">≈ ${Math.round(e1)} kg · 1RM est.${_bar>0?' con barra':''}</div>`:''}
     </div>
   </div>`;}
-// v681 · la barra de UNA persona en UN ejercicio, para las pantallas que solo tienen el récord
-// (id o nombre). El id solo se pasa si es de catálogo; si no, decide el nombre (puente de identidad).
-function _barFor(clientId,exId,exName){
-  if(typeof exerciseBarKg!=='function') return null;
+// v694 · la barra de UN RÉCORD: la que la persona CONFIRMÓ el día que lo hizo (`recordBarKg`), o nada.
+// Antes (v681) era la barra más reciente —o la del catálogo sin que nadie la tocara— para TODOS los
+// récords: a un principiante con 10 kg le mostraba un 1RM «con barra» 2,6-3,2 veces lo anotado (R17 A2).
+// El id solo se pasa si es de catálogo; si no, decide el nombre (puente de identidad).
+function _barForRecord(clientId,exId,exName,fecha){
+  if(typeof recordBarKg!=='function') return null;
   const hist=(DB.history&&DB.history[clientId])||[];
   const id=(exId&&/^e\d+$/.test(String(exId)))?String(exId):undefined;
-  return exerciseBarKg(hist,{id,name:exName||''});
+  return recordBarKg(hist,{id,name:exName||''},fecha);
 }
 function renderPRsInProfile(clientId){
   if(!DB.prs)DB.prs=ld('ax_pr',{});
@@ -2002,6 +2004,14 @@ function sessionBarKg(routine,ei,ex,idt){
   if(hoy!=null) return hoy;
   return exerciseBarKg((DB.history&&DB.history[CUR.clientId])||[],ex,idt);
 }
+// v694 · ¿La barra de este ejercicio hoy la ELIGIÓ la persona? Sí si la tocó hoy, o si es la que ya había
+// elegido antes (la hereda). La del catálogo sin tocar NO cuenta: el 1RM de ese récord no se la suma.
+function sessionBarConfirmed(routine,ei,ex,bar,idt){
+  if(!routine||!ex||typeof barSessionValue!=='function') return false;
+  if(barSessionValue(localStorage.getItem(`barra_${routine.id}_${ei}`),ex)!=null) return true;
+  const conf=(typeof exerciseBarKg==='function')?exerciseBarKg((DB.history&&DB.history[CUR.clientId])||[],ex,idt,{soloConfirmada:true}):null;
+  return conf!=null&&conf===bar;
+}
 function setSessionBar(routine,ei,ex,kg){
   const v=barSessionEncode(ex,kg); if(!v) return;
   localStorage.setItem(`barra_${routine.id}_${ei}`,v);
@@ -2643,6 +2653,8 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     const warm=auxVal(ei,WARM_SI);
     // v681: la barra de ese día viaja con el ejercicio (el `kg` de cada serie siguen siendo los DISCOS).
     const bar=(typeof sessionBarKg==='function')?sessionBarKg(routine,ei,ex,_barIdt):null;
+    // v694 · y si la ELIGIÓ (`barOk`): sin la marca, el 1RM de ese día no le suma la barra.
+    const barOk=bar!=null&&sessionBarConfirmed(routine,ei,ex,bar,_barIdt);
     // v689: «es otra máquina / otra barra / las dos mancuernas» = punto de partida NUEVO para la curva
     // (punto 4). Solo dato: ninguna regla lo lee todavía (Coach Pro, 29-sep).
     const _salto=sessionJump(routine,ei,ex);
@@ -2650,7 +2662,7 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     // v694 · y lo que NO fue «sí» también queda (R17 A2, decisión del PO): «lo corrijo» (`visto`) y la pregunta
     // que se mostró sin respuesta (`pregunta`). Sin esto, la curva de noviembre no sabría qué saltos se preguntaron.
     const saltoOtro=(_salto&&_salto.estado!=='corte')?_salto.estado:null;
-    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),...(corte?{corte:true}:{}),...(saltoOtro?{salto:saltoOtro}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar,...(barOk?{barOk:true}:{})}:{}),...(corte?{corte:true}:{}),...(saltoOtro?{salto:saltoOtro}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
       // v682: las reps en reserva solo viajan en una serie HECHA (sin serie no hay «cuántas más»).
       const done=isDone(routine.id,ei,si);
       const rir=(done&&typeof rirValue==='function')?rirValue(getLog(routine.id,ei,si,'rir')):null;
@@ -3799,7 +3811,7 @@ function openExerciseRoom(clientId,exId,exName){
   const prs=(DB.prs&&DB.prs[clientId])||{};
   const pr=prs[exId]||prs[name]||null;
   const recordVal=pr?(pr.val!=null?pr.val:pr.kg):(pts.length?Math.max(...pts.map(p=>p.maxKg)):null);
-  const _bar=unit==='kg'?(_barFor(clientId,exId,exName||name)||0):0;   // v681: 1RM del peso real
+  const _bar=unit==='kg'?(_barForRecord(clientId,exId,exName||name,pr&&pr.date)||0):0;   // v694: la barra confirmada ese día
   const e1=(unit==='kg'&&pr&&pr.reps>1)?estimate1RM((parseFloat(pr.val!=null?pr.val:pr.kg)||0)+_bar,pr.reps):null;
   const did=sessions.filter(s=>(s.exercises||[]).some(x=>_key?(_idt.keyOf(x)===_key):((exId&&x.id===exId)||x.name===name)));
   const veces=did.length;
@@ -3965,7 +3977,7 @@ function openRecordRoom(clientId,exName){
   const first=milestones.length?milestones[0]:null;
   const recVal=cur?cur.val:(pr.val!=null?pr.val:pr.kg);
   const isKg=unit==='kg';
-  const _bar=isKg?(_barFor(clientId,pr.id,exName)||0):0;   // v681: 1RM del peso real, con la barra
+  const _bar=isKg?(_barForRecord(clientId,pr.id,exName,pr.date||(cur&&cur.date))||0):0;   // v694: la barra confirmada ese día
   const e1=isKg&&pr.reps>1?estimate1RM((parseFloat(recVal)||0)+_bar,pr.reps):null;
   const beat=Math.max(0,milestones.length-1);
   const gain=(first&&cur)?(cur.val-first.val):0;
