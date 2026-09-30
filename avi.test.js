@@ -137,6 +137,7 @@ const {
   BW_STALE_DAYS,
   validateSignup,
   passwordProblem,
+  authClosedByServer,
   passwordMentionsPerson,
   generatePassword,
   consentEvidence,
@@ -4030,6 +4031,54 @@ test('passwordProblem: exige 8+ con minúscula, mayúscula y dígito (política 
   assert.ok(/número/.test(passwordProblem('ClaveSegura')));
   assert.ok(passwordProblem(''));
   assert.ok(passwordProblem(null));
+});
+
+// ── v693 · CUANDO EL SERVIDOR CIERRA LA SESIÓN (R17 A1) ──
+// Medido el 30-sep con la cuenta QA: revocada la sesión, la app entraba «como sin red», lo que se anotaba
+// no subía y nadie avisaba (`AUTH.onChange` no lo llamaba ningún módulo).
+test('🔒 v693 · authClosedByServer: solo cuando la nube CONTESTÓ y la sesión guardada desapareció', () => {
+  const u = { id: 'u1' };
+  assert.strictEqual(authClosedByServer({ antes: u, contesto: true, despues: null }), true);
+  // Sin respuesta de la nube (tope vencido) NO es un cierre: es «sin red».
+  assert.strictEqual(authClosedByServer({ antes: u, contesto: false, despues: null }), false);
+  // La sesión sigue guardada (error de red: la librería la conserva) → no es un cierre.
+  assert.strictEqual(authClosedByServer({ antes: u, contesto: true, despues: u }), false);
+  // Nunca hubo sesión guardada → no hay nada que avisar.
+  assert.strictEqual(authClosedByServer({ antes: null, contesto: true, despues: null }), false);
+  assert.strictEqual(authClosedByServer({ antes: {}, contesto: true, despues: null }), false);
+  assert.strictEqual(authClosedByServer(null), false);
+});
+
+test('🔒 v693 · la sesión cerrada por el servidor saca al login con el aviso, y los cierres nuestros no', () => {
+  const _lee = f => require('fs').readFileSync(require('path').join(__dirname, f), 'utf8');
+  const sinCom = t => t.replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const app1 = sinCom(_lee('app-1-infra.js')), app2 = sinCom(_lee('app-2-login.js')), app3 = sinCom(_lee('app-3-coach.js'));
+  const html = _lee('index.html');
+  const cuerpo = (src, n) => { const i = src.indexOf('function ' + n + '('); assert.ok(i >= 0, n + ' desapareció'); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  // Todo cierre NUESTRO se marca, y el vigilante recibe el NOMBRE del evento.
+  assert.ok(/async signOut\(\)\{window\._aviSaliendo=true;/.test(app1), '🔴 AUTH.signOut dejó de marcar _aviSaliendo: «salir» se leería como «el servidor te sacó»');
+  assert.ok(/onAuthStateChange\(\(evento,session\)=>cb\(session,evento\)\)/.test(app1), 'AUTH.onChange dejó de pasar el evento');
+  // El vigilante: SIGNED_OUT ajeno → _sesionCerrada; los nuestros se ignoran; SIGNED_IN desmarca.
+  const vig = cuerpo(app2, '_aviVigilarSesion');
+  assert.ok(/AUTH\.onChange\(/.test(vig), '🔴 nadie escucha el cierre de sesión (el defecto de R17)');
+  assert.ok(/evento!=='SIGNED_OUT'\|\|window\._aviSaliendo\|\|!AUTH_MODE/.test(vig), 'el vigilante dejó de ignorar los cierres propios');
+  assert.ok(/_sesionCerrada\(\)/.test(vig), 'el vigilante no saca a la persona');
+  assert.ok(/evento==='SIGNED_IN'[\s\S]{0,80}_aviSaliendo=false/.test(vig), 'al volver a entrar no se desmarca: el siguiente cierre del servidor pasaría callado');
+  // Salir con el aviso, sin borrar lo pendiente.
+  const sc = cuerpo(app2, '_sesionCerrada');
+  assert.ok(/logout\(\)/.test(sc) && /_avisoSesionCerrada\(\)/.test(sc), '_sesionCerrada dejó de salir o de avisar');
+  const lo = cuerpo(app2, 'logout');
+  assert.ok(!/ax_udcache|ax_udirty/.test(lo), '🔴 logout borra la copia o lo pendiente: lo anotado en la zona sin sesión se perdería');
+  assert.ok(/getElementById\('lclosed'\)[\s\S]{0,40}display='none'/.test(lo), 'salir a mano deja el aviso de sesión cerrada a la vista');
+  assert.ok(/id="lclosed"/.test(html), 'falta el sitio del aviso en el login');
+  // Las dos puertas: al arrancar con token vencido (app-2) y con el token aún vivo (_enterAuthSession).
+  assert.ok(/authClosedByServer\(\{antes:_antes,contesto:_resp!==undefined,despues:AUTH\.storedUser\(\)\}\)/.test(app2), 'el arranque no distingue «cerrada» de «sin red»');
+  assert.ok(/_cerradaPorServidor&&!window\._aviRecovery\) _avisoSesionCerrada\(\)/.test(app2), 'el login del arranque no muestra el aviso');
+  const eas = cuerpo(app3, '_enterAuthSession');
+  const iCheck = eas.indexOf('authClosedByServer('), iCopia = eas.indexOf('usando respaldo local');
+  assert.ok(iCheck > 0 && iCopia > iCheck, '🔴 _enterAuthSession cae a la copia local ANTES de mirar si el servidor cerró la sesión');
+  assert.ok(/_sesionCerrada\(\); return;/.test(eas), 'tras detectar el cierre, _enterAuthSession sigue entrando');
+  assert.ok(/_aviVigilarSesion\(\)/.test(eas), 'nadie engancha el vigilante al entrar');
 });
 
 // ── v692 · LA CONTRASEÑA NO LLEVA EL NOMBRE NI EL CORREO DE LA PERSONA ──

@@ -4,6 +4,26 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-09-30 — v693: cuando el servidor cierra la sesión, la persona sale al login y se le dice (R17 A1)
+
+- **El defecto** (R17, `docs/auditoria-construido-2026-09-30/`): cambiar una contraseña, borrar una cuenta o «cerrar
+  sesión en todos» revoca las sesiones. La librería lo nota, borra la sesión guardada y avisa `SIGNED_OUT` — y **nadie
+  escuchaba** (`AUTH.onChange` sin una sola llamada). Con el token aún vivo, `_enterAuthSession` caía a la copia local
+  «como sin red» aunque hubiera red; con la red colgada, lenta o ausente entraba sin red (por diseño, v688) y al volver
+  la red **seguía adentro**. Lo anotado no subía y el coach no lo veía. Pasó de verdad hoy: el PO cambió 6 contraseñas.
+- **El arreglo**: `authClosedByServer` (avi-core) distingue «la nube contestó y la sesión ya no está» de «sin red» (la
+  librería CONSERVA la sesión ante un error de red). Dos puertas: el arranque con token vencido (app-2) y
+  `_enterAuthSession` con token vivo (app-3). Y `_aviVigilarSesion` escucha `SIGNED_OUT` mientras la app está abierta.
+  Los cierres NUESTROS pasan por `AUTH.signOut`, que marca `_aviSaliendo`; `SIGNED_IN` desmarca. El login muestra
+  «Tu sesión se cerró, por ejemplo porque cambiaron tu contraseña. Vuelve a entrar: lo que anotaste en este teléfono
+  está guardado y se sube cuando entres.» (`#lclosed`). `logout()` NO toca la copia ni la marca de pendiente.
+- **QA**: suite 1413 · `_sabotaje-v693` 13/13 · `_verify-sesion-cerrada` 17/17 con la cuenta QA de asesorado (sesión
+  revocada de verdad en el servidor): controles A (sesión válida: entra y se queda, sin aviso) y B (salir a mano: sin
+  aviso); casos 1-2 login con aviso sin entrar; 3-5 entra sin red y al volver la red login con aviso; la marca de
+  pendiente se borró ANTES de cada caso para que la que se vea venga del peso anotado ahí.
+- 💡 **Gotcha de esta máquina**: Git Bash convierte un argumento que empieza por `//` en `/` (conversión de rutas de
+  MSYS). Un ancla de texto pasada por la línea de comandos llegó cortada y dejó una línea rota en `avi.test.js`.
+
 ## ⏮️ 2026-09-30 — v692: la contraseña no lleva el nombre ni el correo de la persona
 
 - **Lo medido** (solo lectura, `crypt` contra el hash, sin iniciar sesión): **6 de las 16 cuentas con nombre** tenían

@@ -547,6 +547,7 @@ function logout(){
   if(_cta)_cta.style.display='flex'; if(_card)_card.style.display='none';
   cinFormMode(false);   // v571 · sin esto, salir con el formulario abierto las escondia PARA SIEMPRE
   const _err=document.getElementById('lerr'); if(_err)_err.classList.remove('on');
+  const _cerr=document.getElementById('lclosed'); if(_cerr)_cerr.style.display='none';
   hideClientWelcome(); // cerrar el overlay de bienvenida si seguía visible
   CUR.loggedAs=null;CUR.clientId=null;
   // Pre-fill remembered email
@@ -556,6 +557,39 @@ function logout(){
   if(rem&&uEl){uEl.value=rem;if(remCk)remCk.checked=true;}
   else{if(uEl)uEl.value='';if(remCk)remCk.checked=false;}
   document.getElementById('lp').value='';
+}
+
+// ── v693 · CUANDO EL SERVIDOR CIERRA LA SESIÓN (R17 A1) ─────────────────────────────────────
+// Cambiar la contraseña de alguien, borrar su cuenta o «cerrar sesión en todos» revoca sus sesiones. La
+// librería lo nota (al renovar o al pedir el usuario), borra la sesión guardada y avisa `SIGNED_OUT` —
+// y NADIE escuchaba: la persona seguía adentro «como sin red», lo que anotaba no subía (el coach no lo
+// veía) y al final veía el login sin saber por qué. Ahora sale al login con una frase que lo explica.
+// 🔒 Lo que anotó NO se borra: `logout()` deja la copia (`ax_udcache_<uid>`) y la marca de pendiente
+//    (`ax_udirty_<uid>`), y al volver a entrar con la misma cuenta `_enterAuthSession` la fusiona y la sube.
+const SESION_CERRADA_TXT='Tu sesión se cerró, por ejemplo porque cambiaron tu contraseña. Vuelve a entrar: lo que anotaste en este teléfono está guardado y se sube cuando entres.';
+function _avisoSesionCerrada(){
+  const cta=document.getElementById('cin-cta'),card=document.getElementById('cin-card'),el=document.getElementById('lclosed');
+  if(cta)cta.style.display='none';
+  if(typeof cinFormMode==='function')cinFormMode(true);
+  if(card)card.style.display='block';
+  if(el){ el.textContent=SESION_CERRADA_TXT; el.style.display='block'; }
+}
+function _sesionCerrada(){
+  if(window._aviSesionCerrada)return;
+  window._aviSesionCerrada=true;
+  try{ logout(); }catch(e){ warn('AVI: salir tras la sesión cerrada falló:',e&&e.message); }
+  _avisoSesionCerrada();
+}
+// Se engancha UNA vez, al entrar. Los cierres nuestros (salir, borrar la cuenta, «acceso pausado») pasan
+// por `AUTH.signOut`, que marca `_aviSaliendo`: esos no son «el servidor te sacó».
+function _aviVigilarSesion(){
+  if(window._aviVigila||!AUTH.ready())return;
+  window._aviVigila=true;
+  AUTH.onChange((session,evento)=>{
+    if(evento==='SIGNED_IN'){ window._aviSaliendo=false; window._aviSesionCerrada=false; return; }
+    if(evento!=='SIGNED_OUT'||window._aviSaliendo||!AUTH_MODE)return;
+    _sesionCerrada();
+  });
 }
 
 function openSettings(){
@@ -1354,6 +1388,7 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
   // ── Sesión Supabase Auth (cuentas nuevas): si existe, entrar en modo auth ──
   let authEntered=false;
   let _teniaSesion=false;
+  let _cerradaPorServidor=false;
   try{
     if(AUTH.ready()){
       // 🔴 v688 · Sin red y con el token vencido (una hora sin usar la app), `getSession()` responde «no hay
@@ -1370,6 +1405,10 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
         :((_resp&&_resp.user)?{user:_resp.user,sinRed:false}:null);
       const session=_dec?((_resp&&_resp.user)?_resp:{user:_dec.user}):null;
       const _sinRed=!!(_dec&&_dec.sinRed);
+      // v693 · Sin sesión porque el SERVIDOR la cerró (la nube contestó y la librería la borró): el login
+      //    lo dice, en vez de aparecer sin explicación. `_resp===undefined` = se venció el tope (sin respuesta).
+      if(!session&&typeof authClosedByServer==='function'&&authClosedByServer({antes:_antes,contesto:_resp!==undefined,despues:AUTH.storedUser()}))
+        _cerradaPorServidor=true;
       // Guard anti doble-entrada (regresión cazada 2026-07-06 con _test-coach-back):
       // si el usuario alcanzó a hacer login MIENTRAS esta cadena async del boot seguía
       // pendiente (red lenta + autofill; el harness E2E lo dispara siempre), getSession
@@ -1412,6 +1451,7 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
   }
   // ── Auto-login legacy: restaurar sesión guardada (solo si no entró por auth) ──
   if(!authEntered&&!_verPagina) tryAutoLogin();
+  if(!authEntered&&!_verPagina&&_cerradaPorServidor&&!window._aviRecovery) _avisoSesionCerrada();
   // La banda de «estás mirando tu página» va SOLO si de verdad se saltó una sesión: a un visitante
   // de verdad —que llega sin cuenta— un botón «Volver a mi panel» no le dice nada.
   if(_verPagina&&_teniaSesion&&typeof renderPreviewBar==='function')renderPreviewBar();

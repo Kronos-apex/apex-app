@@ -589,8 +589,10 @@ const AUTH={
   // pedirlo otra vez y el login le decía «contraseña incorrecta».
   async resendSignup(email){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin+location.pathname}});},
   async updatePassword(password){const c=sbAuthClient();if(!c)throw new Error('Auth no disponible');return await c.auth.updateUser({password});},
-  async signOut(){const c=sbAuthClient();if(!c)return;return await c.auth.signOut();},
-  onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((_e,session)=>cb(session));},
+  // v693 · Todo cierre NUESTRO pasa por aquí y lo marca: así el vigilante de sesión (`_aviVigilarSesion`,
+  // app-2) distingue «la persona salió» de «el servidor le cerró la sesión». Se desmarca al volver a entrar.
+  async signOut(){window._aviSaliendo=true;const c=sbAuthClient();if(!c)return;return await c.auth.signOut();},
+  onChange(cb){const c=sbAuthClient();if(!c)return null;return c.auth.onAuthStateChange((evento,session)=>cb(session,evento));},
 };
 
 // ══════════ CAPA DE DATOS POR USUARIO — Fase 2.2 (tabla user_data) ══════════

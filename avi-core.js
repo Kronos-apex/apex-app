@@ -1605,6 +1605,16 @@ function bootAuthDecision(r) {
   if (!r.despues || r.despues.id !== r.antes.id) return null;
   return { user: r.despues, sinRed: true };
 }
+// v693 · ¿El SERVIDOR cerró la sesión guardada? (contraseña cambiada, cuenta borrada, «cerrar en todos»).
+// R17 A1: la app lo trataba igual que «no hay red» — entraba con la copia, no subía nada y no decía nada.
+// Se distingue así: había sesión guardada ANTES de preguntar, la nube CONTESTÓ (no se venció el tope) y
+// DESPUÉS la sesión ya no está. La librería la borra solo cuando el servidor la rechaza; sin red o con un
+// error de red la CONSERVA para reintentar — por eso «sin red» nunca da true aquí.
+// r = { antes: usuario guardado antes, contesto: ¿la nube respondió?, despues: usuario guardado después }
+function authClosedByServer(r) {
+  r = r || {};
+  return !!(r.antes && r.antes.id && r.contesto && !(r.despues && r.despues.id));
+}
 
 // ══════════════════════════════════════════════════════════════════════
 // EL AVISO DE SALTO (v689) — punto 3 del lote de progresión, docs/plan-barra-rir.md
@@ -12495,6 +12505,7 @@ if (typeof module !== 'undefined' && module.exports) {
     passwordProblem,
     passwordMentionsPerson,
     generatePassword,
+    authClosedByServer,
     consentEvidence,
     consentNeedsGuardian,
     tombNormalize,

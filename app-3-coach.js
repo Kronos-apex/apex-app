@@ -736,6 +736,15 @@ async function _enterAuthSession(authUser,opts){
     const _r=(_conCopia&&typeof conTope==='function')?await conTope(UD.loadOwn(),(typeof bootNetWait==='function')?bootNetWait(navigator.onLine):BOOT_NET_MS,_sinRedTope):await UD.loadOwn();   // null si no hay red (loadOwn ya no lanza)
     if(_r===_sinRedTope)sinRed=true; else row=_r;
   }
+  // 🔴 v693 · Sin fila y la nube SÍ contestó, pero la sesión guardada ya no está: el servidor la cerró
+  //    (contraseña cambiada, cuenta borrada, «cerrar en todos»). Antes caía a la copia local «como sin red»
+  //    aunque hubiera red, y la persona seguía adentro sin que nada subiera (R17 A1, caso 1). Ahora sale al
+  //    login con el aviso; la copia y lo pendiente se quedan para cuando vuelva a entrar.
+  if(!row&&!sinRed&&typeof authClosedByServer==='function'&&authClosedByServer({antes:authUser,contesto:true,despues:AUTH.storedUser()})){
+    if(typeof _sesionCerrada==='function'){ _sesionCerrada(); return; }
+  }
+  // Y si la cierra MIENTRAS está adentro (con la app abierta, o al volver la red), que se entere.
+  if(typeof _aviVigilarSesion==='function')_aviVigilarSesion();
   const online=!!row;
   // Sin fila desde la nube: ¿es porque no hay red? → cae al respaldo local para
   // poder entrenar offline. Si no hay respaldo tampoco, sigue el flujo normal
