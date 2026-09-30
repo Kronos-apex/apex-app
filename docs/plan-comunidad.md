@@ -1324,7 +1324,7 @@ tenga su propio veredicto de Fable después de construida (mismo patrón que C1�
 
 Verificación adversarial independiente contra prod real (`eoebhrxbokyllqalyecj`), sin confiar en lo
 que Opus reportó — cada sabotaje se rehizo desde cero, con datos reales (única amistad `accepted`
-F1=`0a6484ed…`↔F2=`31bf6d19…`, gym de F1 con ~23 miembros poblado en vivo por Camilo).
+F1=`0a6484ed…`↔F2=`(uid de un asesorado)…`, gym de F1 con ~23 miembros poblado en vivo por Camilo).
 
 ### 14.1 DDL vs §13-BIS.2 — coincide, desviación única correcta
 
@@ -1376,7 +1376,7 @@ desaparecen y la función queda con la misma higiene que `_can_dm`.
 
 Impersonación por JWT (`set local role authenticated` + `set_config('request.jwt.claims',...)`) en
 transacciones `BEGIN…ROLLBACK`, actores reales (F1, F2, un compañero de gym de F2 sin amistad —
-Andrea `c52b90af…` vía gym de F1— y un extraño real sin relación, `qa-harness` `9418640a…`):
+Andrea `(uid de un asesorado)…` vía gym de F1— y un extraño real sin relación, `qa-harness` `9418640a…`):
 - **#7a** extraño→F1 sin relación: rechazado por RLS (`new row violates row-level security policy`).
 - **#7b** con amistad `pending` (creada real en la tx): sigue rechazado — `_are_friends` exige
   `accepted`, `pending` no cuenta.
@@ -1499,7 +1499,7 @@ compila en runtime dado el esquema de grants ya vigente. DEFINER era la única v
 **Verifiqué las 3 garantías que pidió el encargo:**
 - **(a) el chequeo de visibilidad SÍ bloquea a un extraño real.** Sembré `last_active=now()` +
   `show_last_active=true` en F1 (Camilo, `0a6484ed…`) y, en la misma tx, borré la fila de
-  `community_gym_members` del extraño real `6e54e22b…` (para que `_same_community`=false — sin esto
+  `community_gym_members` del extraño real `(uid de un asesorado)…` (para que `_same_community`=false — sin esto
   Camilo tiene casi todo su gym adentro y no queda un extraño real). Como ese extraño, la RPC devolvió
   **`null`**, no el timestamp ni error — visibilidad negada limpiamente.
 - **(b) `revoke all ... from public, anon` + `grant execute ... to authenticated` se cumple en prod**
@@ -1545,8 +1545,8 @@ resultado final.)
 Prod confirmada limpia tras cada bloque (`last_active`/`show_last_active` de F1 y F2 en su valor real
 original, membresía de gym del extraño restaurada, `relacl` de `community_profiles` sin SELECT de
 tabla para `authenticated`, temp tables descartadas). Los actores reales usados fueron F1=Camilo
-(`0a6484ed…`) y F2=Salomón (`31bf6d19…`, amistad `accepted` verificada antes de empezar); el extraño
-`6e54e22b…` es miembro real del gym de F1, por eso su fila de `community_gym_members` se quitó y
+(`0a6484ed…`) y F2=Salomón (`(uid de un asesorado)…`, amistad `accepted` verificada antes de empezar); el extraño
+`(uid de un asesorado)…` es miembro real del gym de F1, por eso su fila de `community_gym_members` se quitó y
 restauró dentro de la misma transacción (gotcha del encargo, confirmado necesario: sin este paso no
 queda un extraño real en los datos de Camilo).
 
@@ -1696,10 +1696,10 @@ FK `no action` de `coach_id` antes de borrar al "coach" QA — orden de borrado 
 ### 16.5 Matriz de sabotajes DB (tx→rollback única, actores reales + 1 menor real + 1 extraño real)
 
 Actores: F1=Camilo (`0a6484ed…`, coach real, perfil público adulto real en prod) · F2=Salomón
-(`31bf6d19…`, amigo `accepted` de F1, perfil privado) · extraño=nayla (`6e54e22b…`, se le quitó su
+(`(uid de un asesorado)…`, amigo `accepted` de F1, perfil privado) · extraño=nayla (`(uid de un asesorado)…`, se le quitó su
 membresía real de `community_gym_members` con F1 **dentro de la misma tx** para que quedara extraña de
 verdad, como exigía el encargo — sin esto comparte gym con F1 y con F2) · menor=Sonia Sofía
-(`1f4f6a74…`, 16 años reales, asesorada real de Camilo; recibió una fila `community_profiles` temporal
+(`(uid de un asesorado)…`, 16 años reales, asesorada real de Camilo; recibió una fila `community_profiles` temporal
 solo para esta transacción). Todo en **una sola** transacción con `ROLLBACK` final.
 
 | # | Prueba | Resultado |
@@ -1726,7 +1726,7 @@ de columnas idéntico al de `c10` (verificado columna por columna post-rollback)
 `birth_date` de F1 y F2 en su valor real original. **Nota metodológica:** a mitad de la verificación
 encontré `community_profiles` con 3 filas en vez de las 2 esperadas y, antes de investigarlo a fondo,
 parecía un leak de mi transacción — resultó ser actividad REAL y concurrente (una asesorada real,
-Nadia Mejía, `78ea069c…`, activó su perfil y siguió a Camilo mientras yo probaba). Lo distinguí
+Nadia Mejía, `(uid de un asesorado)…`, activó su perfil y siguió a Camilo mientras yo probaba). Lo distinguí
 confirmando que su UUID no coincidía con ningún actor mío y que su cuenta existe desde el 3 de junio —
 lo documento porque la duda y su resolución son parte de la evidencia, no un detalle a omitir.
 

@@ -92,7 +92,10 @@ function initPWA(){
           if(!window._aviWantReload || window._aviReloading) return;
           window._aviReloading=true; location.reload();
         });
-        const _checkUpdate=()=>{ try{ reg.update(); }catch(_e){} };
+        // v694 · `update()` es una PROMESA: el try no atrapa su rechazo, y con mala señal cada vuelta a la app
+        // dejaba un «Failed to update a ServiceWorker» en app_errors (11 de 41 filas del mes, R17 A1). Se reintenta
+        // solo a los 20 min o al volver: el fallo de red no es un error de la app.
+        const _checkUpdate=()=>{ try{ const p=reg.update(); if(p&&typeof p.catch==='function')p.catch(()=>{}); }catch(_e){} };
         document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ _checkUpdate(); _tryApplyUpdate(); } });
         window.addEventListener('focus',_tryApplyUpdate);
         setInterval(_checkUpdate, 20*60*1000);                      // buscar versión nueva cada 20 min

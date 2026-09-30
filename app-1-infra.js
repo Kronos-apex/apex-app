@@ -1756,11 +1756,16 @@ async function syncFromCloud(){
   DB.exercises=_libreriaEjercicios();
   // Migraciones blindadas: si una falla (p.ej. avi-core.js viejo en caché tras un update),
   // NUNCA debe colgar el arranque. Se degrada con gracia y la app igual carga.
-  try{ migrateExTypes(); }catch(e){ warn('AVI: migrateExTypes falló (no bloquea):',e&&e.message); }
-  try{ migrateEnv(); }catch(e){ warn('AVI: migrateEnv falló (no bloquea):',e&&e.message); }
+  // 🔴 v694 · R17 A1: estas tres viven en app-4 y `syncFromCloud` corre al cargar app-2, ANTES de que app-4
+  //    exista: desde el corte en módulos (22-jun) NO corren aquí — lanzaban «is not defined» y el `catch` lo
+  //    callaba. Van con guarda de módulo (gotcha de v537). NO se mueven a después del arranque a propósito:
+  //    reescriben `ax_c`/`ax_e`/`ax_tpl`, que son del COACH; en el teléfono de un asesorado reescribirían sus
+  //    rutinas en la nube sin necesidad. La que importa, `healExerciseEnv`, la corre el coach al entrar (app-3).
+  try{ if(typeof migrateExTypes==='function')migrateExTypes(); }catch(e){ warn('AVI: migrateExTypes falló (no bloquea):',e&&e.message); }
+  try{ if(typeof migrateEnv==='function')migrateEnv(); }catch(e){ warn('AVI: migrateEnv falló (no bloquea):',e&&e.message); }
   // Va DESPUÉS y sin bandera: `migrateEnv` solo corre una vez por dispositivo y no alcanza a
   // quien ya la tenía dada por hecha con el catálogo a medio etiquetar. Ver `healExerciseEnv`.
-  try{ healExerciseEnv(); }catch(e){ warn('AVI: healExerciseEnv falló (no bloquea):',e&&e.message); }
+  try{ if(typeof healExerciseEnv==='function')healExerciseEnv(); }catch(e){ warn('AVI: healExerciseEnv falló (no bloquea):',e&&e.message); }
   DB.msgs=ld('ax_m',{});
   DB.history=ld('ax_hist',{});
   DB.prs=ld('ax_pr',{});

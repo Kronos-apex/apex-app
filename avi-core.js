@@ -184,7 +184,7 @@ function genWeekDays(n, startIdx) {
 // y nadie se entera hasta que alguien entrena un festivo. Tres reglas:
 //  1. FIJOS que nunca se mueven: 1-ene, 1-may, 20-jul, 7-ago, 8-dic, 25-dic.
 //  2. LEY EMILIANI (Ley 51 de 1983): estos siete se corren al LUNES siguiente si no caen lunes
-//     — Reyes (6-ene), San Jorge (19-mar), San Pedro y San Pablo (29-jun), Asunción (15-ago),
+//     — Reyes (6-ene), el del 19-mar (su santo va escapado abajo: v690 lo cambió), San Pedro y San Pablo (29-jun), Asunción (15-ago),
 //     Día de la Raza (12-oct), Todos los Santos (1-nov), Independencia de Cartagena (11-nov).
 //  3. MÓVILES por Pascua: Jueves y Viernes Santo NO se mueven (Pascua −3 y −2); Ascensión,
 //     Corpus Christi y Sagrado Corazón sí, y por eso su desplazamiento ya cae en lunes
@@ -220,7 +220,7 @@ function _festivosDelAnio(anio) {
     ...[[[0, 1], 'Año Nuevo'], [[4, 1], 'Día del Trabajo'], [[6, 20], 'Día de la Independencia'],
         [[7, 7], 'Batalla de Boyacá'], [[11, 8], 'Inmaculada Concepción'], [[11, 25], 'Navidad']]
       .map(([[m, d], n]) => [Date.UTC(anio, m, d), n]),
-    ...[[[0, 6], 'Reyes Magos'], [[2, 19], 'Día de San Jorge'], [[5, 29], 'San Pedro y San Pablo'],
+    ...[[[0, 6], 'Reyes Magos'], [[2, 19], 'Día de San Jos\u00e9'], [[5, 29], 'San Pedro y San Pablo'],
         [[7, 15], 'La Asunción'], [[9, 12], 'Día de la Raza'], [[10, 1], 'Todos los Santos'],
         [[10, 11], 'Independencia de Cartagena']]
       .map(([[m, d], n]) => [_aLunes(Date.UTC(anio, m, d)), n]),

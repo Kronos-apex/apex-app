@@ -230,8 +230,8 @@ en la columna `uid`) — el radar del proyecto dice lo contrario y es falso.
   select id, at::date, msg, build, ctx->>'uid' from app_errors order by at desc;
   ```
   ```
-  24  2026-07-31  SW update failed        avi-v417  c52b90af-09c7-45d1-aa9a-e87cb30a3a33
-  23  2026-07-30  SW update failed        avi-v416  31bf6d19-ec43-46e3-a7f8-5769bff5a5cd
+  24  2026-07-31  SW update failed        avi-v417  (uid de un asesorado)
+  23  2026-07-30  SW update failed        avi-v416  (uid de un asesorado)
   21  2026-07-29  SyntaxError end input   avi-v410  0a6484ed-42af-449d-9903-e440ac683ecf
   20  2026-07-27  migratePhotos undefined avi-v403  (null)   ← boot: _authUid aún no existe
   19  2026-07-27  _dia1 is not defined    avi-v403  0a6484ed-42af-449d-9903-e440ac683ecf

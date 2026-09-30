@@ -61,7 +61,7 @@ select policyname, cmd, with_check from pg_policies
  where tablename='avi_showcase' and policyname='showcase_ins';
 -- showcase_ins | INSERT | ((coach_id = auth.uid()) AND private._is_moderator(auth.uid()))
 select private._is_moderator('0a6484ed…');              -- coach   → true
-select private._is_moderator('c52b90af…');              -- Andrea  → false
+select private._is_moderator('(uid de un asesorado)…');              -- Andrea  → false
 select count(*) from community_moderators;              -- 1
 select count(*), count(distinct coach_id) from avi_showcase;  -- 1 fila, 1 coach
 ```
@@ -103,15 +103,15 @@ moderador que se agregue».
          count(distinct md5(subscription->>'endpoint'))       endpoints,
          count(distinct md5(subscription->'keys'->>'p256dh')) claves
     from push_subscriptions group by 1 order by filas desc;
-  -- Nayla            6e54e22b… →  8 filas ·  1 endpoint · 8 claves   ← patológico
-  -- Salomón Cárdenas  31bf6d19… →  2 filas ·  2 endpoints · 2 claves  ← 2 aparatos reales, legítimo
-  -- Nadia Mejía  78ea069c… →  2 filas ·  2 endpoints · 2 claves  ← legítimo
+  -- Nayla            (uid de un asesorado)… →  8 filas ·  1 endpoint · 8 claves   ← patológico
+  -- Salomón Cárdenas  (uid de un asesorado)… →  2 filas ·  2 endpoints · 2 claves  ← 2 aparatos reales, legítimo
+  -- Nadia Mejía  (uid de un asesorado)… →  2 filas ·  2 endpoints · 2 claves  ← legítimo
   -- los otros 6 (incl. _coach)  →  1 fila cada uno
   ```
   Las 8 filas de Nayla tienen **el mismo endpoint byte a byte** (`md5` del endpoint: 1 distinto) y se
   acumularon entre el **12-ago y el 20-ago**, ~1 por apertura de app.
   Y sale en los logs de la edge de HOY: la ronda de la tarde imprimió **8 líneas**
-  `[daily-notifs] afternoon → 6e54e22b-… ✅` en una sola pasada, y la respuesta fue
+  `[daily-notifs] afternoon → (uid de un asesorado)-… ✅` en una sola pasada, y la respuesta fue
   `{"sent":17,…,"total":17}` para **9 personas**. O sea: **7 de los 17 envíos de cada ronda son basura.**
 - **Intenté tumbarlo así:**
   (a) *¿No serán 8 aparatos suyos?* → No: `count(distinct md5(endpoint)) = 1`. Salomón y Nadia sí tienen

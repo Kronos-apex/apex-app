@@ -120,7 +120,7 @@ solo-lectura a producción.
   select eph, count(*) n, count(distinct client_id) ids from s group by eph having count(*)>1;
   -- 55eb36723f29288ad6130cf5bce4a9bf | 8 | 1
   ```
-  Las 8 filas son de `6e54e22b…` = **Nayla** (`tier:'app'`), fechadas del **12-ago al 20-ago**, con
+  Las 8 filas son de `(uid de un asesorado)…` = **Nayla** (`tier:'app'`), fechadas del **12-ago al 20-ago**, con
   el **mismo endpoint** y `keys.auth`/`keys.p256dh` **distintos en cada una**. Reparto por persona:
   Nayla 8 filas / 1 aparato · otras dos con 2 filas / 2 aparatos · el resto 1 y 1.
 - **Intenté tumbarlo así:** (1) pensé que serían aparatos distintos con endpoints parecidos —

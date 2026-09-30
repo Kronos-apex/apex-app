@@ -58,13 +58,13 @@ real de Supabase (correo+contraseña y Google) + RLS por dueño en `user_data` (
 
 | uid (8) | correo (enmascarado) | proveedor | creada | último ingreso | confirmada | trae datos del asistente |
 |---|---|---|---|---|---|---|
-| bdf86cb0 | oculto@gmail.com | google | 2026-06-09 | 2026-06-09 | sí | no |
-| a4db261a | oculto@gmail.com | google | 2026-06-23 | 2026-06-23 | sí | no |
-| 7ee81fa1 | oculto@avi.com | email | 2026-07-02 | 2026-07-07 | sí | no |
-| 45195e9d | oculto@gmail.com | google | 2026-07-06 | 2026-07-06 | sí | no |
-| 306e3bc9 | oculto@gmail.com | email | 2026-07-25 | nunca | **no** | sí |
-| a2d906ee | oculto@avi.com | email | 2026-09-11 | nunca | sí | no |
-| a76bba97 | oculto@hotmail.com | email | 2026-09-15 | nunca | **no** | sí |
+| (uid de un asesorado) | oculto@gmail.com | google | 2026-06-09 | 2026-06-09 | sí | no |
+| (uid de un asesorado) | oculto@gmail.com | google | 2026-06-23 | 2026-06-23 | sí | no |
+| (uid de un asesorado) | oculto@avi.com | email | 2026-07-02 | 2026-07-07 | sí | no |
+| (uid de un asesorado) | oculto@gmail.com | google | 2026-07-06 | 2026-07-06 | sí | no |
+| (uid de un asesorado) | oculto@gmail.com | email | 2026-07-25 | nunca | **no** | sí |
+| (uid de un asesorado) | oculto@avi.com | email | 2026-09-11 | nunca | sí | no |
+| (uid de un asesorado) | oculto@hotmail.com | email | 2026-09-15 | nunca | **no** | sí |
 
 ### Dominios de correo (unidad: cuentas de acceso)
 | dominio | cuentas | con ficha | entraron en 30 días | por correo |

@@ -76,7 +76,7 @@ reintento funcione, **nada vuelve a intentarlo jamás**: no hay job de servidor,
 no hay pantalla que liste "cuentas sin fila". La única forma en que este equipo se enteró de
 que existen 5 fue una auditoría SQL directa, hoy.
 
-**A quién le pasa HOY, con nombre:** `oculto@avi.com` (uuid `7ee81fa1-c892-4791-a8e8-cb935a9287fc`)
+**A quién le pasa HOY, con nombre:** `oculto@avi.com` (uuid `(uid de un asesorado)`)
 es una de las 5 cuentas fantasma del baseline. Su metadata en `auth.users` es
 `{"name":"Vanesa Vargas","email_verified":true}` — **exactamente** la forma que deja
 `coach-create-client` (línea 89: `user_metadata:{name:(profile as any)?.name||""}`), muy
@@ -91,7 +91,7 @@ cuenta email/contraseña sin fila — el modo fantasma del servidor, `delete-acc
 *"Ese Google no tiene cuenta en AVI. Si tu coach ya te creó una, entra con tu correo y clave
 (Google se conecta después, desde tu Perfil). Si eres nuevo, toca "Crear cuenta"."* — un mensaje
 sobre Google, mostrado a alguien que **entró con correo y clave**, y que precisamente le dice
-que haga lo que ya estaba haciendo. Verifiqué que hoy, **73c3452a-d163-4a8c-842b-6f7dcab356d8**
+que haga lo que ya estaba haciendo. Verifiqué que hoy, **(uid de un asesorado)**
 (`oculto@gmail.com`) es la fila real de Valery — `selfReg:true`, 4 rutinas, activa
 hace 2 días (2026-09-04) — es decir, la persona real existe y entrena, pero tuvo que
 **resolverlo por su cuenta, registrándose de cero con su Gmail personal**, semanas después de
@@ -100,14 +100,14 @@ que el alta que le hizo el coach quedara varada.
 **Evidencia (SQL, hoy):**
 ```sql
 select id, email, raw_user_meta_data, created_at, last_sign_in_at
-from auth.users where id = '7ee81fa1-c892-4791-a8e8-cb935a9287fc';
+from auth.users where id = '(uid de un asesorado)';
 -- email: oculto@avi.com · created 2026-07-02 13:29 · last_sign_in 2026-07-07 14:17
 -- raw_user_meta_data: {"name":"Vanesa Vargas","email_verified":true}
 ```
 ```sql
 select user_id, profile->>'name', profile->>'email', profile->>'selfReg'
 from user_data where profile->>'email' ilike '%valery%';
--- 73c3452a-... | Valery | oculto@gmail.com | true  (su cuenta real, funcionando)
+-- (uid de un asesorado)-... | Valery | oculto@gmail.com | true  (su cuenta real, funcionando)
 ```
 - `supabase/functions/coach-create-client/index.ts:82-124` (los dos pasos, sin transacción).
 - `app-3-coach.js:194-216` (`_provisionClientAccount`, la clasificación permanente/transitoria).
@@ -146,7 +146,7 @@ que les falte plan, es que nunca tocaron "Empezar". **7 de 8 tienen el teléfono
 (`profile->>'phone' = ''`): sin WhatsApp y sin haber activado nunca push (ninguno de los 8
 aparece en las 10 con push del 5-sep), no hay ningún canal para que el coach los busque —
 literalmente no hay cómo escribirles. La única excepción con teléfono es **marta rojas**
-(`573108399855`, registrada 2026-08-09, con actividad hasta el 2026-09-04 pero cero sesiones
+(`(teléfono oculto)`, registrada 2026-08-09, con actividad hasta el 2026-09-04 pero cero sesiones
 guardadas). Y **César S. Lara** marcó `wantsCoach:true` el 2026-07-06 — hace dos
 meses — lo que SÍ enciende la etiqueta "🙋 Quiere coach" en el panel (`app-3-coach.js:90`,
 `:1525`, `:1624` — verificado que el mecanismo funciona) pero, según `user_data`, sigue en

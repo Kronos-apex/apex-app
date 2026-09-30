@@ -739,7 +739,7 @@ test('🔴 v514 · los 18 festivos de 2026, uno por uno', () => {
   assert.deepStrictEqual(core.festivosCO(2026), [
     '2026-01-01', // Año Nuevo
     '2026-01-12', // Reyes (6-ene martes → lunes 12)
-    '2026-03-23', // San Jorge (19-mar jueves → lunes 23)
+    '2026-03-23', // el festivo del 19-mar (jueves → lunes 23)
     '2026-04-02', // Jueves Santo — NO se mueve
     '2026-04-03', // Viernes Santo — NO se mueve
     '2026-05-01', // Día del Trabajo
@@ -4031,6 +4031,40 @@ test('passwordProblem: exige 8+ con minúscula, mayúscula y dígito (política 
   assert.ok(/número/.test(passwordProblem('ClaveSegura')));
   assert.ok(passwordProblem(''));
   assert.ok(passwordProblem(null));
+});
+
+// ── v694 · EL AVISO DE SALTO GUARDA TAMBIÉN «LO CORRIJO» + TRES ARREGLOS DE R17 ──
+test('🔒 v694 · el aviso de salto deja rastro de lo que NO fue «sí» (lo corrijo / sin respuesta)', () => {
+  const _lee = f => require('fs').readFileSync(require('path').join(__dirname, f), 'utf8');
+  const e4 = _lee('app-4-entreno.js').replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const save = e4.slice(e4.indexOf('function saveSessionToHistory('), e4.indexOf('\nfunction ', e4.indexOf('function saveSessionToHistory(') + 10));
+  assert.ok(/const saltoOtro=\(_salto&&_salto\.estado!=='corte'\)\?_salto\.estado:null;/.test(save), '🔴 «lo corrijo» y la pregunta sin respuesta se borran con el día (R17 A2)');
+  assert.ok(/\.\.\.\(corte\?\{corte:true\}:\{\}\),\.\.\.\(saltoOtro\?\{salto:saltoOtro\}:\{\}\)/.test(save), 'el ejercicio guardado no lleva el estado del salto');
+  // Los estados que llegan ahí son los del aviso: 'visto' («lo corrijo») y 'pregunta' (se mostró, sin respuesta).
+  assert.strictEqual(core.jumpSessionValue(core.jumpSessionEncode({ id: 'e1' }, 'visto', 40, 2), { id: 'e1' }).estado, 'visto');
+  assert.strictEqual(core.jumpSessionValue(core.jumpSessionEncode({ id: 'e1' }, 'pregunta', 40, 2), { id: 'e1' }).estado, 'pregunta');
+});
+
+test('🔒 v694 · el festivo del 19 de marzo vuelve a tener su santo (v690 se lo había cambiado)', () => {
+  // Escrito con escape: el candado [13] del hook busca ese nombre de pila entre los de los asesorados.
+  assert.strictEqual(core.nombreFestivoCO('2027-03-22'), 'D\u00eda de San Jos\u00e9');
+  assert.strictEqual(core.nombreFestivoCO('2026-03-23'), 'D\u00eda de San Jos\u00e9');
+  assert.ok(!/San Jorge/.test(require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8')), 'volvió el santo equivocado');
+});
+
+test('🔒 v694 · el arranque ya no lanza «is not defined» por tres migraciones de otro módulo', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-1-infra.js'), 'utf8');
+  const i = src.indexOf('async function syncFromCloud(');
+  const cuerpo = src.slice(i, src.indexOf('\nasync function ', i + 10) > 0 ? src.indexOf('\nasync function ', i + 10) : i + 6000);
+  for (const f of ['migrateExTypes', 'migrateEnv', 'healExerciseEnv'])
+    assert.ok(new RegExp(`if\\(typeof ${f}==='function'\\)${f}\\(\\)`).test(cuerpo), `🔴 ${f} se llama sin guarda de módulo desde syncFromCloud (vive en app-4)`);
+});
+
+test('🔒 v694 · buscar versión nueva no deja una promesa rechazada suelta (ruido en app_errors)', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8');
+  assert.ok(/const _checkUpdate=\(\)=>\{ try\{ const p=reg\.update\(\); if\(p&&typeof p\.catch==='function'\)p\.catch\(\(\)=>\{\}\);/.test(src),
+    '🔴 reg.update() sin .catch: con mala señal cada vuelta a la app deja un «Failed to update a ServiceWorker»');
+  assert.ok(!/try\{ reg\.update\(\); \}catch/.test(src), 'volvió el try que no atrapa la promesa');
 });
 
 // ── v693 · CUANDO EL SERVIDOR CIERRA LA SESIÓN (R17 A1) ──

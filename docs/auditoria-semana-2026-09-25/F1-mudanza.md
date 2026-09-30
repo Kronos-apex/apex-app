@@ -67,7 +67,7 @@ desincronizadas.
 - **Qué es:** `subscribePush` (`app-1-infra.js:696-760`) debería borrar la fila de
   `push_subscriptions` del endpoint anterior DE ESE MISMO APARATO justo después de guardar el
   nuevo (comentario propio: "un fallo aquí no cambia nada: queda la poda de v577 de respaldo").
-- **A quién le pasa HOY, con nombre:** **Dora P.** (`user_id 2452449f-…`). Tiene DOS filas
+- **A quién le pasa HOY, con nombre:** **Dora P.** (`user_id (uid de un asesorado)-…`). Tiene DOS filas
   vivas en `push_subscriptions`, las dos FCM (Android/Chrome), con endpoints DISTINTOS:
   `updated_at 2026-09-21 23:07:41` y `updated_at 2026-09-23 22:46:27` — esta última a **5 segundos**
   de su propio `deviceStamp` (`profile.dev.at = 2026-09-23T22:46:22.686Z`, build 665). Es decir: el

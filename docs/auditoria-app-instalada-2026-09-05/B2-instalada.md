@@ -17,8 +17,8 @@ entre el 13-ago y el 3-sep, en 10 builds distintos.
 
 **Evidencia.**
 - SQL (`app_errors`, ids 34-46): los 5 `uid` afectados son `0a6484ed…` (Andrés, el coach),
-  `73c3452a…` (Valery), `c52b90af…` (Andrea Bernal — 6 veces, la más repetida), `31bf6d19…`
-  (Salomón Cárdenas) y `efcab7b2…` (Carla Vargas). Los 5 con `ctx.standalone:true` — app
+  `(uid de un asesorado)…` (Valery), `(uid de un asesorado)…` (Andrea Bernal — 6 veces, la más repetida), `(uid de un asesorado)…`
+  (Salomón Cárdenas) y `(uid de un asesorado)…` (Carla Vargas). Los 5 con `ctx.standalone:true` — app
   instalada, no pestaña de navegador.
 - Crucé esos 5 `uid` contra `user_data.profile->'dev'` (el latido de versión de v541,
   `avi-core.js:4689`, que cada teléfono escribe al abrir la app): **hoy los 5 están entre v556 y
@@ -63,7 +63,7 @@ guardarla.
   const cl = r.clone(); caches.open(...).then(ca => ca.put(e.request, cl)); return r; })`.
 - Reconstruí el campo `src` de las 3 filas de `app_errors` contra el código de captura
   (`app-1-infra.js:199`: `src = e.filename ? String(e.filename).split('/').pop()+':'+lineno+':'+
-  colno : ''`). El id 32 trae `?avi-chat=78fe5c7c-...:4:87`; los ids 33 y 39 traen solo `:4:87`
+  colno : ''`). El id 32 trae `?avi-chat=(uid de un asesorado)-...:4:87`; los ids 33 y 39 traen solo `:4:87`
   (sin nada antes de los dos puntos). Eso solo puede pasar si `e.filename` era **la URL de la
   propia página** (con o sin el query `?avi-chat=<uuid>` que arma `sw.js:128` cuando la app se
   abre desde un push) — no un archivo `.js` externo. El navegador atribuyó el error de sintaxis

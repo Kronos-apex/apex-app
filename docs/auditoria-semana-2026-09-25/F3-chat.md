@@ -100,7 +100,7 @@ puede apagar sin escribir, aunque el mensaje que lo dispara no pida nada.
   Es un hueco de CÓDIGO, no un hecho observado hoy. El archivo SÍ llega al bucket primero siempre
   (confirmado: si `_chatMediaUpload` falla, la función corta con `return` ANTES de crear el mensaje
   — no hay riesgo de mensaje sin archivo). Verifiqué el estado real de `chat-media`: **1 objeto**
-  (`78ea069c…/chat-mubm8k2wnyxgfb1hvjh.jpg`, 90.264 B, creado 21-sep 19:06:00 UTC) que **coincide
+  (`(uid de un asesorado)…/chat-mubm8k2wnyxgfb1hvjh.jpg`, 90.264 B, creado 21-sep 19:06:00 UTC) que **coincide
   exactamente** con el único mensaje con `media` en los 15 hilos (Nadia Mejía, coach envía foto,
   19:05:59.509Z) — hoy no hay huérfanos, ni mensajes sin archivo.
 - **Evidencia:** app-3-coach.js :4164-4189 (patrón correcto, texto) vs :4193-4211 (sin ese patrón,

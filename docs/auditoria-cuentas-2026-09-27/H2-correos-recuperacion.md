@@ -113,7 +113,7 @@ existe en la librería del proyecto (`vendor/supabase-js-2.117.2.js`), falta cab
   - **¿Terminó con otra cuenta que sí funciona?** Medido cruzando `auth.users`+`user_data`:
     - **Laura (15-sep): SÍ.** Se registró a las 13:33:09 con `oculto@hotmail.com` (metadata `name:"Laura"`)
       y quedó sin confirmar — cuenta fantasma, para siempre. **76 segundos después**, a las 13:34:22, creó
-      OTRA cuenta con `oculto@gmail.com`; esa ficha (`user_id 21e46a18…`, `name:"Lucía Ríos
+      OTRA cuenta con `oculto@gmail.com`; esa ficha (`user_id (uid de un asesorado)…`, `name:"Lucía Ríos
       Rueda"`) existe, se confirmó 9 minutos después (13:43:49) y **sí entrena** (`last_sign_in_at`
       2026-09-21). Ella misma se salió del atasco reintentando con Gmail — pero le quedaron **DOS cuentas**:
       una viva y una fantasma con su nombre real en la metadata, invisible para el coach.

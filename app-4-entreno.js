@@ -2647,7 +2647,10 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     // (punto 4). Solo dato: ninguna regla lo lee todavía (Coach Pro, 29-sep).
     const _salto=sessionJump(routine,ei,ex);
     const corte=!!(_salto&&_salto.estado==='corte');
-    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),...(corte?{corte:true}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
+    // v694 · y lo que NO fue «sí» también queda (R17 A2, decisión del PO): «lo corrijo» (`visto`) y la pregunta
+    // que se mostró sin respuesta (`pregunta`). Sin esto, la curva de noviembre no sabría qué saltos se preguntaron.
+    const saltoOtro=(_salto&&_salto.estado!=='corte')?_salto.estado:null;
+    return {id:ex.id,name:ex.name,muscle:ex.muscle,icon:ex.icon,track:exTrack(ex),...(warm?{warm}:{}),...(bar!=null?{bar}:{}),...(corte?{corte:true}:{}),...(saltoOtro?{salto:saltoOtro}:{}),sets:Array.from({length:sets},(_,si)=>{const drop=auxVal(ei,dropTok(si));
       // v682: las reps en reserva solo viajan en una serie HECHA (sin serie no hay «cuántas más»).
       const done=isDone(routine.id,ei,si);
       const rir=(done&&typeof rirValue==='function')?rirValue(getLog(routine.id,ei,si,'rir')):null;

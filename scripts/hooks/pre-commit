@@ -413,6 +413,59 @@ else:
     except Exception as _e:
         fail(f'no pude leer ~/.avi/nombres-reales.json: {_e}')
 
+# ── [13b] Teléfonos y uid REALES (v694, R17 A2) ─────────────────────────────────────
+# A v690 se le escaparon un TELÉFONO real y 4 uid de cuentas reales (2 de menores) en informes viejos de
+# docs/. La fuente es el respaldo diario más nuevo (Desktop/AVI/backups, FUERA del repo): los teléfonos de
+# las fichas (sus 10 dígitos, contra los dígitos de cada línea añadida) y los uid de las cuentas (completos
+# o sus primeros 8 caracteres, como los cita un informe), salvo el del coach (el código lo necesita) y los
+# QA. Sin respaldo en esta máquina (CI), se salta: es un candado LOCAL, como el de los nombres.
+print(f'\n{BOLD}[13b] Teléfonos y uid reales{RESET}')
+_bk_dir = os.path.join(os.path.expanduser('~'), 'Desktop', 'AVI', 'backups')
+_bks = sorted(f for f in (os.listdir(_bk_dir) if os.path.isdir(_bk_dir) else [])
+              if re.match(r'^avi-backup-\d{4}-\d{2}-\d{2}\.json$', f))
+if not _bks:
+    warn('sin respaldo local en Desktop/AVI/backups — check de teléfonos y uid saltado')
+else:
+    try:
+        with open(os.path.join(_bk_dir, _bks[-1]), encoding='utf-8') as _fh:
+            _bk = json.load(_fh)
+        _COACH_UID = '0a6484ed-42af-449d-9903-e440ac683ecf'
+        _tels = set()
+        for _r in _bk.get('user_data', []) or []:
+            _t = re.sub(r'\D', '', str((((_r or {}).get('profile')) or {}).get('phone') or ''))[-10:]
+            if len(_t) == 10:
+                _tels.add(_t)
+        _uids = set()
+        for _u in _bk.get('auth_users', []) or []:
+            _id = str((_u or {}).get('id') or '').lower()
+            if _id and _id != _COACH_UID and 'qa' not in str((_u or {}).get('email') or '').lower():
+                _uids.add(_id)
+                _uids.add(_id[:8])
+        _rx_uid = [re.compile(r'(?<![0-9a-f])' + re.escape(_u) + r'(?![0-9a-f])') for _u in sorted(_uids)]
+        _diff2 = subprocess.run(['git', 'diff', '--cached', '-U0', '--no-color'], cwd=ROOT, capture_output=True,
+                                text=True, encoding='utf-8', errors='replace').stdout
+        _h2 = []; _arch = ''
+        for _l in _diff2.splitlines():
+            if _l.startswith('+++ '):
+                _arch = _l[6:] if _l.startswith('+++ b/') else ''
+                continue
+            if not _l.startswith('+') or not _arch:
+                continue
+            _txt = _l[1:]
+            _dig = re.sub(r'\D', '', _txt)
+            if any(_t in _dig for _t in _tels):
+                _h2.append(f'{_arch}: un TELÉFONO real')
+            _low = _txt.lower()
+            if any(_rx.search(_low) for _rx in _rx_uid):
+                _h2.append(f'{_arch}: un uid de una cuenta real')
+        if _h2:
+            fail('Dato REAL de un asesorado en lo que vas a subir (el repo es público). Quítalo o cámbialo por '
+                 '«(teléfono oculto)» / «(uid de un asesorado)»:\n    ' + '\n    '.join(sorted(set(_h2))[:15]))
+        else:
+            ok(f'ningún teléfono ni uid real en lo añadido ({len(_tels)} teléfonos y {len(_uids) // 2} cuentas del respaldo {_bks[-1][11:21]})')
+    except Exception as _e:
+        fail(f'no pude leer el respaldo {_bks[-1]}: {_e}')
+
 # ── [14] Credenciales en lo añadido (el repo es PÚBLICO) ─────────────────────────
 # 29-sep-2026, alerta de GitGuardian: un script de R16 traía en claro la contraseña del coach QA junto a su
 # correo, y el check [7] no la vio porque solo busca LLAVES (JWT, service_role, VAPID). Peor: el propio [7]
