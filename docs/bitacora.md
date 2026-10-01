@@ -4,6 +4,34 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-01 — v696: AVI PRO existe dentro de la app, y la bienvenida deja de prometer un coach a quien viene a probar gratis
+
+- **De dónde sale**: auditoría R18 de la web nueva (`docs/auditoria-web-nueva-2026-09-30/`, D2 🔴1 y 🔴2, verificados
+  por el orquestador). La web vende cuatro nombres y la app solo conocía «Premium = un coach».
+- **Lo medido**: quien tocaba «Probar la app gratis» llegaba a «Con un coach de verdad / Tu coach arma tu plan… Aquí no
+  entrenas solo» con «Iniciar sesión» de botón principal y un enlace que lo devolvía a la web. Dentro, el candado decía
+  «Disponible con un coach (Premium)» y solo pedía coach: **quien quería AVI PRO no tenía botón**, y un **PRO vencido
+  rebotaba** entre «Hablar con mi coach» y el candado de la misma pestaña (un PRO nunca tuvo chat). 9 de 22 son PRO.
+- **Las decisiones del PO** (1-oct, con las opciones delante): texto honesto para todos + «Crear cuenta» primero si llega
+  de la web · PRO y coach en el candado · y en la web, «la frase de la fisioterapeuta» fuera (ninguna persona revisó las
+  listas: las dictó el agente de fisioterapia).
+- **Lo construido**: `planLockExit` / `planUpsellOptions` / `planRenewVia` (avi-core, puras) deciden la salida por plan;
+  `premiumLockHTML`, la ventana «Más de AVI» (dos opciones; a un PRO solo el coaching) y las tres bandas de cuenta
+  (`_gbandBoton`) les preguntan. Con `?origen=web` (la web lo pone solo en «Probar»), un script inline antes de los
+  módulos pone «Crear cuenta» adelante, «Ya tengo cuenta» detrás y quita el enlace de vuelta.
+- 🔒 **El número del PO NO entra al repo**: los botones de plan abren `avientrena.com/ir/app-pro|app-coach|app-renovar-pro`
+  (avi-web `lib/site.ts`, publicadas ANTES que esta versión). El número vive en un solo repo y cada toque se cuenta aparte
+  de los de la web. El coaching además deja la solicitud de siempre (`requestCoach`): sin WhatsApp, el coach no tenía
+  cómo contestarle a alguien sin chat y sin teléfono guardado.
+- **Verificación**: suite 1422 → 1430 (dos pruebas re-encuadradas — v564 y la banda de renovación — protegían lo mismo,
+  ahora delegado), hook 14/14, `_sabotaje-v696` **17/17 muerden**, `_verify-r18-app` **31/31** (con controles: quien
+  tiene coach conserva su chat y la ventana no se le abre; atrás, «Solicitud enviada», 360 px con «Muy grande»).
+  Julián QA 🟢 14/14; su aviso (a un PRO el titular le ofrecía «desbloquear la app» que ya tiene) se arregló antes de
+  publicar. **Lucas QA murió por límite de uso**: sus casos los corrió el orquestador y quedaron en el harness.
+- 🔴 **Dos fallos de MIS candados, cazados antes de servir**: la frase prohibida vivía en el comentario HTML que explica
+  por qué se quitó (clase v552/v570, ahora también en HTML), y el botón va con las comillas escapadas dentro de la cadena.
+  Y el candado de v571 leyó mi `style.display` del enlace como una puerta de formulario: el enlace ahora se QUITA.
+
 ## ⏮️ 2026-09-30 — v695: el 1RM solo suma la barra que la persona ELIGIÓ, y el entreno se la pregunta una vez
 
 - **Lo medido** (R17 A2 y el orquestador, datos reales): de v681 a v694 CADA sesión guardaba una barra aunque nadie la
