@@ -1804,9 +1804,9 @@ function coachUpsellHTML(c){
     return `<div style="background:var(--gl);border:1px solid var(--g2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--gt);line-height:1.5">✅ <b>¡Solicitud enviada!</b> Tu coach te contactará pronto para guiarte de cerca. 💪</div>`;
   }
   return `<div style="background:linear-gradient(135deg,#06402E,#0A7C5B);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;color:#fff;box-shadow:0 6px 18px rgba(27,67,50,.25)">
-    <div style="font-size:14px;font-weight:800;margin-bottom:4px">🌟 ¿Quieres un coach real que te guíe?</div>
-    <div style="font-size:12px;opacity:.92;line-height:1.55;margin-bottom:11px">Pásate a <b>Premium</b>: un entrenador ajusta tu plan a ti, corrige tu técnica y te acompaña semana a semana. Aquí no entrenas solo.</div>
-    <button onclick="showPremiumUpsell()" style="width:100%;padding:11px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>
+    <div style="font-size:14px;font-weight:800;margin-bottom:4px">🌟 ¿Quieres más de AVI?</div>
+    <div style="font-size:12px;opacity:.92;line-height:1.55;margin-bottom:11px">Con <b>AVI PRO</b> desbloqueas la app entera. Con un coach, además, te arma el plan y te acompaña semana a semana.</div>
+    <button onclick="showPremiumUpsell()" style="width:100%;padding:11px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Ver opciones →</button>
   </div>`;
 }
 function renderCoachUpsell(c){
@@ -1820,13 +1820,25 @@ function renderCoachUpsell(c){
 // que ya tiene, y el botón **no hacía absolutamente nada** (`showPremiumUpsell` corta en silencio
 // con `clientHasCoach(c)`), sin abrir ni avisar. Aviso de Lucas QA antes de desplegar.
 // La salida del vencido es hablar con SU coach, que es justo lo que dice su banda de AVI FREE.
+// 🔴 v696 (R18) — Y TIENE UN TERCER PÚBLICO: AVI PRO, la app sin coach. A él el candado le decía
+// «Disponible con un coach (Premium)» y, vencido, «Hablar con mi coach» — un chat que un PRO nunca
+// tuvo, así que el botón lo devolvía al mismo candado. La salida la decide `planLockExit` (avi-core).
 function premiumLockHTML(title,desc){
   const c=(typeof _curClient==='function')?_curClient():null;
-  const vencido=!!(c && typeof MS!=='undefined' && MS.getStatus(c)==='overdue');
-  const cierre=vencido?'Vuelve a estar disponible en cuanto renueves tu plan.':'Disponible con un <b>coach (Premium)</b>.';
-  const accion=vencido
-    ? `<button onclick="cnTab('cn-messages',document.getElementById('tab-msgs'))" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Hablar con mi coach</button>`
-    : `<button onclick="showPremiumUpsell()" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">Quiero un coach →</button>`;
+  const salida=(typeof planLockExit==='function')?planLockExit(c):'opciones';   // guard caché vieja
+  const cierre={
+    'renovar-pro':'Vuelve a estar disponible en cuanto renueves tu <b>AVI PRO</b>.',
+    'coach-chat':'Vuelve a estar disponible en cuanto renueves tu plan.',
+    'coach':'Esto viene con el <b>coaching</b>.',
+    'opciones':'Se desbloquea con <b>AVI PRO</b> o con un coach.',
+  }[salida];
+  const _b=(on,txt)=>`<button onclick="${on}" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">${txt}</button>`;
+  const accion={
+    'renovar-pro':_b("abrirPlanWhatsApp('renovar-pro')",'Renovar mi AVI PRO'),
+    'coach-chat':_b("cnTab('cn-messages',document.getElementById('tab-msgs'))",'Hablar con mi coach'),
+    'coach':_b('showPremiumUpsell()','Ver el coaching →'),
+    'opciones':_b('showPremiumUpsell()','Ver cómo desbloquearlo →'),
+  }[salida];
   return `<div style="background:var(--w);border:1px dashed var(--br2);border-radius:var(--r);padding:18px 16px;text-align:center">
     <div class="ic-circle">${_coIco('lock',22,'🔒')}</div>
     <div style="font-size:14px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(title)}</div>
@@ -1842,7 +1854,7 @@ async function requestCoach(){
   svNow('ax_c',DB.clients);
   // Avisar al coach por el chat: le llega a su bandeja + notificación vía su sondeo.
   if(!DB.msgs[c.id])DB.msgs[c.id]=[];
-  DB.msgs[c.id].push({from:'client',text:'🙋 ¡Hola! Me gustaría pasar a Premium y tener un coach que me guíe. ¿Me cuentas cómo seguir?',date:new Date().toISOString()});
+  DB.msgs[c.id].push({from:'client',text:'🙋 ¡Hola! Me gustaría pasar a AVI COACH VIRTUAL y tener un coach que me guíe. ¿Me cuentas cómo seguir?',date:new Date().toISOString()});
   svNow('ax_m',DB.msgs);
   // CLAVE: asignar coach_id en la fila (columna, no profile) para que el coach pueda LEERLA
   // por RLS (select: coach_id = auth.uid()). Sin esto, la solicitud y el mensaje quedaban

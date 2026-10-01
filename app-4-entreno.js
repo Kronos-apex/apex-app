@@ -1613,10 +1613,20 @@ function renderRenewBand(client){
     : (n.days===1 ? 'Tu plan se renueva mañana' : 'Tu plan se renueva en '+n.days+' días');
   el.innerHTML='<div class="gband gband-soft">'
     +'<div class="gband-t">'+esc(cuando)+'</div>'
-    +'<div class="gband-s">Va hasta el <b>'+esc(fecha)+'</b>. Habla con tu coach para renovarlo y seguir entrenando sin cortes.</div>'
-    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +'<div class="gband-s">Va hasta el <b>'+esc(fecha)+'</b>. '
+      +(_gbandVia(client)==='whatsapp-pro'?'Renuévalo para seguir entrenando sin cortes.':'Habla con tu coach para renovarlo y seguir entrenando sin cortes.')+'</div>'
+    +_gbandBoton(client)
     +'</div>';
   return true;
+}
+// v696 (R18): las TRES bandas de cuenta (por renovar, gracia y vencido) mandaban al chat con el coach,
+// que un AVI PRO no tiene: el botón lo dejaba frente a un candado. La vía la decide `planRenewVia`
+// (avi-core). 🔒 Sin cifras en ninguno de los dos caminos: el mensaje de WhatsApp tampoco las lleva.
+function _gbandVia(client){ return (typeof planRenewVia==='function')?planRenewVia(client):'chat'; }
+function _gbandBoton(client){
+  return _gbandVia(client)==='whatsapp-pro'
+    ? '<button class="gband-b" onclick="abrirPlanWhatsApp(\'renovar-pro\')">Renovar mi AVI PRO</button>'
+    : '<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>';
 }
 
 // ── Y SU TERCER TRAMO: EL PLAN YA VENCIÓ DEL TODO → AVI FREE (v564) ─────────────────────────
@@ -1637,7 +1647,7 @@ function renderLapsedBand(client){
     +'<div class="gband-s">Tu plan venció hace <b>'+esc(String(d))+(d===1?' día':' días')+'</b>, así que volviste al plan gratis. '
       +'<b>No perdiste nada:</b> tus rutinas y todo tu historial de entrenamientos siguen aquí, y puedes seguir entrenando. '
       +'Mientras tanto quedan en pausa las gráficas de progreso, las medidas, las fotos y tu plan de comida.</div>'
-    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +_gbandBoton(client)
     +'</div>';
   return true;
 }
@@ -1658,7 +1668,7 @@ function renderGraceBand(client){
   el.innerHTML='<div class="gband">'
     +'<div class="gband-t">Tu plan se venció '+cuando+'</div>'
     +'<div class="gband-s">Puedes seguir entrenando con normalidad mientras lo renuevas. '+margen+'</div>'
-    +'<button class="gband-b" onclick="cnTab(\'cn-messages\',document.getElementById(\'tab-msgs\'))">Hablar con mi coach</button>'
+    +_gbandBoton(client)
     +'</div>';
 }
 
@@ -1745,6 +1755,16 @@ const AVI_SHARE_URL='https://app.avientrena.com/';
 // estática para sobrevivir a un módulo que no cargue— y un test de la suite las COMPARA.
 // El día que haya dominio propio (`SEO-LANZAMIENTO.md` del proyecto web), se cambia en los dos.
 const AVI_WEB_URL='https://avientrena.com/';
+// ── Los botones de PLAN de dentro de la app abren WhatsApp por la web (v696, R18) ──────────────
+// AVI PRO, el coaching y «Renovar mi AVI PRO» van por las páginas de paso de avientrena.com
+// (`/ir/app-pro`, `/ir/app-coach`, `/ir/app-renovar-pro`, en avi-web `lib/site.ts`): el número del PO
+// vive en UN solo repo —este es público y no lleva teléfonos— y cada toque se cuenta aparte de los de
+// la web. Lista CERRADA en los dos lados: un test de la suite la compara con la de avi-web.
+const AVI_PLAN_WA={pro:'ir/app-pro',coach:'ir/app-coach','renovar-pro':'ir/app-renovar-pro'};
+function abrirPlanWhatsApp(k){
+  const p=AVI_PLAN_WA[k]; if(!p)return;
+  window.open(AVI_WEB_URL+p,'_blank','noopener');
+}
 const AVI_SHARE_MSG='Entreno con AVI 💪 una app para llevar mis rutinas y ver mi progreso. Míralo aquí:';
 function renderShareBanner(client){
   const el=document.getElementById('cn-share'); if(!el)return;
@@ -3408,6 +3428,10 @@ function showPremiumUpsell(){
   // Lo puede abrir cualquiera SIN coach (libre o Premium app) para pedir un coach.
   const c=_curClient(); if(!c||clientHasCoach(c))return;
   document.getElementById('pu-photo').style.backgroundImage=`url('${window.AVI_UPSELL_PHOTO||PU_DEFAULT_PHOTO}')`;
+  // v696 (R18): las opciones las decide `planUpsellOptions` — al libre AVI PRO y el coaching, a un PRO
+  // solo el coaching (no se le ofrece lo que ya tiene).
+  const ops=(typeof planUpsellOptions==='function')?planUpsellOptions(c):['coach'];
+  const pro=document.getElementById('pu-opt-pro'); if(pro)pro.style.display=ops.includes('pro')?'':'none';
   _puState(!!c.wantsCoach);
   document.getElementById('premium-upsell').classList.add('on');
   document.body.style.overflow='hidden';
@@ -3416,8 +3440,17 @@ function _puState(sent){
   document.getElementById('pu-sell').style.display=sent?'none':'flex';
   document.getElementById('pu-sent').style.display=sent?'flex':'none';
 }
+// AVI PRO se pide por WhatsApp: ahí se paga (Bre-B y el pantallazo) y el coach lo activa.
+function puPro(){
+  abrirPlanWhatsApp('pro');
+  closePremiumUpsell();
+}
+// El coaching: WhatsApp PRIMERO, dentro del mismo toque (después de un `await` el navegador ya no
+// lo deja abrir), y la solicitud de siempre en la app, que le deja el aviso en su panel. Las dos
+// cosas: sin WhatsApp, el coach no tiene cómo contestarle a alguien sin chat y sin teléfono guardado.
 async function puConfirm(){
   const btn=document.getElementById('pu-cta');btn.disabled=true;
+  abrirPlanWhatsApp('coach');
   try{ await requestCoach(); _puState(true); wfConfetti(); }
   finally{ btn.disabled=false; }
 }

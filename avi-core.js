@@ -5810,6 +5810,39 @@ function clientPlan(client) {
 }
 const PLAN_LABEL = { libre: 'Libre', app: 'Premium app', coach: 'Premium + Coach' };
 
+// ── La SALIDA de un candado y de una banda de cuenta, según el plan (v696, R18) ──────────────
+// La web vende AVI PRO (la app entera, sin coach) y la app solo conocía «Premium = un coach»: el
+// candado decía «Disponible con un coach (Premium)» y su único botón pedía un coach. Quien quería PRO
+// no tenía cómo pedirlo, y un PRO VENCIDO rebotaba entre «Hablar con mi coach» y el candado de la
+// misma pestaña, porque un PRO nunca tuvo chat (`clientHasCoach`). Lo encontró la auditoría R18 (D2 🔴2)
+// y el PO decidió el 1-oct: «PRO y coach». 9 de 22 asesorados son PRO.
+// Puro: la UI solo pinta lo que esto devuelva.
+//   'opciones'    → plan libre: puede elegir AVI PRO o el coaching
+//   'coach'       → AVI PRO al día: lo único que le queda por fuera es lo del coach (el chat)
+//   'renovar-pro' → AVI PRO vencido: renueva su PRO (por WhatsApp; no tiene chat)
+//   'coach-chat'  → plan con coach vencido: su salida es el chat con SU coach (v564, que lo conserva)
+function planLockExit(client, now) {
+  const plan = clientPlan(client);
+  if (plan === 'libre') return 'opciones';
+  const vencido = MS.getStatus(client, now) === 'overdue';
+  if (plan === 'app') return vencido ? 'renovar-pro' : 'coach';
+  return 'coach-chat';
+}
+// Qué ofrece la ventana «Más de AVI». A un PRO no se le ofrece lo que ya tiene; al que ya tiene coach,
+// nada (la ventana ni se abre: `showPremiumUpsell` corta con `clientHasCoach`).
+function planUpsellOptions(client) {
+  const plan = clientPlan(client);
+  if (plan === 'libre') return ['pro', 'coach'];
+  if (plan === 'app') return ['coach'];
+  return [];
+}
+// Por dónde renueva quien está por vencer, en gracia o vencido. Las tres bandas mandaban al chat con el
+// coach, que un AVI PRO no tiene: el botón lo dejaba en un candado. 🔒 Sin cifras en ninguno de los dos
+// caminos (decisión del PO del 25-ago para las bandas de plata): el monto lo habla él.
+function planRenewVia(client) {
+  return clientPlan(client) === 'app' ? 'whatsapp-pro' : 'chat';
+}
+
 // ══════════ FASE 2 — Auth + fila por usuario (modelo user_data) ══════════
 // La tabla user_data (Supabase) tiene una fila por usuario con columnas:
 //   user_id, coach_id, role, profile(jsonb), routines, history, prs, bodyweight,
@@ -12646,6 +12679,9 @@ if (typeof module !== 'undefined' && module.exports) {
     chatDeliveryBlock,
     chatViewMode,
     clientPlan,
+    planLockExit,
+    planUpsellOptions,
+    planRenewVia,
     PLAN_LABEL,
     USER_DATA_COLLECTIONS,
     clientToRow,

@@ -9,6 +9,9 @@
 const assert = require('assert');
 const core = require('./avi-core.js');
 const {
+  planLockExit,
+  planUpsellOptions,
+  planRenewVia,
   getIccLabel,
   getSexCode,
   nutritionEstimate,
@@ -6121,16 +6124,15 @@ test('el candado premium le da al VENCIDO una salida que existe (v564)', () => {
   const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
   const i = src.indexOf('function premiumLockHTML');
   assert.ok(i > 0, 'desapareció premiumLockHTML');
-  const cuerpo = src.slice(i, i + 1800);
-  assert.ok(cuerpo.indexOf("MS.getStatus(c)==='overdue'") !== -1,
-    'el candado no distingue al vencido del usuario libre');
-  assert.ok(cuerpo.indexOf('Hablar con mi coach') !== -1,
-    'al vencido no se le ofrece hablar con su coach');
-  assert.ok(cuerpo.indexOf("cnTab('cn-messages'") !== -1,
-    'el botón del vencido no lleva al chat');
-  // Control de discriminación: la rama del usuario LIBRE tiene que seguir intacta.
-  assert.ok(cuerpo.indexOf('showPremiumUpsell()') !== -1 && cuerpo.indexOf('Quiero un coach') !== -1,
-    'se perdió la invitación a coach del usuario libre');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  // v696 (R18): la salida ya no se decide aquí con un `overdue` a mano sino en `planLockExit`,
+  // que conoce el TERCER público (AVI PRO). Lo que v564 protegía sigue igual: el vencido CON coach
+  // sale al chat, y el botón del chat lleva al chat.
+  assert.ok(/planLockExit\(c\)/.test(cuerpo), 'el candado no le pregunta a planLockExit');
+  assert.ok(/'coach-chat':_b\("cnTab\('cn-messages',document\.getElementById\('tab-msgs'\)\)",'Hablar con mi coach'\)/.test(cuerpo),
+    'al vencido con coach no se le ofrece su chat');
+  // Control de discriminación: el usuario LIBRE sigue teniendo su invitación.
+  assert.ok(/'opciones':_b\('showPremiumUpsell\(\)'/.test(cuerpo), 'se perdió la invitación del usuario libre');
 });
 test('isFreeClient NO se contagia del vencido: sigue significando «plan libre» (v564)', () => {
   assert.strictEqual(isFreeClient({ tier: 'premium', payments: [{ dueDate: _plusDays(-30) }] }), false);
@@ -6225,7 +6227,13 @@ test('🔒 la banda de renovación NO nombra plata: ni monto, ni Nequi, ni núme
   // los habla él — la app solo dice qué pasa y abre la conversación.
   assert.ok(!/nequi/i.test(cuerpo), 'la banda no puede nombrar Nequi');
   assert.ok(!/\$|amount|toLocaleString\('es-CO'\s*\)|COP/i.test(cuerpo), 'la banda no puede pintar un monto');
-  assert.ok(/Hablar con mi coach/.test(cuerpo), 'y su única acción es abrir el chat con el coach');
+  // v696 (R18): la acción la elige `_gbandBoton` — chat para quien tiene coach, «Renovar mi AVI PRO»
+  // por WhatsApp para un PRO (no tiene chat). Ninguno de los dos caminos nombra plata.
+  assert.ok(/_gbandBoton\(client\)/.test(cuerpo), 'la banda no pinta el botón de su plan');
+  const ib = src.indexOf('function _gbandBoton');
+  const boton = src.slice(ib, src.indexOf('\n}', ib));
+  assert.ok(/Hablar con mi coach/.test(boton) && /abrirPlanWhatsApp\(\\?'renovar-pro\\?'\)/.test(boton), 'falta uno de los dos caminos');
+  assert.ok(!/\$|amount|COP|nequi/i.test(boton), 'el botón de la banda no puede nombrar plata');
   assert.ok(/renewalNotice\(/.test(cuerpo), 'la vista DELEGA en el motor puro, no re-deriva la fecha');
 });
 test('🔒 la edge daily-notifs usa el MISMO umbral que la app (espejo, no copia a ojo)', () => {
@@ -23092,6 +23100,97 @@ test('🔒 v691 · CABLEADO de la app: la ficha, el Inicio y publicar usan la at
   assert.ok(/if\(eD\)\{[\s\S]*?from\('avi_showcase'\)\.delete\(\)\.eq\('id',nueva\.id\)/.test(p), '🔴 si la atadura falla, la tarjeta queda publicada a medias');
   assert.ok(/if\(data\.tarjetasDudosas>0\) _delTarjetaDudosa=true;/.test(a3) && /_delTarjetaDudosa\s*\?\s*`🗑️/.test(a3),
     'al eliminar no se le avisa al coach que se quitó una tarjeta que puede ser de otra persona');
+});
+
+// ══════════ v696 (R18) — AVI PRO dentro de la app y la bienvenida honesta ══════════
+test('planLockExit: la salida del candado según el plan (R18, decisión del PO)', () => {
+  assert.strictEqual(planLockExit({ tier: 'libre' }), 'opciones');
+  assert.strictEqual(planLockExit({ tier: 'app', payments: [{ dueDate: _plusDays(20) }] }), 'coach');
+  assert.strictEqual(planLockExit({ tier: 'app', payments: [{ dueDate: _plusDays(-30) }] }), 'renovar-pro');
+  assert.strictEqual(planLockExit({ tier: 'premium', payments: [{ dueDate: _plusDays(-30) }] }), 'coach-chat');
+  // Control: sin cliente no revienta y ofrece lo del libre (la vista del coach no lo pinta).
+  assert.strictEqual(planLockExit(null), 'opciones');
+});
+test('planUpsellOptions: al libre AVI PRO y el coaching; a un PRO solo el coaching', () => {
+  assert.deepStrictEqual(planUpsellOptions({ tier: 'libre' }), ['pro', 'coach']);
+  assert.deepStrictEqual(planUpsellOptions({ tier: 'app' }), ['coach']);
+  assert.deepStrictEqual(planUpsellOptions({ tier: 'premium' }), []);
+});
+test('planRenewVia: un AVI PRO renueva por WhatsApp (no tiene chat); quien tiene coach, por el chat', () => {
+  assert.strictEqual(planRenewVia({ tier: 'app' }), 'whatsapp-pro');
+  assert.strictEqual(planRenewVia({ tier: 'premium' }), 'chat');
+  assert.strictEqual(planRenewVia({}), 'chat');
+});
+test('🔒 R18 · ninguna banda de cuenta manda a un PRO a un chat que no tiene', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  for (const f of ['renderRenewBand', 'renderLapsedBand', 'renderGraceBand']) {
+    const i = a4.indexOf('function ' + f + '(');
+    assert.ok(i > 0, f + ' tiene que existir');
+    const cuerpo = a4.slice(i, a4.indexOf('\nfunction ', i + 10));
+    assert.ok(/_gbandBoton\(client\)/.test(cuerpo), f + ' no pinta el botón según el plan');
+    assert.ok(!/Hablar con mi coach/.test(cuerpo), f + ' vuelve a escribir el botón del chat a mano');
+  }
+  assert.ok(/function _gbandVia\(client\)\{ return \(typeof planRenewVia==='function'\)\?planRenewVia\(client\):'chat'; \}/.test(a4),
+    'la vía de la banda no le pregunta a planRenewVia');
+});
+test('🔒 R18 · el candado ya no vende «coach (Premium)» y cada salida lleva a donde dice', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = a3.indexOf('function premiumLockHTML(');
+  const cuerpo = a3.slice(i, a3.indexOf('\nfunction ', i + 10));
+  assert.ok(!/coach \(Premium\)/.test(cuerpo), 'el candado vuelve a decir «coach (Premium)»');
+  assert.ok(/'renovar-pro':_b\("abrirPlanWhatsApp\('renovar-pro'\)",'Renovar mi AVI PRO'\)/.test(cuerpo), 'el PRO vencido no tiene «Renovar mi AVI PRO»');
+  assert.ok(/'opciones':'Se desbloquea con <b>AVI PRO<\/b> o con un coach\.'/.test(cuerpo), 'al libre no se le nombra AVI PRO');
+  // Las 4 salidas de planLockExit tienen texto Y botón (un mapa al que le falte una pinta «undefined»).
+  for (const k of ['renovar-pro', 'coach-chat', 'coach', 'opciones']) {
+    const n = (cuerpo.match(new RegExp("'" + k + "':", 'g')) || []).length;
+    assert.strictEqual(n, 2, `la salida «${k}» no tiene texto y botón (${n})`);
+  }
+});
+test('🔒 R18 · la ventana «Más de AVI»: dos opciones, la de PRO se esconde a quien ya es PRO', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="pu-opt-pro"[\s\S]{0,400}onclick="puPro\(\)"/.test(html), 'falta la opción de AVI PRO');
+  assert.ok(/id="pu-opt-coach"[\s\S]{0,400}id="pu-cta" onclick="puConfirm\(\)"/.test(html), 'falta la opción del coaching');
+  assert.ok(!/Un coach real, contigo/.test(html), 'volvió la ventana que solo vendía un coach');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const s = a4.slice(a4.indexOf('function showPremiumUpsell('), a4.indexOf('\nfunction _puState('));
+  assert.ok(/planUpsellOptions\(c\)/.test(s) && /pro\.style\.display=ops\.includes\('pro'\)\?'':'none'/.test(s),
+    'la ventana no esconde la opción de PRO según el plan');
+  // WhatsApp DENTRO del toque: después de un await el navegador bloquea la ventana nueva.
+  const c = a4.slice(a4.indexOf('async function puConfirm('), a4.indexOf('\nfunction closePremiumUpsell('));
+  assert.ok(c.indexOf("abrirPlanWhatsApp('coach')") !== -1 && c.indexOf("abrirPlanWhatsApp('coach')") < c.indexOf('await requestCoach()'),
+    'el WhatsApp del coaching se abre después del await (el navegador lo bloquea) o no se abre');
+});
+test('🔒 R18 · los botones de plan van por las páginas de paso de la web, y la lista coincide con avi-web', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const m = a4.match(/const AVI_PLAN_WA=\{pro:'ir\/app-pro',coach:'ir\/app-coach','renovar-pro':'ir\/app-renovar-pro'\};/);
+  assert.ok(m, 'cambió la lista cerrada de botones de plan');
+  assert.ok(!/wa\.me\/57|573\d{9}/.test(a4), 'un número de WhatsApp escrito en la app (el repo es público): va por la web');
+  // Espejo con el repo hermano, si está en esta máquina (en CI no está: se salta, como [13b]).
+  const site = path.join(__dirname, '..', 'avi-web', 'lib', 'site.ts');
+  if (fs.existsSync(site)) {
+    const s = fs.readFileSync(site, 'utf8');
+    for (const k of ['app-pro', 'app-coach', 'app-renovar-pro'])
+      assert.ok(new RegExp('"' + k + '": \\{ url: waLink\\(').test(s), `avi-web no tiene el salto ${k}`);
+    assert.ok(/probar: \{ url: site\.appUrl \+ "\?origen=web"/.test(s), 'la web ya no marca «Probar» con ?origen=web');
+    assert.ok(/entrar: \{ url: site\.appUrl, /.test(s), '«Entrar a la app» no puede llevar la marca: es para quien ya tiene cuenta');
+  }
+});
+test('🔒 R18 · la bienvenida no le promete un coach a quien viene a probar el plan gratis', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(!/Aquí no entrenas solo|Con un coach de verdad/.test(html.replace(/<!--[\s\S]*?-->/g, '')), 'volvió la promesa de coach en la bienvenida');
+  const i = html.indexOf("get('origen')!=='web'");
+  assert.ok(i > 0, 'falta el reconocimiento de ?origen=web');
+  const bloque = html.slice(i, html.indexOf('</script>', i));
+  assert.ok(/crear\.className='cin-cta-fill'; entrar\.className='cin-cta-out'; entrar\.textContent='Ya tengo cuenta';/.test(bloque),
+    'con ?origen=web «Crear cuenta» no pasa a ser el botón principal');
+  assert.ok(/cta\.insertBefore\(crear, entrar\)/.test(bloque) && /removeChild\(web\)/.test(bloque), 'no se reordena o no se quita el enlace de vuelta a la web');
+  // Corre ANTES de los módulos: tiene que estar antes del primer <script src>.
+  assert.ok(i < html.indexOf('<script src="avi-core.js'), 'el reconocimiento quedó después de los módulos');
 });
 
 // ══════════════════════════════════════════════════════

@@ -1602,11 +1602,13 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 #premium-upsell,#level-up{position:fixed;inset:0;z-index:905;display:none;background:#04080A;overflow:hidden}
 #premium-upsell.on,#level-up.on{display:block;animation:wfFade .4s ease}
 .wf-eyebrow.gold{color:#F2C94C}
-.pu-bens{width:100%;max-width:420px;display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
-.pu-ben{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:13px;padding:10px 13px;text-align:left;backdrop-filter:blur(6px)}
-.pu-ben-ico{font-size:19px;flex-shrink:0}
-.pu-ben-tx{font-size:12.5px;font-weight:600;line-height:1.35;color:rgba(242,245,244,.94)}
-.pu-ben-tx b{color:#10E0A0}
+/* v696 (R18): las dos opciones de «Más de AVI». Fondo PROPIO casi opaco a propósito: el texto va
+   encima de una foto configurable y su contraste no puede depender de ella (lección de v562). */
+.pu-opts{width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.pu-opt{background:rgba(4,14,10,.84);border:1px solid rgba(255,255,255,.16);border-radius:15px;padding:14px 15px;text-align:left;backdrop-filter:blur(6px)}
+.pu-opt-t{font-size:15px;font-weight:800;letter-spacing:.02em;color:#10E0A0}
+.pu-opt-d{margin-top:4px;font-size:13px;font-weight:500;line-height:1.45;color:rgba(242,245,244,.94)}
+.pu-opt-b{margin-top:12px;padding:12px;font-size:14.5px;box-shadow:none}
 .pu-sentbox{width:100%;max-width:420px;background:linear-gradient(135deg,rgba(16,224,160,.22),rgba(16,224,160,.08));border:1px solid rgba(16,224,160,.4);border-radius:15px;padding:16px;font-size:13.5px;line-height:1.55;margin-bottom:18px;backdrop-filter:blur(6px);text-shadow:0 1px 8px rgba(0,0,0,.4)}
 .pu-skip{background:none;border:none;color:rgba(242,245,244,.6);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:12px;width:100%;max-width:420px;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 .lu-ring{width:118px;height:118px;border-radius:50%;border:3px solid rgba(16,224,160,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 16px;background:rgba(4,19,13,.55);backdrop-filter:blur(8px);box-shadow:0 0 44px rgba(16,224,160,.45),inset 0 0 22px rgba(16,224,160,.18);animation:wfPop .55s cubic-bezier(.3,1.4,.5,1) both}
