@@ -3432,6 +3432,12 @@ function showPremiumUpsell(){
   // solo el coaching (no se le ofrece lo que ya tiene).
   const ops=(typeof planUpsellOptions==='function')?planUpsellOptions(c):['coach'];
   const pro=document.getElementById('pu-opt-pro'); if(pro)pro.style.display=ops.includes('pro')?'':'none';
+  // Y el titular dice lo mismo que las opciones: a un PRO no se le ofrece «desbloquear la app» que ya tiene
+  // (aviso de Julián QA).
+  const _t=document.getElementById('pu-title'), _s=document.getElementById('pu-sub');
+  if(_t)_t.textContent=ops.includes('pro')?'Elige cómo seguir':'Súmale un coach';
+  if(_s)_s.textContent=ops.includes('pro')?'Desbloquea la app entera, o súmale un coach que te arme el plan.'
+    :'Ya tienes la app entera. Con un coach, además, te arma el plan y te responde en el chat.';
   _puState(!!c.wantsCoach);
   document.getElementById('premium-upsell').classList.add('on');
   document.body.style.overflow='hidden';

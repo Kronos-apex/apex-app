@@ -77,11 +77,13 @@ const plantar = (cli) => ev(`(()=>{ const c=${JSON.stringify(cli)}; c.payments=(
 const upsell = async () => {
   await ev(`(()=>{ closePremiumUpsell(); showPremiumUpsell(); return 1; })()`); await sleep(300);
   return JSON.parse(await ev(`JSON.stringify({on:document.getElementById('premium-upsell').classList.contains('on'),
-    pro:document.getElementById('pu-opt-pro').offsetHeight>0, coach:document.getElementById('pu-opt-coach').offsetHeight>0})`));
+    pro:document.getElementById('pu-opt-pro').offsetHeight>0, coach:document.getElementById('pu-opt-coach').offsetHeight>0,
+    titulo:document.getElementById('pu-title').textContent, sub:document.getElementById('pu-sub').textContent})`));
 };
 await plantar({ id: 'r18-libre', name: 'Prueba Libre', tier: 'libre' });
 let u = await upsell();
 check('libre: la ventana ofrece AVI PRO y el coaching', u.on && u.pro && u.coach, JSON.stringify(u));
+check('libre: el titular ofrece elegir y desbloquear', u.titulo === 'Elige cómo seguir' && /^Desbloquea la app entera/.test(u.sub), u.titulo + ' / ' + u.sub);
 await shot('r18-mas-de-avi-libre');
 await ev(`puPro()`); await sleep(200);
 let ab = JSON.parse(await ev('JSON.stringify(window.__abiertos)'));
@@ -91,7 +93,32 @@ await ev(`puConfirm()`); await sleep(300);
 ab = JSON.parse(await ev('JSON.stringify(window.__abiertos)'));
 const rc = await ev('window.__rc');
 check('«Quiero el coaching» abre WhatsApp del coaching ANTES de la solicitud', ab[0] === 'https://avientrena.com/ir/app-coach' && rc === 2, `abiertos=${ab.join(' | ')} solicitud tras ${rc - 1} ventanas`);
+const sent = JSON.parse(await ev(`JSON.stringify({sent:getComputedStyle(document.getElementById('pu-sent')).display, sell:getComputedStyle(document.getElementById('pu-sell')).display})`));
+check('tras pedir el coaching se ve «Solicitud enviada» y no las opciones', sent.sent === 'flex' && sent.sell === 'none', JSON.stringify(sent));
+// El botón atrás de Android cierra la ventana (el manejador de la app la reconoce).
+const atras = await ev(`(()=>{ const r=(typeof _aviCloseTopOverlay==='function')?_aviCloseTopOverlay():'sin-fn'; return {r, on:document.getElementById('premium-upsell').classList.contains('on')}; })()`);
+check('el botón atrás cierra la ventana «Más de AVI»', atras && atras.r === true && atras.on === false, JSON.stringify(atras));
 await ev(`closePremiumUpsell()`);
+// Quien ya pidió coach ve su solicitud, no un formulario nuevo.
+await plantar({ id: 'r18-libre2', name: 'Prueba Pidio', tier: 'libre', wantsCoach: true });
+await ev(`(()=>{ closePremiumUpsell(); showPremiumUpsell(); return 1; })()`); await sleep(200);
+const ya = await ev(`getComputedStyle(document.getElementById('pu-sent')).display`);
+check('libre que ya pidió coach: la ventana abre en «Solicitud enviada»', ya === 'flex', ya);
+await ev(`closePremiumUpsell()`);
+// 360 px con «Muy grande»: las dos opciones y «Ahora no» se alcanzan (la ventana zoomea su contenido).
+await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 2, mobile: true });
+await plantar({ id: 'r18-libre', name: 'Prueba Libre', tier: 'libre' });
+await ev(`(()=>{ document.documentElement.setAttribute('data-fs','xl'); closePremiumUpsell(); showPremiumUpsell(); return 1; })()`); await sleep(400);
+const xl = JSON.parse(await ev(`JSON.stringify((()=>{ const out={};
+  for (const [k,sel] of [['pro','#pu-opt-pro .pu-opt-b'],['coach','#pu-cta'],['ahoraNo','#pu-sell .pu-skip']]) {
+    const e=document.querySelector(sel); e.scrollIntoView({block:'center'}); const r=e.getBoundingClientRect();
+    const h=document.elementFromPoint(r.x+r.width/2, r.y+r.height/2);
+    out[k]={toca:h===e||e.contains(h), dentro:r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth};
+  } out.zoom=getComputedStyle(document.querySelector('#premium-upsell .wf-inner')).zoom; return out; })())`));
+check('360 px + «Muy grande»: los dos botones y «Ahora no» se pueden tocar', ['pro', 'coach', 'ahoraNo'].every(k => xl[k].toca && xl[k].dentro), JSON.stringify(xl));
+await shot('r18-mas-de-avi-360-xl');
+await ev(`(()=>{ document.documentElement.removeAttribute('data-fs'); closePremiumUpsell(); return 1; })()`);
+await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 const lock = (cli) => plantar(cli).then(() => ev(`premiumLockHTML('Prueba','Algo.')`));
 let h = await lock({ id: 'r18-libre', name: 'Prueba Libre', tier: 'libre' });
 check('libre: el candado nombra AVI PRO y abre las opciones', /AVI PRO/.test(h) && /Ver cómo desbloquearlo/.test(h) && !/coach \(Premium\)/.test(h));
@@ -99,6 +126,7 @@ check('libre: el candado nombra AVI PRO y abre las opciones', /AVI PRO/.test(h) 
 await plantar({ id: 'r18-pro', name: 'Prueba Pro', tier: 'app', dias: 20 });
 u = await upsell();
 check('PRO al día: la ventana NO le ofrece PRO, solo el coaching', u.on && !u.pro && u.coach, JSON.stringify(u));
+check('PRO al día: el titular no le ofrece desbloquear lo que ya tiene', u.titulo === 'Súmale un coach' && /^Ya tienes la app entera/.test(u.sub), u.titulo + ' / ' + u.sub);
 await shot('r18-mas-de-avi-pro');
 await ev(`closePremiumUpsell()`);
 h = await lock({ id: 'r18-pro', name: 'Prueba Pro', tier: 'app', dias: 20 });

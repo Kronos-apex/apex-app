@@ -23158,6 +23158,8 @@ test('🔒 R18 · la ventana «Más de AVI»: dos opciones, la de PRO se esconde
   const s = a4.slice(a4.indexOf('function showPremiumUpsell('), a4.indexOf('\nfunction _puState('));
   assert.ok(/planUpsellOptions\(c\)/.test(s) && /pro\.style\.display=ops\.includes\('pro'\)\?'':'none'/.test(s),
     'la ventana no esconde la opción de PRO según el plan');
+  // Y el titular sigue a las opciones: a un PRO no se le ofrece «desbloquear la app» (aviso de Julián QA).
+  assert.ok(/_t\.textContent=ops\.includes\('pro'\)\?'Elige cómo seguir':'Súmale un coach'/.test(s), 'el titular no cambia para quien ya es PRO');
   // WhatsApp DENTRO del toque: después de un await el navegador bloquea la ventana nueva.
   const c = a4.slice(a4.indexOf('async function puConfirm('), a4.indexOf('\nfunction closePremiumUpsell('));
   assert.ok(c.indexOf("abrirPlanWhatsApp('coach')") !== -1 && c.indexOf("abrirPlanWhatsApp('coach')") < c.indexOf('await requestCoach()'),

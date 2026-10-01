@@ -27,6 +27,7 @@ const SABOTAJES = [
   ['la bienvenida vuelve a prometer un coach', 'html', '<div class="cin-eyebrow">Tu rutina, en tu celular</div>', '<div class="cin-eyebrow">Con un coach de verdad</div>'],
   ['con ?origen=web «Crear cuenta» no pasa adelante', 'html', "crear.className='cin-cta-fill'; entrar.className='cin-cta-out'; entrar.textContent='Ya tengo cuenta';", "entrar.textContent='Ya tengo cuenta';"],
   ['el enlace de vuelta a la web se queda', 'html', '      if(web&&web.parentNode) web.parentNode.removeChild(web);\n', ''],
+  ['el titular le ofrece a un PRO desbloquear lo que ya tiene', 'c4', "if(_t)_t.textContent=ops.includes('pro')?'Elige cómo seguir':'Súmale un coach';", "if(_t)_t.textContent='Elige cómo seguir';"],
   ['la ventana pierde la opción de PRO', 'html', '<button class="wf-btn pu-opt-b" onclick="puPro()">', '<button class="wf-btn pu-opt-b" onclick="closePremiumUpsell()">'],
 ];
 
