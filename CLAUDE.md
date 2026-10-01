@@ -1,6 +1,6 @@
 # AVI — Plataforma de Entrenamiento Personal
 
-> **Nota de marca (2026-06-01):** el producto se renombró de **AVI** a **AVI** (iniciales de los hijos del PO: Alexander, Valery, Isabella). El nombre visible es AVI; los identificadores internos siguen como `apex`/`ax_` (repo `apex-app`, tabla `apex_data`, claves `ax_*`, `avi-core.js`, caché `apex-vNN`) — NO renombrarlos (rompería datos/PWA). Handle redes: @avi.entrena. Pendiente: registro de marca en SIC.
+> **Nota de marca (2026-06-01):** el producto se renombró de **AVI** a **AVI** (iniciales de los hijos del PO: Alexander, Valery, Isabella). El nombre visible es AVI; los identificadores internos siguen como `apex`/`ax_` (repo `apex-app`, tabla `apex_data`, claves `ax_*`, `avi-core.js`, caché `apex-vNN`) — NO renombrarlos (rompería datos/PWA). Instagram: @avientrena (el usuario disponible, igual que el dominio; 1-oct-2026). Pendiente: registro de marca en SIC.
 
 > Este archivo es la memoria permanente del proyecto. Claude Code lo lee automáticamente al iniciar cada sesión en este directorio.
 
