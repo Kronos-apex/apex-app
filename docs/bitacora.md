@@ -4,6 +4,20 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-01 — v697: el paquete legal de la web y la app, publicado
+
+- **Pedido del PO**: «necesito que cubramos todo ese aspecto legal» para ponerlo en la web. Había borradores de julio
+  que solo vivían en la app, no describían la web, decían que no había planes pagos, tenían [CORCHETES] sin llenar y le
+  mostraban a quien se registraba notas internas («Corregido el 2026-09-02 (v565)…») y un «Descargar mis datos» que el
+  asesorado no tiene (ese botón es del panel del coach). No había política de cookies.
+- **Lo publicado** (fuente única `legal/`, la web los copia con `avi-web/scripts/sync-legal.mjs`): política de
+  tratamiento de datos (web + app + WhatsApp + presencial, encargados con Supabase en us-east-1, Bre-B sin datos de
+  tarjeta, plazos de la Ley 1581), aviso de privacidad, términos (5 planes, sin cobro automático ni permanencia, 7 días
+  de gracia, retracto de la Ley 1480) y cookies (verificado: ni la web ni la app usan cookies). Para enviar por
+  WhatsApp: autorización de uso de imagen y declaración de salud. `notas-para-el-abogado.md` con 9 preguntas (cita 3-oct).
+- 🔒 **Nada legal sale a medias**: el build de producción de la web falla si queda un «PENDIENTE: …» (probado: exit 1
+  con VERCEL_ENV=production). `LEGAL_V` → 2026-10-01. `_verify-legal-visor` 9/9; web 72/72 enlaces y 53/53 móvil.
+
 ## ⏮️ 2026-10-01 — v696: AVI PRO existe dentro de la app, y la bienvenida deja de prometer un coach a quien viene a probar gratis
 
 - **De dónde sale**: auditoría R18 de la web nueva (`docs/auditoria-web-nueva-2026-09-30/`, D2 🔴1 y 🔴2, verificados
