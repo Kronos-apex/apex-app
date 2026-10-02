@@ -1,146 +1,123 @@
-# POLÍTICA DE TRATAMIENTO DE DATOS PERSONALES — AVI
+# Política de Tratamiento de Datos Personales de AVI
 
-> **BORRADOR — pendiente de revisión legal.** Cumple en estructura con la Ley 1581 de 2012
-> y el Decreto 1377 de 2013 (Colombia). Completar los [CORCHETES] y validar con abogado.
+**Versión:** 2026-10-01 · **Vigente desde:** «PENDIENTE: FECHA DE PUBLICACIÓN»
 
-**Última actualización:** [FECHA DE ENTRADA EN VIGENCIA]
+Esta política explica qué datos personales recogemos en AVI, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos. Se rige por el artículo 15 de la Constitución Política, la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).
 
 ## 1. Responsable del tratamiento
-- **Responsable:** [NOMBRE COMPLETO / RAZÓN SOCIAL]
-- **Identificación:** [CÉDULA O NIT]
-- **Domicilio:** [DIRECCIÓN], Guaduas, Cundinamarca, Colombia
-- **Correo de contacto:** [CORREO PARA PROTECCIÓN DE DATOS]
-- **Teléfono:** [TELÉFONO]
 
-AVI es una aplicación de entrenamiento personal. Esta política aplica a los datos
-personales de los usuarios de la aplicación ("Titulares").
+- **Responsable:** «PENDIENTE: NOMBRE COMPLETO», identificado con cédula de ciudadanía «PENDIENTE: NÚMERO», quien presta sus servicios de entrenamiento con la marca AVI.
+- **Dirección:** «PENDIENTE: DIRECCIÓN», Guaduas, Cundinamarca, Colombia.
+- **Correo:** aviapptraining2020@gmail.com
+- **Teléfono y WhatsApp:** +57 310 437 8400
+- **Sitio web:** avientrena.com · **Aplicación:** app.avientrena.com
 
-## 2. Datos que recolectamos
-- **De identificación y contacto:** nombre, correo electrónico (y, si inicias sesión con
-  Google, los datos básicos que ese proveedor nos comparte).
-- **Del perfil de entrenamiento:** objetivo, nivel, días disponibles, lugar de entrenamiento.
-- **Datos de salud y estado físico (DATOS SENSIBLES):** peso corporal, medidas, edad, sexo,
-  limitaciones o lesiones que declares, fotos de progreso y registros de entrenamiento.
-- **De uso:** sesiones registradas, historial y preferencias dentro de la app.
+## 2. A qué se aplica
 
-> Los datos de salud son **datos sensibles**. Su entrega es **voluntaria** y solo se tratan
-> con tu **autorización previa y explícita**. Puedes usar funciones básicas sin entregarlos,
-> salvo cuando sean indispensables para una función específica (p. ej. calcular tu rutina).
+Se aplica a los datos que recogemos en el sitio web avientrena.com, en la aplicación AVI (app.avientrena.com, que también puede abrirse desde su dirección anterior), por WhatsApp, por correo y en las clases presenciales en Guaduas.
 
-## 3. Finalidad del tratamiento
-Tratamos tus datos para:
-1. Crear y gestionar tu cuenta y autenticarte.
-2. Generar y guardar tus rutinas, progreso e historial de entrenamiento.
-3. Personalizar recomendaciones según tu perfil y objetivos.
-4. Enviarte recordatorios y notificaciones relacionados con tu entrenamiento (si los aceptas).
-5. Mejorar la aplicación y, de forma agregada y anónima, entender su uso.
-6. Si decides conectarte con un entrenador dentro de AVI, compartir con ese entrenador los
-   datos necesarios para tu asesoría (con tu autorización).
+## 3. Qué datos recogemos
 
-No vendemos tus datos a terceros.
+- **Identificación y contacto:** nombre, correo electrónico, teléfono o WhatsApp y edad. Si entras con tu cuenta de Google, recibimos de Google tu nombre, tu correo y tu foto de perfil.
+- **Perfil de entrenamiento:** objetivo, nivel, días disponibles, lugar donde entrenas y equipos con que cuentas.
+- **Datos de salud y estado físico (datos sensibles):** peso, estatura, medidas corporales, sexo, edad, lesiones, limitaciones o dolores que declares, fotos de progreso, la estimación de grasa corporal que calcula la app y tu plan de alimentación.
+- **Registros de entrenamiento:** sesiones, series, pesos, repeticiones, récords, hábitos (agua y pasos) y comidas que registres.
+- **Comunicaciones:** mensajes del chat de la app, fotos o videos que envíes por ese chat y mensajes que nos escribas por WhatsApp o correo.
+- **Pagos:** plan contratado, fechas, montos y los comprobantes que nos envíes. **No recibimos ni guardamos datos de tarjetas ni claves bancarias:** los pagos se hacen por Bre-B desde tu propio banco.
+- **Datos técnicos de la app:** versión instalada en tu dispositivo, errores técnicos de la app (para corregir fallas) y, si las activas, la suscripción a notificaciones del dispositivo.
+- **Visitas a la web:** estadísticas de visitas sin cookies (qué página se visitó, desde qué país, tipo de dispositivo y de dónde llegó la visita). Son datos agregados que no identifican a la persona.
+- **Datos de un acudiente:** si quien se registra es menor de edad, el nombre de su padre, madre o acudiente y, si lo da, su teléfono.
 
-## 4. Almacenamiento y transferencia internacional
-Tus datos se almacenan en servicios de **Supabase** y pueden alojarse en servidores ubicados
-**fuera de Colombia**. Al aceptar esta política autorizas dicha transferencia y almacenamiento
-internacional, bajo medidas de seguridad razonables. [Verificar con abogado el cumplimiento de
-transferencia internacional, Cap. VII Ley 1581.]
+## 4. Datos sensibles
 
-## 5. Derechos del Titular (Habeas Data)
-Como Titular tienes derecho a:
-- **Conocer, actualizar y rectificar** tus datos.
-- **Solicitar prueba** de la autorización otorgada.
-- **Ser informado** sobre el uso que se da a tus datos.
-- **Revocar la autorización** y/o **solicitar la supresión** ("eliminar mi cuenta y mis datos")
-  cuando no exista un deber legal de conservarlos.
-- **Acceder gratuitamente** a tus datos.
-- Presentar quejas ante la **Superintendencia de Industria y Comercio (SIC)**.
+Los datos de salud son datos sensibles. Su entrega es **voluntaria**, se piden con una **autorización expresa y separada** y puedes negarte a darlos. Algunas funciones los necesitan para funcionar (por ejemplo, adaptar la rutina a una lesión o calcular un plan de alimentación); si no los das, puedes seguir usando la versión básica de la app. Nunca se usan para algo distinto de tu entrenamiento.
 
-## 6. Cómo ejercer tus derechos (consultas y reclamos)
-- Escríbenos a **[CORREO PARA PROTECCIÓN DE DATOS]** indicando tu solicitud y datos de contacto.
-- También puedes usar las opciones **"Descargar mis datos"** y **"Eliminar mi cuenta"** dentro de la app.
-- **Consultas:** se responden en máximo **diez (10) días hábiles**.
-- **Reclamos:** se atienden en máximo **quince (15) días hábiles**, conforme a la Ley 1581 de 2012.
+## 5. Para qué usamos tus datos
 
-## 7. Seguridad
-Aplicamos medidas técnicas y organizativas razonables para proteger tus datos (autenticación,
-control de acceso por usuario y cifrado en tránsito). Ningún sistema es 100% infalible, pero nos
-comprometemos a actuar con diligencia y a notificar incidentes según la ley.
+- Crear tu cuenta, verificar tu identidad al entrar y mantener tu sesión.
+- Armar tu rutina y tu plan, guiarte en cada entrenamiento y guardar tu progreso.
+- Adaptar el entrenamiento a las lesiones o limitaciones que declares.
+- Prestarte el servicio de coaching, virtual o presencial, si lo contratas: tu entrenador revisa tus datos para armar y ajustar tu plan.
+- Comunicarnos contigo por el chat de la app, WhatsApp, correo o notificaciones, incluidos recordatorios de entrenamiento y avisos de renovación de tu plan.
+- Gestionar tus pagos y el estado de tu plan.
+- Entender de forma agregada cómo se usan la web y la app para mejorarlas.
+- Atender tus consultas, reclamos y solicitudes.
+- Proteger la seguridad de la app y prevenir usos indebidos.
+- Publicar una ficha con tus resultados en la web, **solo si lo autorizas de forma expresa** (sección 12).
+- Cumplir obligaciones legales, contables y tributarias.
 
-## 8. Menores de edad
-**Un menor de 18 años puede usar AVI con la autorización de su padre, madre o acudiente.** Al
-crear la cuenta se pregunta la edad, y quien declara menos de 18 no firma la casilla de mayor
-de edad: firma que su acudiente conoce y acepta esta autorización, y deja su **nombre** (y, si
-quiere, su teléfono). Sin ese nombre no se crea la cuenta. El entrenador recibe ese dato para
-**hablar con el acudiente antes de que la persona empiece a entrenar**: la app no verifica por
-su cuenta que el acudiente exista o esté de acuerdo, y no finge hacerlo.
+**No vendemos ni alquilamos tus datos y no los usamos para publicidad de terceros.**
 
-Corregido el 2026-09-02 (v565). Hasta esa fecha este documento decía que el modo libre era
-solo para mayores de 18 mientras la app **obligaba** a todo el mundo a declararse mayor de
-edad para poder registrarse — de modo que un menor no tenía ninguna vía cierta de usarla y
-dos ya lo hacían con una declaración falsa que la propia app le había exigido firmar.
+## 6. Quién puede ver tus datos
 
-[PENDIENTE DE ABOGADO] Si la declaración indirecta del menor basta, o si hace falta que el
-acudiente autorice por un canal propio (correo o WhatsApp al número registrado).
+- **Tú**, desde tu cuenta.
+- **Tu entrenador**, si eres asesorado del servicio de coaching.
+- **Otras personas usuarias de AVI**, solo lo que tú decidas publicar en la Comunidad (sección 11).
+- **Visitantes de la web**, solo tu ficha de resultados si la autorizas (sección 12).
+- **Proveedores que procesan datos por cuenta nuestra (encargados):**
+- Supabase, Inc.: base de datos, inicio de sesión y almacenamiento de archivos. Servidores en Estados Unidos (Virginia).
+- Vercel, Inc.: aloja la web y la app. Estados Unidos.
+- GitHub, Inc.: aloja la dirección anterior de la app. Estados Unidos.
+- Google LLC: solo si eliges entrar con tu cuenta de Google.
+- El proveedor de correo que usamos para enviar los correos de confirmación y de cambio de contraseña.
+- **WhatsApp**, cuando decides escribirnos por ese medio; WhatsApp trata esos datos según sus propias políticas.
+- **Autoridades**, cuando la ley lo exija.
 
-## 9. Comunidad (función opcional)
-AVI incluye una función de **Comunidad** para que te motives con amigos. Es **totalmente
-opcional** y está **apagada por defecto**: solo se activa si tú creas tu perfil de comunidad y
-das tu autorización.
+## 7. Transferencia y transmisión internacional
 
-- **Qué se comparte** (según tu configuración de privacidad y con quien tú autorizas): el **apodo**
-  que elijas, tu **avatar** (si subes uno) y un **resumen de tu constancia** (tu racha, tu nivel,
-  tus logros, cuántos entrenos llevas y, de forma opcional, si entrenaste hoy o tu última conexión).
-  Ese resumen lo calcula nuestro servidor a partir de tu actividad; **nunca se comparten tus datos crudos**.
-- **Publicaciones en el muro (opcionales, una por una):** puedes **compartir una rutina** (nombre,
-  día y ejercicios con sus series y repeticiones) o **compartir un entreno terminado** (nombre de la
-  rutina, duración aproximada, número de ejercicios y una **nota corta opcional** que tú escribes).
-  Cada publicación es una acción tuya, explícita; nada se publica automáticamente.
-- **Comentarios:** las publicaciones aceptan **comentarios** de las personas que pueden ver esa
-  publicación. Tus comentarios son visibles para ese público. Puedes **borrar** los comentarios de
-  tus propias publicaciones y los tuyos, y **reportar** cualquier comentario o publicación; el
-  entrenador que modera la comunidad puede retirar contenido reportado.
-- **Récords de peso (opcional, uno por uno, solo tú los publicas):** puedes elegir mostrar un
-  **récord** tuyo en tu muro (por ejemplo, «Sentadilla — 100 kg»): el nombre del ejercicio y ese
-  número de peso. **Por defecto NO se comparte ningún kilo**; un récord aparece **solo** cuando tú
-  tocas «Compartir» y **confirmas** esa publicación en particular — nunca de forma automática, y solo
-  se puede publicar un récord que **ya registraste entrenando**. Esta opción **no existe para
-  menores de edad**. Al publicar un récord aceptas específicamente que ese número de peso quede
-  visible para quien pueda ver tu perfil, y puedes retirarlo cuando quieras borrando la publicación.
-- **Qué NO se comparte NUNCA:** tu peso corporal, medidas, fotos de progreso, notas de salud o
-  lesiones ni tus mensajes con el entrenador **jamás** salen de tu cuenta ni aparecen en ninguna
-  publicación. **Los kilos que levantas tampoco se comparten**, salvo que tú publiques un récord
-  concreto de forma activa, como se explica arriba.
-- **Quién te ve y cómo te conectas** (hay tres caminos, todos bajo tu control o el de tu entrenador):
-  1. **Por código:** compartes tu código y ambas personas deben aceptar. Es mutuo.
-  2. **Tu gimnasio:** tu entrenador arma el directorio de su gimnasio. Si te incluye, tus
-     compañeros de ese gimnasio ven tu perfil de comunidad apenas lo creas (y tú los ves a ellos).
-     Solo tu entrenador puede agregarte o sacarte de ese directorio.
-  3. **Perfil público (opcional, apagado por defecto):** si TÚ lo enciendes, cualquier persona en
-     AVI puede encontrarte en «Descubrir» y seguirte. Mientras esté apagado, tu perfil es privado
-     y solo lo ven las personas de los puntos 1 y 2. **Las cuentas de menores de edad son siempre
-     privadas** y no pueden hacerse públicas.
-  Puedes **bloquear** a cualquiera: quien te bloquea deja de verte, incluso dentro del gimnasio.
-- **Actividad diaria:** puedes **ocultar** si entrenaste hoy con un interruptor, en cualquier momento.
-- **Control y revocación:** puedes pausar tu perfil, bloquear o reportar a alguien, y **salir de la
-  comunidad** cuando quieras. Salir **borra** tu perfil público y todas tus amistades (derecho de
-  supresión). Eliminar tu cuenta también borra todo lo de comunidad.
-- **Menores de edad:** para usar la Comunidad debes ser **mayor de 18 años** o contar con la
-  autorización de tu representante legal.
+Nuestros proveedores guardan los datos en servidores ubicados fuera de Colombia, principalmente en Estados Unidos. Al aceptar esta política autorizas que tus datos se transmitan y almacenen allí, bajo las condiciones del artículo 26 de la Ley 1581 de 2012 y con proveedores que aplican medidas de seguridad adecuadas.
 
-## 10. Qué pasa cuando eliminas tu cuenta
-Al eliminar tu cuenta se borran de inmediato y para siempre: tu perfil, tus rutinas, tu
-historial de entrenamientos, tus récords, tus medidas, tu peso, tus fotos, tu plan de
-alimentación, tus mensajes con tu entrenador, tus avisos (notificaciones) y todo lo tuyo en la
-Comunidad. **También se retira de la página pública de tu entrenador la tarjeta con tu progreso,
-si tenías una publicada.**
+## 8. Tus derechos
 
-**Copias de seguridad:** la base de datos se respalda a diario y esos respaldos se conservan
-**hasta 90 días**, después de los cuales se eliminan solos. Un respaldo es una fotografía
-completa del sistema y no se puede editar sin dañarlo, así que durante esa ventana tus datos
-pueden seguir existiendo dentro de un respaldo, **sin usarse para nada** y sin ser accesibles
-desde la aplicación. Pasados los 90 días desaparecen también de ahí.
+Como titular de los datos tienes derecho a:
 
-## 11. Vigencia
-Esta política rige desde [FECHA] y la base de datos se conservará mientras tengas una cuenta
-activa o exista un deber legal de conservación. Podremos actualizar esta política; te
-informaremos de cambios sustanciales.
+- Conocer, actualizar y rectificar tus datos.
+- Pedir prueba de la autorización que nos diste.
+- Saber, si lo pides, qué uso le hemos dado a tus datos.
+- Revocar la autorización y pedir que borremos tus datos, cuando no exista un deber legal o contractual de conservarlos.
+- Consultar gratis tus datos.
+- Presentar quejas ante la Superintendencia de Industria y Comercio (SIC), después de haber hecho tu consulta o reclamo ante nosotros.
+
+## 9. Cómo ejercer tus derechos
+
+- **Escríbenos** a aviapptraining2020@gmail.com o al WhatsApp +57 310 437 8400 con tu nombre, tu correo o teléfono de contacto y lo que necesitas.
+- **Desde la app** puedes corregir tu perfil y **eliminar tu cuenta** (Perfil → «Eliminar mi cuenta»). Si quieres una copia de tus datos, pídela por correo o WhatsApp.
+- **Consultas:** respondemos en máximo diez (10) días hábiles. Si no alcanzamos, te avisamos el motivo y respondemos en máximo cinco (5) días hábiles más.
+- **Reclamos** (corregir, actualizar, borrar o revocar): respondemos en máximo quince (15) días hábiles, prorrogables hasta ocho (8) días hábiles más con aviso. Incluye tu identificación, la descripción de lo que pides, tu dirección o correo de respuesta y los documentos que quieras aportar. Si el reclamo está incompleto, te pedimos completarlo dentro de los cinco (5) días siguientes; si pasan dos (2) meses sin respuesta tuya, entendemos que desististe.
+
+## 10. Menores de edad
+
+Un menor de 18 años puede usar AVI con la autorización de su padre, madre o acudiente. Al crear la cuenta se pregunta la edad. Quien declara menos de 18 años confirma que su acudiente conoce y acepta esta autorización y deja el nombre del acudiente (y, si quiere, su teléfono); sin ese nombre la cuenta no se crea. El entrenador habla con el acudiente antes de que la persona empiece a entrenar. Siempre se respeta el interés superior del menor: las cuentas de menores no pueden ser públicas en la Comunidad, no pueden publicar récords de peso y su ficha de resultados solo se publica con autorización del acudiente.
+
+## 11. Comunidad (función opcional)
+
+La Comunidad es **opcional y está apagada por defecto**: solo se activa si creas tu perfil de comunidad y das tu autorización.
+
+- **Qué se comparte:** el apodo que elijas, tu avatar si subes uno y un resumen de tu constancia (racha, nivel, logros, número de entrenos y, si lo permites, si entrenaste hoy o tu última conexión). Ese resumen lo calcula el servidor; tus datos de salud nunca se comparten.
+- **Publicaciones:** puedes compartir una rutina o un entreno terminado, una por una y siempre por acción tuya. Quien puede ver una publicación puede comentarla. Puedes borrar tus publicaciones y comentarios, y reportar cualquier contenido; el entrenador que modera la comunidad puede retirar lo reportado.
+- **Récords de peso:** solo se publica un récord si tú lo eliges y lo confirmas. Esta opción no existe para menores de edad.
+- **Nunca se comparten** tu peso corporal, tus medidas, tus fotos de progreso, tus datos de salud ni tus mensajes con el entrenador.
+- **Quién te ve:** las personas con las que te conectas por código (de forma mutua), tus compañeros del gimnasio si tu entrenador te incluye en su directorio y, solo si tú lo activas, cualquier persona usuaria de AVI mediante el perfil público. Puedes bloquear a cualquiera.
+- **Salir:** puedes pausar tu perfil o salir de la Comunidad cuando quieras; al salir se borran tu perfil de comunidad y tus conexiones.
+
+## 12. Fichas de resultados en la web
+
+Con tu autorización expresa, podemos publicar en avientrena.com una ficha con tus resultados: tu primer nombre, cuánto tiempo llevas en AVI, cuántos entrenos registraste, tu objetivo y cuánto subieron tus cargas. **La ficha no lleva apellido, edad, peso corporal ni fotos.** Puedes pedir que la retiremos en cualquier momento y se retira también si eliminas tu cuenta. Si quieres que usemos tu foto o tus resultados en redes sociales, te pediremos una autorización aparte.
+
+## 13. Cuánto tiempo guardamos tus datos y qué pasa si eliminas tu cuenta
+
+Guardamos tus datos mientras tengas una cuenta activa. Al eliminar tu cuenta se borran de inmediato tu perfil, tus rutinas, tu historial, tus récords, tus medidas, tu peso, tus fotos, tu plan de alimentación, tus mensajes, tus notificaciones, todo lo tuyo en la Comunidad y tu ficha de resultados si estaba publicada.
+
+La base de datos se respalda a diario y cada respaldo se conserva hasta 90 días; durante ese tiempo tus datos pueden seguir dentro de un respaldo, sin usarse y sin poder verse desde la app, y después se eliminan. Los registros de pagos se conservan el tiempo que exijan las normas contables y tributarias.
+
+## 14. Seguridad
+
+Usamos medidas técnicas y organizativas razonables: inicio de sesión con contraseña o con Google, reglas en la base de datos para que cada cuenta solo pueda leer lo suyo, conexiones cifradas, y tus fotos de progreso, tu foto de perfil y lo que envías por el chat guardados en almacenamiento privado que solo se abre con enlaces temporales (el avatar de la Comunidad, si subes uno, lo ven las personas que pueden ver tu perfil de comunidad). Ningún sistema es infalible; si ocurre un incidente que afecte tus datos, lo informaremos a la SIC y a ti según la ley.
+
+## 15. Cookies
+
+La web y la app no usan cookies. Lo que sí guarda la app en tu dispositivo para funcionar se explica en la **Política de Cookies y Almacenamiento Local**.
+
+## 16. Cambios a esta política
+
+Si cambiamos esta política, publicaremos la versión nueva en avientrena.com/privacidad con su fecha. Si el cambio afecta las finalidades o la forma de tratar tus datos, te avisaremos en la app o en la web antes de que aplique y, cuando la ley lo exija, te pediremos una nueva autorización.

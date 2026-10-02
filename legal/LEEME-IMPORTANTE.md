@@ -1,35 +1,26 @@
-# ⚖️ APEX — Documentos legales (BORRADORES)
+# ⚖️ AVI — Documentos legales
 
-> **ESTO NO ES ASESORÍA LEGAL.** Son borradores redactados como punto de partida,
-> adaptados a la normativa colombiana de protección de datos. **DEBEN ser revisados
-> y aprobados por un abogado colombiano antes de publicarse o recolectar datos de
-> personas reales.**
+> **No es asesoría legal.** Son documentos escritos contra lo que la web y la app hacen de verdad, para que un abogado
+> colombiano los revise. Las preguntas abiertas están en `notas-para-el-abogado.md`.
 
-## Qué hay aquí
-- `politica-tratamiento-datos.md` — Política de Tratamiento de Datos Personales (el documento central de Habeas Data, exigido por la Ley 1581/2012).
-- `terminos-y-condiciones.md` — Términos y Condiciones de uso de la app.
-- `autorizacion-consentimiento.md` — Texto de autorización/consentimiento que el usuario acepta al registrarse (el "checkbox") + aviso de privacidad corto.
+## Qué se publica y dónde
 
-## ⛔ Antes de publicar — pendientes obligatorios
+| Documento | Archivo | En la web | En la app |
+|---|---|---|---|
+| Política de Tratamiento de Datos | `politica-tratamiento-datos.md` | avientrena.com/privacidad | visor del registro (`LEGAL_DOCS.politica`) |
+| Términos y Condiciones | `terminos-y-condiciones.md` | avientrena.com/terminos | visor del registro (`LEGAL_DOCS.terminos`) |
+| Política de Cookies y Almacenamiento Local | `politica-cookies.md` | avientrena.com/cookies | — |
+| Aviso de Privacidad | `aviso-privacidad.md` | dentro de /privacidad | — |
 
-1. **Llenar los [CORCHETES]** con tus datos reales: nombre/razón social, identificación (cédula o NIT), domicilio, correo y teléfono de contacto, y fecha de entrada en vigencia.
+Documentos de uso interno o para enviar por WhatsApp: `autorizacion-consentimiento.md` (casillas del registro),
+`autorizacion-uso-imagen.md` (fotos y resultados en web y redes) y `declaracion-salud-entrenamiento.md`.
 
-2. **Revisión de abogado** — en especial sobre:
-   - **Datos sensibles (salud/fitness):** peso, medidas, lesiones, fotos de progreso son *datos sensibles* (Art. 5, Ley 1581). Exigen **consentimiento explícito** y no se puede negar el servicio por no entregarlos, salvo que sean esenciales. El abogado valida cómo lo pedimos.
-   - **Menores de edad:** recolectar datos de menores tiene reglas especiales (Decreto 1377, Art. 12). **Recomendación fuerte: el modo libre público debe ser solo para mayores de 18**, o exigir autorización del representante legal. Decisión con el abogado. ✅ **DECIDIDO por el PO el 2026-09-02 (v565): la segunda opción** — el menor entra con autorización de su acudiente, cuyo nombre queda registrado. Sigue pendiente de abogado si esa declaración indirecta basta o hace falta que el acudiente autorice por un canal propio.
-   - **Registro Nacional de Bases de Datos (RNBD) ante la SIC:** puede requerirse según el tipo de responsable. El abogado confirma si aplica para ti.
-   - **Transferencia internacional de datos:** los datos se guardan en Supabase (servidores fuera de Colombia). Hay que declararlo y el abogado verifica el cumplimiento.
+## Reglas
 
-3. **Implementación técnica que acompaña estos documentos (Fases 1-2 del plan):**
-   - Checkbox de aceptación en el registro (no pre-marcado).
-   - Botón "Descargar mis datos" y **"Eliminar mi cuenta y mis datos"** (derecho de supresión / Habeas Data).
-   - Edad mínima o verificación de mayoría de edad en el registro.
-
-## Estado
-🟡 Borradores — pendientes de completar datos + revisión legal. **CONECTADOS al registro
-desde avi-v292 (2026-07-07, decisión de Camilo de usarlos tal cual mientras tanto):**
-3 casillas separadas no pre-marcadas en el paso 7 del wizard, visor in-app (showLegalDoc)
-y evidencia de aceptación (fecha + versión `LEGAL_V` de app-3-coach.js) guardada en el
-perfil del usuario. Los textos se renombraron APEX→AVI para coincidir con la marca de la
-app. Al cambiar cualquier documento: subir `LEGAL_V`. Siguen pendientes la revisión del
-abogado y los botones "descargar mis datos" / "eliminar mi cuenta" (§3).
+- **Una sola fuente:** estos archivos. La web los copia con `avi-web/scripts/sync-legal.mjs`; no se editan allá.
+- Solo se usan títulos `#`/`##`, párrafos, listas con `- `, citas con `> ` y `**negrita**`: es lo que entienden el visor
+  de la app (`_legalMdToHtml`) y la web.
+- **Nada se publica con «PENDIENTE: …»:** la web se niega a construir si queda uno.
+- Al cambiar la Política o los Términos: subir `LEGAL_V` (app-3-coach.js) y la versión del documento.
+- Ninguna nota interna, historia de versiones ni comentario de desarrollo va dentro de un documento público: van en
+  `notas-para-el-abogado.md` o en la bitácora.

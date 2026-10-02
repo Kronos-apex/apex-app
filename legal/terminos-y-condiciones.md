@@ -1,55 +1,74 @@
-# TÉRMINOS Y CONDICIONES DE USO — AVI
+# Términos y Condiciones de AVI
 
-> **BORRADOR — pendiente de revisión legal.** Completar [CORCHETES] y validar con abogado.
+**Versión:** 2026-10-01 · **Vigentes desde:** «PENDIENTE: FECHA DE PUBLICACIÓN»
 
-**Última actualización:** [FECHA]
+## 1. Quiénes somos
 
-## 1. Aceptación
-Al crear una cuenta y usar AVI ("la aplicación") aceptas estos Términos y Condiciones y la
-[Política de Tratamiento de Datos Personales]. Si no estás de acuerdo, no uses la aplicación.
+AVI es una marca de entrenamiento personal de «PENDIENTE: NOMBRE COMPLETO», identificado con cédula «PENDIENTE: NÚMERO», con domicilio en Guaduas, Cundinamarca, Colombia. Contacto: aviapptraining2020@gmail.com · WhatsApp +57 310 437 8400.
 
-## 2. Qué es AVI
-AVI es una herramienta de entrenamiento que te permite registrarte, recibir rutinas
-(generadas automáticamente o asignadas por un entrenador) y llevar tu progreso. **Es una
-ayuda, no un servicio médico.**
+## 2. Aceptación
 
-## 3. ⚠️ Aviso de salud (importante)
-- AVI **no brinda consejo médico** ni reemplaza la valoración de un profesional de la salud.
-- Antes de iniciar cualquier programa de ejercicio, especialmente si tienes una condición
-  médica, lesión, estás embarazada o tienes dudas, **consulta a un médico**.
-- Entrenas **bajo tu propia responsabilidad**. Detén el ejercicio si sientes dolor o malestar.
-- En la medida permitida por la ley, [NOMBRE/AVI] no se hace responsable por lesiones
-  derivadas del uso de las rutinas. [Validar alcance de esta limitación con abogado.]
+Al crear una cuenta, usar la app o contratar un plan aceptas estos Términos y la **Política de Tratamiento de Datos Personales**. Si no estás de acuerdo, no uses AVI.
 
-## 4. Tu cuenta
-- Eres responsable de la veracidad de los datos que ingresas y de mantener segura tu sesión.
-- **Menores de 18 años** pueden usar AVI con la **autorización de su padre, madre o acudiente**,
-  que se registra al crear la cuenta (ver `autorizacion-consentimiento.md` §C.2). Corregido el
-  2026-09-02: hasta entonces este documento decía que el modo libre era solo para mayores de
-  18, mientras la app **exigía** a todo el mundo declararse mayor de edad — así que un menor no
-  tenía ninguna forma cierta de usarla, y dos ya lo hacían con una declaración falsa que la
-  propia app le había obligado a firmar.
-- Puedes eliminar tu cuenta y tus datos cuando quieras desde la app.
+## 3. Qué ofrecemos
 
-## 5. Uso aceptable
-No debes usar AVI para fines ilícitos, intentar vulnerar su seguridad, ni acceder a datos de
-otras personas. Nos reservamos el derecho de suspender cuentas que incumplan estos términos.
+- **AVI FREE:** la app gratis y sin fecha de vencimiento. Te arma una rutina según tu nivel, tus días y el lugar donde entrenas, te deja crear y editar tus rutinas, ver la técnica de los ejercicios y registrar tus entrenamientos.
+- **AVI PRO:** la app completa, sin entrenador. Suma el progreso de todos tus ejercicios con gráficas, la lista de récords, tu constancia en detalle, las series por músculo, el plan de alimentación, las medidas y las fotos de progreso.
+- **AVI COACH VIRTUAL:** todo lo de AVI PRO y un entrenador que arma tu plan, lo revisa cada semana, lo ajusta cada cuatro semanas o antes si algo cambia, y te responde por el chat de la app.
+- **AVI PRESENCIAL:** todo lo del coach virtual y clases en persona en Guaduas, dos o cuatro por semana. El lugar y el horario se acuerdan por WhatsApp según los cupos disponibles.
 
-## 6. Planes y pagos
-El modo libre es gratuito. Si en el futuro contratas un plan con un entrenador o funciones de
-pago, sus condiciones y precios se informarán claramente antes de cualquier cobro.
+AVI es una ayuda para entrenar. **No es un servicio médico ni de fisioterapia.**
 
-## 7. Propiedad
-El contenido, marca y código de AVI pertenecen a [NOMBRE/TITULAR]. Tus datos personales son
-tuyos; nosotros solo los tratamos según la Política de Tratamiento de Datos.
+## 4. Precios y pagos
 
-## 8. Disponibilidad
-Procuramos que la app funcione de forma continua, pero puede tener interrupciones,
-mantenimientos o cambios. No garantizamos disponibilidad ininterrumpida.
+- Precios mensuales en pesos colombianos: AVI FREE $0 · AVI PRO $30.000 · AVI COACH VIRTUAL $100.000 · AVI PRESENCIAL 2 clases por semana $150.000 · AVI PRESENCIAL 4 clases por semana $250.000. Los precios vigentes son los publicados en avientrena.com/precios.
+- El pago es **mensual y anticipado**, por Bre-B a la llave publicada en la web. Tu plan se activa cuando recibimos el comprobante por WhatsApp. **No hay cobros automáticos:** cada mes decides si renuevas.
+- Si cambiamos un precio, te avisamos antes; el precio nuevo se aplica desde el siguiente mes que pagues, nunca al mes que ya pagaste.
 
-## 9. Cambios
-Podemos actualizar estos Términos. Te avisaremos de cambios importantes dentro de la app.
+## 5. Duración, renovación y cancelación
 
-## 10. Ley aplicable
-Estos Términos se rigen por las leyes de la **República de Colombia**. Cualquier controversia
-se resolverá ante los jueces competentes de Colombia. Contacto: [CORREO].
+- **No hay permanencia.** Cada plan dura un mes desde la fecha de pago.
+- Si no renuevas, tienes **siete (7) días de gracia** con tu plan. Después vuelves a **AVI FREE** y conservas tu historial, tus rutinas y tus registros.
+- Para cancelar basta con no renovar; si quieres, avísanos por WhatsApp.
+- El mes ya pagado no se reembolsa, salvo en los casos del derecho de retracto o cuando la ley lo ordene.
+
+## 6. Derecho de retracto
+
+Si contrataste un plan pago por un medio a distancia (la web, la app o WhatsApp), puedes retractarte dentro de los **cinco (5) días hábiles** siguientes al pago, de acuerdo con el artículo 47 de la Ley 1480 de 2011, siempre que el servicio no haya empezado a prestarse con tu acuerdo. Para retractarte, escríbenos por WhatsApp o correo; te devolvemos el dinero en máximo treinta (30) días calendario.
+
+## 7. Tu salud
+
+- AVI **no da consejo médico** ni reemplaza la valoración de un profesional de la salud. Las rutinas, las adaptaciones por lesión y los planes de alimentación son orientaciones de entrenamiento.
+- Antes de empezar, y sobre todo si tienes una condición médica, una lesión, estás en embarazo o tomas medicamentos, **consulta a tu médico**. Para el coaching y las clases presenciales te pediremos una declaración de salud.
+- Detente si sientes dolor, mareo o malestar, y avísale a tu entrenador.
+- Eres responsable de la veracidad de los datos de salud que declares: con ellos se adapta tu entrenamiento.
+
+## 8. Tu cuenta
+
+- Eres responsable de que tus datos sean ciertos y de mantener segura tu contraseña.
+- Un **menor de 18 años** puede usar AVI con la autorización de su padre, madre o acudiente, según la Política de Tratamiento de Datos.
+- Puedes eliminar tu cuenta cuando quieras desde la app.
+
+## 9. Uso aceptable
+
+No uses AVI para fines ilícitos, para acosar o suplantar a otras personas, para publicar contenido ofensivo o para intentar acceder a datos ajenos o vulnerar la seguridad de la app. En la Comunidad, respeta a las demás personas. Podemos retirar contenido y suspender cuentas que incumplan estos Términos.
+
+## 10. Propiedad intelectual
+
+La marca AVI, la app, sus textos, rutinas, imágenes y videos son de «PENDIENTE: NOMBRE COMPLETO» o se usan con licencia. No puedes copiarlos ni distribuirlos sin autorización. Tus datos y tus registros son tuyos.
+
+## 11. Responsabilidad
+
+Trabajamos para que la app funcione bien y para que tu entrenamiento sea seguro, pero puede tener fallas, interrupciones o errores. En la medida que permite la ley colombiana, no respondemos por daños derivados de no seguir las indicaciones de entrenamiento, de datos de salud falsos o incompletos, o de usar la app en contra de estos Términos. Nada de esto limita los derechos que te da la Ley 1480 de 2011 como consumidor ni nuestra responsabilidad por culpa grave o dolo.
+
+## 12. Disponibilidad y cambios
+
+La app puede cambiar, mejorar o dejar de ofrecer alguna función. Si un cambio afecta un plan que ya pagaste, te lo avisamos y buscamos una solución equivalente. Podemos actualizar estos Términos; publicaremos la versión nueva en avientrena.com/terminos y te avisaremos de los cambios importantes antes de que apliquen.
+
+## 13. Peticiones, quejas y reclamos
+
+Escríbenos a aviapptraining2020@gmail.com o al WhatsApp +57 310 437 8400. Respondemos en máximo quince (15) días hábiles. También puedes acudir a la Superintendencia de Industria y Comercio.
+
+## 14. Ley aplicable
+
+Estos Términos se rigen por las leyes de la República de Colombia.
