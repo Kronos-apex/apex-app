@@ -22,6 +22,7 @@ Este paquete reemplaza los borradores de julio y septiembre. Los documentos se e
 6. **Limitación de responsabilidad** (Términos, sección 11) y alcance de la declaración de salud: validar que no sean cláusulas abusivas según la Ley 1480.
 7. **Uso de imagen de menores** en redes sociales: requisitos adicionales.
 8. **Datos que se ven en la ficha pública de resultados** (primer nombre y cifras de entrenamiento): ¿es suficiente la autorización actual dentro de la app, o debe pedirse por escrito como la de uso de imagen?
+9. **Usuarios actuales.** La versión 2026-10-01 amplía el alcance (web, WhatsApp, pagos, fichas). Quienes aceptaron las versiones de julio y septiembre siguen con su aceptación guardada y su versión. ¿Hay que pedirles que acepten la nueva, o basta avisarles en la app?
 
 ## Otros asuntos legales del negocio (fuera de estos documentos)
 
@@ -29,6 +30,6 @@ Este paquete reemplaza los borradores de julio y septiembre. Los documentos se e
 - **Registro de la marca AVI** ante la Superintendencia de Industria y Comercio (pendiente).
 - **Registro mercantil** en la Cámara de Comercio, si aplica.
 
-## Datos que debe completar el responsable
+## Datos del responsable
 
-Nombre completo, número de cédula, dirección en Guaduas y la fecha de publicación. En los documentos están marcados como «PENDIENTE: …».
+Completados el 1-oct-2026 (nombre, cédula y dirección en Guaduas) y publicados ese día en avientrena.com y en la app.

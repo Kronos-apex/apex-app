@@ -1411,9 +1411,10 @@ async function backToCoachPanel(){
 // 🔒 Subir la versión NO re-pide consentimiento ni re-fecha el de nadie: `consentSame` compara
 //    lo declarado (menor/adulto/edad/acudiente), no `v`, y `consentKeep` conserva la evidencia
 //    anterior. Cada quien queda apuntando al texto que de verdad aceptó.
-const LEGAL_V='2026-09-05-borrador'; // 2026-07-26: §9 corrige QUIÉN te ve — decía «solo por código,
-// no hay directorio ni buscador» y eso es FALSO desde el directorio del gimnasio (C5) y «Descubrir»
-// (③c-3). Ahora describe los tres caminos y el bloqueo. PENDIENTE de abogado.
+const LEGAL_V='2026-10-01'; // v697: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
+// /terminos y /cookies): cubre la web, WhatsApp, pagos y lo presencial, con los datos del responsable y sin
+// las notas internas que antes veía quien se registraba. Quien aceptó una versión anterior conserva la suya
+// guardada; si hay que pedirles la nueva lo dice el abogado (legal/notas-para-el-abogado.md, pregunta 9).
 const LEGAL_DOCS={
   politica:{file:'politica-tratamiento-datos.md',title:'Política de Tratamiento de Datos'},
   terminos:{file:'terminos-y-condiciones.md',title:'Términos y Condiciones'},

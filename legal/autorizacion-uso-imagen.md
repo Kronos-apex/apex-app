@@ -4,7 +4,7 @@ Esta autorización se pide **antes** de publicar la foto, el video o los resulta
 
 ## Texto para enviar
 
-Yo, ____________________, identificado(a) con documento número ____________, autorizo a «PENDIENTE: NOMBRE COMPLETO», quien presta servicios de entrenamiento con la marca AVI, a publicar lo que marco a continuación:
+Yo, ____________________, identificado(a) con documento número ____________, autorizo a Camilo Andrés Martínez Bejarano, quien presta servicios de entrenamiento con la marca AVI, a publicar lo que marco a continuación:
 
 - ( ) Mi **primer nombre**.
 - ( ) Mis **resultados de entrenamiento**: tiempo en AVI, número de entrenos, objetivo y la evolución de mis cargas.

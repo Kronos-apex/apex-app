@@ -1,6 +1,6 @@
 # Política de Cookies y Almacenamiento Local de AVI
 
-**Versión:** 2026-10-01 · **Vigente desde:** «PENDIENTE: FECHA DE PUBLICACIÓN»
+**Versión:** 2026-10-01 · **Vigente desde:** 1 de octubre de 2026
 
 ## 1. Resumen
 
