@@ -32,4 +32,4 @@ Este paquete reemplaza los borradores de julio y septiembre. Los documentos se e
 
 ## Datos del responsable
 
-Completados el 1-oct-2026 (nombre, cédula y dirección en Guaduas) y publicados ese día en avientrena.com y en la app.
+Completados el 1-oct-2026 y publicados ese día en avientrena.com y en la app. El 2-oct-2026, a pedido del responsable, se retiraron de la política y de los términos el número de cédula y la dirección física; queda el domicilio (Guaduas, Cundinamarca) con correo y WhatsApp. **Pregunta abierta:** si el Decreto 1377 (art. 13) exige además una dirección física, y si el art. 50 de la Ley 1480 obliga a publicar el NIT.

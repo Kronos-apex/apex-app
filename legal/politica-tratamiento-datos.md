@@ -1,13 +1,13 @@
 # Política de Tratamiento de Datos Personales de AVI
 
-**Versión:** 2026-10-01 · **Vigente desde:** 1 de octubre de 2026
+**Versión:** 2026-10-02 · **Vigente desde:** 2 de octubre de 2026
 
 Esta política explica qué datos personales recogemos en AVI, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos. Se rige por el artículo 15 de la Constitución Política, la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).
 
 ## 1. Responsable del tratamiento
 
-- **Responsable:** Camilo Andrés Martínez Bejarano, identificado con cédula de ciudadanía 1.121.845.199, quien presta sus servicios de entrenamiento con la marca AVI.
-- **Dirección:** Carrera 5 Sur # 4-151, Guaduas, Cundinamarca, Colombia.
+- **Responsable:** Camilo Andrés Martínez Bejarano, quien presta sus servicios de entrenamiento con la marca AVI.
+- **Domicilio:** Guaduas, Cundinamarca, Colombia.
 - **Correo:** aviapptraining2020@gmail.com
 - **Teléfono y WhatsApp:** +57 310 437 8400
 - **Sitio web:** avientrena.com · **Aplicación:** app.avientrena.com

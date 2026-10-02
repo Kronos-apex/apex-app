@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-02 — v698: la cédula y la dirección del responsable salen de lo publicado
+
+- **Pedido del PO**: «quita la cédula y la dirección de la web hoy». Desde v697 la política mostraba su número de
+  cédula y su dirección física, y los términos la cédula; las veía cualquiera en avientrena.com/privacidad, /terminos y
+  dentro de la app (visor del registro).
+- **Lo que se cambió** (fuente única `legal/`): «Responsable: nombre, quien presta sus servicios con la marca AVI» y
+  «Domicilio: Guaduas, Cundinamarca, Colombia», con correo y WhatsApp. `LEGAL_V` → 2026-10-02 (no re-pide
+  consentimiento: `consentSame` compara lo declarado, no `v`). El Decreto 1377 (art. 13) no pide la cédula; si exige
+  una dirección física y si el art. 50 de la Ley 1480 obliga a publicar el NIT quedó como pregunta para el abogado
+  (cita 3-oct, paquete v3).
+- 🔒 `_verify-legal-visor` afirma la FORMA (ningún «cédula + número» ni «calle/carrera + número + #»), no el dato, y
+  muerde con el texto de v697 (control). El check [13] del hook lee además dos patrones nuevos de
+  `~/.avi/nombres-reales.json` para que el dato no vuelva a entrar al repo. ⚠️ El historial público del repo los
+  conserva (commit 53e81c9) hasta que el repo pase a privado.
+
 ## ⏮️ 2026-10-01 — v697: el paquete legal de la web y la app, publicado
 
 - **Pedido del PO**: «necesito que cubramos todo ese aspecto legal» para ponerlo en la web. Había borradores de julio

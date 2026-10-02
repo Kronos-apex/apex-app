@@ -1,10 +1,10 @@
 # Términos y Condiciones de AVI
 
-**Versión:** 2026-10-01 · **Vigentes desde:** 1 de octubre de 2026
+**Versión:** 2026-10-02 · **Vigentes desde:** 2 de octubre de 2026
 
 ## 1. Quiénes somos
 
-AVI es una marca de entrenamiento personal de Camilo Andrés Martínez Bejarano, identificado con cédula 1.121.845.199, con domicilio en Guaduas, Cundinamarca, Colombia. Contacto: aviapptraining2020@gmail.com · WhatsApp +57 310 437 8400.
+AVI es una marca de entrenamiento personal de Camilo Andrés Martínez Bejarano, con domicilio en Guaduas, Cundinamarca, Colombia. Contacto: aviapptraining2020@gmail.com · WhatsApp +57 310 437 8400.
 
 ## 2. Aceptación
 

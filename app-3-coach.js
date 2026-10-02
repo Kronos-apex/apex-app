@@ -1411,7 +1411,10 @@ async function backToCoachPanel(){
 // 🔒 Subir la versión NO re-pide consentimiento ni re-fecha el de nadie: `consentSame` compara
 //    lo declarado (menor/adulto/edad/acudiente), no `v`, y `consentKeep` conserva la evidencia
 //    anterior. Cada quien queda apuntando al texto que de verdad aceptó.
-const LEGAL_V='2026-10-01'; // v697: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
+// 2026-10-02 (v698): a pedido del responsable salen de la política y de los términos su número de cédula
+// y su dirección física; queda el domicilio (Guaduas, Cundinamarca) con correo y WhatsApp. El Decreto 1377
+// (art. 13) no pide la cédula; si exige una dirección física lo resuelve el abogado (notas, «Datos del responsable»).
+const LEGAL_V='2026-10-02'; // v697 publicó 2026-10-01: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
 // /terminos y /cookies): cubre la web, WhatsApp, pagos y lo presencial, con los datos del responsable y sin
 // las notas internas que antes veía quien se registraba. Quien aceptó una versión anterior conserva la suya
 // guardada; si hay que pedirles la nueva lo dice el abogado (legal/notas-para-el-abogado.md, pregunta 9).
