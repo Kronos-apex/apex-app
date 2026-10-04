@@ -32,20 +32,26 @@ const results = [];
 const check = (n, c, x = '') => { const line = (c ? 'OK ' : 'FAIL ') + n + (x ? ' — ' + x : ''); results.push(line); log('  ' + line); };
 await send('Page.navigate', { url: APP });
 check('MONTAJE: la app arranca', await waitFor(`typeof showLegalDoc==='function' && typeof window._aviUpdateBusy!=='undefined'`, 20000));
+// v699 · La versión esperada se LEE del propio documento (antes iba escrita a mano y caducaba con cada cambio legal).
+const { readFileSync: _leer } = await import('node:fs');
+const _vers = (f) => ((_leer('C:/Users/KRONOS/Desktop/AVI/apex-app/legal/' + f, 'utf8').match(/\*\*Versión:\*\* ([0-9-]+)/) || [])[1]);
+const VERSION = { politica: _vers('politica-tratamiento-datos.md'), terminos: _vers('terminos-y-condiciones.md') };
 for (const [k, debe] of [['politica', /Camilo Andrés Martínez Bejarano/], ['terminos', /Camilo Andrés Martínez Bejarano/]]) {
   await ev(`showLegalDoc('${k}')`);
   await waitFor(`!/Cargando/.test((document.getElementById('legal-body')||{}).textContent||'Cargando')`, 10000);
   const t = await ev(`(document.getElementById('legal-body')||{}).textContent||''`);
   check(`${k}: se carga y nombra al responsable`, debe.test(t), t.slice(0, 80));
   check(`${k}: sin «PENDIENTE», sin notas internas («v565», «Corregido el»)`, !/PENDIENTE|v565|Corregido el|\[CORCHETES\]/.test(t));
-  check(`${k}: es la versión 2026-10-02`, /2026-10-02/.test(t));
+  check(`${k}: es la versión ${VERSION[k]} (la del archivo)`, !!VERSION[k] && t.includes(VERSION[k]));
   // v698: el responsable pidió que no se publiquen su cédula ni su dirección física. Se afirma la FORMA (un número
   // de documento o una dirección con calle y placa), nunca el dato: el repo es público y el dato no entra aquí.
   check(`${k}: sin número de cédula ni dirección física del responsable`,
     !/c[ée]dula(?: de ciudadan[íi]a)?\s+\d/i.test(t) && !/\b(?:carrera|calle|cra\.?|cl\.?|avenida|transversal|diagonal)\s*\d+[^.\n]{0,20}#\s*\d/i.test(t));
   await ev(`cm('m-legal')`);
 }
-check('LEGAL_V es la versión publicada', await ev(`LEGAL_V`) === '2026-10-02', String(await ev('LEGAL_V')));
+// LEGAL_V es la versión MÁS NUEVA de lo que se acepta: la de la política o la de los términos.
+const _mayor = [VERSION.politica, VERSION.terminos].sort().pop();
+check('LEGAL_V es la versión publicada más nueva', await ev(`LEGAL_V`) === _mayor, String(await ev('LEGAL_V')) + ' vs ' + _mayor);
 check('cero errores de JavaScript', jsErrors.length === 0, jsErrors.slice(0, 3).join(' | '));
 const fallos = results.filter(r => r.startsWith('FAIL')).length;
 log(`\n${results.length - fallos}/${results.length} OK`);

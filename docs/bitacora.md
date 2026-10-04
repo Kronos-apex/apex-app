@@ -4,6 +4,21 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-03 — v699: el canal por el que llegó quien se registra
+
+- **Pedido del PO**: medir qué canal (Instagram, TikTok, el estado de WhatsApp, una recomendación…) trae a quien se
+  registra, ANTES de lanzar la estrategia de redes. Contexto medido el mismo día: los 22 asesorados llegaron por él
+  (boca a boca); nadie ha llegado todavía solo por la web o por redes.
+- **App**: `index.html` guarda `?canal=` (o `web` si llega de la web sin canal) al LLEGAR, inline y antes de los
+  módulos —el retorno de «Entrar con Google» vuelve sin la dirección—; el primero manda. `_provisionFreeClient` lo
+  pasa al perfil por `canalRecord` (avi-core: forma `CANAL_RE`, 30 días) y lo suelta; la ficha del coach dice
+  «llegó por Instagram (enlace de la bio)». El canal es un SLUG por forma, no una lista: la web estrena canales sin
+  publicar app.
+- **Legal**: la política de datos y la de cookies dicen qué se guarda del canal y para qué. `LEGAL_V` 2026-10-03.
+- **Verificado**: suite 1436/1436 · `_sabotaje-v699` 12/12 · `_verify-canal` 7/7 (navegador) · `_verify-legal-visor`
+  11/11 (ahora lee la versión de cada documento en vez de llevarla escrita).
+- **Web** (avi-web): enlaces de entrada `/de/<canal>` y el canal viaja a la app y al mensaje de WhatsApp.
+
 ## ⏮️ 2026-10-02 — v698: la cédula y la dirección del responsable salen de lo publicado
 
 - **Pedido del PO**: «quita la cédula y la dirección de la web hoy». Desde v697 la política mostraba su número de
