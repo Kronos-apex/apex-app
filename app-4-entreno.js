@@ -509,6 +509,7 @@ function renderClientProfile(client){
   const rows=[[`${_pfi('target','🎯')} Objetivo`,client.goal],[`${_pfi('chart','📊')} Nivel`,client.level],[`${_pfi('calendar','📅')} Días de entreno`,`${client.days} días por semana`],currentKg?[`${_pfi('scale','⚖️')} Peso actual`,`${currentKg} kg`]:null,client.notes?[`${_pfi('pencil','📝')} Nota del coach`,client.notes]:null].filter(Boolean);
   document.getElementById('cn-prof-data').innerHTML=rows.map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--br)"><span style="font-size:13px;color:var(--t2)">${l}</span><span style="font-size:13px;font-weight:600;text-align:right;max-width:60%">${esc(String(v||''))}</span></div>`).join('');
   renderPaymentCard(client);
+  renderReferidoPerfil(client); // v700: «Recomienda AVI» con premio, junto a lo de su plan
   renderGamification(client);
   renderBodyWeightSection(client.id);
   renderPRsInProfile(client.id);
@@ -1770,6 +1771,9 @@ function renderShareBanner(client){
   const el=document.getElementById('cn-share'); if(!el)return;
   el.innerHTML='';
   if(typeof shareBannerEligible!=='function'||!client){ el.style.display='none'; return; }
+  // v700: quien puede recomendar CON PREMIO (plan con coach) recibe esa invitación —al terminar un
+  // entreno y en su perfil— y no esta sin premio: dos pedidos distintos para lo mismo se anulan.
+  if(typeof referidoPuede==='function'&&_referidoEsAsesorado()&&referidoPuede(client,Date.now())){ el.style.display='none'; return; }
   // A2: si la tarjeta de Comunidad ya está pidiendo algo en esta misma pantalla, este banner
   // se calla (dos pedidos apilados se anulan entre sí). Vuelve solo cuando aquella se va.
   if(typeof CMTY!=='undefined'&&CMTY.nudgeOn){ el.style.display='none'; return; }
@@ -1801,6 +1805,79 @@ async function shareApp(){
 function dismissShare(){
   try{ localStorage.setItem('ax_sharesnooze',String(Date.now()+ (typeof SHARE_SNOOZE_DAYS!=='undefined'?SHARE_SNOOZE_DAYS:45)*86400000)); }catch(e){}
   const el=document.getElementById('cn-share'); if(el){ el.style.display='none'; el.innerHTML=''; }
+}
+
+// ── «Recomienda AVI» con premio (v700, decisión del PO 4-oct-2026) ──────────────────────────────
+// Reglas y textos en avi-core (`referidoPuede`, `referidoTarjetaToca`, `referidoMensaje`); aquí solo
+// se pinta. Dos puertas: la tarjeta al TERMINAR un entreno (turno F13, máx. 1 vez cada 14 días) y la
+// tarjeta fija del PERFIL. Las dos comparten el mismo mensaje y la misma salida (`shareReferido`).
+// Al coach nunca le sale: entrena en su propia fila y no tiene a quién pedirle el descuento. 🔴 OJO: en «Mi
+// entrenamiento» (`openMyTraining`) el coach entra con `CUR.loggedAs='client'` y `tier:'premium'`, así que
+// `loggedAs` solo NO lo distingue: hace falta `COACH_SELF`/`AUTH_ROLE`, el mismo guard de `renderAccountActions`
+// (lo cazaron Julián y Lucas en el QA de v700; el primer harness simulaba al coach por una puerta que no usa).
+function _referidoEsAsesorado(){ return CUR.loggedAs==='client' && !COACH_SELF && AUTH_ROLE!=='coach'; }
+const AVI_REFERIDO_CONDICIONES=AVI_WEB_URL+'ayuda#referidos';
+function _referidoCliente(){
+  if(!_referidoEsAsesorado())return null;
+  return (DB.clients||[]).find(x=>x&&x.id===CUR.clientId)||null;
+}
+function _referidoCoachPila(){
+  const k=(typeof coachNameForClient==='function')?coachNameForClient():'';
+  return String(k||'').trim().split(/\s+/)[0]||'';
+}
+function _referidoPremioTxt(){
+  const k=_referidoCoachPila();
+  return `Si alguien entra al coaching${k?' con '+k:''} por tu recomendación y paga su primer mes, tu siguiente mes te sale $${fmtMiles(REFERIDO_PREMIO)} más barato.`;
+}
+// Comparte con el menú del teléfono (WhatsApp, Instagram…); sin él, WhatsApp eligiendo contacto.
+// Mismo patrón que `shareApp`: cancelar el menú no abre nada más.
+async function shareReferido(){
+  const c=_referidoCliente(); if(!c)return;
+  const msg=referidoMensaje(c.name,(typeof coachNameForClient==='function')?coachNameForClient():'');
+  try{
+    if(navigator.share){ await navigator.share({title:'AVI',text:msg}); return; }
+  }catch(e){ if(e&&e.name==='AbortError')return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank','noopener');
+}
+// Pantalla de fin. `_wfRefVisible`: la tarjeta ya salió EN ESTE cierre — un repintado del mismo
+// cierre la conserva aunque la fecha recién guardada ya diga «vista hace 0 días».
+let _wfRefVisible=false;
+function renderWfReferido(){
+  const el=document.getElementById('wf-referido'); if(!el)return;
+  el.innerHTML='';
+  if(_wfAskOwner==='referido')_wfAskOwner=null;
+  if(_wfAskOwner)return;
+  const c=_referidoCliente(); if(!c||typeof referidoTarjetaToca!=='function')return;
+  const llave='ax_refvista_'+c.id;
+  let vista=0; try{ vista=parseInt(localStorage.getItem(llave)||'0',10)||0; }catch(_e){}
+  if(!_wfRefVisible&&!referidoTarjetaToca(c,(DB.history&&DB.history[c.id])||[],Date.now(),vista))return;
+  if(!_wfRefVisible){ _wfRefVisible=true; try{ localStorage.setItem(llave,String(Date.now())); }catch(_e){} }
+  _wfAskOwner='referido';
+  const ic=typeof aviIcon==='function'?aviIcon('users',15):'🤝';
+  el.innerHTML=`<div class="wf-push">
+    <div class="wf-push-txt"><b>${ic} ¿Conoces a alguien que quiera empezar?</b>${esc(_referidoPremioTxt())}</div>
+    <div class="wf-push-btns"><button type="button" class="wf-push-on" onclick="wfReferidoCompartir()">Recomendar</button><button type="button" class="wf-push-later" onclick="wfReferidoCerrar()">Ahora no</button></div>
+  </div>`;
+}
+function wfReferidoCerrar(){
+  _wfRefVisible=false;
+  if(_wfAskOwner==='referido')_wfAskOwner=null;
+  const el=document.getElementById('wf-referido'); if(el)el.innerHTML='';
+}
+function wfReferidoCompartir(){ shareReferido(); wfReferidoCerrar(); }
+// Perfil: fija mientras pueda recomendar (sin mínimo de entrenos ni silencio: aquí la busca quien quiere).
+function renderReferidoPerfil(client){
+  const el=document.getElementById('cn-referido'); if(!el)return;
+  if(!_referidoEsAsesorado()||typeof referidoPuede!=='function'||!referidoPuede(client,Date.now())){ el.innerHTML=''; return; }
+  const ic=typeof aviIcon==='function'?aviIcon('users',16):'🤝';
+  el.innerHTML=`<div class="card" style="padding:14px 16px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--t1)"><span style="color:var(--g2);display:inline-flex">${ic}</span>Recomienda AVI</div>
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin:6px 0 12px">${esc(_referidoPremioTxt())} Es por cada persona, sin tope.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn bp bsm" style="min-height:40px" onclick="shareReferido()">Recomendar a alguien</button>
+      <button type="button" class="btn bg bsm" style="min-height:40px" onclick="window.open(AVI_REFERIDO_CONDICIONES,'_blank','noopener')">Ver condiciones</button>
+    </div>
+  </div>`;
 }
 
 function startRoutineNow(routineId){
@@ -2904,10 +2981,14 @@ function showWorkoutFinish(routine,stats){
   // por cierre, por rareza y valor: el hito manda (solo cae en 2/4/8/12/24/52 semanas), luego el
   // push (que ya trae su propio silencio de 7 días) y por último compartir, que se puede hacer
   // después desde el muro. Mismo criterio que A2 cediéndole el turno a «Comparte AVI» en «Hoy».
+  // v700: «Recomienda AVI» entra DESPUÉS del push y ANTES de compartir en el muro — sale como mucho
+  // una vez cada 14 días y solo a quien tiene coach, así que casi siempre le deja el turno al muro.
   _wfAskOwner=null;
+  _wfRefVisible=false;
   renderWfLogro(); // v639: logro nuevo o semana completa → invitar a compartir (toma el turno)
   if(typeof renderWfMilestoneAsk==='function')renderWfMilestoneAsk(); // A4: el opt-in de logros EN el hito
   renderWfPushNudge(); // v325: activar notificaciones en el momento de máximo compromiso
+  renderWfReferido(); // v700: recomendar con premio (solo plan con coach)
   _wfCmtyRoutineName=(routine&&routine.name)||''; if(typeof renderWfCmtyShare==='function')renderWfCmtyShare(); // v3-a: compartir en el muro
   if(typeof cmtyOnWorkoutFinished==='function')cmtyOnWorkoutFinished(); // C3: refresca el snapshot de comunidad (debounced) al terminar
   document.getElementById('workout-finish').classList.add('on');

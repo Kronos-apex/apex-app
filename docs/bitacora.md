@@ -4,7 +4,38 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
-## ⏮️ 2026-10-03 — v699: el canal por el que llegó quien se registra
+## ⏮️ 2026-10-04 — v700: «Recomienda AVI» con premio
+
+- **Pedido del PO** (después de conectar Instagram): poner el plan de referidos también en la app. Sus decisiones
+  (AskUserQuestion): premio **$20.000 menos en el siguiente mes de quien recomienda por cada persona que pague su
+  primer mes de virtual o presencial, SIN TOPE**; la invitación sale **al terminar un entreno** (máx. 1 vez cada 14
+  días) **y fija en el perfil**; **solo para plan con coach**. La web ya publica las condiciones en
+  avientrena.com/ayuda#referidos y el mensaje de WhatsApp de quien llega por `/de/referido` termina en «Quien me
+  recomendó: » (avi-web 0d42497 y 67b79db).
+- **Medido antes de diseñar (R0.1, Supabase solo lectura)**: 11 personas con plan con coach (4 sin tier + 7 premium),
+  2 menores; **8 la verían hoy** (adultas, ≥3 entrenos terminados, al día, entrenaron en 30 días). 9 son AVI PRO: no
+  tienen mes con coach que descontar.
+- **avi-core (puras)**: `referidoPuede` (plan 'coach', no `isMenor`, ni `overdue` ni `inactive`),
+  `referidoTarjetaToca` (+ ≥3 terminados y no vista en 14 días; una fecha guardada en el FUTURO no la apaga para
+  siempre), `referidoMensaje` (enlace `/de/referido`, coach y nombre de PILA de quien recomienda — el apellido no
+  viaja). `referidoUrl()` es función porque `AVI_WEB_HOST` se declara más abajo en el archivo.
+- **App**: la tarjeta entra al sistema de TURNOS del cierre (F13) entre el push y el muro, guarda CUÁNDO se vio
+  (`ax_refvista_<cid>`, local) y un repintado del mismo cierre la conserva (`_wfRefVisible`). Perfil: `#cn-referido`
+  junto a la tarjeta de pago, con «Recomendar a alguien» y «Ver condiciones». Salida única `shareReferido`: menú de
+  compartir del teléfono o, sin él, WhatsApp eligiendo contacto. El banner «¿Te sirve AVI?» (v370, sin premio) se
+  calla con quien tiene premio: dos pedidos para lo mismo se anulan. Al coach nunca le sale.
+- **AVI_NEWS**: no (R3.3) — la tarjeta se explica sola y vive en el perfil.
+- **QA (Julián 🟡, Lucas 🔴 → corregido antes de publicar)**: (1) 🔴 el coach en «Mi entrenamiento» SÍ veía la
+  invitación (entra con `loggedAs='client'` + `tier:'premium'`) → guard `_referidoEsAsesorado` (`COACH_SELF`/
+  `AUTH_ROLE`), y el harness ahora lo simula por esa misma puerta; (2) sin edad se presumía adulto, contra la regla
+  de v671 → se exige edad ≥18; (3) salía también en gracia (con «Tu plan venció» en «Hoy»), sin ningún pago y en
+  cortesía → solo plan `active`/`expiring` y `clientIsBillable`; (4) el mensaje sin nombre del coach decía «Cuando
+  escribas» → «Cuando le escribas al entrenador». Aviso que queda: a 360×640 la tarjeta empuja «Continuar →» por
+  debajo del borde (se alcanza con scroll; sale como mucho cada 14 días).
+- **Verificado**: suite 1440/1440 (4 nuevos: 3 de funciones puras + candado 🔒 de las conexiones) · `_sabotaje-v700`
+  22/22 (control verde) · `_verify-referido` 27/27 en navegador (cierre, perfil, compartir y su respaldo por
+  WhatsApp, 14 días, AVI PRO/menor/vencido/en gracia/sin edad/coach en «Mi entrenamiento» sin tarjeta, banner sin premio que cede y su control, claro y
+  oscuro, 360 px con «Muy grande», cero errores) · smoke OK.
 
 - **Pedido del PO**: medir qué canal (Instagram, TikTok, el estado de WhatsApp, una recomendación…) trae a quien se
   registra, ANTES de lanzar la estrategia de redes. Contexto medido el mismo día: los 22 asesorados llegaron por él

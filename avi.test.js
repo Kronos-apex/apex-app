@@ -106,6 +106,12 @@ const {
   communityWorkoutPayload,
   leadPending,
   shareBannerEligible,
+  REFERIDO_CADA_DIAS,
+  REFERIDO_PREMIO,
+  referidoUrl,
+  referidoPuede,
+  referidoTarjetaToca,
+  referidoMensaje,
   weekStreak,
   longestWeekStreak,
   errReportGate,
@@ -2622,6 +2628,62 @@ test('shareBannerEligible: solo tras ≥3 sesiones FINALIZADAS y respetando el s
   assert.strictEqual(shareBannerEligible(fin(5), now, +now - 86400000), true);
   // sin sesiones → no
   assert.strictEqual(shareBannerEligible([], now, 0), false);
+});
+
+// v700 · REFERIDOS (decisión del PO 4-oct-2026): premio solo para plan con coach, nunca a un menor,
+// nunca con el plan vencido o pausado; la tarjeta del cierre necesita 3 entrenos terminados y sale
+// como mucho una vez cada 14 días.
+test('referidoPuede: plan con coach, adulto con edad conocida, y plan AL DÍA o por vencer', () => {
+  const now = D(2026, 10, 4, 12);
+  const alDia = { payments: [{ dueDate: D(2026, 10, 20).toISOString() }] };
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: 30 }, now), true, 'premium al día');
+  assert.strictEqual(referidoPuede({ ...alDia, age: 30 }, now), true, 'creado por el coach sin tier = tiene coach');
+  assert.strictEqual(referidoPuede({ tier: 'premium', age: 30, payments: [{ dueDate: D(2026, 10, 6).toISOString() }] }, now), true, 'por vencer: sigue pagando');
+  // v671 · SIN EDAD NO SE PRESUME ADULTO (QA Julián/Lucas de v700: la primera versión decía lo contrario).
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: '' }, now), false, 'sin edad no se sabe si es menor');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium' }, now), false, 'sin campo de edad, tampoco');
+  // Sin un mes que esa persona pague, no hay descuento que ofrecer (QA Lucas de v700).
+  assert.strictEqual(referidoPuede({ tier: 'premium', age: 30, payments: [{ dueDate: D(2026, 10, 1).toISOString() }] }, now), false, 'en gracia: «Hoy» ya le dice que venció');
+  assert.strictEqual(referidoPuede({ tier: 'premium', age: 30, payments: [] }, now), false, 'sin ningún pago todavía');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: 30, courtesy: true }, now), false, 'cortesía: no se le cobra');
+  assert.strictEqual(referidoPuede({ ...alDia, id: '_self', tier: 'premium', age: 30 }, now), false, 'el asesorado sintético del coach');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'app', age: 30 }, now), false, 'AVI PRO no tiene coach: no hay premio');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'libre', age: 30 }, now), false, 'plan gratis: no hay mes que descontar');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: 16 }, now), false, 'un menor nunca');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: 18 }, now), true, 'a los 18 ya es adulto');
+  assert.strictEqual(referidoPuede({ tier: 'premium', age: 30, payments: [{ dueDate: D(2026, 8, 1).toISOString() }] }, now), false, 'vencido hace dos meses');
+  assert.strictEqual(referidoPuede({ ...alDia, tier: 'premium', age: 30, suspended: true }, now), false, 'pausado por el coach');
+  assert.strictEqual(referidoPuede(null, now), false);
+});
+
+test('referidoTarjetaToca: 3 entrenos terminados y no vista en 14 días (una fecha del futuro no la apaga)', () => {
+  const now = D(2026, 10, 4, 12);
+  const c = { tier: 'premium', age: 30, payments: [{ dueDate: D(2026, 10, 20).toISOString() }] };
+  const fin = n => Array.from({ length: n }, (_, i) => ({ date: D(2026, 9, 1 + i), finishedAt: 'x' }));
+  assert.strictEqual(referidoTarjetaToca(c, fin(3), now, 0), true, '3 terminados, nunca vista');
+  assert.strictEqual(referidoTarjetaToca(c, fin(2), now, 0), false, 'solo 2 terminados');
+  assert.strictEqual(referidoTarjetaToca(c, [...fin(2), { date: D(2026, 10, 4), doneSets: 2, totalSets: 9 }], now, 0), false, 'una parcial en curso no cuenta');
+  const hace = d => +now - d * 864e5;
+  assert.strictEqual(referidoTarjetaToca(c, fin(5), now, hace(REFERIDO_CADA_DIAS - 1)), false, 'vista hace 13 días');
+  assert.strictEqual(referidoTarjetaToca(c, fin(5), now, hace(REFERIDO_CADA_DIAS)), true, 'vista hace 14 días');
+  assert.strictEqual(referidoTarjetaToca(c, fin(5), now, +now + 30 * 864e5), true, 'fecha guardada en el futuro: no la apaga para siempre');
+  assert.strictEqual(referidoTarjetaToca({ ...c, tier: 'app' }, fin(9), now, 0), false, 'sin coach no hay tarjeta aunque entrene mucho');
+  assert.strictEqual(referidoTarjetaToca({ ...c, age: 15 }, fin(9), now, 0), false, 'menor: nunca');
+});
+
+test('referidoMensaje: lleva el enlace de referidos, el coach y el nombre de pila de quien recomienda', () => {
+  assert.strictEqual(referidoUrl(), 'https://avientrena.com/de/referido');
+  assert.strictEqual(REFERIDO_PREMIO, 20000);
+  const m = referidoMensaje('Prueba Gómez', 'Andrés Martínez');
+  assert.ok(m.includes('https://avientrena.com/de/referido'), m);
+  assert.ok(m.includes('con Andrés Martínez en AVI'), m);
+  assert.ok(m.includes('Cuando le escribas a Andrés, dile que vas de parte de Prueba.'), m);
+  assert.ok(!m.includes('Gómez'), 'solo el nombre de pila: el apellido no viaja');
+  const sinCoach = referidoMensaje('Prueba', '');
+  assert.ok(sinCoach.startsWith('Estoy entrenando en AVI'), sinCoach);
+  assert.ok(sinCoach.includes('Cuando le escribas al entrenador, dile que vas de parte de Prueba.'), sinCoach);
+  assert.ok(!/Mi Coach|undefined|null/.test(sinCoach + referidoMensaje('', '')), 'nada inventado ni vacío a la vista');
+  assert.ok(!referidoMensaje('', 'Andrés').includes('de parte de'), 'sin nombre no se pide «de parte de»');
 });
 
 test('communitySnapshot: destila racha/semana/nivel/logros/hoy (server-side, no inflable)', () => {
@@ -23275,6 +23337,37 @@ test('🔒 v699 · la política dice que guardamos el canal y para qué; la vers
   const v = (coach.match(/const LEGAL_V='([0-9-]+)'/) || [])[1];
   assert.strictEqual(v, '2026-10-03');
   assert.ok(pol.includes('**Versión:** ' + v), 'la versión de la política no coincide con LEGAL_V');
+});
+
+test('🔒 v700 · «Recomienda AVI»: turno en el cierre, tarjeta en el perfil y el banner sin premio cede', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, firma, largo) => { const i = src.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return src.slice(i, i + largo); };
+  // Cierre: después del push y antes del muro (F13: UN pedido por cierre), con la marca del cierre puesta a cero.
+  const wf = cuerpo(e4, 'function showWorkoutFinish(', 12000);
+  const push = wf.indexOf('renderWfPushNudge();'), ref = wf.indexOf('renderWfReferido();'), muro = wf.indexOf('renderWfCmtyShare();');
+  assert.ok(push > 0 && ref > push && muro > ref, 'el turno de «Recomienda AVI» no va entre el push y el muro');
+  assert.ok(wf.indexOf('_wfRefVisible=false;') > 0 && wf.indexOf('_wfRefVisible=false;') < ref, 'la tarjeta de un cierre anterior se cuela en este');
+  // La tarjeta del cierre: respeta el turno, solo al asesorado, decide avi-core y guarda CUÁNDO se vio.
+  const r = cuerpo(e4, 'function renderWfReferido(', 1800);
+  assert.ok(/if\(_wfAskOwner\)return;/.test(r), 'no cede el turno');
+  assert.ok(/referidoTarjetaToca\(c,/.test(r), 'no le pregunta a avi-core si toca');
+  assert.ok(/localStorage\.setItem\(llave,String\(Date\.now\(\)\)\)/.test(r), 'no guarda que ya se vio: saldría en cada cierre');
+  assert.ok(/_wfAskOwner='referido';/.test(r), 'no toma el turno: se apilaría con el muro');
+  // El coach: en «Mi entrenamiento» entra con loggedAs='client' y tier premium — `loggedAs` solo NO basta.
+  const guard = cuerpo(e4, 'function _referidoEsAsesorado(', 200);
+  assert.ok(/CUR\.loggedAs==='client'/.test(guard) && /!COACH_SELF/.test(guard) && /AUTH_ROLE!=='coach'/.test(guard), 'el guard no excluye al coach en su propio entrenamiento');
+  assert.ok(/if\(!_referidoEsAsesorado\(\)\)return null;/.test(cuerpo(e4, 'function _referidoCliente(', 300)), 'la tarjeta del cierre no usa el guard del coach');
+  // Perfil y banner de «Hoy».
+  assert.ok(/renderPaymentCard\(client\);\s*renderReferidoPerfil\(client\);/.test(cuerpo(e4, 'function renderClientProfile(', 6000)), 'el perfil no pinta la tarjeta');
+  const rp = cuerpo(e4, 'function renderReferidoPerfil(', 600);
+  assert.ok(/if\(!_referidoEsAsesorado\(\)\|\|/.test(rp) && /referidoPuede\(client,Date\.now\(\)\)/.test(rp), 'el perfil no usa el guard del coach o no le pregunta a avi-core');
+  const sb = cuerpo(e4, 'function renderShareBanner(', 900);
+  assert.ok(/if\(typeof referidoPuede==='function'&&_referidoEsAsesorado\(\)&&referidoPuede\(client,Date\.now\(\)\)\)\{ el\.style\.display='none'; return; \}/.test(sb), 'quien tiene premio recibe también el banner sin premio');
+  // Una sola salida, con el mensaje de avi-core.
+  assert.ok(/referidoMensaje\(c\.name,/.test(cuerpo(e4, 'async function shareReferido(', 600)), 'el mensaje no sale de avi-core');
+  assert.ok(/<div id="wf-referido"><\/div>/.test(html) && /<div id="cn-referido"><\/div>/.test(html), 'faltan los contenedores en index.html');
 });
 
 // ══════════════════════════════════════════════════════

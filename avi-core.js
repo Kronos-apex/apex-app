@@ -4054,6 +4054,61 @@ function shareBannerEligible(sessions, now, snoozeUntil) {
   return finished >= SHARE_MIN_SESSIONS;
 }
 
+// ── REFERIDOS: «Recomienda AVI» con premio (v700, decisión del PO 4-oct-2026) ──────────────────
+// Quien entrena con coach (virtual o presencial) paga $20.000 menos su siguiente mes por cada persona
+// que llegue por su recomendación y pague su primer mes de virtual o presencial, SIN TOPE. La invitación
+// sale (1) al TERMINAR un entreno, como mucho una vez cada REFERIDO_CADA_DIAS días, y (2) fija en el
+// perfil. Las condiciones públicas viven en avientrena.com/ayuda#referidos (avi-web, FAQ).
+// 🔒 Solo plan con coach (`clientPlan` 'coach'): a quien no paga un mes no hay mes que descontarle — a
+//    esa gente le sigue saliendo el «¿Te sirve AVI?» de v370, sin premio.
+// 🔒 Nunca a un menor: es una invitación a traer clientes, y AVI no le hace marketing a menores. Y SIN
+//    EDAD NO SE PRESUME ADULTO (regla de v671): `isMenor('')` da false, así que aquí se exige la edad.
+// 🔒 Solo con el plan al día o por vencer, y nunca a quien no se le cobra (`clientIsBillable`: cortesía
+//    o el asesorado sintético del coach): el premio es un descuento sobre un mes que esa persona paga.
+// 🔒 El coach entrenando en «Mi entrenamiento» entra con `tier:'premium'` y vista de asesorado: eso lo
+//    corta la UI (`COACH_SELF`/`AUTH_ROLE`), porque su ficha no lleva ninguna marca que avi-core vea.
+// Puras: la UI solo pinta lo que devuelvan.
+const REFERIDO_CADA_DIAS = 14;
+const REFERIDO_PREMIO = 20000;
+// Función y no constante: `AVI_WEB_HOST` se declara más abajo en este archivo (una `const` leída antes
+// de su línea revienta la carga entera de avi-core).
+function referidoUrl() { return 'https://' + AVI_WEB_HOST + '/de/referido'; }
+// ¿Esta persona puede recomendar con premio? (decide la tarjeta del perfil, que está siempre).
+function referidoPuede(client, now) {
+  if (!client || clientPlan(client) !== 'coach' || !clientIsBillable(client)) return false;
+  if (!(parseInt(client.age) >= TMB_MENOR_EDAD)) return false;
+  // Solo con el plan AL DÍA o por vencer. Fuera quedan: vencido (`overdue`), pausado (`inactive`), sin
+  // ningún pago todavía (`pending`), cortesía, y también la GRACIA — vencido hace ≤7 días: ahí «Hoy» ya
+  // le dice «Tu plan venció» y prometerle un descuento en «tu siguiente mes» se contradice (QA Lucas).
+  const st = MS.getStatus(client, now);
+  return st === 'active' || st === 'expiring';
+}
+// ¿Le toca la tarjeta al TERMINAR este entreno? Además de poder recomendar: que ya le haya sacado
+// provecho (SHARE_MIN_SESSIONS sesiones terminadas, el mismo umbral del banner de v370) y que no la
+// haya visto en los últimos REFERIDO_CADA_DIAS días. `lastShown` es CUÁNDO se le mostró (no cuándo
+// la usó): verla ya cuenta, para que no salga en cada cierre. Una fecha guardada en el FUTURO (reloj
+// del teléfono movido) no vale: si valiera, la tarjeta no volvería a salir nunca.
+function referidoTarjetaToca(client, sessions, now, lastShown) {
+  if (!referidoPuede(client, now)) return false;
+  const t = +new Date(now == null ? Date.now() : now);
+  const v = +lastShown || 0;
+  if (v && v <= t && t - v < REFERIDO_CADA_DIAS * 864e5) return false;
+  let fin = 0;
+  (sessions || []).forEach(s => { if (sessionFinished(s)) fin++; });
+  return fin >= SHARE_MIN_SESSIONS;
+}
+// El mensaje que la persona le manda a su amigo. Lleva su nombre de pila para que el amigo diga de
+// parte de quién va: la web le pide ese nombre al escribirle al coach («Quien me recomendó: »), y sin
+// él el coach no sabe a quién darle el descuento. Sin nombre del coach no se inventa uno.
+function referidoMensaje(nombre, coach) {
+  const n = String(nombre || '').trim().split(/\s+/)[0] || '';
+  const k = String(coach || '').trim();
+  const kPila = k.split(/\s+/)[0] || '';
+  let msg = `Estoy entrenando ${k ? 'con ' + k + ' ' : ''}en AVI y me está sirviendo 💪 Si quieres empezar, prueba la app gratis: ${referidoUrl()}`;
+  if (n) msg += kPila ? `\nCuando le escribas a ${kPila}, dile que vas de parte de ${n}.` : `\nCuando le escribas al entrenador, dile que vas de parte de ${n}.`;
+  return msg;
+}
+
 // ── Resumen del PROPIO entrenamiento del coach para su panel (idea Camilo 2026-07-18) ──
 // PURA. El coach entrena con "Mi entrenamiento" (COACH_SELF, en su fila propia); esto destila su
 // historial en las 3 cifras de la tarjeta "Mi entrenamiento" del Inicio: racha de semanas, días
@@ -12261,6 +12316,12 @@ function canalLabel(c) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    REFERIDO_CADA_DIAS,
+    REFERIDO_PREMIO,
+    referidoUrl,
+    referidoPuede,
+    referidoTarjetaToca,
+    referidoMensaje,
     CANAL_RE,
     CANAL_TTL_DIAS,
     canalFromSearch,
