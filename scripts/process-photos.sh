@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
 OUT_DIR="$APP_DIR/media/exercises"
-IN_DIR="${1:-$APP_DIR/../fotos-nuevas}"   # default: Desktop/apex/fotos-nuevas
+IN_DIR="${1:-$APP_DIR/../_ARCHIVO/fotos-en-proceso/fotos-nuevas}"   # default: Desktop/AVI/_ARCHIVO/fotos-en-proceso/fotos-nuevas
 
 SIZE=720          # lado del cuadrado final (px)
 QUALITY=3         # mjpeg q:v (2=mejor … 5=más liviano). 3 = buen balance

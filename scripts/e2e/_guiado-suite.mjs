@@ -19,7 +19,7 @@ const APP = `http://localhost:${PORT}/`;
 import { EMAIL, PASS } from './_creds.mjs';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PROFILE = process.env.TEMP + '/cdp-guiado-' + Date.now();
-const SHOTS = 'C:/Users/KRONOS/Desktop/AVI/_shots-guiado';
+const SHOTS = process.env.TEMP + '/avi-shots-guiado';   // fuera del escritorio (orden del 4-oct-2026)
 mkdirSync(SHOTS, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(...a);

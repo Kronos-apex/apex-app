@@ -1612,7 +1612,7 @@ plan en grande», con acceso directo desde «Tu comida de hoy».
 - [ ] 📧 **Otras 3 plantillas de correo con el mismo molde premium** (magic link, restablecer contraseña, invitación) — hoy siguen con el diseño crudo de Supabase. Menos visibles que el de confirmación → menor prioridad. Mismo patrón que `confirm-signup.html`. Opción fuerte a futuro: código OTP de 6 dígitos en vez de enlace (elimina el miedo de raíz).
 - [ ] ⚖️ Legal: revisión de ABOGADO de `legal/` + botones "descargar mis datos" / "eliminar mi cuenta" (derecho de supresión). Al cambiar textos: subir `LEGAL_V`.
 - [ ] 🏪 Play Store: política de privacidad con URL pública (`legal/` ya se sirve en Pages — validar si basta), borrado self-service (mismo item legal), formulario Data Safety, cuenta dev US$25
-- [ ] 🎬 Videos: 106 ejercicios sin video (`Desktop/AVI/videos-faltantes.json`; decisión vigente = UN video por ejercicio)
+- [ ] 🎬 Videos: 106 ejercicios sin video (`Desktop/AVI/DOCUMENTOS/videos/videos-faltantes.json`; decisión vigente = UN video por ejercicio)
 - [ ] 📸 Fotos: versión mujer 24/109; 22 stock por reemplazar (`Desktop/FOTOS-STOCK-POR-REEMPLAZAR.txt`); foto de victoria dedicada para workout-finish
 - [ ] Stripe / Mercado Pago — cobro automático (Nequi es el parche actual)
 - [ ] `payment.planType` para MRR segmentado + widget MRR proyectado

@@ -15,7 +15,7 @@ De cuatro columnas puestas lado a lado (A = estado actual, B, C, D), **el PO eli
 > **B · «El Compromiso» — el día tiene UNA promesa.** El entreno del día ocupa la primera
 > pantalla entera como superficie esmeralda; el resto del día cede a una tira de chips.
 
-Catálogo navegable y capturas: `Desktop/AVI/DISENO-2026-08-19/preview-direcciones.html`
+Catálogo navegable y capturas: `Desktop/AVI/DOCUMENTOS/diseno/DISENO-2026-08-19/preview-direcciones.html`
 (+ `capturas/`, + los dos informes de origen). **Ábrelo antes de escribir una línea**: la
 descripción en prosa no reemplaza ver las cuatro columnas juntas.
 

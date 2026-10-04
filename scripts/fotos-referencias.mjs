@@ -182,7 +182,7 @@ if (arg('--revisar')) {
   //    va en ingles y VERBATIM del doc del PO — es lo que da la serie cohesiva.
   let ESTILO = '';
   try {
-    ESTILO = readFileSync(new URL('../../PROMPTS-EJERCICIOS-AVI.md', import.meta.url), 'utf8').split('```')[1].trim();
+    ESTILO = readFileSync(new URL('../../DOCUMENTOS/fotos-ejercicios/PROMPTS-EJERCICIOS-AVI.md', import.meta.url), 'utf8').split('```')[1].trim();
   } catch (e) { /* el doc vive fuera del repo; si no esta, se avisa abajo */ }
   if (!ESTILO || ESTILO.length < 400) {
     console.error('🔴 No pude leer el BLOQUE DE ESTILO de PROMPTS-EJERCICIOS-AVI.md — la hoja saldria sin el look AVI.');
@@ -356,7 +356,7 @@ if (arg('--generar')) {
   if (!ids.length) { console.error('Dime qué ids generar: --generar e240 e235'); process.exit(1); }
   // El BLOQUE DE ESTILO va VERBATIM de PROMPTS-EJERCICIOS-AVI.md: es lo que da la serie
   // cohesiva y lo decidió el PO (incluido el #10E0A0 del pecho). No se reescribe aquí.
-  const ESTILO = readFileSync(new URL('../../PROMPTS-EJERCICIOS-AVI.md', import.meta.url), 'utf8')
+  const ESTILO = readFileSync(new URL('../../DOCUMENTOS/fotos-ejercicios/PROMPTS-EJERCICIOS-AVI.md', import.meta.url), 'utf8')
     .split('```')[1];
   if (!ESTILO || ESTILO.length < 400) { console.error('No pude leer el BLOQUE DE ESTILO del doc'); process.exit(1); }
   const MODELO = process.env.MODELO || 'gemini-3-pro-image';

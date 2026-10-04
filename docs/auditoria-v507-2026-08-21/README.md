@@ -20,7 +20,7 @@ reportó**, y los 4 archivos `.output` quedaron en 0 bytes. Los informes de Juli
 rescataron del transcripto; Lucas y Mateo se relanzaron el 21-ago sobre el mismo `4478afd`.
 Es la razón por la que las fechas de los informes no coinciden.
 
-**Capturas de Lucas:** `C:\Users\KRONOS\Desktop\AVI\capturas-auditoria-v507\` (29 PNG, 7,7 MB).
+**Capturas de Lucas:** `C:\Users\KRONOS\Desktop\AVI\_ARCHIVO\capturas\capturas-auditoria-v507\` (29 PNG, 7,7 MB).
 Fuera del repo a propósito.
 
 ---
