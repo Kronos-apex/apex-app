@@ -1,6 +1,6 @@
 # Política de Cookies y Almacenamiento Local de AVI
 
-**Versión:** 2026-10-01 · **Vigente desde:** 1 de octubre de 2026
+**Versión:** 2026-10-03 · **Vigente desde:** 3 de octubre de 2026
 
 ## 1. Resumen
 
@@ -11,6 +11,7 @@
 - **Estadísticas de visitas sin cookies:** usamos Vercel Web Analytics, que cuenta visitas de forma agregada (qué página se vio, desde qué país, en qué tipo de dispositivo y de dónde llegó la visita) **sin guardar nada en tu dispositivo** y sin identificarte.
 - **Las letras de la página** se sirven desde nuestro propio sitio; tu navegador no se conecta a Google Fonts.
 - **El orientador** («¿Por dónde empiezo?») guarda tus respuestas en el almacenamiento de la pestaña mientras la tienes abierta, solo para armar el mensaje si eliges escribirnos por WhatsApp. Se borra al cerrar la pestaña.
+- **El canal por el que llegaste** (por ejemplo, el enlace de nuestro Instagram) se recuerda en el almacenamiento de la pestaña mientras navegas, para que la app sepa de dónde vienes y para que el mensaje de WhatsApp, si eliges escribirnos, lo diga (lo ves antes de enviarlo). Se borra al cerrar la pestaña.
 - Los enlaces a WhatsApp o a otros sitios te llevan a servicios con sus propias políticas.
 
 ## 3. La app AVI
@@ -22,6 +23,7 @@ La app no usa cookies, pero guarda en tu dispositivo:
 - **La app misma** (sus archivos), para que abra rápido y funcione sin conexión.
 - **Tus preferencias**, como el tema claro u oscuro y el tamaño de la letra.
 - **La suscripción a notificaciones**, solo si las activas.
+- **El canal por el que llegaste**, desde que abres la app por uno de nuestros enlaces hasta que creas tu cuenta (como mucho 30 días); al crearla pasa a tu perfil.
 
 Todo esto es **necesario para que la app funcione**, se queda en tu dispositivo y no se usa para seguirte en otros sitios ni para publicidad.
 

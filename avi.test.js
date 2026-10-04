@@ -23196,6 +23196,88 @@ test('🔒 R18 · la bienvenida no le promete un coach a quien viene a probar el
 });
 
 // ══════════════════════════════════════════════════════
+// v699 · EL CANAL POR EL QUE LLEGÓ (pedido del PO, 3-oct-2026: medir qué canal trae a quien se registra)
+// ══════════════════════════════════════════════════════
+test('🔒 v699 · canalFromSearch: el canal válido, la web sin canal, y nada de lo que no tenga la forma', () => {
+  const f = core.canalFromSearch;
+  assert.strictEqual(f('?origen=web&canal=ig-bio'), 'ig-bio');
+  assert.strictEqual(f('?canal=tiktok'), 'tiktok', 'el canal vale aunque no venga origen=web');
+  assert.strictEqual(f('?origen=web'), 'web', 'de la web sin canal → «web», no null');
+  assert.strictEqual(f('?origen=web&canal=IG'), 'web', 'mayúsculas no son un canal: cae a «web»');
+  assert.strictEqual(f(''), null, 'sin nada → null: no se inventa');
+  assert.strictEqual(f('?canal=%3Cscript%3E'), null);
+  assert.strictEqual(f('?canal=-ig'), null, 'no empieza con guion');
+  assert.strictEqual(f('?canal=' + 'a'.repeat(25)), null, 'tope de largo');
+  assert.strictEqual(f('?canal=a'), null, 'una sola letra no es un canal');
+});
+
+test('🔒 v699 · canalRecord: vale 30 días; fecha ilegible, futura o vencida → null', () => {
+  const ahora = Date.parse('2026-10-03T12:00:00Z');
+  const hace = d => new Date(ahora - d * 864e5).toISOString();
+  assert.deepStrictEqual(core.canalRecord({ c: 'ig-bio', at: hace(2) }, ahora), { c: 'ig-bio', at: hace(2) });
+  assert.ok(core.canalRecord({ c: 'ig-bio', at: hace(29.9) }, ahora), '29,9 días todavía vale');
+  assert.strictEqual(core.canalRecord({ c: 'ig-bio', at: hace(30.1) }, ahora), null, 'vencido');
+  assert.strictEqual(core.canalRecord({ c: 'ig-bio', at: hace(-1) }, ahora), null, 'una fecha del futuro no vale');
+  assert.strictEqual(core.canalRecord({ c: 'ig-bio', at: 'ayer' }, ahora), null);
+  assert.strictEqual(core.canalRecord({ c: 'ig-bio' }, ahora), null, 'sin fecha no vale');
+  assert.strictEqual(core.canalRecord({ c: '<b>', at: hace(1) }, ahora), null, 'la forma se revisa OTRA vez al leer');
+  assert.strictEqual(core.canalRecord(null, ahora), null);
+  assert.strictEqual(core.canalRecord('ig-bio', ahora), null);
+  assert.strictEqual(core.CANAL_TTL_DIAS, 30);
+});
+
+test('🔒 v699 · canalLabel: nombre para el coach; un canal nuevo de la web se muestra tal cual', () => {
+  assert.strictEqual(core.canalLabel('ig-bio'), 'Instagram (enlace de la bio)');
+  assert.strictEqual(core.canalLabel('referido'), 'recomendación de un cliente');
+  assert.strictEqual(core.canalLabel('feria-guaduas'), 'feria-guaduas', 'la web puede estrenar un canal sin publicar app');
+  assert.strictEqual(core.canalLabel('<b>'), '');
+  assert.strictEqual(core.canalLabel(null), '');
+});
+
+test('🔒 v699 · se guarda AL LLEGAR (inline, antes de los módulos), con la MISMA forma, y el primero manda', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf("q.get('canal')");
+  assert.ok(i > 0, 'falta la captura del canal en index.html');
+  const bloque = html.slice(i, html.indexOf('</script>', i));
+  assert.ok(i < html.indexOf('<script src="avi-core.js'), 'la captura quedó después de los módulos: el retorno de Google la perdería');
+  const re = (bloque.match(/\/(\^\[a-z0-9\][^/]*\$)\/\.test\(c\)/) || [])[1];
+  assert.strictEqual(re, core.CANAL_RE.source, 'la forma del canal en index.html y en avi-core se separaron');
+  assert.ok(/q\.get\('origen'\)==='web' \? 'web' : null/.test(bloque), 'de la web sin canal tiene que quedar «web»');
+  assert.ok(/if\(!c \|\| localStorage\.getItem\('ax_canal'\)\) return;/.test(bloque), 'el primer canal no puede pisarse');
+  assert.ok(/localStorage\.setItem\('ax_canal', JSON\.stringify\(\{c:c, at:new Date\(\)\.toISOString\(\)\}\)\)/.test(bloque), 'no se guarda {c, at}');
+});
+
+test('🔒 v699 · el canal entra al perfil al crear la cuenta, se suelta después y la ficha lo muestra', () => {
+  const fs = require('fs'), path = require('path');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const ini = coach.indexOf('async function _provisionFreeClient(');
+  const fin = coach.indexOf('\nfunction ', ini + 10);
+  const prov = coach.slice(ini, fin > 0 ? fin : ini + 4000);
+  assert.ok(/canal:_canalDeLlegada\(\),/.test(prov), 'la cuenta nueva no guarda el canal');
+  const cre = prov.indexOf('UD.createFromClient(rec');
+  const suelta = prov.indexOf("localStorage.removeItem('ax_canal')");
+  assert.ok(cre > 0 && suelta > cre, 'el canal se suelta antes de crear la fila (o no se suelta)');
+  const lee = coach.slice(coach.indexOf('function _canalDeLlegada('), coach.indexOf('function _canalDeLlegada(') + 400);
+  assert.ok(/canalRecord\(JSON\.parse\(localStorage\.getItem\('ax_canal'\)\|\|'null'\), Date\.now\(\)\)/.test(lee),
+    'lo guardado no pasa por la regla de avi-core (forma y 30 días)');
+  const det = coach.slice(coach.indexOf('async function openDetail('), coach.indexOf('async function openDetail(') + 6000);
+  assert.ok(/const _cl=canalLabel\(c\.canal\.c\); if\(_cl\) _stats\.push\('llegó por '\+_cl\);/.test(det), 'la ficha del coach no dice por dónde llegó');
+});
+
+test('🔒 v699 · la política dice que guardamos el canal y para qué; la versión legal subió', () => {
+  const fs = require('fs'), path = require('path');
+  const pol = fs.readFileSync(path.join(__dirname, 'legal', 'politica-tratamiento-datos.md'), 'utf8');
+  const coo = fs.readFileSync(path.join(__dirname, 'legal', 'politica-cookies.md'), 'utf8');
+  const coach = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  assert.ok(/\*\*Cómo nos conociste:\*\*/.test(pol) && /Saber por cuál canal nos llega la gente/.test(pol), 'la política no dice qué se guarda del canal ni para qué');
+  assert.ok((coo.match(/\*\*El canal por el que llegaste\*\*/g) || []).length === 2, 'cookies: falta la web o la app');
+  const v = (coach.match(/const LEGAL_V='([0-9-]+)'/) || [])[1];
+  assert.strictEqual(v, '2026-10-03');
+  assert.ok(pol.includes('**Versión:** ' + v), 'la versión de la política no coincide con LEGAL_V');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

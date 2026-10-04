@@ -12219,8 +12219,53 @@ function mudanzaQueuePending(entries) {
 }
 
 // ── Exportación dual: navegador (global) + Node (module.exports) ──
+// ── EL CANAL POR EL QUE LLEGÓ (v699, 3-oct-2026) ─────────────────────────────────────────────────────
+// Pedido del PO: medir qué canal (Instagram, TikTok, el estado de WhatsApp, una recomendación…) trae a
+// quien se registra. La web pone `?canal=<etiqueta>` en el enlace a la app (avi-web `lib/canales.ts`); la
+// app lo guarda al LLEGAR (`ax_canal`, inline en index.html, antes de los módulos: el retorno de Google
+// pierde la dirección) y lo pasa al perfil al crear la cuenta (`_provisionFreeClient`).
+// 🔒 La etiqueta es un SLUG cerrado por forma, no una lista: la web puede estrenar un canal sin publicar
+//    una versión de la app, y nada que venga de la dirección entra al perfil si no cumple la forma.
+// 🔒 Caduca: quien llegó por Instagram hace dos meses y se registra hoy no cuenta como Instagram.
+// 🔒 Sin canal y con `?origen=web` → 'web' (vino por la web pero no por un enlace de canal); sin nada → null
+//    (llegó directo a la app: un enlace del coach, el ícono instalado…). «No sé» nunca se rellena.
+const CANAL_RE = /^[a-z0-9][a-z0-9-]{1,23}$/;
+const CANAL_TTL_DIAS = 30;
+const CANAL_LABELS = {
+  'ig-bio': 'Instagram (enlace de la bio)', 'ig-historia': 'Instagram (historia)',
+  'ig-publicacion': 'Instagram (publicación)', 'tiktok': 'TikTok', 'facebook': 'Facebook',
+  'wa-estado': 'estado de WhatsApp', 'wa-perfil': 'perfil de WhatsApp', 'google': 'Google',
+  'qr': 'código QR', 'referido': 'recomendación de un cliente', 'web': 'la web (sin canal)',
+};
+function canalFromSearch(search) {
+  try {
+    const q = new URLSearchParams(search || '');
+    const c = q.get('canal');
+    if (c && CANAL_RE.test(c)) return c;
+    return q.get('origen') === 'web' ? 'web' : null;
+  } catch (e) { return null; }
+}
+// Lo guardado al llegar → lo que entra al perfil, o null si no sirve (forma inválida, fecha ilegible o vencida).
+function canalRecord(raw, now) {
+  if (!raw || typeof raw !== 'object' || typeof raw.c !== 'string' || !CANAL_RE.test(raw.c)) return null;
+  const t = Date.parse(raw.at);
+  if (!raw.at || isNaN(t)) return null;
+  const ahora = (now instanceof Date) ? now.getTime() : Number(now);
+  if (!(ahora >= t) || ahora - t > CANAL_TTL_DIAS * 864e5) return null;
+  return { c: raw.c, at: new Date(t).toISOString() };
+}
+function canalLabel(c) {
+  if (!c || typeof c !== 'string' || !CANAL_RE.test(c)) return '';
+  return CANAL_LABELS[c] || c;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    CANAL_RE,
+    CANAL_TTL_DIAS,
+    canalFromSearch,
+    canalRecord,
+    canalLabel,
     MOOD_STATES,
     applyMood,
     waPhone,

@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=698">
+<link rel="stylesheet" href="styles.css?v=699">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -218,6 +218,18 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
            JS para que siga estando si un módulo no carga (la app ya reventó 3 veces así). -->
       <a class="cin-web" href="https://avientrena.com/" target="_blank" rel="noopener">¿Primera vez aquí? Conoce AVI, los planes y los precios →</a>
     </div>
+    <!-- v699 · EL CANAL POR EL QUE LLEGÓ (pedido del PO, 3-oct): la web manda `?canal=<etiqueta>` (y `?origen=web`).
+         Se guarda AL LLEGAR, aquí e inline: el retorno de «Entrar con Google» vuelve sin la dirección, y un módulo
+         puede no cargar. El primero manda (no se pisa). Lo lee `_provisionFreeClient` al crear la cuenta, con la
+         regla de `canalRecord` (avi-core): la misma forma (`CANAL_RE`, un test compara las dos) y 30 días de vida. -->
+    <script>
+    (function(){ try{
+      var q=new URLSearchParams(location.search), c=q.get('canal');
+      if(!(c && /^[a-z0-9][a-z0-9-]{1,23}$/.test(c))) c = q.get('origen')==='web' ? 'web' : null;
+      if(!c || localStorage.getItem('ax_canal')) return;
+      localStorage.setItem('ax_canal', JSON.stringify({c:c, at:new Date().toISOString()}));
+    }catch(e){} })();
+    </script>
     <!-- v696 (R18, decisión del PO) · QUIEN LLEGA DE «PROBAR LA APP GRATIS» VIENE A CREAR UNA CUENTA.
          La web lo manda con `?origen=web` (avi-web `lib/site.ts`, solo «Probar»; «Entrar a la app» no la
          lleva). Entonces «Crear cuenta» es el botón principal, «Iniciar sesión» pasa a «Ya tengo cuenta» y
@@ -1436,19 +1448,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=698"></script>
-<script src="muscle-map.js?v=698"></script>
-<script src="exercise-muscles.js?v=698"></script>
+<script src="avi-core.js?v=699"></script>
+<script src="muscle-map.js?v=699"></script>
+<script src="exercise-muscles.js?v=699"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=698"></script>
-<script src="app-2-login.js?v=698"></script>
-<script src="app-3-coach.js?v=698"></script>
-<script src="app-4-entreno.js?v=698"></script>
-<script src="app-5-salud.js?v=698"></script>
-<script src="app-6-extra.js?v=698"></script>
-<script src="app-7-community.js?v=698"></script>
+<script src="app-1-infra.js?v=699"></script>
+<script src="app-2-login.js?v=699"></script>
+<script src="app-3-coach.js?v=699"></script>
+<script src="app-4-entreno.js?v=699"></script>
+<script src="app-5-salud.js?v=699"></script>
+<script src="app-6-extra.js?v=699"></script>
+<script src="app-7-community.js?v=699"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

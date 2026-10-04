@@ -663,6 +663,9 @@ async function _provisionFreeClient(authUser, p){
     // los 13 auto-registrados eran inalcanzables: sin push y sin número, no había CÓMO escribirles.
     notes:(p&&p.notes)||'', phone:(p&&p.phone)||'', selfReg:true, tier:'libre', routines:[],
     consent:p.consent||null, // prueba de autorización (fecha + versión de los textos legales)
+    // v699 · por qué canal llegó (Instagram, TikTok, una recomendación…), si llegó por un enlace con canal.
+    // Sin dato no se inventa: queda null y la ficha no dice nada.
+    canal:_canalDeLlegada(),
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
@@ -680,7 +683,17 @@ async function _provisionFreeClient(authUser, p){
   // y sin fila esa escritura no tiene dónde caer.
   _selfRegLimAlert(rec,_genRes);
   _selfRegMinorAlert(rec);
+  // El canal ya quedó en SU perfil: se suelta, para no atribuírselo a otra cuenta creada en este aparato.
+  try{ localStorage.removeItem('ax_canal'); }catch(e){}
   return rec;
+}
+
+// v699 · Lo que `index.html` guardó al llegar, pasado por la regla de avi-core (forma y 30 días).
+function _canalDeLlegada(){
+  try{
+    if(typeof canalRecord!=='function') return null;
+    return canalRecord(JSON.parse(localStorage.getItem('ax_canal')||'null'), Date.now());
+  }catch(e){ return null; }
 }
 
 
@@ -1414,7 +1427,8 @@ async function backToCoachPanel(){
 // 2026-10-02 (v698): a pedido del responsable salen de la política y de los términos su número de cédula
 // y su dirección física; queda el domicilio (Guaduas, Cundinamarca) con correo y WhatsApp. El Decreto 1377
 // (art. 13) no pide la cédula; si exige una dirección física lo resuelve el abogado (notas, «Datos del responsable»).
-const LEGAL_V='2026-10-02'; // v697 publicó 2026-10-01: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
+const LEGAL_V='2026-10-03'; // v699: la política dice que guardamos el canal por el que llegaste (y para qué).
+// v697 publicó 2026-10-01: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
 // /terminos y /cookies): cubre la web, WhatsApp, pagos y lo presencial, con los datos del responsable y sin
 // las notas internas que antes veía quien se registraba. Quien aceptó una versión anterior conserva la suya
 // guardada; si hay que pedirles la nueva lo dice el abogado (legal/notas-para-el-abogado.md, pregunta 9).
@@ -1981,6 +1995,10 @@ async function openDetail(id,_silent){
       // teléfono lo reportó — «no sé» no se pinta como «no los tiene».
       if(_dv.push && _dv.push!=='granted') _stats.push(_dv.pushTexto+' ⚠️');
     }
+  }catch(e){}
+  // (2-ter) v699 · POR QUÉ CANAL LLEGÓ, si se registró por un enlace con canal. Solo se dice cuando hay dato.
+  try{
+    if(c.canal && typeof canalLabel==='function'){ const _cl=canalLabel(c.canal.c); if(_cl) _stats.push('llegó por '+_cl); }
   }catch(e){}
   const _statsEl=document.getElementById('d-stats');
   if(_stats.length){ _statsEl.style.display='flex'; _statsEl.textContent=_stats.join(' · '); }

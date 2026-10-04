@@ -1,0 +1,143 @@
+[
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\index.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\index.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\index.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\index.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\precios.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\precios.html",
+    "line": 0,
+    "snippet": "Card inside card (div)"
+  },
+  {
+    "antipattern": "em-dash-overuse",
+    "name": "Em-dash overuse",
+    "description": "Em-dash saturation in body copy is an AI cadence tell. Advisory only: humans use em-dashes legitimately, so this fires only on saturation — at least 8 em-dashes (— or --) at a density near one per 500 characters of body text — never on a long article that uses a few. Prefer commas, colons, periods, or parentheses.",
+    "severity": "advisory",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\precios.html",
+    "line": 0,
+    "snippet": "13 em-dashes in body text",
+    "advisory": true
+  },
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\coaching.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  },
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\la-app.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  },
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\resultados.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\resultados.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\resultados.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "nested-cards",
+    "name": "Nested cards",
+    "description": "Cards inside cards create visual noise and excessive depth. Flatten the hierarchy — use spacing, typography, and dividers instead of nesting containers.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\resultados.html",
+    "line": 0,
+    "snippet": "Card inside card (p)"
+  },
+  {
+    "antipattern": "flat-type-hierarchy",
+    "name": "Flat type hierarchy",
+    "description": "Dominant heading and body roles are separated by less than 1.25× at every step, leaving the size hierarchy flat. Add at least one stronger size step.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\KRONOS\\Desktop\\AVI\\avi-web\\.next\\server\\app\\ayuda.html",
+    "line": 0,
+    "snippet": "Role sizes: body 16px, h1 16px, h2 16px, h3 16px (largest adjacent step 1.00:1; target 1.25:1)"
+  }
+]

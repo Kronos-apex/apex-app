@@ -1,6 +1,6 @@
 # Política de Tratamiento de Datos Personales de AVI
 
-**Versión:** 2026-10-02 · **Vigente desde:** 2 de octubre de 2026
+**Versión:** 2026-10-03 · **Vigente desde:** 3 de octubre de 2026
 
 Esta política explica qué datos personales recogemos en AVI, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos. Se rige por el artículo 15 de la Constitución Política, la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).
 
@@ -25,6 +25,7 @@ Se aplica a los datos que recogemos en el sitio web avientrena.com, en la aplica
 - **Comunicaciones:** mensajes del chat de la app, fotos o videos que envíes por ese chat y mensajes que nos escribas por WhatsApp o correo.
 - **Pagos:** plan contratado, fechas, montos y los comprobantes que nos envíes. **No recibimos ni guardamos datos de tarjetas ni claves bancarias:** los pagos se hacen por Bre-B desde tu propio banco.
 - **Datos técnicos de la app:** versión instalada en tu dispositivo, errores técnicos de la app (para corregir fallas) y, si las activas, la suscripción a notificaciones del dispositivo.
+- **Cómo nos conociste:** si llegas a la app por uno de nuestros enlaces (por ejemplo, el de nuestro Instagram o el de una recomendación), guardamos con tu cuenta el nombre de ese canal y la fecha. No dice nada de tu salud ni de otras personas.
 - **Visitas a la web:** estadísticas de visitas sin cookies (qué página se visitó, desde qué país, tipo de dispositivo y de dónde llegó la visita). Son datos agregados que no identifican a la persona.
 - **Datos de un acudiente:** si quien se registra es menor de edad, el nombre de su padre, madre o acudiente y, si lo da, su teléfono.
 
@@ -41,6 +42,7 @@ Los datos de salud son datos sensibles. Su entrega es **voluntaria**, se piden c
 - Comunicarnos contigo por el chat de la app, WhatsApp, correo o notificaciones, incluidos recordatorios de entrenamiento y avisos de renovación de tu plan.
 - Gestionar tus pagos y el estado de tu plan.
 - Entender de forma agregada cómo se usan la web y la app para mejorarlas.
+- Saber por cuál canal nos llega la gente (Instagram, TikTok, una recomendación…), para dedicarle el esfuerzo al que funciona.
 - Atender tus consultas, reclamos y solicitudes.
 - Proteger la seguridad de la app y prevenir usos indebidos.
 - Publicar una ficha con tus resultados en la web, **solo si lo autorizas de forma expresa** (sección 12).
