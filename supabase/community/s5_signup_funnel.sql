@@ -9,7 +9,7 @@
 --
 -- 🔒 SIN NINGÚN DATO DE LA PERSONA. Una fila por paso VISTO con tres cosas: el número de paso, si
 -- llegó desde la web o no, y el canal (una etiqueta como «ig-bio», nunca un nombre). Ni id, ni correo,
--- ni nombre, ni dirección de red guardada: no se puede cruzar con nadie. La fila la arma
+-- ni nombre, ni dirección de red guardada: la fila no trae ningún identificador. La fila la arma
 -- `signupFunnelRow` (avi-core.js), que es su ESPEJO; los tests leen ESTE archivo y fallan si se separan.
 --
 -- Pasos: 1-7 = el paso del asistente que se mostró · 8 = creó la cuenta con su correo (le falta

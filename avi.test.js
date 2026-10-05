@@ -23454,16 +23454,21 @@ test('🔒 R22 · la medición del registro está cableada en los cuatro puntos,
   assert.ok(ok8 > su.indexOf('if(res.error){') && ok8 < su.indexOf('if(!session){'), 'el paso 8 no va justo después de crear la cuenta');
   // 9: antes de salir a Google (después ya no hay página que lo mande).
   const go = cuerpo('function wzGoogle(', 2600);
-  assert.ok(/_wzFunnel\(9\);\s*loginWithGoogle\(\);/.test(go), 'el paso 9 no se manda antes de salir a Google');
+  // y se le da un respiro ACOTADO para llegar: la salida a Google navega fuera y puede cortar la fila en vuelo.
+  const espera = go.match(/Promise\.race\(\[_wzFunnel\(9\), new Promise\(r=>setTimeout\(r,(\d+)\)\)\]\)\.then\(\(\)=>loginWithGoogle\(\)\);/);
+  assert.ok(espera, 'el paso 9 no se manda antes de salir a Google (o sale sin esperar a que llegue)');
+  assert.ok(parseInt(espera[1]) <= 500, 'medir no puede frenar la salida a Google más de medio segundo: ' + espera[1] + ' ms');
   // 10: la cuenta quedó lista.
   const prov = cuerpo('async function _provisionFreeClient(', 4500);
   assert.ok(/^\s*_wzFunnel\(10\);.*$/m.test(prov) && prov.indexOf('_wzFunnel(10);') < prov.indexOf('return rec;'), 'el paso 10 no se cuenta al crear la cuenta');
+  // 🔴 ANTES de soltar el canal: `_wzFunnel` lo lee de localStorage y después ya no está (lo cazó Julián).
+  assert.ok(prov.indexOf('_wzFunnel(10);') < prov.indexOf("localStorage.removeItem('ax_canal')"), 'el paso 10 se cuenta después de soltar el canal: sale siempre sin canal');
   // El emisor: una vez por paso, sellado en localhost, la fila de avi-core y sin await.
   const f = cuerpo('function _wzFunnel(', 1400);
   assert.ok(/if\(_wzFunnelSent\.has\(paso\)\)return;/.test(f), 'el mismo paso se puede contar dos veces en una carga');
   assert.ok(/cloudWriteSealed\(location\.hostname,window\.AVI_ALLOW_CLOUD_WRITE\)\)return;/.test(f), 'un harness en localhost escribiría en la medición de producción');
   assert.ok(/const row=signupFunnelRow\(paso,srch,canal\);/.test(f), 'la fila no la arma avi-core');
-  assert.ok(/AUTH\.client\(\)\.from\('signup_funnel'\)\.insert\(row\)\.then\(/.test(f), 'no inserta la fila');
+  assert.ok(/return AUTH\.client\(\)\.from\('signup_funnel'\)\.insert\(row\)\.then\(\(\)=>\{\},\(\)=>\{\}\);/.test(f), 'no inserta la fila, no la devuelve o un fallo puede romper la salida a Google');
   assert.ok(!/await /.test(f), 'medir no puede frenar un registro: nada de await');
 });
 
@@ -23498,6 +23503,22 @@ test('🔒 R22 · paso 7: casillas → Google → «o con mi correo»; el correo
   assert.match(css, /\.wz-mailtoggle\{[^}]*min-height:44px/, 'el enlace del correo es un objetivo táctil chico');
 });
 
+test('🔒 R22 · un error del paso 7 se VE: el aviso vive arriba y el botón abajo', () => {
+  // Quien bajó hasta Google y lo toca sin las casillas recibía el aviso fuera de la vista: el botón parecía no hacer
+  // nada (lo cazó Lucas). El aviso lo pinta UNA función que además lo trae a la vista.
+  const fs = require('fs'), path = require('path');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const err = coach.slice(coach.indexOf('  _err(msg){'), coach.indexOf('  _err(msg){') + 300);
+  assert.ok(/e\.classList\.add\('on'\);\s*try\{\s*e\.scrollIntoView\(\{block:'nearest'\}\);/.test(err), 'el aviso no se trae a la vista');
+  const go = coach.slice(coach.indexOf('function wzGoogle('), coach.indexOf('function wzGoogle(') + 2600);
+  assert.ok(/if\(!consent\)\{ WZ\._err\(_wzConsentError\(\)\); return; \}/.test(go), 'Google sin casillas no avisa por la función que se ve');
+  // _sync() borra el aviso: el del nombre va DESPUÉS, o se pinta y se borra en el acto.
+  assert.ok(/WZ\._sync\(\); WZ\._err\('Escribe tu nombre/.test(go), 'el aviso del nombre se borra en el acto');
+  const su = coach.slice(coach.indexOf('async function signupClient('), coach.indexOf('async function signupClient(') + 5000);
+  assert.ok(!/err\.classList\.add\('on'\)/.test(su), 'signupClient pinta un aviso que puede quedar fuera de la vista');
+  assert.ok((su.match(/WZ\._err\(/g) || []).length >= 5, 'signupClient dejó de avisar en algún caso');
+});
+
 test('🔒 R22 · quien llega de la web no ve «Instala la app» compitiendo con «Crear cuenta»', () => {
   const fs = require('fs'), path = require('path');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -23509,6 +23530,8 @@ test('🔒 R22 · quien llega de la web no ve «Instala la app» compitiendo con
   // este mismo test lo aprobaba leyendo el texto; lo cazó `_verify-registro-r22`. La marca va en la raíz.
   assert.ok(i < html.indexOf('id="install-hint"'), 'control: el script ya no va antes del bloque, revisar este test');
   assert.ok(!/getElementById\('install-hint'\)/.test(bloque), 'el script busca #install-hint antes de que exista');
+  // Y antes de los `return` tempranos de los botones: un cambio en ellos no puede apagarlo en silencio (lo vio Julián).
+  assert.ok(bloque.indexOf("classList.add('av-desde-web')") < bloque.indexOf('if(!cta) return;'), 'la marca quedó detrás de un return temprano');
   // Con CLASE propia: app-6 maneja el display de #install-hint, y dos mecanismos sobre la misma propiedad se tapan (v505).
   assert.ok(!/install-hint[^;]*style\.display/.test(bloque), 'se apagó con style.display: pelea con app-6');
   assert.match(fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8'), /\.av-desde-web #install-hint\{display:none!important\}/);

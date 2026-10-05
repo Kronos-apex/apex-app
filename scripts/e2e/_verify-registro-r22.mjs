@@ -160,6 +160,21 @@ for (const t of TELEFONOS) {
   ok(abierto.foco === 'su-email' && abierto.correoVisible, 'el foco queda en el correo, a la vista', { foco: abierto.foco, visible: abierto.correoVisible });
   await shot(`${t.n}-7-abierto`);
 
+  // ── Google SIN las casillas: el aviso vive arriba del paso y el botón abajo; tiene que quedar a la vista (Lucas) ──
+  await ev(`document.querySelector('#wz-s-account .wz-gbtn-main').scrollIntoView({block:'center'}); true`); await sleep(250);
+  // Control: con Google centrado, la zona de arriba del paso (donde vive el aviso) está FUERA de la vista. Si no lo
+  // estuviera, el check de abajo aprobaría sin que nada se moviera.
+  const antes = await ev(`(()=>{ const q=document.querySelector('#wz-s-account .wz-q').getBoundingClientRect(); const c=document.getElementById('cin-signup').getBoundingClientRect();
+    return { arribaFuera: q.bottom < Math.max(0,c.top), titulo:Math.round(q.top), recuadro:Math.round(c.top) }; })()`);
+  await ev(`document.querySelector('#wz-s-account .wz-gbtn-main').click(); true`); await sleep(400);
+  const aviso = await ev(`(()=>{ const e=document.getElementById('su-err'); const b=e.getBoundingClientRect(); const c=document.getElementById('cin-signup').getBoundingClientRect();
+    return { visible: getComputedStyle(e).display!=='none' && b.height>0 && b.top>=Math.max(0,c.top) && b.bottom<=Math.min(innerHeight,c.bottom),
+      top:Math.round(b.top), texto:(e.innerText||'').trim().slice(0,60), google: window.__google }; })()`);
+  ok(antes.arribaFuera, 'control: con Google a la vista, la parte de arriba del paso está fuera de la vista', antes);
+  ok(aviso.visible && /autoriza|casilla|acudiente|18/i.test(aviso.texto), 'Google sin casillas: el aviso queda a la vista', aviso);
+  ok(aviso.google === 0, 'sin casillas no se sale a Google', aviso.google);
+  await shot(`${t.n}-7-aviso`);
+
   // ── Google, con las casillas marcadas ──
   await ev(`['su-ck-general','su-ck-salud','su-ck-adulto'].forEach(i=>{const c=document.getElementById(i); if(c&&!c.checked) c.click();}); true`);
   await ev(`document.querySelector('#wz-s-account .wz-gbtn-main').click(); true`); await sleep(400);

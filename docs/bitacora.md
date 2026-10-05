@@ -4,6 +4,28 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-05 — v701 (R22): Google primero en el registro, el plan en la vitrina y la medición del registro
+
+- **Origen**: la auditoría final de avientrena.com (artifact T94U4yDWFvXSdwXPbVMqxn), 8 cambios aprobados con «dale con
+  todos». La web salió en avi-web e4d12a6 (argumento de PRO, plan y fecha en Resultados, imágenes al compartir).
+- **Medido antes (auth.users, solo conteos)**: desde el 7-jul, autorregistro con Google 6 de 6 terminaron; con correo
+  2 de 4 (los otros 2 contestaron las 7 preguntas y nunca confirmaron el correo).
+- **Paso 7**: casillas arriba (la ley las pide para los dos caminos), «Continuar con Google» principal y el correo
+  plegado tras «o crear la cuenta con mi correo» (`wzShowMail`, foco en el correo; `WZ.open` lo vuelve a plegar).
+  **Paso 2**: subtítulos sin jerga; los valores guardados no cambian. **`?origen=web`**: «Instala la app» se aparta
+  (clase `av-desde-web` en `<html>`).
+- **Vitrina**: `avi_showcase.plan` (s4, nula, CHECK gratis/pro/coach; backfill: 3 coach, 1 pro) — `showcasePlanOf`.
+- **Medición**: `signup_funnel` (s5, solo INSERT, sin SELECT; 5 columnas sin ningún identificador) — `signupFunnelRow`
+  + `_wzFunnel` (pasos 1-7 al pintar, 8 cuenta por correo, 9 salida a Google con hasta 400 ms para llegar, 10 cuenta
+  lista). Sellada en localhost; `ax_origen` en sessionStorage para la vuelta de Google.
+- **Defectos propios cazados antes de producción**: el script inline buscaba `#install-hint` antes de que existiera
+  (lo cazó el recorrido real, el test estático lo aprobaba) · Julián: el paso 10 se contaba DESPUÉS de soltar el
+  canal; el paso 9 podía cortarse al navegar · Lucas: tocar Google sin las casillas dejaba el aviso fuera de la vista
+  (ahora `WZ._err` lo trae a la vista y todo el paso 7 avisa por ahí).
+- **QA**: suite 1440 → 1449 en los 4 modos, hook 14/14, `_sabotaje-r22` (36 filas), `_verify-registro-r22` 44/44 en
+  390×844 y 360×640. **Pendiente del PO**: recoger la marca durante el registro (Google sigue bajo el borde; maqueta
+  hecha), la cuenta Hotmail del 15-sep, la foto de la bienvenida.
+
 ## ⏮️ 2026-10-04 — v700: «Recomienda AVI» con premio
 
 - **Pedido del PO** (después de conectar Instagram): poner el plan de referidos también en la app. Sus decisiones

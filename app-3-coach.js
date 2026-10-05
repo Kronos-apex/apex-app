@@ -683,9 +683,11 @@ async function _provisionFreeClient(authUser, p){
   // y sin fila esa escritura no tiene dónde caer.
   _selfRegLimAlert(rec,_genRes);
   _selfRegMinorAlert(rec);
+  // R22 · la cuenta quedó lista: 8 contra 10 dice cuántos se pierden en el correo. ANTES de soltar el canal:
+  // `_wzFunnel` lo lee de ahí, y después ya no está (lo cazó Julián).
+  _wzFunnel(10);
   // El canal ya quedó en SU perfil: se suelta, para no atribuírselo a otra cuenta creada en este aparato.
   try{ localStorage.removeItem('ax_canal'); }catch(e){}
-  _wzFunnel(10); // R22 · la cuenta quedó lista: 8 contra 10 dice cuántos se pierden en el correo
   return rec;
 }
 
@@ -1699,7 +1701,9 @@ const WZ={
     v=Math.min(max,Math.max(min,v+delta));
     el.value=(field==='su-weight')?(Math.round(v*10)/10):Math.round(v);
   },
-  _err(msg){ const e=document.getElementById('su-err'); if(e){e.textContent=msg;e.classList.add('on');} },
+  // R22 · el aviso vive ARRIBA del paso, y en el 7 la persona toca Google o «Crear cuenta» ABAJO: sin traerlo a la
+  // vista, el botón parecía no hacer nada (lo cazó Lucas). `nearest` no mueve nada si ya se ve.
+  _err(msg){ const e=document.getElementById('su-err'); if(e){e.textContent=msg;e.classList.add('on'); try{ e.scrollIntoView({block:'nearest'}); }catch(_e){} } },
   _valid(){
     if(this.steps[this.cur]==='wz-s-name'){
       const n=document.getElementById('su-name');
@@ -1742,10 +1746,10 @@ async function signupClient(){
     notes:(g('su-notes')&&g('su-notes').value||'').trim(),
   };
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
-  if(!v.ok){err.textContent=v.error;err.classList.add('on');return;}
+  if(!v.ok){WZ._err(v.error);return;}
   const consent=_wzConsent();
-  if(!consent){err.textContent=_wzConsentError();err.classList.add('on');return;}
-  if(!AUTH.ready()){err.textContent='Sin conexión para crear la cuenta. Revisa tu internet.';err.classList.add('on');return;}
+  if(!consent){WZ._err(_wzConsentError());return;}
+  if(!AUTH.ready()){WZ._err('Sin conexión para crear la cuenta. Revisa tu internet.');return;}
   err.classList.remove('on');
   if(btn){btn.disabled=true;}
   try{
@@ -1753,11 +1757,11 @@ async function signupClient(){
     const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,notes:data.notes,selfReg:true,consent};
     let res;
     try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
-    catch(e){ err.textContent='No se pudo crear la cuenta. Intenta de nuevo.';err.classList.add('on');return; }
+    catch(e){ WZ._err('No se pudo crear la cuenta. Intenta de nuevo.');return; }
     if(res.error){
       const m=res.error.message||'';
-      err.textContent=/registered|already|exists/i.test(m)?'Ya existe una cuenta con ese email. Inicia sesión.':('No se pudo crear: '+m);
-      err.classList.add('on');return;
+      WZ._err(/registered|already|exists/i.test(m)?'Ya existe una cuenta con ese email. Inicia sesión.':('No se pudo crear: '+m));
+      return;
     }
     const session=res.data&&res.data.session;
     const user=res.data&&res.data.user;
@@ -1782,11 +1786,11 @@ async function signupClient(){
 function wzGoogle(){
   const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
   const name=(g('su-name')||'').trim();
-  if(!name){ const e=document.getElementById('su-err'); if(e){e.textContent='Escribe tu nombre antes de continuar con Google';e.classList.add('on');} WZ.cur=0; WZ._sync(); return; }
+  if(!name){ WZ.cur=0; WZ._sync(); WZ._err('Escribe tu nombre antes de continuar con Google'); return; }
   // Mismo gate de consentimiento que el registro por email: sin las 3 casillas no se
   // redirige a Google (la evidencia viaja en ax_wz_pending porque OAuth nos saca de la página).
   const consent=_wzConsent();
-  if(!consent){ const e=document.getElementById('su-err'); if(e){e.textContent=_wzConsentError();e.classList.add('on');} return; }
+  if(!consent){ WZ._err(_wzConsentError()); return; }
   try{
     localStorage.setItem('ax_wz_pending', JSON.stringify({
       name, goal:g('su-goal')||null, place:g('su-place')||'gym', level:g('su-level')||'Principiante',
@@ -1800,8 +1804,9 @@ function wzGoogle(){
       ts:Date.now()
     }));
   }catch(e){}
-  _wzFunnel(9);
-  loginWithGoogle();
+  // R22 · la salida a Google navega fuera de la página y puede cortar la fila del paso 9 en vuelo (lo vio Julián):
+  // se le dan hasta 400 ms para llegar, nunca más. Si la medición no se manda (sin red, en local), no se espera nada.
+  Promise.race([_wzFunnel(9), new Promise(r=>setTimeout(r,400))]).then(()=>loginWithGoogle());
 }
 
 // R22 · El correo a un toque: Google va primero porque es el camino que termina (medido: 6 de 6
@@ -1837,7 +1842,7 @@ function _wzFunnel(paso){
     const row=signupFunnelRow(paso,srch,canal);
     if(!row)return;
     _wzFunnelSent.add(paso);
-    AUTH.client().from('signup_funnel').insert(row).then(()=>{},()=>{});
+    return AUTH.client().from('signup_funnel').insert(row).then(()=>{},()=>{});
   }catch(e){}
 }
 
