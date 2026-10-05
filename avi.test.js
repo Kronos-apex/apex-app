@@ -23504,10 +23504,14 @@ test('🔒 R22 · quien llega de la web no ve «Instala la app» compitiendo con
   const i = html.indexOf("get('origen')!=='web') return;");
   assert.ok(i > 0, 'falta el script de quien llega de la web');
   const bloque = html.slice(i, html.indexOf('</script>', i));
-  assert.ok(/getElementById\('install-hint'\); if\(ih\) ih\.classList\.add\('cin-hide-web'\);/.test(bloque), 'el bloque de instalación sigue para quien viene a crear su cuenta');
+  assert.ok(/document\.documentElement\.classList\.add\('av-desde-web'\);/.test(bloque), 'el bloque de instalación sigue para quien viene a crear su cuenta');
+  // 🔴 Este script corre ANTES de que #install-hint exista: buscarlo aquí da null y no apaga nada. Así nació R22 y
+  // este mismo test lo aprobaba leyendo el texto; lo cazó `_verify-registro-r22`. La marca va en la raíz.
+  assert.ok(i < html.indexOf('id="install-hint"'), 'control: el script ya no va antes del bloque, revisar este test');
+  assert.ok(!/getElementById\('install-hint'\)/.test(bloque), 'el script busca #install-hint antes de que exista');
   // Con CLASE propia: app-6 maneja el display de #install-hint, y dos mecanismos sobre la misma propiedad se tapan (v505).
   assert.ok(!/install-hint[^;]*style\.display/.test(bloque), 'se apagó con style.display: pelea con app-6');
-  assert.match(fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8'), /\.cin-hide-web\{display:none!important\}/);
+  assert.match(fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8'), /\.av-desde-web #install-hint\{display:none!important\}/);
   // Y la marca de origen sobrevive a la ida y vuelta de Google, para la medición.
   assert.ok(/sessionStorage\.setItem\('ax_origen','web'\)/.test(bloque), 'el retorno de Google contaría como «app»');
 });

@@ -248,8 +248,10 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       cta.insertBefore(crear, entrar);
       if(web&&web.parentNode) web.parentNode.removeChild(web);
       // R22 · quien viene de la web viene a CREAR SU CUENTA: el bloque «Instala la app», con el botón más llamativo
-      // de la pantalla, competía con «Crear cuenta». Se aparta con CLASE propia (app-6 ya maneja su display, v505).
-      var ih=document.getElementById('install-hint'); if(ih) ih.classList.add('cin-hide-web');
+      // de la pantalla, competía con «Crear cuenta». Se aparta con una CLASE propia (app-6 ya maneja su display, v505)
+      // y en la RAÍZ del documento: este script corre ANTES de que #install-hint exista, así que buscarlo aquí daba
+      // null y no apagaba nada (lo cazó `_verify-registro-r22`, no el test estático).
+      document.documentElement.classList.add('av-desde-web');
     }catch(e){} })();
     </script>
 

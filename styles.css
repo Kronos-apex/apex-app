@@ -2280,7 +2280,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-mailtoggle{display:block;width:100%;min-height:44px;margin-top:8px;background:none;border:0;color:#10E0A0;font-family:inherit;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .wz-mailtoggle[aria-expanded="true"]{display:none}
 /* R22 · quien llega desde la web no ve «Instala la app» en la bienvenida (clase propia: app-6 maneja el display). */
-.cin-hide-web{display:none!important}
+.av-desde-web #install-hint{display:none!important}
 /* Consentimiento Habeas Data (paso 7 del wizard): 3 casillas separadas, ninguna pre-marcada */
 .wz-consent{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
 /* v565 · APAGAR UNA RAMA DEL CONSENTIMIENTO.

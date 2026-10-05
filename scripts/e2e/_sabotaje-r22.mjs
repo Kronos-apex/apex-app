@@ -42,7 +42,9 @@ const SABOTAJES = [
   ['«o con mi correo» no abre nada', 'coach', "  if(box)box.classList.remove('cx-off');\n", ''],
   ['el asistente se reabre con el correo abierto', 'coach', "    const mb=document.getElementById('su-mail-box'); if(mb)mb.classList.add('cx-off');\n", ''],
   ['el enlace del correo sigue a la vista después de abrirlo', 'css', '.wz-mailtoggle[aria-expanded="true"]{display:none}\n', ''],
-  ['«Instala la app» compite con «Crear cuenta» para quien viene de la web', 'html', "      var ih=document.getElementById('install-hint'); if(ih) ih.classList.add('cin-hide-web');\n", ''],
+  ['«Instala la app» compite con «Crear cuenta» para quien viene de la web', 'html', "      document.documentElement.classList.add('av-desde-web');\n", ''],
+  ['vuelve el apagado que busca #install-hint antes de que exista', 'html', "      document.documentElement.classList.add('av-desde-web');", "      var ih=document.getElementById('install-hint'); if(ih) ih.classList.add('av-desde-web');"],
+  ['la regla de estilo no apaga el bloque', 'css', '.av-desde-web #install-hint{display:none!important}', '.av-desde-web #install-hint{opacity:.99}'],
   // ── el paso 2 ──
   ['vuelve la jerga al paso 2', 'html', '<span class="sub">Bajar de peso y marcarte</span>', '<span class="sub">Definición y déficit</span>'],
   ['cambia el valor que guarda el asistente', 'html', "WZ.pick('su-goal','Fuerza',this)", "WZ.pick('su-goal','Ganar fuerza',this)"],
