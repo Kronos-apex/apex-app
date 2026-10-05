@@ -685,6 +685,7 @@ async function _provisionFreeClient(authUser, p){
   _selfRegMinorAlert(rec);
   // El canal ya quedó en SU perfil: se suelta, para no atribuírselo a otra cuenta creada en este aparato.
   try{ localStorage.removeItem('ax_canal'); }catch(e){}
+  _wzFunnel(10); // R22 · la cuenta quedó lista: 8 contra 10 dice cuántos se pierden en el correo
   return rec;
 }
 
@@ -1652,6 +1653,9 @@ const WZ={
     document.querySelectorAll('#cin-signup .wz-chip.on,#cin-signup .wz-gchip.on').forEach(c=>c.classList.remove('on'));
     const d3=document.getElementById('wz-day3'); if(d3)d3.classList.add('on');
     const sd=document.getElementById('su-days'); if(sd)sd.value='3';
+    // R22 · el correo vuelve a quedar plegado: quien abre el asistente otra vez empieza por Google.
+    const mb=document.getElementById('su-mail-box'); if(mb)mb.classList.add('cx-off');
+    const mt=document.getElementById('su-mail-toggle'); if(mt)mt.setAttribute('aria-expanded','false');
     this._sync();
   },
   _sync(){
@@ -1661,6 +1665,7 @@ const WZ={
     const c=document.getElementById('wz-count'); if(c)c.textContent='0'+(this.cur+1)+'/0'+this.steps.length;
     const e=document.getElementById('su-err'); if(e)e.classList.remove('on');
     const sg=document.getElementById('cin-signup'); if(sg)sg.scrollTop=0;
+    _wzFunnel(this.cur+1);
     // v565: la rama de consentimiento se decide con la edad del paso 6, así que se resuelve
     // AL PINTAR el paso de la cuenta (no al teclear: puede volver atrás y corregirla).
     if(typeof wzSyncConsentAge==='function')wzSyncConsentAge();
@@ -1757,6 +1762,7 @@ async function signupClient(){
     const session=res.data&&res.data.session;
     const user=res.data&&res.data.user;
     // 2. Si Supabase exige confirmar correo, no hay sesión aún → provisionará en el 1er login.
+    _wzFunnel(8);
     if(!session){
       err.classList.remove('on');
       toast('📧 Te enviamos un correo para confirmar tu cuenta. Confírmalo e inicia sesión.');
@@ -1794,7 +1800,45 @@ function wzGoogle(){
       ts:Date.now()
     }));
   }catch(e){}
+  _wzFunnel(9);
   loginWithGoogle();
+}
+
+// R22 · El correo a un toque: Google va primero porque es el camino que termina (medido: 6 de 6
+// contra 2 de 4), pero quien no tiene Gmail no puede quedarse sin salida. Abre los mismos campos
+// que lee signupClient, en el sitio, y lleva el foco al correo.
+function wzShowMail(){
+  const box=document.getElementById('su-mail-box');
+  const tg=document.getElementById('su-mail-toggle');
+  if(box)box.classList.remove('cx-off');
+  if(tg)tg.setAttribute('aria-expanded','true');
+  const em=document.getElementById('su-email');
+  if(em){ try{ em.focus({preventScroll:true}); }catch(e){ em.focus(); } try{ em.scrollIntoView({block:'center'}); }catch(e){} }
+}
+
+// R22 · CUÁNTA GENTE LLEGA A CADA PASO DEL REGISTRO (s5_signup_funnel). Una fila por paso, UNA vez
+// por carga de página, SIN NADA de la persona: la fila la arma `signupFunnelRow` (avi-core) con el
+// paso, si llegó desde la web y la etiqueta del canal. No espera respuesta: medir nunca puede
+// frenar un registro. Sellado en localhost como toda escritura (v298).
+const _wzFunnelSent=new Set();
+function _wzFunnel(paso){
+  try{
+    if(_wzFunnelSent.has(paso))return;
+    if(typeof signupFunnelRow!=='function')return;
+    if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE))return;
+    if(typeof AUTH==='undefined'||!AUTH.ready||!AUTH.ready())return;
+    let canal=null;
+    try{ const r=JSON.parse(localStorage.getItem('ax_canal')||'null'); if(r&&typeof r.c==='string')canal=r.c; }catch(e){}
+    // La web manda `?origen=web` y el retorno de Google vuelve SIN la dirección: el script inline de
+    // index.html lo deja en sessionStorage, que sobrevive a esa ida y vuelta en la misma pestaña. El enlace
+    // de confirmación del correo abre otra pestaña y ahí se pierde: ese paso 10 cuenta como 'app'.
+    let srch=location.search;
+    try{ if(sessionStorage.getItem('ax_origen')==='web')srch='?origen=web'; }catch(e){}
+    const row=signupFunnelRow(paso,srch,canal);
+    if(!row)return;
+    _wzFunnelSent.add(paso);
+    AUTH.client().from('signup_funnel').insert(row).then(()=>{},()=>{});
+  }catch(e){}
 }
 
 // Regenerar la semana desde la vista del asesorado (solo modo libre).

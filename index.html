@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=700">
+<link rel="stylesheet" href="styles.css?v=701">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -238,12 +238,18 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     <script>
     (function(){ try{
       if(new URLSearchParams(location.search).get('origen')!=='web') return;
+      // R22 · la medición del registro necesita saber que vino de la web también al volver de Google,
+      // que regresa sin la dirección. sessionStorage sobrevive a esa ida y vuelta en la misma pestaña.
+      try{ sessionStorage.setItem('ax_origen','web'); }catch(e){}
       var cta=document.getElementById('cin-cta'); if(!cta) return;
       var entrar=cta.querySelector('.cin-cta-fill'), crear=cta.querySelector('.cin-cta-out'), web=cta.querySelector('.cin-web');
       if(!entrar||!crear) return;
       crear.className='cin-cta-fill'; entrar.className='cin-cta-out'; entrar.textContent='Ya tengo cuenta';
       cta.insertBefore(crear, entrar);
       if(web&&web.parentNode) web.parentNode.removeChild(web);
+      // R22 · quien viene de la web viene a CREAR SU CUENTA: el bloque «Instala la app», con el botón más llamativo
+      // de la pantalla, competía con «Crear cuenta». Se aparta con CLASE propia (app-6 ya maneja su display, v505).
+      var ih=document.getElementById('install-hint'); if(ih) ih.classList.add('cin-hide-web');
     }catch(e){} })();
     </script>
 
@@ -326,10 +332,10 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <div class="wz-q">¿Cuál es tu <b>objetivo?</b></div>
         <div class="wz-help">Con esto definimos tu enfoque, tus series y tu progresión.</div>
         <div class="wz-chips" data-wzgroup>
-          <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-goal','Perder grasa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-fire"/></svg></span><span class="lab">Perder grasa<span class="sub">Definición y déficit</span></span><span class="tick">✓</span></button>
-          <button type="button" class="wz-chip" style="--c:#10E0A0" onclick="WZ.pick('su-goal','Ganar músculo',this)"><span class="wz-ic"><svg class="ic"><use href="#i-muscle"/></svg></span><span class="lab">Ganar músculo<span class="sub">Hipertrofia y volumen</span></span><span class="tick">✓</span></button>
-          <button type="button" class="wz-chip" style="--c:#5FE3D0" onclick="WZ.pick('su-goal','Recomposición',this)"><span class="wz-ic"><svg class="ic"><use href="#i-recomp"/></svg></span><span class="lab">Recomposición<span class="sub">Bajar grasa, subir músculo</span></span><span class="tick">✓</span></button>
-          <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-goal','Fuerza',this)"><span class="wz-ic"><svg class="ic"><use href="#i-barbell"/></svg></span><span class="lab">Ganar fuerza<span class="sub">Compuestos pesados</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-goal','Perder grasa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-fire"/></svg></span><span class="lab">Perder grasa<span class="sub">Bajar de peso y marcarte</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#10E0A0" onclick="WZ.pick('su-goal','Ganar músculo',this)"><span class="wz-ic"><svg class="ic"><use href="#i-muscle"/></svg></span><span class="lab">Ganar músculo<span class="sub">Que se te note el músculo</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#5FE3D0" onclick="WZ.pick('su-goal','Recomposición',this)"><span class="wz-ic"><svg class="ic"><use href="#i-recomp"/></svg></span><span class="lab">Recomposición<span class="sub">Bajar grasa y ganar músculo a la vez</span></span><span class="tick">✓</span></button>
+          <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-goal','Fuerza',this)"><span class="wz-ic"><svg class="ic"><use href="#i-barbell"/></svg></span><span class="lab">Ganar fuerza<span class="sub">Levantar más en lo básico</span></span><span class="tick">✓</span></button>
           <button type="button" class="wz-chip" style="--c:#A8E060" onclick="WZ.pick('su-goal','Resistencia',this)"><span class="wz-ic"><svg class="ic"><use href="#i-pulse"/></svg></span><span class="lab">Resistencia<span class="sub">Aguante y cardio</span></span><span class="tick">✓</span></button>
           <button type="button" class="wz-chip" style="--c:#7FD1A8" onclick="WZ.pick('su-goal','Salud general',this)"><span class="wz-ic"><svg class="ic"><use href="#i-leaf"/></svg></span><span class="lab">Salud general<span class="sub">Moverte y sentirte bien</span></span><span class="tick">✓</span></button>
         </div>
@@ -430,13 +436,6 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <div class="wz-eyebrow">Paso 07 · Tu cuenta</div>
         <div class="wz-q">Ya casi: crea tu <b>cuenta</b></div>
         <div class="wz-help">Guardamos tu progreso para que nunca lo pierdas. Empiezas con tu <b style="color:#10E0A0">rutina automática</b> hecha con criterio.</div>
-        <label class="cin-lbl" for="su-email">Email</label>
-        <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
-        <label class="cin-lbl">Contraseña</label>
-        <div style="position:relative">
-          <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mín. 8: mayúscula, minúscula y número" autocomplete="new-password" style="padding-right:46px">
-          <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button>
-        </div>
         <!-- Consentimiento Habeas Data (Ley 1581/2012): 3 casillas SEPARADAS, ninguna
              pre-marcada (legal/autorizacion-consentimiento.md §E). signupClient y wzGoogle
              exigen las 3 y guardan la evidencia (fecha/versión) en el perfil. -->
@@ -458,12 +457,28 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
             <div class="wz-help" style="margin-top:8px">Tu coach va a hablar con él o ella antes de empezar. Nada de esto se publica.</div>
           </div>
         </div>
-        <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
-        <div class="wz-or">o</div>
-        <button type="button" class="wz-gbtn" onclick="wzGoogle()">
+        <!-- R22 (5-oct-2026, auditoría final, «dale con todos») · GOOGLE PRIMERO, EL CORREO A UN TOQUE.
+             Medido en auth.users: desde el 7-jul, de quienes se registraron solos, con Google terminaron 6 de 6 y
+             con correo 2 de 4 — los 2 que no contestaron las 7 preguntas y nunca confirmaron el correo. Antes, el
+             correo y la contraseña iban primero y Google al final, debajo del borde del recuadro.
+             🔒 Las casillas van ARRIBA de los dos caminos: la ley las pide para los dos (wzGoogle ya las exigía).
+             🔒 El correo NO desaparece: `wzShowMail()` lo abre en el sitio, y signupClient lee los mismos ids. -->
+        <button type="button" class="wz-gbtn wz-gbtn-main" onclick="wzGoogle()">
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
-          Crear cuenta con Google
+          Continuar con Google
         </button>
+        <div class="wz-ghint">Sin contraseña y sin correo de confirmación</div>
+        <button type="button" class="wz-mailtoggle" id="su-mail-toggle" aria-expanded="false" aria-controls="su-mail-box" onclick="wzShowMail()">o crear la cuenta con mi correo</button>
+        <div id="su-mail-box" class="cx-off">
+          <label class="cin-lbl" for="su-email">Email</label>
+          <input id="su-email" maxlength="100" class="cin-in" type="email" placeholder="tu@email.com" autocomplete="email">
+          <label class="cin-lbl">Contraseña</label>
+          <div style="position:relative">
+            <input id="su-pass" maxlength="100" class="cin-in" type="password" placeholder="mín. 8: mayúscula, minúscula y número" autocomplete="new-password" style="padding-right:46px">
+            <button type="button" onclick="togglePass(this,'su-pass')" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;opacity:.7"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
+          <button class="cin-btn lbtn" style="margin-top:10px" onclick="signupClient()">Crear cuenta y empezar →</button>
+        </div>
         <div class="cin-hint">Cuando quieras, súmale un <b>coach real</b> que ajuste tu plan a ti. 💪</div>
       </div>
     </div>
@@ -1449,19 +1464,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=700"></script>
-<script src="muscle-map.js?v=700"></script>
-<script src="exercise-muscles.js?v=700"></script>
+<script src="avi-core.js?v=701"></script>
+<script src="muscle-map.js?v=701"></script>
+<script src="exercise-muscles.js?v=701"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=700"></script>
-<script src="app-2-login.js?v=700"></script>
-<script src="app-3-coach.js?v=700"></script>
-<script src="app-4-entreno.js?v=700"></script>
-<script src="app-5-salud.js?v=700"></script>
-<script src="app-6-extra.js?v=700"></script>
-<script src="app-7-community.js?v=700"></script>
+<script src="app-1-infra.js?v=701"></script>
+<script src="app-2-login.js?v=701"></script>
+<script src="app-3-coach.js?v=701"></script>
+<script src="app-4-entreno.js?v=701"></script>
+<script src="app-5-salud.js?v=701"></script>
+<script src="app-6-extra.js?v=701"></script>
+<script src="app-7-community.js?v=701"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

@@ -14048,7 +14048,9 @@ test('🔴 v523 · ESPEJO del .sql: los topes de la app y los del servidor no se
     .filter(f => /^s\d+_/.test(f) && f !== 's1_showcase.sql');
   // s3 (v691) no añade topes a la vitrina: es la atadura PRIVADA tarjeta → persona. Sus candados van en su
   // propio test («v691 · la atadura de las tarjetas…»).
-  assert.deepStrictEqual(migraciones, ['s2_showcase_objetivo.sql', 's3_showcase_dueno.sql'],
+  // s4 (R22) añade `plan` con su CHECK: su espejo va en «R22 · ESPEJO s4». s5 (R22) NO toca la vitrina: es la
+  // medición anónima del registro, con su propio espejo («R22 · ESPEJO s5»).
+  assert.deepStrictEqual(migraciones, ['s2_showcase_objetivo.sql', 's3_showcase_dueno.sql', 's4_showcase_plan.sql', 's5_signup_funnel.sql'],
     'apareció una migración nueva de la vitrina sin espejo en este test: ' + migraciones.join(', '));
   // y la tabla NO puede ganar un grant de UPDATE (lección c13c: el INSERT restringe y el
   // UPDATE amplio deja editar la fila hasta el estado prohibido)
@@ -23368,6 +23370,163 @@ test('🔒 v700 · «Recomienda AVI»: turno en el cierre, tarjeta en el perfil 
   // Una sola salida, con el mensaje de avi-core.
   assert.ok(/referidoMensaje\(c\.name,/.test(cuerpo(e4, 'async function shareReferido(', 600)), 'el mensaje no sale de avi-core');
   assert.ok(/<div id="wf-referido"><\/div>/.test(html) && /<div id="cn-referido"><\/div>/.test(html), 'faltan los contenedores en index.html');
+});
+
+// ── R22 · LA AUDITORÍA FINAL DE LA WEB (5-oct-2026, «dale con todos») ─────────────────────
+// Punto 4: cada tarjeta de la vitrina dice con qué plan entrenó la persona (s4_showcase_plan).
+// Punto 8: se mide cuánta gente llega a cada paso del registro, sin saber quién es (s5_signup_funnel).
+// Punto 1 y 6: el paso 7 abre con Google y el paso 2 habla en palabras de la calle.
+const _sqlSinComentarios = archivo => require('fs').readFileSync(require('path').join(__dirname, 'supabase/community', archivo), 'utf8')
+  .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+
+test('🔴 R22 · ESPEJO s4: los tres planes de la app son los del CHECK, y la columna es nula', () => {
+  const sql = _sqlSinComentarios('s4_showcase_plan.sql');
+  const bloque = sql.match(/plan in \(([^)]*)\)/);
+  assert.ok(bloque, 'el .sql dejó de restringir `plan` a una lista');
+  assert.deepStrictEqual([...bloque[1].matchAll(/'([^']+)'/g)].map(m => m[1]), core.SHOWCASE_PLANES,
+    'los planes del servidor y los de la app se separaron');
+  // 🔒 Nula: las tarjetas publicadas antes no se pueden editar desde la app (no hay grant de UPDATE).
+  assert.ok(!/plan text[^;]*not null/i.test(sql), 'la columna `plan` se volvió NOT NULL: rompe las tarjetas ya publicadas');
+  assert.match(sql, /plan is null or/, 'el CHECK dejó de admitir null');
+  assert.ok(!/grant[^;]*update/i.test(sql), 's4 abrió un UPDATE sobre la vitrina');
+});
+
+test('🔒 R22 · showcasePlanOf: el NIVEL de la cuenta en tres valores, y lo desconocido no se inventa', () => {
+  assert.strictEqual(core.showcasePlanOf({ tier: 'libre' }), 'gratis');
+  assert.strictEqual(core.showcasePlanOf({ tier: 'app' }), 'pro');
+  assert.strictEqual(core.showcasePlanOf({ tier: 'premium' }), 'coach');
+  assert.strictEqual(core.showcasePlanOf({}), 'coach', 'la cuenta que creó el coach no trae tier: es su asesorado directo');
+  // La historia lo lleva, y la fila pública solo lo copia si es uno de los tres.
+  const st = core.clientProgressStory({ name: 'Andrea Bernal', age: 33, tier: 'app' }, _HIST_ASTRID, new Date());
+  assert.strictEqual(st.ok, true);
+  assert.strictEqual(st.plan, 'pro');
+  assert.strictEqual(core.showcaseRow(st).plan, 'pro');
+  assert.ok(!('plan' in core.showcaseRow({ ..._STORY_OK, plan: 'vip' })), 'se mandó un plan que el CHECK del servidor rechaza');
+  assert.ok(core.showcaseRow({ ..._STORY_OK, plan: 'vip' }), 'un plan raro NO puede impedir publicar una tarjeta legítima');
+});
+
+test('🔒 R22 · signupFunnelRow: paso, origen y canal — NADA de la persona', () => {
+  assert.deepStrictEqual(core.signupFunnelRow(1, '?origen=web&canal=ig-bio', 'ig-bio'), { paso: 1, origen: 'web', canal: 'ig-bio' });
+  assert.deepStrictEqual(core.signupFunnelRow(10, '', null), { paso: 10, origen: 'app' });
+  assert.deepStrictEqual(core.signupFunnelRow(7, '?origen=otra', undefined), { paso: 7, origen: 'app' }, 'solo «web» cuenta como la web');
+  for (const malo of [0, 11, 2.5, NaN, null, undefined, 'x']) {
+    assert.strictEqual(core.signupFunnelRow(malo, '', null), null, 'paso inválido produjo fila: ' + malo);
+  }
+  // Un canal que no tiene la forma de una etiqueta no viaja (podría ser un nombre).
+  assert.deepStrictEqual(core.signupFunnelRow(3, '', 'Ana Pérez'), { paso: 3, origen: 'app' });
+  assert.deepStrictEqual(core.signupFunnelRow(3, '', '<b>'), { paso: 3, origen: 'app' });
+  // 🔒 La forma de la fila es cerrada: un campo nuevo tiene que pasar por aquí a propósito.
+  const r = core.signupFunnelRow(2, '?origen=web', 'tiktok');
+  assert.deepStrictEqual(Object.keys(r).sort(), ['canal', 'origen', 'paso']);
+});
+
+test('🔴 R22 · ESPEJO s5: los topes de la medición en la app y en el servidor no se pueden separar', () => {
+  const sql = _sqlSinComentarios('s5_signup_funnel.sql');
+  const tope = sql.match(/paso smallint not null check \(paso between 1 and (\d+)\)/);
+  assert.ok(tope, 'el .sql dejó de acotar el paso');
+  assert.strictEqual(parseInt(tope[1]), core.FUNNEL_PASO_MAX, 'el último paso de la app no es el del servidor');
+  const origen = sql.match(/origen text not null check \(origen in \(([^)]*)\)\)/);
+  assert.ok(origen, 'el .sql dejó de restringir `origen`');
+  assert.deepStrictEqual([...origen[1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort(), ['app', 'web']);
+  const canal = sql.match(/canal ~ '([^']+)'/);
+  assert.ok(canal, 'el .sql dejó de restringir la forma del canal');
+  assert.strictEqual(canal[1], core.CANAL_RE.source, 'la forma del canal del servidor y la de avi-core se separaron');
+  // 🔒 Ninguna columna de la persona: solo estas cinco.
+  const cuerpo = sql.slice(sql.indexOf('create table'), sql.indexOf('\n);'));
+  const cols = [...cuerpo.matchAll(/^\s{2}([a-z_]+)\s/gm)].map(m => m[1]);
+  assert.deepStrictEqual(cols, ['id', 'at', 'paso', 'origen', 'canal'], 'la tabla anónima ganó una columna: ' + cols.join(', '));
+  // 🔒 Solo insertar: nadie la lee ni la corrige desde la app.
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /grant insert on table public\.signup_funnel to anon, authenticated;/);
+  assert.ok(!/grant[^;]*(select|update|delete)[^;]*signup_funnel/i.test(sql), 'la tabla anónima se puede leer o editar desde la app');
+  assert.ok(!/for (select|update|delete|all)/i.test(sql), 'apareció una policy que no es de insertar');
+});
+
+test('🔒 R22 · la medición del registro está cableada en los cuatro puntos, sellada y sin esperar respuesta', () => {
+  const fs = require('fs'), path = require('path');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const cuerpo = (firma, largo) => { const i = coach.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return coach.slice(i, i + largo); };
+  // Pasos 1-7: al PINTAR cada paso del asistente.
+  assert.ok(/^\s*_wzFunnel\(this\.cur\+1\);\s*$/m.test(cuerpo('_sync(){', 900)), 'el asistente no cuenta los pasos que muestra');
+  // 8: después de que Supabase aceptó la cuenta (no antes de validar).
+  const su = cuerpo('async function signupClient(', 5000);
+  const ok8 = su.indexOf('_wzFunnel(8);');
+  assert.ok(ok8 > su.indexOf('if(res.error){') && ok8 < su.indexOf('if(!session){'), 'el paso 8 no va justo después de crear la cuenta');
+  // 9: antes de salir a Google (después ya no hay página que lo mande).
+  const go = cuerpo('function wzGoogle(', 2600);
+  assert.ok(/_wzFunnel\(9\);\s*loginWithGoogle\(\);/.test(go), 'el paso 9 no se manda antes de salir a Google');
+  // 10: la cuenta quedó lista.
+  const prov = cuerpo('async function _provisionFreeClient(', 4500);
+  assert.ok(/^\s*_wzFunnel\(10\);.*$/m.test(prov) && prov.indexOf('_wzFunnel(10);') < prov.indexOf('return rec;'), 'el paso 10 no se cuenta al crear la cuenta');
+  // El emisor: una vez por paso, sellado en localhost, la fila de avi-core y sin await.
+  const f = cuerpo('function _wzFunnel(', 1400);
+  assert.ok(/if\(_wzFunnelSent\.has\(paso\)\)return;/.test(f), 'el mismo paso se puede contar dos veces en una carga');
+  assert.ok(/cloudWriteSealed\(location\.hostname,window\.AVI_ALLOW_CLOUD_WRITE\)\)return;/.test(f), 'un harness en localhost escribiría en la medición de producción');
+  assert.ok(/const row=signupFunnelRow\(paso,srch,canal\);/.test(f), 'la fila no la arma avi-core');
+  assert.ok(/AUTH\.client\(\)\.from\('signup_funnel'\)\.insert\(row\)\.then\(/.test(f), 'no inserta la fila');
+  assert.ok(!/await /.test(f), 'medir no puede frenar un registro: nada de await');
+});
+
+test('🔒 R22 · paso 7: casillas → Google → «o con mi correo»; el correo empieza plegado y se abre en el sitio', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('id="wz-s-account"');
+  assert.ok(i > 0, 'falta el paso de la cuenta');
+  const paso = html.slice(i, html.indexOf('<!-- ══ REVEAL', i));
+  const pos = s => { const p = paso.indexOf(s); assert.ok(p > 0, 'no está en el paso 7: ' + s); return p; };
+  // La ley pide las casillas para los dos caminos, así que van arriba de los dos.
+  assert.ok(pos('id="su-ck-general"') < pos('onclick="wzGoogle()"'), 'Google quedó antes de las casillas de autorización');
+  assert.ok(pos('onclick="wzGoogle()"') < pos('id="su-mail-toggle"'), 'Google ya no es el primer camino');
+  assert.ok(pos('id="su-mail-toggle"') < pos('id="su-mail-box"'));
+  // El correo no desaparece: vive plegado dentro de la caja, con los ids que lee signupClient.
+  assert.match(paso, /<div id="su-mail-box" class="cx-off">/, 'el correo no empieza plegado');
+  const caja = paso.slice(pos('id="su-mail-box"'));
+  assert.ok(caja.indexOf('id="su-email"') > 0 && caja.indexOf('id="su-pass"') > 0 && caja.indexOf('onclick="signupClient()"') > 0,
+    'falta el correo, la contraseña o el botón de crear dentro de la caja');
+  assert.strictEqual((html.match(/id="su-email"/g) || []).length, 1, 'el campo de correo quedó duplicado');
+  // Quien lo abre: quita la clase, avisa al lector de pantalla y lleva el foco al correo.
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const sm = coach.slice(coach.indexOf('function wzShowMail('), coach.indexOf('function wzShowMail(') + 700);
+  assert.ok(/box\.classList\.remove\('cx-off'\)/.test(sm) && /setAttribute\('aria-expanded','true'\)/.test(sm) && /em\.focus\(/.test(sm),
+    'wzShowMail no abre la caja, no avisa o no lleva al correo');
+  // Al volver a abrir el asistente, se pliega otra vez.
+  const op = coach.slice(coach.indexOf('  open(){'), coach.indexOf('  open(){') + 800);
+  assert.ok(/mb\.classList\.add\('cx-off'\)/.test(op) && /setAttribute\('aria-expanded','false'\)/.test(op), 'el asistente se reabre con el correo desplegado');
+  // El enlace pasa a desaparecer cuando ya se abrió (no queda un botón que no hace nada).
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.match(css, /\.wz-mailtoggle\[aria-expanded="true"\]\{display:none\}/);
+  assert.match(css, /\.wz-mailtoggle\{[^}]*min-height:44px/, 'el enlace del correo es un objetivo táctil chico');
+});
+
+test('🔒 R22 · quien llega de la web no ve «Instala la app» compitiendo con «Crear cuenta»', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf("get('origen')!=='web') return;");
+  assert.ok(i > 0, 'falta el script de quien llega de la web');
+  const bloque = html.slice(i, html.indexOf('</script>', i));
+  assert.ok(/getElementById\('install-hint'\); if\(ih\) ih\.classList\.add\('cin-hide-web'\);/.test(bloque), 'el bloque de instalación sigue para quien viene a crear su cuenta');
+  // Con CLASE propia: app-6 maneja el display de #install-hint, y dos mecanismos sobre la misma propiedad se tapan (v505).
+  assert.ok(!/install-hint[^;]*style\.display/.test(bloque), 'se apagó con style.display: pelea con app-6');
+  assert.match(fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8'), /\.cin-hide-web\{display:none!important\}/);
+  // Y la marca de origen sobrevive a la ida y vuelta de Google, para la medición.
+  assert.ok(/sessionStorage\.setItem\('ax_origen','web'\)/.test(bloque), 'el retorno de Google contaría como «app»');
+});
+
+test('🔒 R22 · el paso 2 habla en palabras de la calle, no en jerga de gimnasio', () => {
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('id="wz-s-goal"');
+  const paso = html.slice(i, html.indexOf('id="wz-s-place"', i));
+  const subs = [...paso.matchAll(/<span class="sub">([^<]+)<\/span>/g)].map(m => m[1]);
+  assert.strictEqual(subs.length, 6, 'control: esperaba los seis objetivos, leí ' + subs.length);
+  for (const s of subs) {
+    assert.ok(!/d[ée]ficit|hipertrofia|volumen|super[áa]vit|compuestos|definici[óo]n/i.test(s), 'jerga en el paso 2: «' + s + '»');
+  }
+  // CONTROL de que la regla muerde: los textos de antes la habrían roto.
+  assert.ok(/d[ée]ficit/i.test('Definición y déficit') && /hipertrofia/i.test('Hipertrofia y volumen'));
+  // 🔒 Los VALORES que guarda el asistente no cambian: los lee el generador y el plan de comida.
+  for (const v of ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Fuerza', 'Resistencia', 'Salud general']) {
+    assert.ok(paso.includes(`WZ.pick('su-goal','${v}',this)`), 'cambió el valor guardado de ' + v);
+  }
 });
 
 // ══════════════════════════════════════════════════════

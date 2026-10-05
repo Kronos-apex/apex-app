@@ -2272,9 +2272,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-num::-webkit-outer-spin-button,.wz-num::-webkit-inner-spin-button{-webkit-appearance:none}
 .wz-unit{font-size:13px;color:rgba(242,245,244,.5);font-weight:600;min-width:26px}
 .wz-foot{margin-top:24px}
-.wz-or{display:flex;align-items:center;gap:10px;margin:15px 0;color:rgba(242,245,244,.4);font-size:12px;font-weight:600}
-.wz-or::before,.wz-or::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(242,245,244,.18),transparent)}
 .wz-gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.22);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+/* R22 · Google es el camino principal del paso 7 (el que no pierde a nadie): un poco más alto y con aire arriba. */
+.wz-gbtn-main{margin-top:14px;padding:15px;font-size:15.5px}
+.wz-ghint{margin-top:7px;text-align:center;font-size:12px;color:rgba(242,245,244,.6)}
+/* El camino del correo, a un toque: texto, no botón (no compite con Google), pero con objetivo táctil de 44 px. */
+.wz-mailtoggle{display:block;width:100%;min-height:44px;margin-top:8px;background:none;border:0;color:#10E0A0;font-family:inherit;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.wz-mailtoggle[aria-expanded="true"]{display:none}
+/* R22 · quien llega desde la web no ve «Instala la app» en la bienvenida (clase propia: app-6 maneja el display). */
+.cin-hide-web{display:none!important}
 /* Consentimiento Habeas Data (paso 7 del wizard): 3 casillas separadas, ninguna pre-marcada */
 .wz-consent{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
 /* v565 · APAGAR UNA RAMA DEL CONSENTIMIENTO.

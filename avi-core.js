@@ -11960,6 +11960,9 @@ function clientProgressStory(client, sessions, now) {
     // ganar músculo, pero en una tarjeta sin objetivo un «+5,5 kg» se lee como que engordó. Sale
     // del perfil, no lo teclea nadie: es dato de la app, como el resto de la tarjeta.
     objetivo: normalizeGoal(client.goal),
+    // R22 · CÓMO ENTRENÓ (auditoría final del 5-oct). Sin esto, la web no puede decir si los kilos son de
+    // alguien con coaching o de alguien solo con la app — y quien lee asume lo segundo.
+    plan: showcasePlanOf(client),
   };
 }
 
@@ -12016,6 +12019,39 @@ function showcaseRow(story) {
   // ya publicadas nacieron sin él, así que la columna es NULA en el servidor y aquí también.
   const obj = normalizeGoal(story.objetivo);
   if (obj) row.objetivo = obj;
+  // R22: el plan viaja solo si es uno de los tres del CHECK (s4_showcase_plan.sql); si no, la columna queda null.
+  if (SHOWCASE_PLANES.includes(story.plan)) row.plan = story.plan;
+  return row;
+}
+
+// ── R22 · CÓMO ENTRENÓ CADA PERSONA (s4_showcase_plan.sql) ─────────────────────────────
+// PURA. El NIVEL de la cuenta al publicar, en tres valores que no identifican a nadie: 'gratis' (tier libre),
+// 'pro' (tier 'app', o sea AVI PRO sin coach) y 'coach' (todo lo demás: el tier premium y las cuentas que creó el
+// coach, que son sus asesorados directos). Presencial o virtual NO se distingue: hoy la app no lo guarda, y
+// adivinarlo sería inventar. 🔒 ESPEJO del CHECK de `plan`; un test lee el .sql y falla si se separan.
+const SHOWCASE_PLANES = ['gratis', 'pro', 'coach'];
+function showcasePlanOf(client) {
+  const t = client && client.tier;
+  if (t === 'libre') return 'gratis';
+  if (t === 'app') return 'pro';
+  return 'coach';
+}
+
+// ── R22 · CUÁNTA GENTE LLEGA A CADA PASO DEL REGISTRO (s5_signup_funnel.sql) ──────────
+// PURA. Hasta hoy no se sabía dónde se iba la gente: 0 cuentas nuevas desde el 30-sep y ninguna forma de separar
+// «no llegan» de «llegan y se van en el paso 7». Una fila por paso VISTO, SIN NINGÚN DATO DE LA PERSONA: ni id, ni
+// correo, ni nombre — solo el paso, de dónde vino (web o no) y el canal, que es una etiqueta como «ig-bio».
+// Pasos: 1-7 = el paso del asistente que se mostró · 8 = creó la cuenta con su correo (falta confirmarlo) ·
+// 9 = salió a Google · 10 = la cuenta quedó lista y entró. Así 8 contra 10 dice cuántos se pierden en el correo.
+// 🔒 ESPEJO de los CHECK de s5; un test lee el .sql y falla si se separan.
+const FUNNEL_PASO_MAX = 10;
+function signupFunnelRow(paso, search, canal) {
+  const n = Number(paso);
+  if (!Number.isInteger(n) || n < 1 || n > FUNNEL_PASO_MAX) return null;
+  let origen = 'app';
+  try { if (new URLSearchParams(String(search || '')).get('origen') === 'web') origen = 'web'; } catch (e) {}
+  const row = { paso: n, origen };
+  if (typeof canal === 'string' && CANAL_RE.test(canal)) row.canal = canal;
   return row;
 }
 
@@ -12327,6 +12363,10 @@ if (typeof module !== 'undefined' && module.exports) {
     canalFromSearch,
     canalRecord,
     canalLabel,
+    SHOWCASE_PLANES,
+    showcasePlanOf,
+    FUNNEL_PASO_MAX,
+    signupFunnelRow,
     MOOD_STATES,
     applyMood,
     waPhone,
