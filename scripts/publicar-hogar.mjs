@@ -6,9 +6,9 @@
 // actualizado vería una PANTALLA DE ERROR (medido en `_verify-mudanza-instalada`). Así que el
 // hogar nuevo se sirve aparte (Vercel, proyecto `avi-app`) y el viejo se queda intacto.
 //
-// Qué se sube: solo la app (5 MB). `media/` (115 MB de fotos y videos de ejercicio) NO viaja:
-// `scripts/hogar-vercel.json` la reenvía a github.io, así que para el navegador sigue siendo
-// del mismo origen (sin CORS y sin teñir ningún lienzo).
+// Qué se sube: la app (5 MB) Y `media/` (118 MB de fotos y videos de ejercicio). Hasta el 5-oct-2026 media NO
+// viajaba: `hogar-vercel.json` la reenviaba a github.io. El PO decidió dejar SOLO app.avientrena.com, así que
+// la .com ya no puede depender de la dirección vieja para nada (medido: Vercel acepta los 118 MB).
 //
 // Corre: node scripts/publicar-hogar.mjs          (con la señal de mudanza, que desde el 23-sep va siempre)
 //       node scripts/publicar-hogar.mjs --sin-mudanza   (solo para APAGARLA a propósito)
@@ -24,7 +24,7 @@ const ARCHIVOS = ['index.html', 'sw.js', 'manifest.json', 'styles.css', 'foods.j
   'exercise-muscles.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js',
   'app-6-extra.js', 'app-7-community.js'];
 // `vendor` = la librería del login (v677). Sin ella, el hogar nuevo se queda sin poder iniciar sesión.
-const CARPETAS = ['icons', 'splash', 'screenshots', 'legal', 'vendor'];
+const CARPETAS = ['icons', 'splash', 'screenshots', 'legal', 'vendor', 'media'];
 
 // 🔴 El enlace con el proyecto de Vercel vive en `DEST/.vercel`: si se borra con el resto, el
 //    deploy se va a un proyecto NUEVO (o a ninguno) y app.avientrena.com se queda en la versión
