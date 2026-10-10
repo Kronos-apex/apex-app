@@ -48,7 +48,8 @@
 - **Verificación**: suite 1458 → **1466** en los cuatro modos; harness nuevo `scripts/e2e/_verify-ajustes.mjs`
   (Perfil, lista, cada detalle, valores al volver, capas de historial, «Eliminar mi cuenta» encima y que se toca, el
   atrás que la cierra primero, cerrar sesión con un ajuste abierto, el coach por su menú, etiquetas y ritmo del
-  formulario, 360 px con «Muy grande»); matriz VERSIONADA `scripts/e2e/_sabotaje-v704.mjs` (MATRIZ_PENDIENTE);
+  formulario, 360 px con «Muy grande»); matriz VERSIONADA `scripts/e2e/_sabotaje-v704.mjs`, **31 sabotajes y los 31 muerden** (21 en la suite y 10 que se ven en el
+  harness), con el control sin sabotaje en verde;
   `_verify-sonido`, `_repro-sroom-fs`, `_repro-safearea-volver`, `_repro-back-pantallas` verdes;
   `_medir-ritmo-formularios` ahora mide la sección del coach (antes imprimía «no existe» y seguía).
 - **Defectos propios cazados antes de producción**: (1) al mudar los campos del coach copié el marcado por números
