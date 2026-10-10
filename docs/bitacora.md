@@ -4,6 +4,35 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-09 — v702: el nombre se lee en «Asesorados» y los récords no ocupan tres pantallas
+
+- **Origen**: dos capturas del PO desde su teléfono (360 px, letra grande): «los récords se ven muy largos» y «en los
+  asesorados no puedo leer los nombres» («D..», «L...», «C..»).
+- **Medido antes**: récords por persona en el respaldo del 7-oct, mediana 24 y máximo 42 → la tarjeta medía hasta
+  ~2.150 px. En «Asesorados» el nombre compartía fila con el nivel y «Libre», y la columna de «Ver →» + la mini-gráfica
+  se comía el ancho: con «Muy grande» al nombre le quedaban 96 px y hasta las píldoras salían cortadas.
+- **«Asesorados»**: el nombre va solo en su línea (`.cn.cn-full`, hasta 3 líneas), nivel/«Yo»/«Libre» en la fila de
+  abajo, la mini-gráfica junto a la línea del objetivo, y sin «Ver →»: la TARJETA es el botón (`role=button`,
+  `tabIndex`, `aria-label`, Enter/Espacio) con un «›» decorativo. Con «Muy grande» el nombre pasa de 96 a 168 px.
+- **Chip que faltaba desde v528**: `_ATN` (el mapa de chips de `renderClients`) no tenía `grace`, así que quien llevaba
+  1-7 días vencido subía al tope SIN decir por qué. Lo destapó `_verify-v317` R2, que estaba ROJO desde antes (su
+  fixture de «vencido» tenía -3 días, que desde v528 es gracia). El fixture ahora tiene uno de cada (R2 + R2b).
+- **«Récords»**: abre con los 6 más recientes (`PR_CARD_VISIBLE`) y «Ver los N récords» / «Ver menos»
+  (`prCardToggle`, en memoria y por asesorado: cambiar de ficha la cierra). «Corregir» pasa a ser un lápiz de 36 px.
+- **Lo que cazó Lucas QA** (antes de publicar): con el valor AL LADO del nombre, en «Muy grande» el nombre quedaba en
+  51 px y se partía a mitad de palabra — peor que antes; volvió DEBAJO (141 px de texto). Y «Ver menos» dejaba la
+  pantalla dos tarjetas más abajo (el `innerHTML` se reemplaza y el navegador no puede anclar): ahora, solo al plegar,
+  se compensa el scroll del contenedor para dejar el botón bajo el dedo.
+- **Lo que me equivoqué en el harness**: medía el nombre de los récords en el acto de cambiar la talla y el zoom de la
+  ficha todavía no había llegado (medía la talla ANTERIOR) — la prueba aprobaba sin medir nada. Ahora espera y afirma
+  `currentCSSZoom` como control de montaje, y mide en px de TEXTO (`clientWidth`), no de pantalla.
+- **QA**: suite 1449/1449, harness nuevo `_verify-coach-tarjetas` (nombres en 3 tallas con control de recorte, 6/24,
+  orden, lápiz ≥36 px, anclaje al plegar, cierre al cambiar de ficha), `_verify-v317`, `_verify-prfix` y
+  `_verify-coachlead` verdes, 6 sabotajes y los 6 muerden. Julián 🟢 · Lucas 🟡 → corregido y re-verificado.
+- **Instalar como app (amiga del PO)**: medido con Chrome (CDP `Page.getInstallabilityErrors`) en las dos direcciones:
+  instalable, 0 errores. Si alguien la ve «como navegador» es el navegador interno de Instagram/WhatsApp/Facebook, un
+  navegador que solo crea acceso directo o «Agregar a pantalla» en vez de «Instalar app».
+
 ## ⏮️ 2026-10-05 — v701 (R22): Google primero en el registro, el plan en la vitrina y la medición del registro
 
 - **Origen**: la auditoría final de avientrena.com (artifact T94U4yDWFvXSdwXPbVMqxn), 8 cambios aprobados con «dale con

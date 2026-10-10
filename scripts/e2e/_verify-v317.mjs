@@ -46,14 +46,18 @@ try {
     DB.clients=[
       {...base,id:'ok',   name:'Mónica Al Día',      payments:[{dueDate:d(20)}]},
       {...base,id:'pain', name:'Pablo Dolor',        payments:[{dueDate:d(20)}], painCare:[{id:'p1',level:3,area:'rodilla',at:d(-1)}]},
-      {...base,id:'over', name:'Vera Vencida',       payments:[{dueDate:d(-3)}]},
+      // v528 partió «vencido»: los primeros 7 días es GRACIA («Por renovar») y después VENCIDO. El
+      // fixture tenía -3, que desde v528 es gracia, y por eso R2 llevaba rojo — con una causa real
+      // detrás: el chip de gracia no se pintaba (9-oct-2026). Ahora hay uno de cada.
+      {...base,id:'over', name:'Vera Vencida',       payments:[{dueDate:d(-10)}]},
+      {...base,id:'grace',name:'Gina Gracia',        payments:[{dueDate:d(-3)}]},
       {...base,id:'exp',  name:'Elena Por Vencer',   payments:[{dueDate:d(4)}]},
       {...base,id:'idle12',name:'Iván Doce',         payments:[{dueDate:d(20)}]},
       {...base,id:'idle9a',name:'Bruno Nueve',       payments:[{dueDate:d(20)}]},
       {...base,id:'idle9b',name:'Ana Nueve',         payments:[{dueDate:d(20)}]},
     ];
     DB.history={
-      ok:[{date:d(0)}], pain:[{date:d(-1)}], over:[{date:d(-1)}], exp:[{date:d(-1)}],
+      ok:[{date:d(0)}], pain:[{date:d(-1)}], over:[{date:d(-1)}], grace:[{date:d(-1)}], exp:[{date:d(-1)}],
       idle12:[{date:d(-12)}], idle9a:[{date:d(-9)}], idle9b:[{date:d(-9)}],
     };
     DB.msgs={};
@@ -64,7 +68,7 @@ try {
 
   // R1: el ORDEN de las tarjetas por nombre visible sigue la prioridad esperada.
   const order = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('#cli-list .cli .cn')].map(e=>e.textContent.trim()))`));
-  const expected = ['Pablo Dolor', 'Vera Vencida', 'Elena Por Vencer', 'Iván Doce', 'Ana Nueve', 'Bruno Nueve', 'Mónica Al Día'];
+  const expected = ['Pablo Dolor', 'Gina Gracia', 'Vera Vencida', 'Elena Por Vencer', 'Iván Doce', 'Ana Nueve', 'Bruno Nueve', 'Mónica Al Día'];
   check('R1 orden por urgencia (dolor→vencido→por vencer→inactivo dias desc→desempate nombre→al día)',
         JSON.stringify(order) === JSON.stringify(expected), JSON.stringify(order));
 
@@ -78,6 +82,7 @@ try {
   const has = (nm, re) => (chips[nm] || []).some(t => re.test(t));
   check('R2 chip dolor "impide" en el de nivel 3', has('Pablo Dolor', /impide entrenar/i), JSON.stringify(chips['Pablo Dolor']));
   check('R2 chip "Plan vencido"', has('Vera Vencida', /vencido/i), JSON.stringify(chips['Vera Vencida']));
+  check('R2b chip "Por renovar" en quien está en gracia (v528)', has('Gina Gracia', /por renovar/i), JSON.stringify(chips['Gina Gracia']));
   check('R2 chip "Plan por vencer"', has('Elena Por Vencer', /por vencer/i), JSON.stringify(chips['Elena Por Vencer']));
   check('R2 chip "12 días sin entrenar"', has('Iván Doce', /12 días sin entrenar/), JSON.stringify(chips['Iván Doce']));
 

@@ -93,25 +93,27 @@ function renderClients(){
     // Chip de ATENCIÓN (mejora 7 + v360): la RAZÓN por la que este asesorado sube en la lista.
     // r.label es texto fijo + un entero (días) → sin datos de usuario, seguro sin esc.
     // v360: unread → azul info (💬); lead → naranja (🙋, coherente con "Quiere coach").
-    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
+    // 9-oct-2026 · 'grace' faltaba: v528 partió `overdue` en dos y quien estaba en gracia subía al tope
+    // de la lista SIN su chip — el mapa no lo conocía y la razón se perdía en silencio (gotcha v528).
+    const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],grace:['--orl','--ort'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
     const _ac=_ATN[r.reason];
     const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
     const d=document.createElement('div');d.className='cli';
     d.innerHTML=`<div class="cav ring" style="${avcStyle(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:7px;min-width:0">
-          <span class="cn">${esc(c.name)}</span>
-          <span class="tag ${lvlCls}" style="flex-shrink:0">${c.level||'—'}</span>
-          ${yoBadge}${selfBadge}
-        </div>
+        <div class="cn cn-full">${esc(c.name)}</div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${lvlCls}">${c.level||'—'}</span>${yoBadge}${selfBadge}</div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="cli-pill" style="background:${st.bg};color:${st.col}">${st.ico} ${esc(st.txt)}</span>${atn}</div>
-        <div class="cm" style="margin-top:6px">${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</div>
+        <div class="cm" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>${esc(c.goal||'—')} · ${esc(String(c.days||3))} días/sem · ${(c.routines||[]).length} rutina${(c.routines||[]).length!==1?'s':''}</span>${spark||''}</div>
         ${last?`<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_coIco('chat',11,'💬')} «${esc(last.text.slice(0,45))}${last.text.length>45?'…':''}»</div>`:''}
       </div>
-      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px;align-self:stretch;justify-content:center">
-        ${spark||''}
-        <button class="btn bg bsm" onclick="event.stopPropagation();openDetail('${c.id}')">Ver →</button>
-      </div>`;
+      <span aria-hidden="true" style="flex-shrink:0;align-self:center;color:var(--t3);font-size:22px;line-height:1">›</span>`;
+    // 9-oct-2026 · La columna de la derecha («Ver →» + la mini-gráfica) se comía el ancho: con la
+    // letra en «Muy grande» al nombre le quedaban 96 px y hasta las píldoras salían cortadas. La
+    // tarjeta entera ya abría la ficha, así que el botón sobraba: ahora la TARJETA es el botón
+    // (teclado y lector de pantalla incluidos) y a la derecha queda solo un «›».
+    d.setAttribute('role','button'); d.tabIndex=0; d.setAttribute('aria-label','Ver la ficha de '+(c.name||''));
+    d.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openDetail(c.id); } };
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
   // Re-aplicar el filtro activo sobre la lista recién reconstruida (filterClients opera sobre el
@@ -3473,22 +3475,57 @@ function renderCoachPRsCard(c){
     .sort((a,b)=>new Date(b[1].date||0)-new Date(a[1].date||0));
   if(!list.length){ el.style.display='none'; el.innerHTML=''; return; }
   el.style.display='block';
+  // 9-oct-2026 · «los récords se ven muy largos» (PO). Medido en el respaldo del 7-oct: la mediana
+  // es 24 récords por persona y el máximo 42 → la tarjeta medía hasta tres pantallas. Abre con los
+  // PR_CARD_VISIBLE más recientes (la lista ya viene del más nuevo al más viejo, que es lo que se
+  // corrige: un récord mal anotado se nota a los pocos días) y el resto queda a un toque, en el
+  // sitio. «Corregir» pasa a ser un lápiz de 36 px: le devuelve al nombre el ancho del botón.
+  // 🔴 El valor va DEBAJO del nombre, no al lado: al lado, con la letra en «Muy grande» a 360 px
+  // el nombre quedaba en 51 px y se partía a mitad de palabra (lo midió Lucas QA, 9-oct).
+  if(_prCardLast!==c.id){ _prCardOpen=null; _prCardLast=c.id; }
+  const abierta=_prCardOpen===c.id;
+  const visibles=abierta?list:list.slice(0,PR_CARD_VISIBLE);
   const fila=([exId,p])=>{
     const unit=p.unit||'kg';
     const val=p.val!=null?p.val:p.kg;
-    return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--br)">
+    const nomEsc=esc(p.name||exId);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--br)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:var(--t1);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(p.name||exId)}</div>
-        <div style="font-size:11px;color:var(--t2)">${esc(String(val))} ${esc(unit)}${p.reps?' × '+esc(String(p.reps))+' '+esc(typeof repsUnitOf==='function'?repsUnitOf(exId):'reps'):''}</div>
+        <div class="pr-nm" style="font-size:13px;color:var(--t1);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${nomEsc}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--t1)">${esc(String(val))} ${esc(unit)}${p.reps?`<span style="font-weight:500;color:var(--t2)"> × ${esc(String(p.reps))} ${esc(typeof repsUnitOf==='function'?repsUnitOf(exId):'reps')}</span>`:''}</div>
       </div>
-      <button class="btn bg bsm" style="min-height:34px;padding:0 11px" onclick="coachEditPR('${esc(exId)}')">Corregir</button>
+      <button class="btn bg bsm" style="flex-shrink:0;min-height:36px;min-width:36px;padding:0;display:inline-flex;align-items:center;justify-content:center" aria-label="Corregir el récord de ${nomEsc}" title="Corregir" onclick="coachEditPR('${esc(exId)}')">${_coIco('pencil',15,'✎')}</button>
     </div>`;
   };
+  const resto=list.length-PR_CARD_VISIBLE;
+  const toggle=resto>0?`<button class="btn bg bsm" data-prtoggle style="width:100%;margin-top:8px;min-height:36px" onclick="prCardToggle('${esc(c.id)}')">${abierta?'Ver menos':`Ver los ${list.length} récords`}</button>`:'';
   el.innerHTML=`<div class="card"><div class="ch"><div class="ctitle">${_coIco('trophy',15,'🏆')} Récords</div></div>
     <div class="cb">
       <div style="font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:4px">De aquí sale el peso que la app le sugiere. Si una marca quedó mal anotada, corrígela y la sugerencia se corrige con ella.</div>
-      ${list.map(fila).join('')}
+      ${visibles.map(fila).join('')}
+      ${toggle}
     </div></div>`;
+}
+// Cuántos récords se ven al abrir la ficha, y de quién está desplegada la lista. En memoria y por
+// asesorado: cambiar de ficha la vuelve a cerrar (también al volver a la primera).
+const PR_CARD_VISIBLE=6;
+let _prCardOpen=null, _prCardLast=null;
+function prCardToggle(cid){
+  // Al PLEGAR, la tarjeta se encoge ~900 px por ENCIMA del botón y el navegador no puede anclar
+  // el scroll (el innerHTML se reemplaza entero): la persona quedaba mirando otras tarjetas, con
+  // «Ver los N» fuera de la pantalla por arriba (lo midió Lucas QA). Se deja el botón donde estaba
+  // el dedo. Al DESPLEGAR no: ahí lo que se quiere ver son las filas nuevas, que salen debajo.
+  const plegando=_prCardOpen===cid;
+  const antes=plegando?document.querySelector('#d-prs [data-prtoggle]'):null;
+  const y0=antes?antes.getBoundingClientRect().top:null;
+  _prCardOpen=plegando?null:cid;
+  const c=DB.clients.find(x=>x.id===cid); if(c) renderCoachPRsCard(c);
+  const despues=y0!=null?document.querySelector('#d-prs [data-prtoggle]'):null;
+  if(!despues) return;
+  const dy=despues.getBoundingClientRect().top-y0;
+  let sc=despues.parentElement;
+  while(sc&&sc!==document.body){ const oy=getComputedStyle(sc).overflowY; if((oy==='auto'||oy==='scroll')&&sc.scrollHeight>sc.clientHeight) break; sc=sc.parentElement; }
+  if(sc&&sc!==document.body) sc.scrollTop+=dy; else window.scrollBy(0,dy);
 }
 // Corregir = escribir el valor bueno, o borrar el récord si nunca existió. Borrar NO es destructivo
 // de verdad: si vuelve a levantar ese peso, el récord se vuelve a crear solo en la siguiente sesión.
