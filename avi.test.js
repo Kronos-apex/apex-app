@@ -8679,14 +8679,18 @@ test('🔴 todo aviIcon(«nombre») usa un icono que EXISTE (o pinta ✨ en sile
   const fs = require('fs'), path = require('path');
   const infra = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
   const bloque = infra.slice(infra.indexOf('const AVI_ICONS={'));
-  const validos = new Set((bloque.slice(0, bloque.indexOf('\n};')).match(/^\s{2}([a-zA-Z_]\w*)\s*:/gm) || [])
-    .map(s => s.trim().replace(/\s*:$/, '')));
+  // Las claves con guion van entre comillas ('bell-off', v703): el parser las lee igual.
+  const validos = new Set((bloque.slice(0, bloque.indexOf('\n};')).match(/^\s{2}'?[a-zA-Z_][\w-]*'?\s*:/gm) || [])
+    .map(s => s.trim().replace(/\s*:$/, '').replace(/'/g, '')));
   assert.ok(validos.size > 30, `solo se leyeron ${validos.size} iconos: el parser no está viendo la tabla`);
   const usados = new Set();
   ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js']
     .forEach(f => {
       const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
-      (src.match(/aviIcon\('([a-zA-Z_]\w*)'/g) || []).forEach(m => usados.add(m.replace(/aviIcon\('/, '').replace(/'$/, '')));
+      (src.match(/aviIcon\('([a-zA-Z_][\w-]*)'/g) || []).forEach(m => usados.add(m.replace(/aviIcon\('/, '').replace(/'$/, '')));
+      // Y los dos nombres de un ternario: aviIcon(mudo?'bell-off':'bell',16) (v703).
+      (src.match(/aviIcon\([^,()]*\?'[a-zA-Z_][\w-]*':'[a-zA-Z_][\w-]*'/g) || []).forEach(m =>
+        (m.match(/'([a-zA-Z_][\w-]*)'/g) || []).forEach(q => usados.add(q.replace(/'/g, ''))));
     });
   assert.ok(usados.size > 10, `solo se encontraron ${usados.size} usos: el parser no está viendo las llamadas`);
   const rotos = [...usados].filter(n => !validos.has(n));
@@ -23554,6 +23558,142 @@ test('🔒 R22 · el paso 2 habla en palabras de la calle, no en jerga de gimnas
   for (const v of ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Fuerza', 'Resistencia', 'Salud general']) {
     assert.ok(paso.includes(`WZ.pick('su-goal','${v}',this)`), 'cambió el valor guardado de ' + v);
   }
+});
+
+// ══════════════════════════════════════════════════════
+// v703 · SONIDO DEL ENTRENO (pedido de los asesorados): modo + 11 tonos, por teléfono
+// ══════════════════════════════════════════════════════
+test('v703 · los 11 tonos existen, cada uno con su cuenta y su aviso, y dentro de lo que suena bien', () => {
+  const { SOUND_TONES, SOUND_TONE_IDS, soundToneNotes, soundToneLength } = core;
+  assert.strictEqual(SOUND_TONES.length, 11, 'el PO eligió dejar los 11 de la página de prueba');
+  assert.strictEqual(new Set(SOUND_TONE_IDS).size, 11, 'ids repetidos');
+  SOUND_TONES.forEach(t => {
+    assert.ok(t.nombre && t.tag, `${t.id} sin nombre o sin etiqueta`);
+    ['cuenta', 'fin'].forEach(fase => {
+      const ns = soundToneNotes(t.id, fase);
+      assert.ok(ns.length > 0, `${t.id}/${fase} no suena nada`);
+      ns.forEach(n => {
+        assert.ok(n.d > 0 && n.v > 0 && n.v <= 1, `${t.id}/${fase}: duración o volumen fuera de rango`);
+        // El brillo de la campana llega a 7,9 kHz (su parcial más alto): es lo que la hace sonar a metal.
+        // Por encima de ~12 kHz muchos parlantes de celular ya no lo reproducen.
+        if (!n.ruido) [n.f, n.fFin || n.f].forEach(f => assert.ok(f >= 40 && f <= 12000, `${t.id}/${fase}: ${f} Hz no se oye bien en un celular`));
+      });
+    });
+    // La cuenta suena una vez por segundo: más de medio segundo y un aviso pisa al siguiente.
+    assert.ok(soundToneLength(t.id, 'cuenta') <= 0.5, `${t.id}: la cuenta dura ${soundToneLength(t.id, 'cuenta')} s`);
+    assert.ok(soundToneLength(t.id, 'fin') <= 3.2, `${t.id}: el aviso dura ${soundToneLength(t.id, 'fin')} s`);
+  });
+});
+test('v703 · «Clásico» suena EXACTAMENTE como hasta v702 (quien no toque nada no nota el cambio)', () => {
+  const { soundToneNotes, SOUND_DEFAULT, SOUND_TONES } = core;
+  assert.deepStrictEqual(SOUND_DEFAULT, { mode: 'sonido', tone: 'clasico' });
+  const c = soundToneNotes('clasico', 'cuenta');
+  assert.deepStrictEqual(c, [{ tipo: 'square', f: 660, at: 0, d: 0.12, v: 0.7, env: 'lin', ataque: 0.005, crudo: true }]);
+  const f = soundToneNotes('clasico', 'fin');
+  assert.deepStrictEqual(f.map(n => [n.tipo, n.f, n.at, n.d, n.v, n.env, n.ataque, n.crudo]),
+    [['square', 660, 0, 0.15, 0.9, 'lin', 0.01, true], ['square', 880, 0.2, 0.15, 0.9, 'lin', 0.01, true], ['square', 1100, 0.4, 0.35, 0.9, 'lin', 0.01, true]]);
+  // Solo él va directo al parlante; los demás pasan por el compresor (las campanas suman varias notas).
+  const crudos = SOUND_TONES.filter(t => t.cuenta.concat(t.fin).some(n => n.crudo)).map(t => t.id);
+  assert.deepStrictEqual(crudos, ['clasico']);
+  // Un id desconocido no queda mudo: cae al de siempre.
+  assert.deepStrictEqual(soundToneNotes('no-existe', 'cuenta'), c);
+});
+test('v703 · el ajuste guardado se lee bien, y lo que no se reconoce cae a sonido (nunca a silencio)', () => {
+  const { soundPrefNormalize } = core;
+  assert.deepStrictEqual(soundPrefNormalize(null), { mode: 'sonido', tone: 'clasico' });
+  assert.deepStrictEqual(soundPrefNormalize('silencio'), { mode: 'sonido', tone: 'clasico' });
+  assert.deepStrictEqual(soundPrefNormalize({ mode: 'mudo', tone: 'xx' }), { mode: 'sonido', tone: 'clasico' });
+  assert.deepStrictEqual(soundPrefNormalize({ mode: 'vibracion', tone: 'gong' }), { mode: 'vibracion', tone: 'gong' });
+  assert.deepStrictEqual(soundPrefNormalize({ mode: 'silencio', tone: 'boxeo', prev: 'vibracion' }), { mode: 'silencio', tone: 'boxeo', prev: 'vibracion' });
+  // `prev` solo tiene sentido en silencio, y solo con un modo que suene o vibre.
+  assert.deepStrictEqual(soundPrefNormalize({ mode: 'sonido', tone: 'boxeo', prev: 'vibracion' }), { mode: 'sonido', tone: 'boxeo' });
+  assert.deepStrictEqual(soundPrefNormalize({ mode: 'silencio', tone: 'boxeo', prev: 'silencio' }), { mode: 'silencio', tone: 'boxeo' });
+});
+test('v703 · «Silenciar» del descanso vuelve al modo que había (no siempre a sonido) y no toca el tono', () => {
+  const { soundToggleMute } = core;
+  const a = soundToggleMute({ mode: 'sonido', tone: 'silbato' });
+  assert.deepStrictEqual(a, { mode: 'silencio', tone: 'silbato', prev: 'sonido' });
+  assert.deepStrictEqual(soundToggleMute(a), { mode: 'sonido', tone: 'silbato' });
+  const v = soundToggleMute({ mode: 'vibracion', tone: 'gong' });
+  assert.deepStrictEqual(soundToggleMute(v), { mode: 'vibracion', tone: 'gong' }, 'quien usa solo vibración vuelve a vibración');
+  assert.deepStrictEqual(soundToggleMute({ mode: 'silencio', tone: 'gong' }), { mode: 'sonido', tone: 'gong' }, 'silencio elegido en el Perfil: el botón lo vuelve a sonido');
+});
+test('v703 · qué hace cada modo: sonido suena y vibra, vibración solo vibra, silencio nada', () => {
+  const { soundShouldPlay, soundShouldVibrate } = core;
+  const m = mode => [soundShouldPlay({ mode }), soundShouldVibrate({ mode })];
+  assert.deepStrictEqual(m('sonido'), [true, true]);
+  assert.deepStrictEqual(m('vibracion'), [false, true]);
+  assert.deepStrictEqual(m('silencio'), [false, false]);
+  assert.deepStrictEqual(m(undefined), [true, true], 'sin ajuste: como siempre');
+});
+test('🔒 CABLEADO v703 · todo aviso (pitido o vibración) pasa por el ajuste', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i >= 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  ['function playRestEndBeep(', 'function playRestTick('].forEach(fn => {
+    const c = cuerpo(a4, fn);
+    assert.ok(/soundShouldPlay\(p\)/.test(c), `🔴 ${fn} suena sin preguntar el modo`);
+    assert.ok(/soundToneNotes\(p\.tone,/.test(c), `🔴 ${fn} no usa el tono elegido`);
+    assert.ok(/^\s*alertVibrate\(/m.test(c), `🔴 ${fn} no vibra por alertVibrate`);
+    assert.ok(!/navigator\.vibrate/.test(c), `🔴 ${fn} vibra por su cuenta y se salta el silencio`);
+  });
+  assert.ok(/soundShouldVibrate\(soundPref\(\)\)\)\s*return false/.test(cuerpo(a4, 'function alertVibrate(')), '🔴 alertVibrate no respeta el silencio');
+  // Las vibraciones de AVISO son patrones (arreglos). Las de un toque (15-40 ms) son respuesta al dedo
+  // y no cuentan. Ningún patrón puede ir directo a navigator.vibrate fuera de alertVibrate.
+  [['app-4', a4.replace(cuerpo(a4, 'function alertVibrate('), '')], ['app-6', a6]].forEach(([n, src]) =>
+    assert.ok(!/navigator\.vibrate\(\s*\[/.test(src), `🔴 ${n} vibra un aviso sin pasar por el ajuste`));
+  // El ajuste es del teléfono: no puede subir a la nube.
+  const a1 = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  assert.ok(!/SB_KEYS\s*=\s*\[[^\]]*'ax_sound'/.test(a1), '🔴 ax_sound no va en SB_KEYS: es de este teléfono');
+});
+
+test('v703 · elegir «Silencio» en el Perfil recuerda el modo de antes (QA Lucas H2)', () => {
+  const { soundWithMode, soundToggleMute } = core;
+  const s = soundWithMode({ mode: 'vibracion', tone: 'gong' }, 'silencio');
+  assert.deepStrictEqual(s, { mode: 'silencio', tone: 'gong', prev: 'vibracion' });
+  assert.deepStrictEqual(soundToggleMute(s), { mode: 'vibracion', tone: 'gong' }, 'quien usaba vibración no vuelve a oír pitidos');
+  // Elegir Silencio estando ya en silencio no pierde el modo que se recordaba.
+  assert.deepStrictEqual(soundWithMode(s, 'silencio'), s);
+  // Salir a un modo que suena no arrastra `prev`, y un modo inventado cae al de siempre (nunca a silencio).
+  assert.deepStrictEqual(soundWithMode(s, 'sonido'), { mode: 'sonido', tone: 'gong' });
+  assert.deepStrictEqual(soundWithMode({ mode: 'sonido', tone: 'gong' }, 'mudo'), { mode: 'sonido', tone: 'gong' });
+});
+test('🔒 CABLEADO v703 · el toque sobre un botón que se repinta no minimiza el descanso, y el compresor nace con el audio', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i >= 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
+  // QA Lucas H1: `closest('button')` sobre el <span> que «Silenciar» acaba de reemplazar da null.
+  const wire = cuerpo(a6, 'function _gmWireRestMinimize(');
+  assert.ok(/composedPath\(\)/.test(wire) && /ruta\.some\(n=>n&&n\.tagName==='BUTTON'\)\)return;/.test(wire),
+    '🔴 el descanso decide «toqué a un lado» sin mirar el recorrido del toque: tocar el texto de Silenciar lo minimiza');
+  // QA Lucas H5: recién creado, el compresor deja el primer sonido en 0,07 de 0,30 (medido).
+  assert.ok(/_sndOut\(_actx,false\)/.test(cuerpo(a4, 'function getAudioCtx(')), '🔴 el compresor ya no nace con el audio de la app');
+  assert.ok(/_sndComp\.release\.value=0\.05/.test(cuerpo(a4, 'function _sndOut(')), '🔴 el compresor perdió su recuperación corta');
+  assert.ok(/t0=Math\.max\(t0,_sndCompAt\+0\.12\)/.test(cuerpo(a4, 'function _sndPlay(')), '🔴 el primer sonido ya no espera a que el compresor se asiente');
+  // QA Lucas H3: por capacidad, no por el nombre del teléfono (un iPad en modo escritorio dice ser un Mac).
+  assert.ok(!/iPhone\|iPad/.test(cuerpo(a4, 'function renderSoundSettings(')), '🔴 la nota de vibración volvió a mirar el nombre del teléfono');
+  assert.ok(/soundWithMode\(/.test(cuerpo(a4, 'function soundSetMode(')), '🔴 elegir Silencio en el Perfil ya no recuerda el modo de antes');
+});
+
+test('🔒 v703 · fuera de alertVibrate solo hay toques de dedo (≤40 ms), en TODOS los módulos (QA Julián)', () => {
+  const fs = require('fs'), path = require('path');
+  const malos = []; let toques = 0;
+  ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js', 'app-6-extra.js', 'app-7-community.js'].forEach(f => {
+    let src = sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    const i = src.indexOf('function alertVibrate(');
+    if (i >= 0) src = src.slice(0, i) + src.slice(src.indexOf('\n}', i));
+    (src.match(/navigator\.vibrate\(([^)]*)\)/g) || []).forEach(m => {
+      const arg = m.slice(m.indexOf('(') + 1, -1).trim();
+      if (/^\d+$/.test(arg) && +arg <= 40) toques++;
+      else malos.push(f + ': ' + m);
+    });
+  });
+  // Un aviso (descanso, cardio, isométrico) es más largo o es un patrón; esos tienen que respetar el
+  // «Silencio» y por eso pasan por alertVibrate. Un toque de 15-40 ms al pulsar es respuesta al dedo.
+  assert.deepStrictEqual(malos, [], '🔴 hay una vibración de AVISO que se salta el ajuste de sonido');
+  assert.ok(toques >= 8, `CONTROL: solo se vieron ${toques} toques de dedo — el barrido no está leyendo los módulos`);
 });
 
 // ══════════════════════════════════════════════════════

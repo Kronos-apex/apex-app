@@ -12350,8 +12350,111 @@ function canalLabel(c) {
   return CANAL_LABELS[c] || c;
 }
 
+// ── SONIDO DEL ENTRENO (v703, 9-oct-2026) ─────────────────────────────────────────────────────────────
+// Pedido de los asesorados (por el PO): poder cambiar el tono o dejar la app en silencio o solo vibración.
+// Medido antes: los avisos del descanso y de los ejercicios por tiempo eran SIEMPRE tres pitidos de onda
+// cuadrada fuertes + vibración, sin ningún ajuste; y en Android salen por el volumen MULTIMEDIA, así que
+// poner el teléfono en silencio NO los apaga (lo más probable detrás de la queja).
+// El PO eligió dejar los 11 tonos de la página de prueba que escuchó el 9-oct-2026
+// y que cada persona elija. Todo se SINTETIZA (Web Audio): sin archivos, funciona sin internet.
+// 🔒 El ajuste es POR TELÉFONO (`ax_sound`, como el tamaño de letra): NO va en SB_KEYS.
+// 🔒 «Clásico» es el de siempre, nota por nota: quien no toque nada oye exactamente lo mismo que antes.
+// Aquí solo viven los DATOS (qué notas) y las reglas; quien suena es `_sndPlay` en app-4.
+const SOUND_MODES = [
+  { id: 'sonido', nombre: 'Sonido y vibración' },
+  { id: 'vibracion', nombre: 'Solo vibración' },
+  { id: 'silencio', nombre: 'Silencio' },
+];
+const SOUND_DEFAULT = { mode: 'sonido', tone: 'clasico' };
+// Una campana o un gong son varias notas a la vez (parciales inarmónicos que caen a ritmos distintos).
+function _sndGolpe(f, at, d, parciales, v) {
+  return parciales.map(([r, g]) => ({ f: f * r, at, d: d * (r > 2 ? 0.85 : 1), v: v * g }));
+}
+// Nota: { f (Hz), at (s desde el inicio), d (s), v (0-1), tipo: 'sine'|'square', env: 'exp'|'lin'|'hold',
+//   ataque (s), fFin+barrido (barrido de frecuencia), trino+prof (vibrato), crudo (sin compresor) }.
+// Ruido (golpe del tambor): { ruido: true, at, d, v }.
+const SOUND_TONES = [
+  { id: 'clasico', nombre: 'Clásico', tag: 'El de siempre',
+    // Copia EXACTA de playRestTick/playRestEndBeep hasta v702 (onda cuadrada, subida de 5-10 ms y caída
+    // lineal), conectada directo al parlante como antes (`crudo`).
+    cuenta: [{ tipo: 'square', f: 660, at: 0, d: 0.12, v: 0.7, env: 'lin', ataque: 0.005, crudo: true }],
+    fin: [[660, 0, 0.15], [880, 0.2, 0.15], [1100, 0.4, 0.35]].map(([f, at, d]) =>
+      ({ tipo: 'square', f, at, d, v: 0.9, env: 'lin', ataque: 0.01, crudo: true })) },
+  { id: 'suave', nombre: 'Suave', tag: 'Para casa',
+    cuenta: [{ f: 587, at: 0, d: 0.18, v: 0.3 }],
+    fin: [{ f: 587, at: 0, d: 0.6, v: 0.45, ataque: 0.02 }, { f: 784, at: 0.22, d: 0.9, v: 0.45, ataque: 0.02 }] },
+  { id: 'campana', nombre: 'Campana', tag: 'Para casa',
+    cuenta: _sndGolpe(1320, 0, 0.3, [[1, 0.6], [2.76, 0.2]], 0.4),
+    fin: _sndGolpe(880, 0, 2.0, [[1, 0.6], [2.76, 0.28], [5.4, 0.14], [8.93, 0.07]], 0.75) },
+  { id: 'boxeo', nombre: 'Campana de boxeo', tag: 'Se oye con música',
+    cuenta: _sndGolpe(1500, 0, 0.18, [[1, 0.6], [1.47, 0.3], [2.09, 0.18]], 0.5),
+    fin: [0, 0.2, 0.4].flatMap(at => _sndGolpe(1500, at, 0.7, [[1, 0.6], [1.47, 0.32], [2.09, 0.2], [2.56, 0.12]], 0.7)) },
+  { id: 'silbato', nombre: 'Silbato', tag: 'Se oye con música',
+    cuenta: [{ f: 2600, at: 0, d: 0.09, v: 0.25, trino: 28, prof: 90, env: 'hold' }],
+    fin: [{ f: 2700, at: 0, d: 0.3, v: 0.35, trino: 28, prof: 130, env: 'hold' },
+          { f: 2700, at: 0.4, d: 0.65, v: 0.35, trino: 28, prof: 130, env: 'hold' }] },
+  { id: 'marimba', nombre: 'Marimba', tag: 'Para casa',
+    cuenta: [{ f: 784, at: 0, d: 0.2, v: 0.45 }, { f: 3136, at: 0, d: 0.05, v: 0.08 }],
+    fin: [523, 659, 784, 1047].flatMap((f, i) => [{ f, at: i * 0.11, d: 0.5, v: 0.5 }, { f: f * 4, at: i * 0.11, d: 0.06, v: 0.08 }]) },
+  { id: 'arcade', nombre: 'Arcade', tag: 'Divertido',
+    cuenta: [{ tipo: 'square', f: 880, at: 0, d: 0.05, v: 0.25, env: 'hold' }],
+    fin: [523, 659, 784, 1047, 1319].map((f, i) => ({ tipo: 'square', f, at: i * 0.07, d: 0.07, v: 0.3, env: 'hold' }))
+      .concat([{ tipo: 'square', f: 1568, at: 0.38, d: 0.28, v: 0.3, env: 'hold' }]) },
+  { id: 'reloj', nombre: 'Reloj digital', tag: 'Se oye con música',
+    cuenta: [{ tipo: 'square', f: 2050, at: 0, d: 0.06, v: 0.22, env: 'hold' }],
+    fin: [0, 0.13, 0.45, 0.58].map(at => ({ tipo: 'square', f: 2050, at, d: 0.08, v: 0.28, env: 'hold' })) },
+  { id: 'gong', nombre: 'Gong', tag: 'Para casa',
+    cuenta: _sndGolpe(392, 0, 0.35, [[1, 0.6], [2.24, 0.2]], 0.5),
+    fin: _sndGolpe(196, 0, 3.0, [[1, 0.55], [1.5, 0.25], [2.24, 0.2], [2.9, 0.12], [4.1, 0.06]], 0.85) },
+  { id: 'burbuja', nombre: 'Burbuja', tag: 'Discreto',
+    cuenta: [{ f: 500, fFin: 1100, barrido: 0.05, at: 0, d: 0.09, v: 0.35 }],
+    fin: [{ f: 400, fFin: 1200, barrido: 0.06, at: 0, d: 0.14, v: 0.5 }, { f: 500, fFin: 1500, barrido: 0.06, at: 0.18, d: 0.18, v: 0.5 }] },
+  { id: 'tambor', nombre: 'Tambor', tag: 'Discreto',
+    cuenta: [{ f: 160, fFin: 60, barrido: 0.12, at: 0, d: 0.16, v: 0.8 }],
+    fin: [0, 0.18, 0.36].flatMap((at, i) => [{ f: 170, fFin: 55, barrido: 0.15, at, d: i === 2 ? 0.45 : 0.2, v: 0.9 }, { ruido: true, at, d: 0.03, v: 0.25 }]) },
+];
+const SOUND_TONE_IDS = SOUND_TONES.map(t => t.id);
+// Lo guardado en el teléfono → un ajuste válido. Lo que no se reconoce cae al de siempre, nunca a silencio:
+// quedarse mudo sin haberlo pedido es peor que el pitido (el descanso se pasaría sin aviso).
+function soundPrefNormalize(raw) {
+  const r = (raw && typeof raw === 'object') ? raw : {};
+  const mode = SOUND_MODES.some(m => m.id === r.mode) ? r.mode : SOUND_DEFAULT.mode;
+  const tone = SOUND_TONE_IDS.includes(r.tone) ? r.tone : SOUND_DEFAULT.tone;
+  const out = { mode, tone };
+  if (mode === 'silencio' && (r.prev === 'sonido' || r.prev === 'vibracion')) out.prev = r.prev;
+  return out;
+}
+// El botón de la pantalla del descanso: silencia, y al volver a tocarlo devuelve el modo que había
+// (no siempre «sonido»: quien usa «solo vibración» vuelve a vibración).
+function soundToggleMute(pref) {
+  const p = soundPrefNormalize(pref);
+  if (p.mode === 'silencio') return { mode: p.prev || SOUND_DEFAULT.mode, tone: p.tone };
+  return { mode: 'silencio', tone: p.tone, prev: p.mode };
+}
+// Cambiar el modo desde el Perfil. Elegir «Silencio» recuerda el modo de antes, igual que el
+// botón del descanso: quien usa solo vibración y silencia, al volver no tiene que oír pitidos.
+function soundWithMode(pref, mode) {
+  const p = soundPrefNormalize(pref);
+  if (mode === 'silencio') return soundPrefNormalize({ mode, tone: p.tone, prev: p.mode === 'silencio' ? p.prev : p.mode });
+  return soundPrefNormalize({ mode, tone: p.tone });
+}
+function soundShouldPlay(pref) { return soundPrefNormalize(pref).mode === 'sonido'; }
+function soundShouldVibrate(pref) { return soundPrefNormalize(pref).mode !== 'silencio'; }
+// Las notas de un tono para una fase ('cuenta' = cada segundo de los últimos 5; 'fin' = terminó).
+function soundToneNotes(id, fase) {
+  const t = SOUND_TONES.find(x => x.id === id) || SOUND_TONES[0];
+  return (fase === 'cuenta' ? t.cuenta : t.fin).map(n => Object.assign({}, n));
+}
+// Cuánto dura una fase (la última nota en apagarse). La cuenta suena una vez por segundo: si durara más,
+// un aviso se montaría sobre el siguiente.
+function soundToneLength(id, fase) {
+  return soundToneNotes(id, fase).reduce((m, n) => Math.max(m, (n.at || 0) + n.d), 0);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    SOUND_MODES, SOUND_DEFAULT, SOUND_TONES, SOUND_TONE_IDS, soundPrefNormalize, soundToggleMute, soundWithMode,
+    soundShouldPlay, soundShouldVibrate, soundToneNotes, soundToneLength,
     REFERIDO_CADA_DIAS,
     REFERIDO_PREMIO,
     referidoUrl,

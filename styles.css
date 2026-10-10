@@ -1790,7 +1790,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gsc-h{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--gt);margin-bottom:7px}
 .gsc-b{font-size:14.5px;line-height:1.62;color:var(--t1)}
 .gsc-btn{margin-top:18px;width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
-.gm-rest-ctl{display:flex;gap:10px;margin-top:14px}
+.gm-rest-ctl{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:center}
 .gm-rest-ctl-btn{background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.24);border-radius:12px;padding:11px 20px;min-height:46px;color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
 .gm-rest-ctl-btn:hover{background:rgba(255,255,255,.24)}
 .gm-rest-overlay.gm-hold #gm-rest-pause,.gm-rest-overlay.gm-hold #gm-rest-add15{display:none}
@@ -2515,3 +2515,22 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .wf-logro-t{font-size:22px;font-weight:800;color:#fff;margin-top:4px}
 .wf-logro-d{font-size:13px;color:rgba(234,251,244,.82);margin-top:3px;line-height:1.4}
 .wf-logro-btn{margin-top:10px;width:100%;min-height:44px;border:none;border-radius:12px;background:#10E0A0;color:#04130D;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+
+/* v703 · Sonido del entreno. Los botones de modo se ven como los de «Tamaño de texto»; los 11 tonos
+   en una rejilla de dos columnas (tocar uno lo elige y lo hace sonar). */
+/* Fila que se parte (v703): en 360 px «Silencio» baja a una 2.ª fila, y con «Muy grande» va uno
+   por fila; en una rejilla de tres, «vibración» se cortaba. */
+.snd-modes{display:flex;flex-wrap:wrap;gap:7px}
+.snd-mode{flex:1 1 auto;padding:9px 10px;min-height:44px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:700;color:var(--t1);cursor:pointer;line-height:1.2}
+.snd-mode.on{background:var(--g);border-color:var(--g);color:#fff}
+.snd-sub{font-size:12px;font-weight:700;color:var(--t2);margin:14px 0 8px}
+.snd-tones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.snd-tone{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;min-height:48px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;color:var(--t1);cursor:pointer;text-align:left}
+.snd-tone b{font-size:13px;font-weight:800;line-height:1.2}
+.snd-tone span{font-size:11px;color:var(--t2);line-height:1.2}
+.snd-tone.on{border-color:var(--g);background:var(--gl)}
+.snd-tone.on b{color:var(--gt)}
+.snd-pie{font-size:11.5px;color:var(--t2);line-height:1.45;margin-top:10px}
+.gm-rest-snd{display:inline-flex;align-items:center;gap:6px}
+.gm-rest-snd svg{width:16px;height:16px;flex-shrink:0}
+.gm-rest-snd[aria-pressed="true"]{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.5)}

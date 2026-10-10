@@ -4,6 +4,67 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-10 — v703: el sonido del entreno se elige (11 tonos, solo vibración o silencio)
+
+- **Origen**: pedido que los asesorados le venían haciendo al PO: *«la opción de cambiar el tono de la app o ponerla
+  en silencio o vibrador»*. Con la página de prueba de 11 tonos delante, el PO decidió *«deja los 11 que la gente
+  elija»* y dejó la voz suya para un lote posterior.
+- **Medido antes**: los avisos del descanso, de los isométricos y del cardio eran SIEMPRE tres pitidos de onda
+  cuadrada más vibración, sin ningún ajuste. En Android el audio de la web sale por el volumen MULTIMEDIA, así que
+  poner el teléfono en silencio no los apaga: es lo más probable detrás de la queja.
+- **Qué cambió**:
+  - avi-core: `SOUND_MODES`, `SOUND_TONES` (11 tonos sintetizados con Web Audio, sin archivos y sin red),
+    `soundPrefNormalize`, `soundToggleMute`, `soundShouldPlay`, `soundShouldVibrate`, `soundToneNotes`,
+    `soundToneLength`. «Clásico» es copia exacta, nota por nota, de los pitidos de antes, y va directo al parlante;
+    los demás pasan por un compresor (las campanas suman varias notas).
+  - app-4: el ajuste vive en `ax_sound`, **por teléfono** (como el tamaño de letra, fuera de SB_KEYS).
+    `playRestEndBeep`/`playRestTick` preguntan el modo y tocan el tono elegido; toda vibración de AVISO pasa por
+    `alertVibrate`. Tarjeta «Sonido del entreno» en el Perfil del asesorado (tocar un tono lo elige y lo hace sonar)
+    y botón «Silenciar» en la pantalla del descanso, que al volver a tocarlo devuelve el modo que había (quien usa
+    solo vibración vuelve a vibración).
+  - app-6: la vibración del cardio terminado pasa por `alertVibrate`. Los toques de 30-40 ms al marcar una serie no
+    son avisos y quedan igual a propósito. Entrada en AVI_NEWS.
+  - Lo guardado roto o desconocido cae al de siempre, **nunca a silencio**: quedarse mudo sin pedirlo es peor que el
+    pitido (el descanso se pasaría sin aviso).
+  - En iPhone la web no puede vibrar: con «Solo vibración» la tarjeta lo dice. El sonido de las NOTIFICACIONES lo
+    maneja el teléfono, y la tarjeta dice dónde se cambia.
+- **Verificación**: suite 1449 → **1458** en los cuatro modos; matriz VERSIONADA `scripts/e2e/_sabotaje-v703.mjs`,
+  **24 sabotajes y los 24 muerden** (20 en la suite y 4 que solo ve el harness); harness nuevo
+  `scripts/e2e/_verify-sonido.mjs`, que espía los osciladores y `navigator.vibrate` con su CONTROL (un oscilador y
+  una vibración hechos a mano sí suman) y afirma: los 11 tonos suenan con TODAS sus notas en la cuenta y en el aviso,
+  «Solo vibración» no crea ni un oscilador, «Silencio» ni suena ni vibra, el botón del descanso conserva el modo, el
+  ajuste sobrevive a recargar y la tarjeta y el descanso caben en 360 px con letra normal y «Muy grande».
+- **Defectos propios cazados antes de producción**: (1) el candado de `esc()` confundía la clase `snd-note` con el
+  campo «note» → se renombró a `snd-pie`; (2) mi tope de 5.000 Hz dejaba fuera el brillo de la campana (7,9 kHz),
+  que es el sonido que el PO aprobó → se subió el tope a 12 kHz en vez de cambiarle el sonido; (3) con letra «Muy
+  grande» los modos cortaban «vibración» en una rejilla de tres → fila que se parte; (4) el montaje del harness no
+  encendía `#guided-mode` y los botones del descanso medían 0 px → control de montaje que aborta; (5) después lo
+  encendía FUERA de «Hoy», y en el entreno real `openGuidedEmbedded` muda ese nodo a `#cn-today-body` (dentro de
+  `.cnp`, que es lo que agranda la letra): «Muy grande» medía la talla normal. Ahora se monta como el entreno real,
+  con control de `currentCSSZoom` (1,4), y quitar el salto de renglón de `.gm-rest-ctl` lo pone en rojo («Pausar»
+  sale por la izquierda y «Silenciar» por la derecha).
+- **QA de Lucas 🟡, corregido antes de publicar**: (H1) **tocar «Silenciar» con el dedo cerraba el descanso**: el
+  botón se repinta al tocarlo, el `<span>` tocado sale del documento antes de que el clic suba al descanso y
+  `closest('button')` daba null → `gmMinimizeRest`. `_gmWireRestMinimize` mira ahora el recorrido del toque
+  (`composedPath`), que cierra la clase para cualquier botón que se repinte; harness con toque táctil REAL (CDP) y su
+  control (tocar a un lado sí minimiza); sin el arreglo caen el harness y la suite. (H5) un compresor recién creado
+  dejaba el primer sonido en 0,07 de 0,30 (medido en render offline): nace con el audio de la app, con recuperación
+  de 0,05 s, y el primer sonido espera 0,12 s si hace falta. (H2) elegir «Silencio» en el Perfil recuerda el modo de
+  antes (`soundWithMode`). (H3) la nota y el aviso de vibración miran si el teléfono PUEDE vibrar, no su nombre (un
+  iPad en modo escritorio dice ser un Mac). (H4) el foco vuelve al botón tocado tras repintar la tarjeta.
+- **QA de Julián 🟡, corregido antes de publicar**: (🟡1) si se caía la llamada de arranque `initSoundSettings` la
+  tarjeta salía VACÍA y nada lo veía, porque mi montaje la volvía a pintar a mano → el harness ya no la pinta y afirma
+  que la pintó el ARRANQUE; (🟡2) el harness corría antes de que cargara app-5 (1 de 3 corridas en rojo) → espera
+  `_aviUpdateBusy`; (🟡3) la matriz vivía en el scratchpad → versionada, con veredicto por código de salida, escritura
+  atómica y fin de línea normalizado. Y de sus leves: el candado de íconos lee claves con guion y los dos nombres de un
+  ternario (`bell-off` quedaba fuera); el de vibración barre los 7 módulos y fuera de `alertVibrate` solo admite toques
+  de ≤40 ms; el harness espía las conexiones al parlante (solo «Clásico» va directo); el botón del descanso cambia su
+  texto y por eso deja `aria-pressed` (se anunciaba dos veces); `initSoundSettings` va con `try`; y el enlace a la página
+  de prueba salió del comentario de avi-core, que es público.
+- ⏭️ **Después**: la opción con la voz del PO (necesita sus grabaciones). Medido por Lucas y para que lo pruebe el
+  PO en el gimnasio: los tonos etiquetados «Se oye con música» suenan más bajos que «Clásico» (RMS −12,6 a −18,4
+  dBFS contra −7,2); el RMS no es lo que percibe el oído, así que la etiqueta se confirma oyéndolos con música.
+
 ## ⏮️ 2026-10-09 — v702: el nombre se lee en «Asesorados» y los récords no ocupan tres pantallas
 
 - **Origen**: dos capturas del PO desde su teléfono (360 px, letra grande): «los récords se ven muy largos» y «en los

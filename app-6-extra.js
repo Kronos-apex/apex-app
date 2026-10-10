@@ -1551,7 +1551,7 @@ function gmCardioTimer(ei, mins, sets){
       clearInterval(GM.restTimer); GM.restTimer=null;
       _gmEndHoldUI(); _gmRemoveRestMini();
       overlay.classList.add('hidden'); relWake(); playRestEndBeep();
-      try{ if(navigator.vibrate)navigator.vibrate([300,120,300]); }catch(_e){}
+      if(typeof alertVibrate==='function') alertVibrate([300,120,300]);
       toast('🚴 ¡Cardio completado! Quedó registrado.');
       a11ySay('Cardio completado. Quedó registrado.');
       for(let s=0;s<sets;s++) setDone(GM.routine.id,ei,s,true);
@@ -1890,6 +1890,11 @@ function _gmWireRestMinimize(overlay){
   overlay._miniWired=true;
   overlay.addEventListener('click',e=>{
     if(GM.holding&&!GM.holding.cardio)return; // plancha: cancelar es explícito; cardio sí se minimiza
+    // Se pregunta por el RECORRIDO del toque, no por lo que se tocó: un botón que se repinta al
+    // tocarlo («Silenciar», v703) deja su texto fuera del documento antes de que el clic llegue
+    // aquí, y `closest('button')` sobre un nodo suelto da null → minimizaba sin querer.
+    const ruta=(typeof e.composedPath==='function')?e.composedPath():[];
+    if(ruta.some(n=>n&&n.tagName==='BUTTON'))return;
     if(e.target&&e.target.closest&&e.target.closest('button'))return;
     gmMinimizeRest();
   });
@@ -3249,6 +3254,10 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v703 — Pedido de los asesorados: elegir el tono de los avisos, o dejarlos en vibración o en silencio.
+  // Sin público marcado: el entreno guiado es de TODOS, también del tier libre.
+  {v:703, icon:'bell', t:'Elige cómo te avisa la app', d:'Ya puedes cambiar el tono de los avisos del descanso (hay 11 para escoger), dejarlos solo en vibración o en silencio. Y si estás en pleno descanso, los callas con un toque.',
+   steps:['Entra a «Perfil» y baja hasta «Sonido del entreno»','Toca un tono para oírlo y elegirlo','En el descanso, el botón «Silenciar» los calla al momento']},
   // v624 — La imagen del entreno dejo de caducar al tocar «Continuar». Sin publico marcado a
   // proposito: compartir un entreno guardado es de TODOS, tambien del tier libre.
   {v:639, icon:'medal', t:'Logros nuevos, y los puedes compartir', d:'Ahora hay 20 logros en 4 grupos, y los más importantes premian la constancia: semanas completas y meses seguidos. Cuando completas tu semana o ganas un logro, al terminar el entreno te ofrecemos una imagen para compartirlo.',

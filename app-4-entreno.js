@@ -4684,7 +4684,12 @@ function clientQuickMsg(t){
 // reutilizado; cada beep lo reanuda por si iOS lo suspendió al ir a segundo plano.
 let _actx=null, _audioUnlocked=false;
 function getAudioCtx(){
-  if(!_actx){ try{ _actx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(!_actx){
+    try{ _actx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+    // El compresor de los tonos nace YA (v703): recién creado se come el primer sonido (medido:
+    // 0,07 de 0,30) y tarda una décima en asentarse.
+    try{ if(typeof _sndOut==='function') _sndOut(_actx,false); }catch(e){}
+  }
   return _actx;
 }
 function _unlockAudio(){
@@ -4698,44 +4703,126 @@ function _unlockAudio(){
 }
 ['pointerdown','touchend','click'].forEach(ev=>window.addEventListener(ev,_unlockAudio,{passive:true,capture:true}));
 
+// ── Sonido del entreno (v703) ───────────────────────────────────────────────────────────────────
+// Cada aviso pasa por el ajuste de ESTE teléfono (`ax_sound`, fuera de SB_KEYS): sonido y vibración,
+// solo vibración o silencio, y el tono elegido entre los 11 de `SOUND_TONES` (avi-core). Las notas
+// las decide avi-core; aquí solo se tocan. «Clásico» sale nota por nota igual que hasta v702.
+function soundPref(){
+  let raw=null; try{ raw=JSON.parse(localStorage.getItem('ax_sound')||'null'); }catch(e){}
+  return (typeof soundPrefNormalize==='function')?soundPrefNormalize(raw):{mode:'sonido',tone:'clasico'};
+}
+function setSoundPref(p){
+  const v=(typeof soundPrefNormalize==='function')?soundPrefNormalize(p):p;
+  try{ localStorage.setItem('ax_sound',JSON.stringify(v)); }catch(e){}
+  if(typeof renderSoundSettings==='function') renderSoundSettings();
+  _syncRestSoundBtn();
+  return v;
+}
+let _sndComp=null, _sndCompAt=null;
+function _sndOut(ctx,crudo){
+  // Las campanas suman varias notas: el compresor evita que se rompan. «Clásico» va directo al
+  // parlante, como siempre, para que suene idéntico.
+  if(crudo) return ctx.destination;
+  if(!_sndComp){ try{ _sndComp=ctx.createDynamicsCompressor(); _sndComp.threshold.value=-6; _sndComp.ratio.value=4; _sndComp.release.value=0.05; _sndComp.connect(ctx.destination); _sndCompAt=ctx.currentTime; }catch(e){ return ctx.destination; } }
+  return _sndComp;
+}
+function _sndPlay(notes){
+  const ctx=getAudioCtx(); if(!ctx||!notes||!notes.length) return 0;
+  if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+  let t0=ctx.currentTime, n=0;
+  // Si el compresor acaba de nacer, el primer sonido espera a que se asiente (0,1 s con la
+  // recuperación de 0,05; medido): si no, sale casi cuatro veces más bajo. «Clásico» va directo.
+  if(notes.some(o=>!o.crudo)){ _sndOut(ctx,false); if(_sndCompAt!=null) t0=Math.max(t0,_sndCompAt+0.12); }
+  notes.forEach(o=>{
+    try{
+      const t=t0+(o.at||0), out=_sndOut(ctx,o.crudo);
+      if(o.ruido){
+        const len=Math.max(1,Math.floor(ctx.sampleRate*o.d)), b=ctx.createBuffer(1,len,ctx.sampleRate), x=b.getChannelData(0);
+        for(let i=0;i<len;i++) x[i]=(Math.random()*2-1)*(1-i/len);
+        const s=ctx.createBufferSource(), g=ctx.createGain(); s.buffer=b; g.gain.value=o.v; s.connect(g); g.connect(out); s.start(t); n++;
+        return;
+      }
+      const osc=ctx.createOscillator(), g=ctx.createGain();
+      osc.type=o.tipo||'sine'; osc.frequency.setValueAtTime(o.f,t);
+      if(o.fFin) osc.frequency.exponentialRampToValueAtTime(o.fFin,t+(o.barrido||o.d));
+      if(o.trino){ const lfo=ctx.createOscillator(), lg=ctx.createGain(); lfo.frequency.value=o.trino; lg.gain.value=o.prof||120; lfo.connect(lg); lg.connect(osc.frequency); lfo.start(t); lfo.stop(t+o.d+0.05); }
+      const at=o.ataque||0.008, env=o.env||'exp';
+      if(env==='lin'){ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(o.v,t+at); g.gain.linearRampToValueAtTime(0,t+o.d); }
+      else if(env==='hold'){ g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(o.v,t+at); g.gain.setValueAtTime(o.v,t+Math.max(at,o.d-0.02)); g.gain.linearRampToValueAtTime(0,t+o.d); }
+      else { g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(o.v,t+at); g.gain.exponentialRampToValueAtTime(0.0001,t+o.d); }
+      osc.connect(g); g.connect(out); osc.start(t); osc.stop(t+o.d+0.05); n++;
+    }catch(e){}
+  });
+  return n;
+}
+// Toda vibración de AVISO pasa por aquí (los toques cortitos de 15-25 ms al pulsar no son avisos).
+function alertVibrate(pattern){
+  if(typeof soundShouldVibrate==='function'&&!soundShouldVibrate(soundPref())) return false;
+  try{ if(navigator.vibrate){ navigator.vibrate(pattern); return true; } }catch(e){}
+  return false;
+}
 function playRestEndBeep(){
-  try{
-    const ctx=getAudioCtx();
-    if(ctx){
-      if(ctx.state==='suspended') ctx.resume().catch(()=>{});
-      const t0=ctx.currentTime;
-      const beep=(freq,start,dur)=>{
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        o.connect(g);g.connect(ctx.destination);
-        o.type='square';o.frequency.value=freq;
-        g.gain.setValueAtTime(0,t0+start);
-        g.gain.linearRampToValueAtTime(0.9,t0+start+0.01);
-        g.gain.linearRampToValueAtTime(0,t0+start+dur);
-        o.start(t0+start);o.stop(t0+start+dur+0.05);
-      };
-      beep(660,0,.15);beep(880,.2,.15);beep(1100,.4,.35);
-    }
-  }catch(e){}
-  if(navigator.vibrate)navigator.vibrate([200,80,200,80,500]);
+  const p=soundPref();
+  if(typeof soundShouldPlay!=='function'||soundShouldPlay(p)){
+    try{ _sndPlay(typeof soundToneNotes==='function'?soundToneNotes(p.tone,'fin'):[]); }catch(e){}
+  }
+  alertVibrate([200,80,200,80,500]);
 }
-
 function playRestTick(){
-  try{
-    const ctx=getAudioCtx();
-    if(ctx){
-      if(ctx.state==='suspended') ctx.resume().catch(()=>{});
-      const t0=ctx.currentTime;
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);
-      o.type='square';o.frequency.value=660;
-      g.gain.setValueAtTime(0,t0);
-      g.gain.linearRampToValueAtTime(0.7,t0+0.005);
-      g.gain.linearRampToValueAtTime(0,t0+0.12);
-      o.start(t0);o.stop(t0+0.15);
-    }
-  }catch(e){}
-  if(navigator.vibrate)navigator.vibrate(60);
+  const p=soundPref();
+  if(typeof soundShouldPlay!=='function'||soundShouldPlay(p)){
+    try{ _sndPlay(typeof soundToneNotes==='function'?soundToneNotes(p.tone,'cuenta'):[]); }catch(e){}
+  }
+  alertVibrate(60);
 }
+// El botón de la pantalla del descanso: silenciar en el momento, sin ir al Perfil.
+function gmRestToggleSound(){
+  const p=setSoundPref(typeof soundToggleMute==='function'?soundToggleMute(soundPref()):{mode:'silencio',tone:'clasico'});
+  const sinVib=typeof navigator.vibrate!=='function';
+  if(typeof toast==='function') toast(p.mode==='silencio'?'🔕 Avisos en silencio · cámbialo en tu Perfil':(p.mode==='vibracion'?(sinVib?'📳 Solo vibración · este teléfono no vibra, así que quedan en silencio':'📳 Avisos con vibración'):'🔔 Avisos con sonido'));
+}
+function _syncRestSoundBtn(){
+  const b=document.getElementById('gm-rest-snd'); if(!b) return;
+  const mudo=soundPref().mode==='silencio';
+  const ico=typeof aviIcon==='function'?aviIcon(mudo?'bell-off':'bell',16):(mudo?'🔕':'🔔');
+  b.innerHTML=ico+'<span>'+(mudo?'En silencio':'Silenciar')+'</span>';
+  // Botón que CAMBIA su texto: sin aria-pressed, o el lector anuncia el estado dos veces (QA Julián).
+  // La etiqueta empieza por lo que se ve (WCAG 2.5.3).
+  b.setAttribute('aria-label',mudo?'En silencio. Toca para volver a activar los avisos':'Silenciar los avisos');
+}
+// La tarjeta del Perfil. Tocar un tono lo ELIGE y lo hace sonar (aunque esté en silencio: lo pidió).
+function renderSoundSettings(){
+  const box=document.getElementById('cn-sound'); if(!box||typeof SOUND_MODES==='undefined') return;
+  const p=soundPref();
+  // Por capacidad y no por el nombre del teléfono: un iPad en modo escritorio dice ser un Mac.
+  const sinVib=typeof navigator.vibrate!=='function';
+  const modos=SOUND_MODES.map(m=>`<button type="button" class="snd-mode${p.mode===m.id?' on':''}" aria-pressed="${p.mode===m.id}" data-snd="m-${m.id}" onclick="soundSetMode('${m.id}')">${esc(m.nombre)}</button>`).join('');
+  const tonos=SOUND_TONES.map(t=>`<button type="button" class="snd-tone${p.tone===t.id?' on':''}" aria-pressed="${p.tone===t.id}" data-snd="t-${t.id}" onclick="soundPickTone('${t.id}')"><b>${esc(t.nombre)}</b><span>${esc(t.tag)}</span></button>`).join('');
+  box.innerHTML=`<div class="snd-modes" role="group" aria-label="Cómo te avisa la app">${modos}</div>
+    ${sinVib&&p.mode==='vibracion'?'<div class="snd-pie">Este teléfono no deja que la app lo haga vibrar (pasa en iPhone): con «Solo vibración» los avisos quedan en silencio.</div>':''}
+    <div class="snd-sub">Tono · toca uno para oírlo y elegirlo${p.mode!=='sonido'?' (solo suena si eliges «Sonido y vibración»)':''}</div>
+    <div class="snd-tones">${tonos}</div>
+    <div class="snd-pie">Se recuerda en este teléfono. El sonido de las notificaciones lo maneja tu celular: en Android, Ajustes → Aplicaciones → AVI → Notificaciones; en iPhone, Ajustes → Notificaciones → AVI.</div>`;
+}
+// Repintar la tarjeta deja el foco en el <body>: con lector de pantalla se pierde el sitio. Si el
+// toque vino de la tarjeta, el foco vuelve al botón que se tocó.
+function _sndRefocus(antes,clave){
+  if(!antes||!antes.closest||!antes.closest('#cn-sound')) return;
+  const b=document.querySelector('#cn-sound [data-snd="'+clave+'"]');
+  if(b) try{ b.focus({preventScroll:true}); }catch(e){}
+}
+function soundSetMode(m){
+  const antes=document.activeElement;
+  setSoundPref(typeof soundWithMode==='function'?soundWithMode(soundPref(),m):{mode:m,tone:soundPref().tone});
+  _sndRefocus(antes,'m-'+m);
+}
+function soundPickTone(id){
+  const antes=document.activeElement;
+  const p=soundPref(); setSoundPref({mode:p.mode,tone:id,prev:p.prev});
+  _sndRefocus(antes,'t-'+id);
+  try{ if(typeof _unlockAudio==='function') _unlockAudio(); _sndPlay(soundToneNotes(id,'fin')); }catch(e){}
+}
+function initSoundSettings(){ try{ renderSoundSettings(); _syncRestSoundBtn(); }catch(e){ console.warn('[sonido]',e); } }
 
 // El conteo se basa en un timestamp ABSOLUTO (endAt), no en restar ticks. iOS suspende
 // los setInterval cuando se bloquea la pantalla / la app pasa a segundo plano, así que un

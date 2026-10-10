@@ -1375,6 +1375,7 @@ syncFromCloud().then(_aviModulesReady).then(async ()=>{
   // el gate lo veía «arrancando bien».
   if(typeof initTheme==='function')initTheme();
   if(typeof initTextSize==='function')initTextSize();
+  if(typeof initSoundSettings==='function')initSoundSettings();
   if(typeof initRememberMe==='function')initRememberMe();
   if(typeof initPWA==='function')initPWA();
   if(typeof _aviInstallBack==='function')_aviInstallBack();
