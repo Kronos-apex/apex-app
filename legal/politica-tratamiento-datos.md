@@ -1,6 +1,6 @@
 # Política de Tratamiento de Datos Personales de AVI
 
-**Versión:** 2026-10-03 · **Vigente desde:** 3 de octubre de 2026
+**Versión:** 2026-10-10 · **Vigente desde:** 10 de octubre de 2026
 
 Esta política explica qué datos personales recogemos en AVI, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos. Se rige por el artículo 15 de la Constitución Política, la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015).
 
@@ -83,7 +83,7 @@ Como titular de los datos tienes derecho a:
 ## 9. Cómo ejercer tus derechos
 
 - **Escríbenos** a aviapptraining2020@gmail.com o al WhatsApp +57 310 437 8400 con tu nombre, tu correo o teléfono de contacto y lo que necesitas.
-- **Desde la app** puedes corregir tu perfil y **eliminar tu cuenta** (Perfil → «Eliminar mi cuenta»). Si quieres una copia de tus datos, pídela por correo o WhatsApp.
+- **Desde la app** puedes corregir tu perfil y **eliminar tu cuenta** (Perfil → Ajustes → Cuenta y acceso → «Eliminar mi cuenta»). Si quieres una copia de tus datos, pídela por correo o WhatsApp.
 - **Consultas:** respondemos en máximo diez (10) días hábiles. Si no alcanzamos, te avisamos el motivo y respondemos en máximo cinco (5) días hábiles más.
 - **Reclamos** (corregir, actualizar, borrar o revocar): respondemos en máximo quince (15) días hábiles, prorrogables hasta ocho (8) días hábiles más con aviso. Incluye tu identificación, la descripción de lo que pides, tu dirección o correo de respuesta y los documentos que quieras aportar. Si el reclamo está incompleto, te pedimos completarlo dentro de los cinco (5) días siguientes; si pasan dos (2) meses sin respuesta tuya, entendemos que desististe.
 

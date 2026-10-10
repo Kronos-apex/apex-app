@@ -1063,7 +1063,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .sroom{position:fixed;inset:0;z-index:1400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:scale(.94);transform-origin:50% 42%;transition:opacity .24s ease,transform .34s cubic-bezier(.2,.85,.3,1);visibility:hidden;overscroll-behavior:contain}
 .sroom.on{opacity:1;transform:none;visibility:visible}
 .sroom-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:13px 16px;padding-top:max(13px,env(safe-area-inset-top));background:var(--bg);border-bottom:1px solid var(--br)}
-.sroom-back{position:relative;background:var(--w);border:1.5px solid var(--br2);color:var(--t1);font-family:inherit;font-size:14px;font-weight:800;padding:7px 15px;border-radius:999px;cursor:pointer}
+.sroom-back{position:relative;flex:none;white-space:nowrap;background:var(--w);border:1.5px solid var(--br2);color:var(--t1);font-family:inherit;font-size:14px;font-weight:800;padding:7px 15px;border-radius:999px;cursor:pointer}
 /* El pill mide 34 px de alto y la guia de Apple pide 44 para el dedo. Se agranda el AREA
    PULSABLE con un ::after invisible, no el boton: asi el diseño no cambia en ningun tema. */
 .sroom-back::after{content:'';position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:44px}
@@ -2531,6 +2531,35 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .snd-tone.on{border-color:var(--g);background:var(--gl)}
 .snd-tone.on b{color:var(--gt)}
 .snd-pie{font-size:11.5px;color:var(--t2);line-height:1.45;margin-top:10px}
+/* ── Ajustes (v704) · lista corta y agrupada: cada fila dice su valor actual y abre su pantalla ── */
+.prof-aj{display:flex;justify-content:flex-end;margin-bottom:10px}
+.aj-entrada{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:8px 14px;border:1.5px solid var(--br2);border-radius:999px;background:var(--w);color:var(--t1);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out)}
+.aj-entrada:active{background:var(--gl);border-color:var(--g)}
+.aj-grp{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);margin:20px 4px 8px}
+.aj-grp:first-child{margin-top:4px}
+.aj-list{background:var(--w);border:1px solid var(--br);border-radius:var(--r);overflow:hidden}
+.aj-row{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:10px 14px;border:0;border-bottom:1px solid var(--br);background:transparent;font-family:inherit;color:var(--t1);text-align:left;cursor:pointer;transition:background var(--dur-fast) var(--ease-out)}
+.aj-row:last-child{border-bottom:0}
+.aj-row:active{background:var(--gl)}
+.aj-info{cursor:default}
+.aj-ic{width:32px;height:32px;border-radius:9px;background:var(--gl);color:var(--gt);display:grid;place-items:center;flex:none}
+.aj-ic svg{width:17px;height:17px}
+.aj-lbl{flex:1;min-width:0;font-size:15px;font-weight:700}
+.aj-val{font-size:13px;color:var(--t2);text-align:right;max-width:48%;overflow-wrap:anywhere}
+.aj-chev{font-size:20px;line-height:1;color:var(--t3)}
+.aj-build{font-size:11px;color:var(--t3);text-align:center;padding:22px 0 6px;letter-spacing:.4px}
+.aj-intro{font-size:13px;color:var(--t2);line-height:1.5;margin:2px 2px 12px}
+.aj-panel{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px}
+.aj-guardar{width:100%;margin-top:14px;min-height:46px}
+.aj-accion .aj-lbl{color:var(--rdt)}
+.aj-accion .aj-ic{background:var(--rdl);color:var(--rdt)}
+.aj-campo{display:block;font-size:12.5px;font-weight:700;color:var(--t2);margin:0 0 6px}
+.aj-campo~.aj-campo{margin-top:14px}
+.aj-nota{font-size:12px;color:var(--t2);line-height:1.45;margin:8px 0 0}
+.aj-pass{position:relative}
+.aj-pass .inp{padding-right:48px}
+.aj-ojo{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:42px;height:42px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--rsm);background:none;color:var(--t2);cursor:pointer}
+.aj-error{font-size:12.5px;font-weight:600;color:var(--rdt);margin-top:8px}
 .gm-rest-snd{display:inline-flex;align-items:center;gap:6px}
 .gm-rest-snd svg{width:16px;height:16px;flex-shrink:0}
 .gm-rest-snd[aria-pressed="true"]{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.5)}

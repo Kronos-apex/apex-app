@@ -854,7 +854,7 @@ async function _enterAuthSession(authUser,opts){
       // Ese toque auto-crea una cuenta vacía con su Gmail que luego BLOQUEA el
       // "Conectar mi Google" del Perfil (identity_already_exists). El mensaje las
       // redirige al camino correcto: entrar con correo y clave.
-      if(er){ er.textContent='Ese Google no tiene cuenta en AVI. Si tu coach ya te creó una, entra con tu correo y clave (Google se conecta después, desde tu Perfil). Si eres nuevo, toca “Crear cuenta”.'; er.classList.add('on'); }
+      if(er){ er.textContent='Ese Google no tiene cuenta en AVI. Si tu coach ya te creó una, entra con tu correo y clave (Google se conecta después, desde Ajustes en tu Perfil). Si eres nuevo, toca “Crear cuenta”.'; er.classList.add('on'); }
       toast('Entra con tu correo y clave, o crea tu cuenta. 👇');
       return;
     }
@@ -1432,7 +1432,7 @@ async function backToCoachPanel(){
 // 2026-10-02 (v698): a pedido del responsable salen de la política y de los términos su número de cédula
 // y su dirección física; queda el domicilio (Guaduas, Cundinamarca) con correo y WhatsApp. El Decreto 1377
 // (art. 13) no pide la cédula; si exige una dirección física lo resuelve el abogado (notas, «Datos del responsable»).
-const LEGAL_V='2026-10-03'; // v699: la política dice que guardamos el canal por el que llegaste (y para qué).
+const LEGAL_V='2026-10-10'; // v704: la ruta para eliminar la cuenta pasa por Perfil → Ajustes → Cuenta y acceso.
 // v697 publicó 2026-10-01: la versión que se PUBLICA (en la app y en avientrena.com/privacidad,
 // /terminos y /cookies): cubre la web, WhatsApp, pagos y lo presencial, con los datos del responsable y sin
 // las notas internas que antes veía quien se registraba. Quien aceptó una versión anterior conserva la suya

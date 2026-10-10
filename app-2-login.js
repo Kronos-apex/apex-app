@@ -277,7 +277,7 @@ async function _handleGoogleLinkReturn(){
     try{ if(!matchMedia('(display-mode: standalone)').matches) setTimeout(()=>toast('📱 Puedes volver a la app AVI desde su ícono.',6000),6500); }catch(_e){}
     try{ renderGoogleLink(); }catch(_e){}
   }else{
-    toast('No se pudo confirmar la conexión con Google. Revisa en Perfil e intenta de nuevo.',6000);
+    toast('No se pudo confirmar la conexión con Google. Revisa en Perfil › Ajustes › Cuenta y acceso e intenta de nuevo.',6000);
   }
 }
 
@@ -517,6 +517,18 @@ function logout(){
     if(typeof _gmRemoveRestMini==='function')_gmRemoveRestMini();
     if(typeof relWake==='function')relWake();
   }catch(_e){}
+  // v704 · Las habitaciones (.sroom) son capas fijas POR ENCIMA de todo: salir con una abierta —desde
+  // Ajustes, o porque el servidor cerró la sesión (`_sesionCerrada`)— la dejaba tapando el login y el
+  // aviso de sesión cerrada, con su capa de historial colgada (QA Julián). Se cierran todas aquí, con
+  // las ventanas que tuvieran encima; la entrada de historial que queda la absorbe el atrás como las
+  // huérfanas de una sesión anterior (v572).
+  try{
+    const abiertas=[...document.querySelectorAll('.sroom.on')];
+    abiertas.forEach(r=>r.classList.remove('on'));
+    if(typeof AVINAV!=='undefined') AVINAV.layers=Math.max(0,(AVINAV.layers||0)-abiertas.length);
+    document.querySelectorAll('.mdbg.on').forEach(m=>m.classList.remove('on'));
+    if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+  }catch(_e){}
   // Limpiar el contexto de push al salir (aviso Julián v320): sin esto, en la MISMA pestaña el
   // 2º asesorado hereda _pushCtx/flags del 1º → se salta su self-heal o reintenta con id ajeno
   // (RLS lo rechaza, pero desperdicia). Mata la clase de bug de contexto stale entre cuentas.
@@ -592,19 +604,9 @@ function _aviVigilarSesion(){
   });
 }
 
-function openSettings(){
-  document.getElementById('st-name').value=getCoachName();
-  document.getElementById('st-email').value=getCoachEmail();
-  if(document.getElementById('st-site'))document.getElementById('st-site').value=getCoachSite();
-  if(document.getElementById('st-nequi'))document.getElementById('st-nequi').value=DB.nequi||'';
-  document.getElementById('st-cur').value='';
-  document.getElementById('st-new').value='';
-  document.getElementById('st-rep').value='';
-  document.getElementById('st-perr').style.display='none';
-  closeDrawer();om('m-settings');
-  setTheme(ld('ax_theme','dark'));
-  _syncFsBtns(ld('ax_textsize','normal'));
-}
+// v704 · La ventana «Configuración del coach» se volvió la pantalla Ajustes (la misma del asesorado):
+// sus campos viven en Ajustes › Tu cuenta de coach. El menú sigue llamando a esta función.
+function openSettings(){ openAjustes(); }
 
 async function saveSettings(){
   const name=document.getElementById('st-name').value.trim();
@@ -614,6 +616,7 @@ async function saveSettings(){
   const nw=document.getElementById('st-new').value;
   const rep=document.getElementById('st-rep').value;
   const perr=document.getElementById('st-perr');
+  if(perr)perr.style.display='none';   // un error viejo no se queda pegado si este falla por otra razón
   if(!name||!email){toast('⚠️ Nombre y email son obligatorios');return;}
   // Password change requested
   if(cur||nw||rep){
@@ -635,8 +638,108 @@ async function saveSettings(){
   const nequi=document.getElementById('st-nequi')?document.getElementById('st-nequi').value.trim().replace(/\s/g,''):'';
   DB.nequi=nequi;sv('ax_nequi',nequi);
   document.getElementById('sb-nm').textContent=name;
-  cm('m-settings');toast('✅ Configuración guardada');
+  // La contraseña ya se guardó: no se deja escrita en los campos.
+  ['st-cur','st-new','st-rep'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+  // v704: se guarda desde Ajustes › Tu cuenta de coach — se vuelve a la lista consumiendo su capa.
+  const _ajSub=document.getElementById('ajustes-sub-room');
+  if(_ajSub&&_ajSub.classList.contains('on')){ if(typeof navCloseLayer==='function') navCloseLayer(closeAjustesSub); else closeAjustesSub(); }
+  toast('✅ Ajustes guardados');
 }
+// ── AJUSTES (v704, 10-oct-2026) ──────────────────────────────────────────────────────────────────
+// Pedido del PO: *«todo lo que tiene que ver con ajustes, en Ajustes… como una app de verdad»*.
+// Referencias (Apple, Android, Hevy, Strava, Fitia, MyFitnessPal, TrainHeroic, Fitsly, WhatsApp):
+// el Perfil es quién eres y cómo vas; Ajustes es una LISTA CORTA Y AGRUPADA donde cada fila muestra
+// su valor actual y abre su pantalla. Lo que se usa en el momento se queda donde se usa («Silenciar»
+// en el descanso). El coach entra por el menú («Ajustes»); el asesorado, arriba a la derecha del
+// Perfil. Las dos pantallas son habitaciones (.sroom): capa de historial, letra grande y la franja del
+// reloj del iPhone vienen del molde.
+function _ajEsCoach(){
+  // 🔒 En «Mi entrenamiento» el coach es un asesorado para la pantalla (v700): se pregunta COACH_SELF
+  // y AUTH_ROLE, no `loggedAs`, o el coach vería la fila «Mi plan» de alguien que no paga.
+  return (typeof COACH_SELF!=='undefined'&&COACH_SELF)||(typeof AUTH_ROLE!=='undefined'&&AUTH_ROLE==='coach')||(typeof CUR!=='undefined'&&CUR.loggedAs==='coach');
+}
+const _AJ_TITULOS={sonido:'Sonido del entreno',tema:'Tema',letra:'Tamaño de texto',cuenta:'Cuenta y acceso',coach:'Tu cuenta de coach'};
+function renderAjustes(){
+  const box=document.getElementById('ajroom-list'); if(!box) return;
+  const I=typeof aviIcon==='function';
+  const fila=o=>{
+    const val=o.val?`<span class="aj-val">${esc(o.val)}</span>`:'';
+    const cab=`<span class="aj-ic">${o.ic}</span><span class="aj-lbl">${esc(o.lbl)}</span>${val}`;
+    if(!o.on) return `<div class="aj-row aj-info" data-aj-row="${o.id}">${cab}</div>`;
+    // Una ACCIÓN (cerrar sesión) no lleva flecha: no abre otra pantalla.
+    if(o.accion) return `<button type="button" class="aj-row aj-accion" data-aj-row="${o.id}" onclick="${o.on}">${cab}</button>`;
+    return `<button type="button" class="aj-row" data-aj-row="${o.id}" onclick="${o.on}">${cab}<span class="aj-chev" aria-hidden="true">›</span></button>`;
+  };
+  const grupo=(t,filas)=>filas.length?`<div class="aj-grp">${esc(t)}</div><div class="aj-list">${filas.map(fila).join('')}</div>`:'';
+  const tema=(typeof THEME_LABEL!=='undefined'&&THEME_LABEL[ld('ax_theme','dark')])||'';
+  const letra=(typeof FS_LABEL!=='undefined'&&FS_LABEL[ld('ax_textsize','normal')])||'';
+  const sonido=(typeof soundSummary==='function'&&typeof soundPref==='function')?soundSummary(soundPref()):'';
+  const coach=_ajEsCoach();
+  let html='';
+  if(coach) html+=grupo('Tu cuenta',[{id:'coach',ic:I?aviIcon('user',16):'👤',lbl:'Tu cuenta de coach',val:(typeof getCoachName==='function'?getCoachName():''),on:"ajustesAbrir('coach')"}]);
+  html+=grupo('Entreno',[{id:'sonido',ic:I?aviIcon('bell',16):'🔔',lbl:'Sonido del entreno',val:sonido,on:"ajustesAbrir('sonido')"}]);
+  html+=grupo('Pantalla',[
+    {id:'tema',ic:I?aviIcon('contrast',16):'🎨',lbl:'Tema',val:tema,on:"ajustesAbrir('tema')"},
+    {id:'letra',ic:I?aviIcon('sliders',16):'🔠',lbl:'Tamaño de texto',val:letra,on:"ajustesAbrir('letra')"}]);
+  if(!coach){
+    const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+    const plan=(c&&typeof settingsPlanSummary==='function')?settingsPlanSummary(c,Date.now()):null;
+    const filas=[];
+    if(plan) filas.push({id:'plan',ic:I?aviIcon('card',16):'💳',lbl:'Mi plan',val:plan.nombre+(plan.detalle?' · '+plan.detalle:'')});
+    if(typeof AUTH_MODE!=='undefined'&&AUTH_MODE) filas.push({id:'cuenta',ic:I?aviIcon('lock',16):'🔒',lbl:'Cuenta y acceso',on:"ajustesAbrir('cuenta')"});
+    html+=grupo('Tu cuenta',filas);
+  }
+  // «Cerrar sesión», como en el menú del coach (en «Mi entrenamiento» también cierra la del coach).
+  html+=grupo('Sesión',[{id:'salir',ic:I?aviIcon('logout',16):'↩️',lbl:'Cerrar sesión',on:'ajustesSalir()',accion:true}]);
+  box.innerHTML=html;
+}
+function openAjustes(){
+  if(typeof closeDrawer==='function') closeDrawer();
+  renderAjustes();
+  const room=document.getElementById('ajustes-room'); if(!room) return;
+  const b=document.getElementById('ajroom-body'); if(b) b.scrollTop=0;
+  if(typeof _roomFront==='function') _roomFront(room); else room.classList.add('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+}
+function closeAjustes(){
+  const r=document.getElementById('ajustes-room'); if(r) r.classList.remove('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+}
+// Lo que antes hacía openSettings al abrir la ventana del coach: cargar sus datos en los campos.
+function _ajFillCoach(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  set('st-name',getCoachName()); set('st-email',getCoachEmail());
+  set('st-site',getCoachSite()); set('st-nequi',DB.nequi||'');
+  set('st-cur',''); set('st-new',''); set('st-rep','');
+  const pe=document.getElementById('st-perr'); if(pe) pe.style.display='none';
+}
+function ajustesAbrir(sec){
+  const room=document.getElementById('ajustes-sub-room'); if(!room||!_AJ_TITULOS[sec]) return;
+  document.querySelectorAll('#ajsub-body .aj-sec').forEach(s=>{ s.hidden=(s.dataset.aj!==sec); });
+  const t=document.getElementById('ajsub-t'); if(t) t.textContent=_AJ_TITULOS[sec];
+  if(sec==='sonido'&&typeof renderSoundSettings==='function') renderSoundSettings();
+  if(sec==='tema'&&typeof setTheme==='function') setTheme(ld('ax_theme','dark'));   // pinta el botón elegido
+  if(sec==='letra'&&typeof _syncFsBtns==='function') _syncFsBtns(ld('ax_textsize','normal'));
+  if(sec==='coach') _ajFillCoach();
+  if(sec==='cuenta'){
+    const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+    if(typeof renderGoogleLink==='function') renderGoogleLink();
+    if(c&&typeof renderAccountActions==='function') renderAccountActions(c);
+  }
+  const b=document.getElementById('ajsub-body'); if(b) b.scrollTop=0;
+  if(typeof _roomFront==='function') _roomFront(room); else room.classList.add('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+}
+// Al volver a la lista, cada fila dice lo que se acaba de elegir.
+function closeAjustesSub(){
+  const r=document.getElementById('ajustes-sub-room'); if(r) r.classList.remove('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+  renderAjustes();
+}
+// «Cerrar sesión» desde Ajustes. Las habitaciones abiertas las cierra `logout()` (v704): así vale también
+// cuando la sesión la cierra el servidor con Ajustes abierto.
+function ajustesSalir(){ logout(); }
+
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');if(id==='s-login')aviLoginVideo();}
 // v684 · EL VIDEO DEL LOGIN se carga SOLO cuando el login de verdad se ve (R16 #2). Decisión del PO:
 // *«si vas a comprimir el vídeo que no pierda la calidad premium»* — medido, este montaje no baja más de un
@@ -1591,6 +1694,13 @@ function _aviHandleBack(){
   // cerrarse en silencio, sin el segundo aviso.
   setTimeout(function(){ if(AVINAV.exitArmed){ AVINAV.exitArmed=false; _navRepush(); } }, 2000);
 }
+// La ventana (.mdbg) abierta que está POR ENCIMA de todas las habitaciones abiertas, o null.
+function _aviModalSobreSalas(){
+  const salas=[...document.querySelectorAll('.sroom.on')].map(e=>parseInt(getComputedStyle(e).zIndex)||0);
+  if(!salas.length) return null;
+  const tope=Math.max(...salas);
+  return [...document.querySelectorAll('.mdbg.on')].find(m=>(parseInt(getComputedStyle(m).zIndex)||0)>tope)||null;
+}
 // Cierra el overlay/habitación/modal de más arriba si hay uno abierto. true si cerró algo.
 function _aviCloseTopOverlay(){
   // Chat de pantalla completa del coach (v321): overlay de tope del lado coach → se cierra primero.
@@ -1609,9 +1719,22 @@ function _aviCloseTopOverlay(){
   // sube por encima de la habitación al abrirla), así que se cierra ANTES que las habitaciones.
   const exdTop=document.getElementById('exdetail-bg');
   if(exdTop&&exdTop.classList.contains('on')){_closeExDetail();return true;}
+  // Una ventana abierta ENCIMA de una habitación (om() la sube sobre ella, v704) se cierra ANTES que
+  // la habitación: si no, el atrás cerraba Ajustes y dejaba «Eliminar mi cuenta» huérfana encima.
+  // El mini-modal de config HIIT (v301) se abre sobre la biblioteca de rápidos y conserva su cierre
+  // propio (suelta la configuración pendiente) — misma clase que el lightbox sobre la ficha (2026-07-01).
+  const qwc=document.getElementById('m-qwcfg');
+  if(qwc&&qwc.classList.contains('on')){_qwCfgSpec=null;qwc.classList.remove('on');return true;}
+  const mdSobre=_aviModalSobreSalas();
+  if(mdSobre){ mdSobre.classList.remove('on'); return true; }
   // Orden = de la más "encima" a la más "abajo" en la pila de habitaciones:
   // ejercicio (puede ir sobre sesión o mes) → sesión (puede ir sobre rutina) →
   // récord/mes (hojas) → rutina (base).
+  // Ajustes (v704): el detalle de un ajuste va encima de la lista.
+  const ajs=document.getElementById('ajustes-sub-room');
+  if(ajs&&ajs.classList.contains('on')){closeAjustesSub();return true;}
+  const ajr=document.getElementById('ajustes-room');
+  if(ajr&&ajr.classList.contains('on')){closeAjustes();return true;}
   const exr=document.getElementById('exercise-room');
   if(exr&&exr.classList.contains('on')){closeExerciseRoom();return true;}
   const sr=document.getElementById('session-room');
@@ -1632,11 +1755,6 @@ function _aviCloseTopOverlay(){
   if(nutr&&nutr.classList.contains('on')){closeNutritionRoom();return true;}
   const csr=document.getElementById('coach-stat-room');
   if(csr&&csr.classList.contains('on')){closeCoachStat();return true;}
-  // El mini-modal de config HIIT (v301) se abre ENCIMA de la biblioteca de rápidos → el
-  // atrás lo cierra a ÉL primero (si no, cerraría la sala por debajo y lo dejaría huérfano
-  // — misma clase de bug que el lightbox sobre la ficha, auditoría 2026-07-01).
-  const qwc=document.getElementById('m-qwcfg');
-  if(qwc&&qwc.classList.contains('on')){_qwCfgSpec=null;qwc.classList.remove('on');return true;}
   const qwr=document.getElementById('quickwo-room');
   if(qwr&&qwr.classList.contains('on')){closeQuickRoom();return true;}
   const pu=document.getElementById('premium-upsell');

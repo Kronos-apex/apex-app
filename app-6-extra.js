@@ -2054,6 +2054,7 @@ const HELP_SECTIONS = {
     <ul style="margin:10px 0 0;padding-left:18px">
       <li style="margin-bottom:7px">Puedes anotar tu <b>peso y medidas</b> para ver cómo cambian con el tiempo.</li>
       <li style="margin-bottom:7px">Tu entrenador usa estos datos para <b>ajustar tu plan</b>.</li>
+      <li style="margin-bottom:7px">Arriba a la derecha está <b>Ajustes</b>: el tema, el tamaño del texto, el sonido del entreno y tu cuenta.</li>
     </ul>
     <div style="margin-top:10px">No es obligatorio llenarlo todo. Anota lo que puedas, cuando puedas.</div>` },
   // Comunidad existe desde v373 y esta ficha faltaba: `openHelp` cae al default (la de «Hoy»), así
@@ -3254,10 +3255,13 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v704 — Pedido del PO: los ajustes salen del Perfil a su propia pantalla. Para TODOS los públicos.
+  {v:704, icon:'sliders', t:'Los ajustes, en un solo lugar', d:'El tema, el tamaño del texto, el sonido del entreno y tu cuenta ahora están juntos en Ajustes. Tu Perfil queda solo con lo tuyo: tus datos y cómo vas.',
+   steps:['Entra a «Perfil»','Toca «Ajustes», arriba a la derecha','Cada fila abre su pantalla y te dice lo que tienes elegido']},
   // v703 — Pedido de los asesorados: elegir el tono de los avisos, o dejarlos en vibración o en silencio.
   // Sin público marcado: el entreno guiado es de TODOS, también del tier libre.
   {v:703, icon:'bell', t:'Elige cómo te avisa la app', d:'Ya puedes cambiar el tono de los avisos del descanso (hay 11 para escoger), dejarlos solo en vibración o en silencio. Y si estás en pleno descanso, los callas con un toque.',
-   steps:['Entra a «Perfil» y baja hasta «Sonido del entreno»','Toca un tono para oírlo y elegirlo','En el descanso, el botón «Silenciar» los calla al momento']},
+   steps:['Entra a «Perfil», toca «Ajustes» y luego «Sonido del entreno»','Toca un tono para oírlo y elegirlo','En el descanso, el botón «Silenciar» los calla al momento']},
   // v624 — La imagen del entreno dejo de caducar al tocar «Continuar». Sin publico marcado a
   // proposito: compartir un entreno guardado es de TODOS, tambien del tier libre.
   {v:639, icon:'medal', t:'Logros nuevos, y los puedes compartir', d:'Ahora hay 20 logros en 4 grupos, y los más importantes premian la constancia: semanas completas y meses seguidos. Cuando completas tu semana o ganas un logro, al terminar el entreno te ofrecemos una imagen para compartirlo.',

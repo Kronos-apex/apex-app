@@ -140,6 +140,9 @@ const HABITACIONES = [
   ['músculo',   `openMuscleRoom(CUR.clientId,'piernas')`,                   null],
   ['nutrición', `openNutritionRoom(CUR.clientId)`,                          null],
   ['rutina',    `openRoutineRoom(CUR.clientId, ${JSON.stringify(rid || 'r0')})`, null],
+  // v704 · Ajustes: la lista y el detalle de un ajuste.
+  ['ajustes',   `openAjustes()`,                                            '#ajroom-body'],
+  ['ajuste',    `ajustesAbrir('tema')`,                                     '#ajsub-body'],
 ];
 
 const FS = ['', 'lg', 'xl'];

@@ -12954,8 +12954,9 @@ const _CRUDO_TEXTO_PREEXISTENTE = {
   //    dejarla declarada: una entrada que ya nadie usa es un permiso abierto para el próximo.
   // 4,17 — el «Sí, eliminar» de una medida corporal (v566).
   'app-5-salud.js': { rd: 1 },
-  // 4,17 ×3 — los mensajes de error de ajustes, borrar cuenta y pago.
-  'index.html': { rd: 3 },
+  // 4,17 ×2 — los mensajes de error de borrar cuenta y de pago. (✅ v704: el de los ajustes del coach
+  //    pasó a `.aj-error` con `--rdt` al reordenar esa pantalla; se retira del censo.)
+  'index.html': { rd: 2 },
 };
 test('ningún estilo inline NUEVO usa el token crudo como color de TEXTO (v570)', () => {
   const fs = require('fs'), path = require('path');
@@ -23341,7 +23342,9 @@ test('🔒 v699 · la política dice que guardamos el canal y para qué; la vers
   assert.ok(/\*\*Cómo nos conociste:\*\*/.test(pol) && /Saber por cuál canal nos llega la gente/.test(pol), 'la política no dice qué se guarda del canal ni para qué');
   assert.ok((coo.match(/\*\*El canal por el que llegaste\*\*/g) || []).length === 2, 'cookies: falta la web o la app');
   const v = (coach.match(/const LEGAL_V='([0-9-]+)'/) || [])[1];
-  assert.strictEqual(v, '2026-10-03');
+  // Lo que se vigila es que la versión SUBIÓ con este texto (v699), no una fecha fija: v704 la volvió a
+  // subir al cambiar la ruta para eliminar la cuenta, y una fecha escrita aquí daba rojo sobre lo correcto.
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(v || '') && v >= '2026-10-03', 'LEGAL_V no subió con el texto del canal (v699)');
   assert.ok(pol.includes('**Versión:** ' + v), 'la versión de la política no coincide con LEGAL_V');
 });
 
@@ -23694,6 +23697,154 @@ test('🔒 v703 · fuera de alertVibrate solo hay toques de dedo (≤40 ms), en 
   // «Silencio» y por eso pasan por alertVibrate. Un toque de 15-40 ms al pulsar es respuesta al dedo.
   assert.deepStrictEqual(malos, [], '🔴 hay una vibración de AVISO que se salta el ajuste de sonido');
   assert.ok(toques >= 8, `CONTROL: solo se vieron ${toques} toques de dedo — el barrido no está leyendo los módulos`);
+});
+
+// ══════════════════════════════════════════════════════
+// v704 · AJUSTES COMO UNA APP DE VERDAD (pedido del PO, 10-oct-2026)
+// ══════════════════════════════════════════════════════
+test('v704 · cada fila de Ajustes dice el valor que hay elegido', () => {
+  const { soundSummary, THEME_LABEL, FS_LABEL } = core;
+  assert.strictEqual(soundSummary(null), 'Clásico', 'sin tocar nada: el de siempre');
+  assert.strictEqual(soundSummary({ mode: 'sonido', tone: 'gong' }), 'Gong');
+  assert.strictEqual(soundSummary({ mode: 'vibracion', tone: 'gong' }), 'Solo vibración', 'en vibración el tono no suena: no se nombra');
+  assert.strictEqual(soundSummary({ mode: 'silencio', tone: 'gong' }), 'En silencio');
+  // Cada botón de tema y de letra que existe en la app tiene su nombre para la fila: se DERIVA del HTML.
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+  const temas = [...html.matchAll(/data-theme-btn="([a-z]+)"/g)].map(m => m[1]);
+  const letras = [...html.matchAll(/data-fs-btn="([a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(temas.sort(), ['auto', 'dark', 'light'], 'los 3 botones de tema existen UNA vez');
+  assert.deepStrictEqual(letras.sort(), ['lg', 'normal', 'xl'], 'los 3 botones de letra existen UNA vez');
+  temas.forEach(t => assert.ok(THEME_LABEL[t], `el tema «${t}» no tiene nombre para la fila`));
+  letras.forEach(t => assert.ok(FS_LABEL[t], `el tamaño «${t}» no tiene nombre para la fila`));
+});
+test('v704 · «Mi plan» dice el plan y la fecha con la MISMA regla de los avisos de «Hoy», sin plata', () => {
+  const { settingsPlanSummary } = core;
+  const hoy = new Date(2026, 9, 10, 9).getTime();
+  const pago = due => ({ payments: [{ date: '2026-10-01', dueDate: due, amount: 100000 }] });
+  assert.deepStrictEqual(settingsPlanSummary({ tier: 'libre' }, hoy), { nombre: 'AVI FREE', detalle: '' });
+  assert.deepStrictEqual(settingsPlanSummary(Object.assign({ tier: 'app' }, pago('2026-11-02T17:00:00.000Z')), hoy), { nombre: 'AVI PRO', detalle: 'vence el 2 de noviembre' });
+  // «2026-11-02» a secas es medianoche UTC = el 1 en Colombia: se arma en hora local.
+  assert.strictEqual(settingsPlanSummary(Object.assign({}, pago('2026-11-02')), hoy).detalle, 'vence el 2 de noviembre');
+  assert.strictEqual(settingsPlanSummary(Object.assign({}, pago('2026-11-02')), hoy).nombre, 'Plan con coach');
+  assert.strictEqual(settingsPlanSummary(Object.assign({}, pago('2026-10-07')), hoy).detalle, 'venció', 'en gracia');
+  // Pasada la gracia ya está en AVI FREE (v564): la fila no puede seguir diciendo su plan pagado (QA Lucas).
+  assert.deepStrictEqual(settingsPlanSummary(Object.assign({}, pago('2026-08-01')), hoy), { nombre: 'AVI FREE', detalle: 'tu plan con coach venció' }, 'vencido con coach');
+  assert.deepStrictEqual(settingsPlanSummary(Object.assign({ tier: 'app' }, pago('2026-08-01')), hoy), { nombre: 'AVI FREE', detalle: 'tu AVI PRO venció' }, 'vencido con AVI PRO');
+  assert.strictEqual(settingsPlanSummary(Object.assign({ courtesy: true }, pago('2026-08-01')), hoy).detalle, 'sin costo');
+  assert.strictEqual(settingsPlanSummary(Object.assign({ suspended: true }, pago('2026-11-02')), hoy).detalle, 'en pausa');
+  assert.strictEqual(settingsPlanSummary({ tier: 'app' }, hoy).detalle, '', 'sin pagos: no se inventa fecha');
+  assert.strictEqual(settingsPlanSummary(null, hoy), null);
+  const todo = JSON.stringify([settingsPlanSummary(Object.assign({ tier: 'app' }, pago('2026-11-02')), hoy)]);
+  assert.ok(!/\$|100\.?000|COP/.test(todo), '🔴 «Mi plan» habla de plata');
+});
+test('🔒 v704 · el Perfil ya no trae ajustes: viven en Ajustes, y se entra por el botón de arriba a la derecha', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '');
+  const ini = html.indexOf('<div id="cn-profile" class="cnp">');
+  const fin = html.indexOf('<div id="cn-community"', ini);
+  assert.ok(ini > 0 && fin > ini, 'no encontré el Perfil del asesorado');
+  const perfil = html.slice(ini, fin);
+  ['data-theme-btn', 'data-fs-btn', 'id="cn-sound"', 'id="cn-danger-card"', 'id="cn-account-card"', 'id="cn-build"'].forEach(x =>
+    assert.ok(perfil.indexOf(x) === -1, `🔴 ${x} volvió al Perfil`));
+  assert.ok(/id="cn-aj-btn"[^>]*onclick="openAjustes\(\)"/.test(perfil), '🔴 el Perfil perdió la entrada a Ajustes');
+  // Y viven dentro de las dos pantallas de Ajustes (se mudaron, no se borraron).
+  const aj = html.slice(html.indexOf('<div id="ajustes-room"'), html.indexOf('<div id="session-room"'));
+  ['data-theme-btn="light"', 'data-fs-btn="xl"', 'id="cn-sound"', 'id="cn-danger-card"', 'id="cn-account-card"', 'id="cn-build"', 'id="st-name"', 'id="st-perr"'].forEach(x =>
+    assert.ok(aj.indexOf(x) > 0, `🔴 ${x} no está en Ajustes`));
+  // 🔒 El bloque está balanceado: un <div> sin cerrar al mudar los campos del coach metió «Guardar» en el recuadro.
+  const sinCom = aj.replace(/<!--[\s\S]*?-->/g, '');
+  assert.strictEqual((sinCom.match(/<div\b/g) || []).length, (sinCom.match(/<\/div>/g) || []).length, '🔴 el bloque de Ajustes abre y cierra distinto número de <div>');
+  assert.strictEqual((sinCom.match(/<section\b/g) || []).length, (sinCom.match(/<\/section>/g) || []).length, '🔴 secciones sin cerrar en Ajustes');
+});
+test('🔒 CABLEADO v704 · la ventana vieja del coach no existe; el menú, el atrás y «Salir» llevan a Ajustes', () => {
+  const fs = require('fs'), path = require('path');
+  const lee = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const html = lee('index.html');
+  const a2 = sinComentarios(lee('app-2-login.js'));
+  assert.ok(html.indexOf('m-settings') === -1 && a2.indexOf("'m-settings'") === -1, '🔴 volvió la ventana «Configuración del coach»');
+  assert.ok(/onclick="openSettings\(\)"[^>]*>[\s\S]{0,140}Ajustes<\/div>/.test(html), '🔴 el menú del coach dejó de decir «Ajustes»');
+  assert.ok(/function openSettings\(\)\{ openAjustes\(\); \}/.test(a2), '🔴 el menú del coach ya no abre Ajustes');
+  const cerrar = a2.slice(a2.indexOf('function _aviCloseTopOverlay('));
+  const iSub = cerrar.indexOf("getElementById('ajustes-sub-room')"), iLista = cerrar.indexOf("getElementById('ajustes-room')");
+  assert.ok(iSub > 0 && iLista > iSub, '🔴 el atrás tiene que cerrar primero el detalle de un ajuste y después la lista');
+  assert.ok(/function ajustesSalir\(\)\{ logout\(\); \}/.test(a2), '🔴 «Cerrar sesión» desde Ajustes ya no sale');
+  // 🔒 QA Julián: cerrar las habitaciones va DENTRO de logout(), no solo en el botón de Ajustes — cuando
+  // el servidor cierra la sesión (`_sesionCerrada`) con Ajustes abierto, la habitación tapaba el login.
+  const lo = a2.slice(a2.indexOf('function logout('), a2.indexOf('\nfunction ', a2.indexOf('function logout(') + 10));
+  assert.ok(/abiertas\.forEach\(r=>r\.classList\.remove\('on'\)\)/.test(lo) && /const abiertas=\[\.\.\.document\.querySelectorAll\('\.sroom\.on'\)\]/.test(lo) && /AVINAV\.layers=Math\.max\(0,\(AVINAV\.layers\|\|0\)-abiertas\.length\)/.test(lo),
+    '🔴 salir de la cuenta deja una habitación tapando el login o la capa colgada');
+  // 🔒 Una ventana abierta ENCIMA de una habitación se cierra con el atrás ANTES que ella.
+  const iMd = cerrar.indexOf("if(mdSobre){ mdSobre.classList.remove('on'); return true; }");
+  assert.ok(iMd > 0 && iMd < iSub, '🔴 el atrás cierra Ajustes y deja «Eliminar mi cuenta» huérfana encima');
+  // 🔒 v700: en «Mi entrenamiento» el coach es un asesorado para la pantalla: se pregunta COACH_SELF y AUTH_ROLE.
+  const quien = a2.slice(a2.indexOf('function _ajEsCoach('), a2.indexOf('\n}', a2.indexOf('function _ajEsCoach(')));
+  assert.ok(/COACH_SELF/.test(quien) && /AUTH_ROLE==='coach'/.test(quien), '🔴 Ajustes decide quién es el coach solo con loggedAs');
+  // Guardar los datos del coach vuelve a la lista consumiendo su capa (no deja una entrada colgada).
+  const guardar = a2.slice(a2.indexOf('async function saveSettings('), a2.indexOf('\nfunction ', a2.indexOf('async function saveSettings(') + 10));
+  assert.ok(/navCloseLayer\(closeAjustesSub\)/.test(guardar), '🔴 guardar los datos del coach ya no vuelve a la lista');
+});
+test('🔒 v704 · ningún texto manda a buscar un ajuste «en tu Perfil» y la novedad lo cuenta a todos', () => {
+  const fs = require('fs'), path = require('path');
+  const todo = ['app-1-infra.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-6-extra.js', 'index.html']
+    .map(f => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n');
+  ['ajústalo en tu Perfil → Tamaño de texto', 'cámbialo en tu Perfil', 'baja hasta «Sonido del entreno»', 'Luego lo ajustas cuando quieras desde tu Perfil.']
+    .forEach(t => assert.ok(todo.indexOf(t) === -1, `🔴 sigue el texto viejo: «${t}»`));
+  const a6 = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = a6.indexOf('const AVI_NEWS=[');
+  const AVI_NEWS = new Function(a6.slice(ini, a6.indexOf('\n];', ini) + 3) + '\nreturn AVI_NEWS;')();
+  const n = AVI_NEWS.find(x => x.v === 704);
+  assert.ok(n && !n.coach && !n.premium, 'la novedad de Ajustes es para todos los públicos');
+  assert.ok(/Ajustes/.test(AVI_NEWS.find(x => x.v === 703).steps[0]), 'la novedad del sonido ya manda por Ajustes');
+});
+test('🔒 v704 · un botón de tema o de letra que se desmarca vuelve a SU estilo (no a vacío)', () => {
+  const fs = require('fs'), path = require('path');
+  const a1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const tema = a1.slice(a1.indexOf('function setTheme('), a1.indexOf('\n}', a1.indexOf('function setTheme(')));
+  const letra = a1.slice(a1.indexOf('function _syncFsBtns('), a1.indexOf('\n}', a1.indexOf('function _syncFsBtns(')));
+  [tema, letra].forEach((c, i) => {
+    assert.ok(!/:''[;,)]/.test(c), `🔴 ${i ? '_syncFsBtns' : 'setTheme'} vuelve a vaciar el estilo: borde oscuro y fondo gris en el botón`);
+    assert.ok(/'transparent'/.test(c) && /'var\(--br2\)'/.test(c), `🔴 ${i ? '_syncFsBtns' : 'setTheme'} no devuelve el fondo y el borde de siempre`);
+  });
+});
+test('🔒 v704 · una ventana que se abre sobre una habitación queda ENCIMA (QA: «Eliminar mi cuenta» salía detrás de Ajustes)', () => {
+  const fs = require('fs'), path = require('path');
+  const a4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8').replace(/\r/g, '');
+  const i = a4.indexOf('function om(id){');
+  assert.ok(i > 0, 'no encontré om()');
+  const src = a4.slice(i, a4.indexOf('\n}', i) + 2);
+  // Se EJECUTA la om() real contra un DOM mínimo: z de la CSS en `_z`, el en línea en `style.zIndex`.
+  const nodo = (z, on) => ({ _z: z, style: { zIndex: '' }, classList: { c: new Set(on ? ['on'] : []), add(x) { this.c.add(x); }, contains(x) { return this.c.has(x); } } });
+  const correr = (modal, salas) => {
+    const doc = { getElementById: () => modal, querySelectorAll: () => salas };
+    const gcs = e => ({ zIndex: String(e.style.zIndex || e._z) });
+    new Function('document', 'getComputedStyle', src + '\nreturn om;')(doc, gcs)('m-x');
+    return modal;
+  };
+  assert.strictEqual(correr(nodo(1000), [nodo(1401, true), nodo(1407, true)]).style.zIndex, '1417', '🔴 la ventana no sube por encima de la habitación más alta');
+  assert.ok(correr(nodo(1000), [nodo(1401, true)]).classList.contains('on'), 'y se abre');
+  // CONTROL: sin habitaciones manda su CSS, y una ventana con z propio más alto (la del HIIT, 1500) lo conserva.
+  const sola = nodo(1000); sola.style.zIndex = '1417';
+  assert.strictEqual(correr(sola, []).style.zIndex, '', 'sin habitaciones abiertas, la ventana vuelve a su z de la CSS');
+  assert.strictEqual(correr(nodo(1500), [nodo(1405, true)]).style.zIndex, '', 'una ventana ya más alta que la habitación conserva su z');
+});
+test('🔒 v704 · «Tu cuenta de coach» se lee como un formulario de verdad (QA: ritmo, etiquetas y textos falsos)', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '');
+  const ini = html.indexOf('<section class="aj-sec" data-aj="coach"');
+  const sec = html.slice(ini, html.indexOf('</section>', ini));
+  assert.ok(ini > 0, 'no encontré la sección del coach');
+  const ids = [...sec.matchAll(/<input id="(st-[a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(ids, ['st-name', 'st-email', 'st-site', 'st-nequi', 'st-cur', 'st-new', 'st-rep'], 'los 7 campos que lee saveSettings');
+  ids.forEach(x => assert.ok(new RegExp(`<label class="aj-campo" for="${x}">[^<]+</label>`).test(sec), `🔴 el campo ${x} no tiene etiqueta (un placeholder no es una etiqueta)`));
+  assert.ok(!/SHA-256/.test(sec), '🔴 volvió «cifrado SHA-256»: jerga, y la contraseña real vive en Supabase Auth');
+  assert.ok(!/verá este número/.test(sec), '🔴 vuelve a prometer que el asesorado verá el Nequi (falso desde v540)');
+  assert.ok(!/\p{Extended_Pictographic}/u.test(sec.replace(/<[^>]+>/g, '')), '🔴 emoji en los textos del formulario (v627)');
+  const ph = [...sec.matchAll(/placeholder="([^"]*)"/g)].map(m => m[1]);
+  assert.ok(ph.length >= 3 && ph.every(p => /^Ej: /.test(p)), '🔴 los ejemplos de los campos van todos con «Ej:» o ninguno', ph);
+  // La fila de salir es una ACCIÓN: dice lo mismo que el menú del coach y no lleva flecha.
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.ok(/lbl:'Cerrar sesión',on:'ajustesSalir\(\)',accion:true/.test(a2), '🔴 la fila de salir dejó de decir «Cerrar sesión»');
+  assert.ok(/if\(o\.accion\) return `<button[^`]*\$\{cab\}<\/button>`;/.test(a2), '🔴 una acción de Ajustes lleva flecha como si abriera otra pantalla');
 });
 
 // ══════════════════════════════════════════════════════

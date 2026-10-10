@@ -1282,9 +1282,11 @@ function setTheme(mode){
   else if(mode==='light') document.documentElement.setAttribute('data-theme','light');
   else document.documentElement.removeAttribute('data-theme');
   document.querySelectorAll('[data-theme-btn]').forEach(b=>{
-    b.style.background=b.dataset.themeBtn===mode?'var(--g)':'';
-    b.style.color=b.dataset.themeBtn===mode?'white':'';
-    b.style.borderColor=b.dataset.themeBtn===mode?'var(--g)':'';
+    // v704: desmarcado vuelve a SU estilo (transparente, gris y borde suave). Con '' el navegador
+    // borraba el color del borde y el fondo de la regla en línea: borde oscuro y botón gris.
+    b.style.background=b.dataset.themeBtn===mode?'var(--g)':'transparent';
+    b.style.color=b.dataset.themeBtn===mode?'white':'var(--t2)';
+    b.style.borderColor=b.dataset.themeBtn===mode?'var(--g)':'var(--br2)';
   });
 }
 
@@ -1296,7 +1298,7 @@ function setTheme(mode){
 function _syncFsBtns(size){
   document.querySelectorAll('[data-fs-btn]').forEach(b=>{
     const on=b.dataset.fsBtn===(size||'normal');
-    b.style.background=on?'var(--g)':''; b.style.color=on?'white':''; b.style.borderColor=on?'var(--g)':'';
+    b.style.background=on?'var(--g)':'transparent'; b.style.color=on?'white':'var(--t2)'; b.style.borderColor=on?'var(--g)':'var(--br2)';
   });
 }
 function applyTextSize(size){
@@ -1338,7 +1340,7 @@ function setTextSize(size){ sv('ax_textsize',size); applyTextSize(size); _syncFs
 // 'normal'. Pedido de Camilo 2026-06-23. Ver [[feedback_avi_tamano_texto_accesibilidad]].
 function shouldShowFsIntro(){ return !ld('ax_fsPrompted',false) && ld('ax_textsize','normal')==='normal'; }
 function showFsIntro(){ if(typeof om==='function') om('m-fsintro'); }
-function fsIntroApply(){ sv('ax_fsPrompted',true); cm('m-fsintro'); setTextSize('lg'); toast('🔠 Texto agrandado · ajústalo en tu Perfil → Tamaño de texto'); }
+function fsIntroApply(){ sv('ax_fsPrompted',true); cm('m-fsintro'); setTextSize('lg'); toast('🔠 Texto agrandado · lo cambias en Perfil › Ajustes › Tamaño de texto'); }
 function fsIntroDismiss(){ sv('ax_fsPrompted',true); cm('m-fsintro'); }
 
 // Debounce timers + cola de reintento por clave — la red de seguridad del sync.
@@ -2544,6 +2546,9 @@ const AVI_ICONS={
   flame:'<path d="M12 3c.5 2.6-2.9 4.3-4.3 7.1A7 7 0 0 0 12 21a7 7 0 0 0 6.5-9.6C17.2 8.6 13 7.2 12 3z"/><path d="M12 21c1.9 0 3.2-1.4 3.2-3.2 0-1.7-1.3-2.7-3.2-4.3-1.9 1.6-3.2 2.6-3.2 4.3C8.8 19.6 10.1 21 12 21z"/>',
   bell:'<path d="M18 16H6c1.2-1.3 1.8-2.5 1.8-5.2a4.2 4.2 0 0 1 8.4 0c0 2.7.6 3.9 1.8 5.2z"/><path d="M10.3 19a1.9 1.9 0 0 0 3.4 0"/>',
   'bell-off':'<path d="M8.7 4.7A4.2 4.2 0 0 1 16.2 7.8c0 2.7.6 3.9 1.8 5.2"/><path d="M15 16H6c1.2-1.3 1.8-2.5 1.8-5.2"/><path d="M10.3 19a1.9 1.9 0 0 0 3.4 0"/><path d="M3.5 3.5l17 17"/>',
+  // v704 · Ajustes: la persona (los mismos trazos de la pestaña «Perfil») y salir (los del botón del coach).
+  user:'<circle cx="12" cy="8" r="3.3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
+  logout:'<path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9"/><path d="M15 8l4 4-4 4"/><path d="M19 12H9"/>',
   moon:'<path d="M20 14.5A8.3 8.3 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
   target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1"/>',
   burst:'<path d="M12 2.5v3.6"/><path d="M12 17.9v3.6"/><path d="M2.5 12h3.6"/><path d="M17.9 12h3.6"/><path d="M5.3 5.3l2.5 2.5"/><path d="M16.2 16.2l2.5 2.5"/><path d="M18.7 5.3l-2.5 2.5"/><path d="M7.8 16.2l-2.5 2.5"/>',

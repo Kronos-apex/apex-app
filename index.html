@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=703">
+<link rel="stylesheet" href="styles.css?v=704">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -535,7 +535,7 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <div><div class="sbname" id="sb-nm">Mi Coach</div><div class="sbrole">Entrenador personal</div></div>
       </div>
       <div class="sbout" onclick="openNotifModal()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="bell" data-ic-size="15">🔔</span> Notificaciones</div>
-      <div class="sbout" onclick="openSettings()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración</div>
+      <div class="sbout" onclick="openSettings()" style="margin-bottom:4px"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Ajustes</div>
       <div class="sbout" onclick="logout()">🚪 Cerrar sesión</div>
       <!-- Lo llena renderBuildLabel() DERIVÁNDOLO del `?v=` de los scripts servidos. Aquí decía
            «v2.0 · Jun 2026» a mano y llevaba dos meses mintiendo (ver appBuildLabel en avi-core). -->
@@ -907,9 +907,12 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     </div>
     <!-- PROFILE -->
     <div id="cn-profile" class="cnp">
+      <!-- v704 · El Perfil es quién eres y cómo vas. Lo que cambia cómo se comporta la app (tema,
+           letra, sonido, cuenta) vive en Ajustes, que se abre aquí, arriba a la derecha — el patrón
+           de Hevy, Strava y TrainHeroic (referencias del 10-oct). -->
+      <div class="prof-aj"><button type="button" id="cn-aj-btn" class="aj-entrada" onclick="openAjustes()"><span class="t-ic plain" data-ic="sliders" data-ic-size="16">⚙️</span> Ajustes</button></div>
       <div class="profhero" id="cn-prof-card"></div>
       <div id="cn-profile-upsell"></div>
-      <div id="cn-account-card"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
       <div id="cn-referido"></div>
 
@@ -978,47 +981,6 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
           </div>
         </div>
       </div>
-      <!-- Apariencia -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="contrast">🎨</span> Apariencia</div></div>
-        <div class="cb" style="padding-top:4px">
-          <div style="display:flex;gap:7px">
-            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
-            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="moon" data-ic-size="15">🌙</span> Oscuro</button>
-            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="contrast" data-ic-size="15">⚙️</span> Auto</button>
-          </div>
-        </div>
-      </div>
-      <!-- Tamaño de texto (accesibilidad) — por dispositivo, NO pinch-zoom -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="sliders">🔠</span> Tamaño de texto</div></div>
-        <div class="cb" style="padding-top:4px">
-          <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Si las letras se ven pequeñas, agrándalas. Se recuerda en este dispositivo.</div>
-          <div style="display:flex;gap:7px">
-            <button type="button" data-fs-btn="normal" onclick="setTextSize('normal')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Normal</button>
-            <button type="button" data-fs-btn="lg" onclick="setTextSize('lg')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Grande</button>
-            <button type="button" data-fs-btn="xl" onclick="setTextSize('xl')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Muy grande</button>
-          </div>
-        </div>
-      </div>
-      <!-- v703 · Sonido del entreno — por dispositivo, como el tamaño de letra. Lo pinta
-           renderSoundSettings() (app-4): modo (sonido y vibración · solo vibración · silencio)
-           y los 11 tonos de SOUND_TONES (avi-core). -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="bell">🔔</span> Sonido del entreno</div></div>
-        <div class="cb" style="padding-top:4px">
-          <div style="font-size:12px;color:var(--t2);margin-bottom:8px">Cómo te avisa la app cuando termina el descanso o un ejercicio por tiempo.</div>
-          <div id="cn-sound"></div>
-        </div>
-      </div>
-      <!-- Cuenta: eliminar cuenta (derecho de supresión / requisito Play Store). Se llena
-           en renderAccountActions; oculto para el coach en su propio entrenamiento. -->
-      <div id="cn-danger-card"></div>
-      <!-- La versión que está corriendo ESTE teléfono. No es decoración: desde v415 quedó
-           anotado que al reportar un fallo no había forma de saber en qué versión iba cada
-           asesorado (y la app sirve por PWA, así que dos personas pueden ir en versiones
-           distintas el mismo día). Lo llena renderBuildLabel(), derivado del `?v=` servido. -->
-      <div id="cn-build" style="font-size:10px;color:var(--t3);text-align:center;padding:14px 0 4px;letter-spacing:.4px"></div>
     </div>
     <!-- Comunidad (idea #5, Fase 1 · C3): perfil opt-in + amigos por código + ❤️. Online-only,
          nunca bloquea entrenar. Todo lo pinta renderCommunity() (app-7-community.js). -->
@@ -1209,7 +1171,7 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   <div class="md" style="max-width:380px;text-align:center" role="dialog" aria-modal="true" aria-labelledby="fsintro-title">
     <div class="ic-circle" style="width:56px;height:56px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><use href="#i-eye"/></svg></div>
     <div id="fsintro-title" style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:8px;line-height:1.3">¿Se ven pequeñas las letras?</div>
-    <div style="font-size:15px;color:var(--t2);line-height:1.5;margin-bottom:20px">Puedes agrandar el texto de toda la app para leer más cómodo. Luego lo ajustas cuando quieras desde tu Perfil.</div>
+    <div style="font-size:15px;color:var(--t2);line-height:1.5;margin-bottom:20px">Puedes agrandar el texto de toda la app para leer más cómodo. Luego lo ajustas cuando quieras en tu Perfil, en Ajustes.</div>
     <button class="btn bp" style="width:100%;padding:14px;font-size:16px;margin-bottom:9px" onclick="fsIntroApply()">Agrandar texto</button>
     <button class="btn bg" style="width:100%;padding:12px;font-size:15px" onclick="fsIntroDismiss()">Está bien así</button>
   </div>
@@ -1297,63 +1259,6 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
 </div>
 
 <!-- ══ MODAL: BACKUP ══ -->
-<!-- Settings / Coach profile modal -->
-<div class="mdbg" id="m-settings">
-  <div class="md" role="dialog" aria-modal="true" aria-labelledby="mdt-11">
-    <div class="mdtitle" id="mdt-11"><span class="t-ic plain" data-ic="sliders" data-ic-size="15">⚙️</span> Configuración del coach</div>
-
-    <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-name">Nombre del coach</label>
-      <input id="st-name" class="inp" maxlength="60" placeholder="Tu nombre o alias" style="width:100%">
-    </div>
-    <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-email">Email de acceso</label>
-      <input id="st-email" class="inp" type="email" maxlength="100" placeholder="coach@tudominio.com" style="width:100%">
-    </div>
-    <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-site">Sitio web (aparece en las imágenes exportadas)</label>
-      <input id="st-site" class="inp" maxlength="80" placeholder="Ej: tucoach.com" style="width:100%">
-    </div>
-    <div style="margin-bottom:14px">
-      <label class="llbl" style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px" for="st-nequi">📱 Número Nequi para cobros</label>
-      <input id="st-nequi" class="inp" type="tel" inputmode="numeric" maxlength="20" placeholder="Ej: 3001234567" style="width:100%">
-      <div style="font-size:11px;color:var(--t3);margin-top:4px">El asesorado verá este número cuando su plan esté por vencer.</div>
-    </div>
-
-    <div style="border-top:1px solid var(--br);padding-top:14px;margin-top:4px">
-      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">🔒 Cambiar contraseña</div>
-      <div style="font-size:11px;color:var(--t3);margin-bottom:8px;background:var(--gl);padding:7px 10px;border-radius:var(--rsm)">🛡️ Las contraseñas se guardan con cifrado SHA-256. Ni el coach puede verlas.</div>
-      <div style="position:relative;margin-bottom:8px"><input id="st-cur" class="inp" type="password" placeholder="Contraseña actual" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-cur')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
-      <div style="position:relative;margin-bottom:8px"><input id="st-new" class="inp" type="password" placeholder="Nueva contraseña (mín. 6 caracteres)" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-new')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
-      <div style="position:relative;margin-bottom:4px"><input id="st-rep" class="inp" type="password" placeholder="Repetir nueva contraseña" style="width:100%;padding-right:42px"><button type="button" onclick="togglePass(this,'st-rep')" aria-label="Mostrar contraseña" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:4px;opacity:.6"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
-      <div id="st-perr" style="font-size:12px;color:var(--rd);margin-top:4px;display:none"></div>
-    </div>
-
-    <div class="fg" style="margin-bottom:16px">
-      <span class="ilbl">Apariencia</span>
-      <div style="display:flex;gap:7px;margin-top:4px">
-        <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
-        <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="moon" data-ic-size="15">🌙</span> Oscuro</button>
-        <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="contrast" data-ic-size="15">⚙️</span> Auto</button>
-      </div>
-    </div>
-
-    <div class="fg" style="margin-bottom:16px">
-      <span class="ilbl">Tamaño de texto</span>
-      <div style="display:flex;gap:7px;margin-top:4px">
-        <button type="button" data-fs-btn="normal" onclick="setTextSize('normal')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Normal</button>
-        <button type="button" data-fs-btn="lg" onclick="setTextSize('lg')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Grande</button>
-        <button type="button" data-fs-btn="xl" onclick="setTextSize('xl')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Muy grande</button>
-      </div>
-    </div>
-
-    <div class="mdfooter">
-      <button class="btn bg" onclick="cm('m-settings')">Cancelar</button>
-      <button class="btn bp" onclick="saveSettings()">Guardar cambios</button>
-    </div>
-  </div>
-</div>
-
 <!-- Template create/edit -->
 <div class="mdbg" id="m-template">
   <div class="md mdlg" role="dialog" aria-modal="true" aria-labelledby="mt-title">
@@ -1477,19 +1382,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=703"></script>
-<script src="muscle-map.js?v=703"></script>
-<script src="exercise-muscles.js?v=703"></script>
+<script src="avi-core.js?v=704"></script>
+<script src="muscle-map.js?v=704"></script>
+<script src="exercise-muscles.js?v=704"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=703"></script>
-<script src="app-2-login.js?v=703"></script>
-<script src="app-3-coach.js?v=703"></script>
-<script src="app-4-entreno.js?v=703"></script>
-<script src="app-5-salud.js?v=703"></script>
-<script src="app-6-extra.js?v=703"></script>
-<script src="app-7-community.js?v=703"></script>
+<script src="app-1-infra.js?v=704"></script>
+<script src="app-2-login.js?v=704"></script>
+<script src="app-3-coach.js?v=704"></script>
+<script src="app-4-entreno.js?v=704"></script>
+<script src="app-5-salud.js?v=704"></script>
+<script src="app-6-extra.js?v=704"></script>
+<script src="app-7-community.js?v=704"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1981,6 +1886,89 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
 </div>
 
 <!-- HABITACIÓN: detalle completo de una sesión (entra con profundidad desde el calendario/historial) -->
+<!-- ══ AJUSTES (v704) ══════════════════════════════════════════════════════════════════════════
+     Pedido del PO (10-oct): «todo lo que tiene que ver con ajustes, en Ajustes, como una app de verdad».
+     Dos habitaciones con el molde de siempre (capa de historial, letra grande, franja del reloj):
+     la LISTA (#ajustes-room, la pinta renderAjustes según quién mira) y el DETALLE de cada ajuste
+     (#ajustes-sub-room). Los controles conservan sus ids y atributos: setTheme, setTextSize,
+     renderSoundSettings, renderGoogleLink, renderAccountActions y saveSettings los siguen
+     encontrando donde estén. -->
+<div id="ajustes-room" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">&lsaquo; Volver</button>
+    <span class="sroom-bar-t">Ajustes</span>
+  </div>
+  <div class="sroom-body" id="ajroom-body">
+    <div id="ajroom-list"></div>
+    <!-- La versión que corre ESTE teléfono (v415/v491): la llena renderBuildLabel() desde el `?v=`. -->
+    <div id="cn-build" class="aj-build"></div>
+  </div>
+</div>
+<div id="ajustes-sub-room" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">&lsaquo; Ajustes</button>
+    <span class="sroom-bar-t" id="ajsub-t">Ajustes</span>
+  </div>
+  <div class="sroom-body" id="ajsub-body">
+    <section class="aj-sec" data-aj="sonido" hidden>
+      <p class="aj-intro">Cómo te avisa la app cuando termina el descanso o un ejercicio por tiempo.</p>
+      <div class="aj-panel"><div id="cn-sound"></div></div>
+    </section>
+    <section class="aj-sec" data-aj="tema" hidden>
+      <p class="aj-intro">«Auto» sigue el modo claro u oscuro de tu teléfono.</p>
+      <div class="aj-panel"><div style="display:flex;gap:7px">
+            <button type="button" data-theme-btn="light" onclick="setTheme('light')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="sun" data-ic-size="15">☀️</span> Claro</button>
+            <button type="button" data-theme-btn="dark" onclick="setTheme('dark')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="moon" data-ic-size="15">🌙</span> Oscuro</button>
+            <button type="button" data-theme-btn="auto" onclick="setTheme('auto')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)"><span class="t-ic plain" data-ic="contrast" data-ic-size="15">⚙️</span> Auto</button>
+      </div></div>
+    </section>
+    <section class="aj-sec" data-aj="letra" hidden>
+      <p class="aj-intro">Si las letras se ven pequeñas, agrándalas. Se recuerda en este teléfono.</p>
+      <div class="aj-panel"><div style="display:flex;gap:7px">
+            <button type="button" data-fs-btn="normal" onclick="setTextSize('normal')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Normal</button>
+            <button type="button" data-fs-btn="lg" onclick="setTextSize('lg')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Grande</button>
+            <button type="button" data-fs-btn="xl" onclick="setTextSize('xl')" style="flex:1;padding:9px 6px;border:1.5px solid var(--br2);border-radius:var(--rsm);background:transparent;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;transition:background var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);color:var(--t2)">Muy grande</button>
+      </div></div>
+    </section>
+    <section class="aj-sec" data-aj="cuenta" hidden>
+      <div id="cn-account-card"></div>
+      <!-- Eliminar cuenta (derecho de supresión / requisito Play Store). La llena renderAccountActions;
+           el coach no la ve (ni en su propio entrenamiento). -->
+      <div id="cn-danger-card"></div>
+    </section>
+    <section class="aj-sec" data-aj="coach" hidden>
+      <div class="aj-grp">Tus datos</div>
+      <div class="aj-panel aj-form">
+        <label class="aj-campo" for="st-name">Nombre del coach</label>
+        <input id="st-name" class="inp" maxlength="60" placeholder="Ej: Andrés Martínez" autocomplete="name">
+        <label class="aj-campo" for="st-email">Correo de acceso</label>
+        <input id="st-email" class="inp" type="email" maxlength="100" placeholder="Ej: coach@tudominio.com" autocomplete="email">
+        <label class="aj-campo" for="st-site">Sitio web</label>
+        <input id="st-site" class="inp" maxlength="80" placeholder="Ej: tucoach.com" autocomplete="url">
+        <p class="aj-nota">Sale al pie de las imágenes que se comparten.</p>
+      </div>
+      <div class="aj-grp">Cobros</div>
+      <div class="aj-panel aj-form">
+        <label class="aj-campo" for="st-nequi">Número Nequi</label>
+        <input id="st-nequi" class="inp" type="tel" inputmode="numeric" maxlength="20" placeholder="Ej: 3001234567">
+        <p class="aj-nota">Por ahora queda guardado aquí: la app todavía no se lo muestra a tus asesorados.</p>
+      </div>
+      <div class="aj-grp">Contraseña</div>
+      <div class="aj-panel aj-form">
+        <label class="aj-campo" for="st-cur">Contraseña actual</label>
+        <div class="aj-pass"><input id="st-cur" class="inp" type="password" autocomplete="current-password"><button type="button" class="aj-ojo" onclick="togglePass(this,'st-cur')" aria-label="Mostrar contraseña"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        <label class="aj-campo" for="st-new">Contraseña nueva</label>
+        <div class="aj-pass"><input id="st-new" class="inp" type="password" autocomplete="new-password"><button type="button" class="aj-ojo" onclick="togglePass(this,'st-new')" aria-label="Mostrar contraseña"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        <label class="aj-campo" for="st-rep">Repite la contraseña nueva</label>
+        <div class="aj-pass"><input id="st-rep" class="inp" type="password" autocomplete="new-password"><button type="button" class="aj-ojo" onclick="togglePass(this,'st-rep')" aria-label="Mostrar contraseña"><svg class="ic-eye" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+        <p class="aj-nota">Mínimo 8 caracteres, con mayúscula, minúscula y número, y sin tu nombre ni tu correo. Si no la quieres cambiar, deja estos campos en blanco.</p>
+        <div id="st-perr" class="aj-error" role="alert" style="display:none"></div>
+      </div>
+      <button class="btn bp aj-guardar" onclick="saveSettings()">Guardar cambios</button>
+    </section>
+  </div>
+</div>
+
 <div id="session-room" class="sroom">
   <div class="sroom-bar">
     <button class="sroom-back" onclick="history.back()">‹ Volver</button>

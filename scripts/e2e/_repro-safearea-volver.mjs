@@ -212,6 +212,9 @@ const HABITACIONES = [
   ['músculo',   `openMuscleRoom(CUR.clientId,'piernas')`],
   ['nutrición', `openNutritionRoom(CUR.clientId)`],
   ['rutina',    `openRoutineRoom(CUR.clientId, ${JSON.stringify(rid || 'r0')})`],
+  // v704 · Ajustes: la lista y el detalle de un ajuste (las dos con el molde de las habitaciones).
+  ['ajustes',   `openAjustes()`],
+  ['ajuste',    `ajustesAbrir('tema')`],
 ];
 
 console.log(`\n  Línea del área segura del iPhone: y = ${INSET} px. Todo lo que quede por encima lo tapa el sistema.\n`);

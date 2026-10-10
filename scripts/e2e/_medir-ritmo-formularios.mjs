@@ -31,16 +31,21 @@ await new Promise(r => ws.on('open', r)); await send('Page.enable'); await send(
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 for (let i = 0; i < 90; i++) { if (await ev(`typeof window._aviUpdateBusy!=='undefined'`)) break; await sleep(500); }
 
-const MODALES = ['m-client', 'm-ex', 'm-routine', 'm-settings'];
+// v704: el modal #m-settings se borró y sus campos viven en Ajustes › «Tu cuenta de coach»
+// (la sección data-aj=coach de #ajustes-sub-room). Se mide AHÍ: dejar 'm-settings' en la lista
+// imprimía «no existe» y seguía, o sea que el formulario se quedaba sin medir en silencio.
+const MODALES = ['m-client', 'm-ex', 'm-routine', 'aj-coach'];
 let fallos = 0;
 for (const mid of MODALES) {
   await ev(`(()=>{ if(typeof showScreen==='function')showScreen('s-coach');
     document.querySelectorAll('.mdbg').forEach(m=>m.classList.remove('on'));
+    if('${mid}'==='aj-coach'){ const room=document.getElementById('ajustes-sub-room');
+      if(room){ room.querySelectorAll('.aj-sec').forEach(s=>{ s.hidden=(s.dataset.aj!=='coach'); }); room.classList.add('on'); } return true; }
     const m=document.getElementById('${mid}'); if(m){const bg=m.closest('.mdbg')||m; bg.classList.add('on'); bg.style.display='flex';}
     return true; })()`);
   await sleep(500);
   const r = await ev(`(()=>{
-    const m=document.getElementById('${mid}'); if(!m) return {error:'no existe'};
+    const m='${mid}'==='aj-coach'?document.querySelector('#ajustes-sub-room .aj-sec[data-aj=coach]'):document.getElementById('${mid}'); if(!m) return {error:'no existe'};
     const campos=[...m.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,textarea')]
       .filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0;});
     if(campos.length<3) return {error:'solo '+campos.length+' campos visibles: el montaje no abrió el modal'};
@@ -48,12 +53,16 @@ for (const mid of MODALES) {
     for(let i=1;i<campos.length;i++){
       const a=campos[i-1].getBoundingClientRect(), b=campos[i].getBoundingClientRect();
       if(Math.abs(b.top-a.top)<4) continue;            // misma fila (dos campos en línea)
+      // Un formulario agrupado (Ajustes › Tu cuenta de coach, v704) tiene DOS ritmos a propósito: el de
+      // los campos dentro de un grupo y el aire entre grupos. Se mide el primero; en un modal sin grupos
+      // los dos campos dan null y se comparan como siempre.
+      if(campos[i].closest('.aj-panel')!==campos[i-1].closest('.aj-panel')) continue;
       huecos.push(Math.round(b.top-a.bottom));
     }
     const ph=campos.map(el=>el.getAttribute('placeholder')).filter(Boolean);
     return {campos:campos.length, huecos, placeholders:ph};
   })()`);
-  if (r.error) { console.log(`\n${mid}: ⚠️  ${r.error}`); continue; }
+  if (r.error) { fallos++; console.log(`\n${mid}: 🔴 ${r.error} — sin medir no hay veredicto`); continue; }
   const u = [...new Set(r.huecos)].sort((a, b) => a - b);
   const malo = u.length > 2;
   if (malo) fallos++;

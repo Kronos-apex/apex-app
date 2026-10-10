@@ -4779,7 +4779,7 @@ function playRestTick(){
 function gmRestToggleSound(){
   const p=setSoundPref(typeof soundToggleMute==='function'?soundToggleMute(soundPref()):{mode:'silencio',tone:'clasico'});
   const sinVib=typeof navigator.vibrate!=='function';
-  if(typeof toast==='function') toast(p.mode==='silencio'?'🔕 Avisos en silencio · cámbialo en tu Perfil':(p.mode==='vibracion'?(sinVib?'📳 Solo vibración · este teléfono no vibra, así que quedan en silencio':'📳 Avisos con vibración'):'🔔 Avisos con sonido'));
+  if(typeof toast==='function') toast(p.mode==='silencio'?'🔕 Avisos en silencio · lo cambias en Perfil › Ajustes':(p.mode==='vibracion'?(sinVib?'📳 Solo vibración · este teléfono no vibra, así que quedan en silencio':'📳 Avisos con vibración'):'🔔 Avisos con sonido'));
 }
 function _syncRestSoundBtn(){
   const b=document.getElementById('gm-rest-snd'); if(!b) return;
@@ -4925,7 +4925,19 @@ function openBackup(){
   }catch(e){}
   om('m-backup');
 }
-function om(id){document.getElementById(id).classList.add('on')}
+// v704 · Una ventana (.mdbg, z 1000) que se abre ENCIMA de una habitación (.sroom, z 1400 y subiendo con
+// `_roomFront`) quedaba DETRÁS de ella: «Eliminar mi cuenta», desde Ajustes, no mostraba nada (QA Lucas y
+// Julián). Se sube por encima de la habitación más alta que esté abierta; sin habitaciones manda su CSS
+// (y una ventana con z propio más alto, como la del HIIT, lo conserva).
+function om(id){
+  const m=document.getElementById(id);
+  m.style.zIndex='';
+  const base=parseInt(getComputedStyle(m).zIndex)||0;
+  const salas=[...document.querySelectorAll('.sroom.on')].map(e=>parseInt(getComputedStyle(e).zIndex)||0);
+  const tope=salas.length?Math.max(...salas):0;
+  if(tope>=base) m.style.zIndex=String(tope+10);
+  m.classList.add('on');
+}
 function cm(id){document.getElementById(id).classList.remove('on')}
 // Cierre por click en el FONDO (tap-fuera) — DELEGADO en document para cubrir TODOS los .mdbg,
 // incluidos los declarados DESPUÉS de este <script> (m-qwcfg/m-notif/m-nut/m-med/m-delacct/

@@ -4,6 +4,61 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-10 — v704: los ajustes, en un solo lugar (el asesorado y el coach)
+
+- **Origen**: pedido del PO: *«organiza todo lo que tiene que ver con ajustes en Ajustes… esa pantalla de perfil
+  está muy larga y no me gusta… algo bien organizado como una app de verdad»*; después *«busca referencias, no vamos
+  a improvisar»* y *«el coach también pasa a ese formato»*.
+- **Referencias**: los ajustes del sistema (iOS, Android) y de apps de entreno, nutrición y mensajería coinciden en
+  lo mismo: el Perfil es quién eres y cómo vas; Ajustes es una LISTA CORTA Y AGRUPADA donde cada fila dice su valor
+  actual y abre su pantalla. Lo que se usa en el momento se queda donde se usa («Silenciar» sigue en el descanso).
+  El PO aceptó la entrada por un botón arriba a la derecha del Perfil, no una séptima pestaña.
+- **Qué cambió**:
+  - Del Perfil del asesorado salen el tema, el tamaño de letra, el sonido del entreno, la tarjeta de cuenta, la zona
+    de borrar cuenta y el rótulo de versión. Queda un botón «Ajustes» (`#cn-aj-btn`).
+  - Dos habitaciones nuevas (`.sroom`, así heredan la capa de historial, la letra grande y la franja del reloj del
+    iPhone): `#ajustes-room` (la lista: Entreno · Pantalla · Tu cuenta · Sesión) y `#ajustes-sub-room` (el detalle
+    de UNA sección). Al volver de un detalle la lista se repinta con el valor nuevo.
+  - «Mi plan» es una fila que solo INFORMA (`settingsPlanSummary`, pura): AVI FREE, AVI PRO o plan con coach, con
+    «vence el D de mes», «venció» (gracia), «en pausa» o «sin costo»; pasada la gracia dice «AVI FREE · tu … venció»,
+    que es lo que de verdad tiene desde v564. Sin plata. La tarjeta de pago sigue en el Perfil, junto al vencimiento.
+  - El coach: el modal `#m-settings` se borró; el menú dice «Ajustes» y abre la misma lista con «Tu cuenta de coach»
+    arriba. Esa pantalla se reordenó en tres grupos (Tus datos · Cobros · Contraseña), con etiqueta en cada campo
+    (las contraseñas solo tenían placeholder) y el mismo espacio entre campos (medido: iba a 8 · 34 · 122 px).
+  - «Cerrar sesión» (como en el menú del coach) es una ACCIÓN al final de la lista: sin flecha y en rojo.
+  - Los textos que mandaban «a tu Perfil» ahora dicen «Perfil › Ajustes».
+  - Dos textos falsos que venían del modal viejo, corregidos: «las contraseñas se guardan con cifrado SHA-256» (la
+    real vive en Supabase Auth) y «el asesorado verá este número [Nequi] cuando su plan esté por vencer» (falso desde
+    que se midió en v540: el teléfono del asesorado no puede leer la fila del coach). Ahora dice que por ahora solo
+    queda guardado.
+  - La política de datos y la pregunta frecuente de la web decían «Perfil → Eliminar mi cuenta»: ahora la ruta
+    real. `LEGAL_V` 2026-10-10, copiada a avi-web con `sync-legal`.
+  - De paso, un defecto que ya existía en el Perfil: al tocar un tema o un tamaño de letra, los botones NO elegidos
+    quedaban con borde oscuro y fondo gris (el «desmarcar» hacía `style.x=''` y ganaba la hoja de estilos).
+- **Lo que cazó el QA (Lucas funcional, Julián estático), cerrado antes de producción**:
+  - 🔴 **«Eliminar mi cuenta» se abría DETRÁS de Ajustes**: una ventana `.mdbg` vive en z 1000 y las habitaciones
+    en 1400 y subiendo (`_roomFront`), así que tocar el botón no mostraba nada — el derecho de supresión, roto.
+    Medido por los dos: de 27 ventanas abiertas con Ajustes puesto, 26 quedaban tapadas. Arreglo de CLASE en `om()`:
+    toda ventana que se abre sube por encima de la habitación más alta abierta (sin habitaciones, manda su CSS), y el
+    atrás cierra primero la ventana que está encima (`_aviModalSobreSalas`) y después la habitación.
+  - 🟡 `logout()` no cerraba las habitaciones: si el servidor cerraba la sesión con Ajustes abierto, Ajustes tapaba
+    el login y el aviso de sesión cerrada. El cierre se mudó DENTRO de `logout()`.
+  - 🟢 el error viejo se quedaba pegado si el siguiente fallo era otro; la contraseña quedaba escrita tras guardar;
+    «‹ Ajustes» partía en dos líneas con «Muy grande».
+- **Verificación**: suite 1458 → **1466** en los cuatro modos; harness nuevo `scripts/e2e/_verify-ajustes.mjs`
+  (Perfil, lista, cada detalle, valores al volver, capas de historial, «Eliminar mi cuenta» encima y que se toca, el
+  atrás que la cierra primero, cerrar sesión con un ajuste abierto, el coach por su menú, etiquetas y ritmo del
+  formulario, 360 px con «Muy grande»); matriz VERSIONADA `scripts/e2e/_sabotaje-v704.mjs` (MATRIZ_PENDIENTE);
+  `_verify-sonido`, `_repro-sroom-fs`, `_repro-safearea-volver`, `_repro-back-pantallas` verdes;
+  `_medir-ritmo-formularios` ahora mide la sección del coach (antes imprimía «no existe» y seguía).
+- **Defectos propios cazados antes de producción**: (1) al mudar los campos del coach copié el marcado por números
+  de línea y dejé fuera la línea que cerraba su `<div>`: «Guardar» quedó dentro del recuadro (candado de bloque
+  balanceado en la suite y de estructura en el harness); (2) el sabotaje que quitaba la capa de historial salió
+  VERDE: el atrás del escritorio igual cerraba la habitación — se afirma `AVINAV.layers`; (3) un control en rojo
+  intermitente era el splash tapando el botón (gotcha v624).
+- **Radar**: el número Nequi del coach no le llega a nadie (v540); el día que se quiera, el camino es el de v640 con
+  el nombre del coach: estamparlo en la ficha de cada asesorado.
+
 ## ⏮️ 2026-10-10 — v703: el sonido del entreno se elige (11 tonos, solo vibración o silencio)
 
 - **Origen**: pedido que los asesorados le venían haciendo al PO: *«la opción de cambiar el tono de la app o ponerla

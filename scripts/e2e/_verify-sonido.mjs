@@ -66,6 +66,9 @@ const MONTAR = `(()=>{try{
   CUR.clientId='${CID}'; CUR.loggedAs='client';
   if(typeof AVI_NEWS!=='undefined')localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,x)=>Math.max(m,x.v),0)));
   showScreen('s-client'); cnTab('cn-profile',null);
+  // v704: el sonido vive en Perfil › Ajustes › Sonido del entreno. Se llega tocando, como la persona.
+  document.getElementById('cn-aj-btn').click();
+  document.querySelector('#ajroom-list [data-aj-row="sonido"]').click();
   return 'ok';
 }catch(e){return 'ERR '+(e&&e.message)}})()`;
 const arrancar = async () => {
@@ -117,7 +120,7 @@ for (const fs of ['', 'xl']) {
   }
   if (SHOTS) {
     // El scroller es .cnbody, no la ventana: se lleva la tarjeta a la vista y se recorta en pantalla.
-    const r = await ev(`(async()=>{const c=document.getElementById('cn-sound').closest('.card'); c.scrollIntoView({block:'start'}); await new Promise(z=>setTimeout(z,250)); const b=c.getBoundingClientRect(); return {y:Math.max(0,b.top),h:Math.min(b.height,innerHeight-Math.max(0,b.top))};})()`);
+    const r = await ev(`(async()=>{const c=document.getElementById('cn-sound').closest('.aj-panel'); c.scrollIntoView({block:'start'}); await new Promise(z=>setTimeout(z,250)); const b=c.getBoundingClientRect(); return {y:Math.max(0,b.top),h:Math.min(b.height,innerHeight-Math.max(0,b.top))};})()`);
     const s = await send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: r.y, width: 360, height: r.h, scale: 1 } });
     writeFileSync(`${SHOTS}/sonido-tarjeta-${tag}.png`, Buffer.from(s.data, 'base64'));
   }
@@ -174,6 +177,8 @@ A.ok(pSil && pSil.prev === 'vibracion', 'elegir «Silencio» en el Perfil recuer
 A.ok(await ev(`typeof _sndComp!=='undefined' && _sndComp!==null && _sndCompAt!==null`), 'el compresor de los tonos ya existe antes del primer aviso');
 
 // ── 5. El botón del descanso ──
+// Se cierran las pantallas de Ajustes (van encima de todo) para ver el entreno.
+await ev(`(()=>{ closeAjustesSub(); closeAjustes(); })()`);
 await tocarModo('Solo vibración');
 const BOTON = `(()=>{ const b=document.getElementById('gm-rest-snd'); return {txt:b.textContent.trim(), ap:b.getAttribute('aria-pressed'), aria:b.getAttribute('aria-label')}; })()`;
 // El descanso vive dentro de #guided-mode, y en el entreno real ese nodo se MUDA a «Hoy» (#cn-today-body,

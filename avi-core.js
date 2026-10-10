@@ -12451,9 +12451,59 @@ function soundToneLength(id, fase) {
   return soundToneNotes(id, fase).reduce((m, n) => Math.max(m, (n.at || 0) + n.d), 0);
 }
 
+// ── AJUSTES (v704, 10-oct-2026) ────────────────────────────────────────────────────────────────────
+// Pedido del PO: *«organices todo lo que tiene que ver con ajustes en ajustes… como una app de
+// verdad»*. Referencias (Apple, Android, Hevy, Strava, Fitia, MyFitnessPal, TrainHeroic, Fitsly,
+// WhatsApp): el Perfil es quién eres y cómo vas; Ajustes, una lista corta y agrupada donde CADA FILA
+// MUESTRA SU VALOR ACTUAL. Estas funciones dan ese valor; la pantalla solo lo pinta.
+const THEME_LABEL = { light: 'Claro', dark: 'Oscuro', auto: 'Automático' };
+const FS_LABEL = { normal: 'Normal', lg: 'Grande', xl: 'Muy grande' };
+// Lo que dice la fila «Sonido del entreno». En solo vibración el tono no suena, así que no se nombra.
+function soundSummary(pref) {
+  const p = soundPrefNormalize(pref);
+  if (p.mode === 'silencio') return 'En silencio';
+  if (p.mode === 'vibracion') return 'Solo vibración';
+  return (SOUND_TONES.find(t => t.id === p.tone) || SOUND_TONES[0]).nombre;
+}
+// La fila «Mi plan»: el nombre que usa la venta (AVI FREE · AVI PRO · con coach) y, si aplica, la
+// fecha. 🔒 Sin montos (decisión del PO del 25-ago para todo lo que habla de plata con el asesorado).
+// El estado lo decide MS.getStatus, la misma regla de las bandas de «Hoy»: dos cuentas de «cuándo
+// vence» acabarían diciendo cosas distintas en dos pantallas.
+const SETTINGS_PLAN_NAME = { libre: 'AVI FREE', app: 'AVI PRO', coach: 'Plan con coach' };
+function _settingsDueDate(client) {
+  const pays = (client && client.payments) || [];
+  if (!pays.length) return null;
+  const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
+  const raw = String(last.dueDate || '');
+  // «2026-11-02» a secas es medianoche UTC = el día ANTERIOR en Colombia: se arma en hora local.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  const t = Date.parse(raw);
+  return isFinite(t) ? new Date(t) : null;
+}
+function settingsPlanSummary(client, now) {
+  if (!client) return null;
+  const plan = clientPlan(client);
+  const nombre = SETTINGS_PLAN_NAME[plan];
+  if (plan === 'libre') return { nombre, detalle: '' };
+  const st = MS.getStatus(client, now);
+  let detalle = '';
+  if (st === 'courtesy') detalle = 'sin costo';
+  else if (st === 'inactive') detalle = 'en pausa';
+  else if (st === 'grace') detalle = 'venció';
+  // Pasada la gracia ya no tiene lo pagado: entra en AVI FREE (v564, `premiumLocked`). La fila dice
+  // en qué plan está HOY y cuál venció (QA Lucas: gracia y vencido se leían igual).
+  else if (st === 'overdue') return { nombre: SETTINGS_PLAN_NAME.libre, detalle: (plan === 'coach' ? 'tu plan con coach' : 'tu ' + nombre) + ' venció' };
+  else if (st === 'active' || st === 'expiring') {
+    const d = _settingsDueDate(client);
+    if (d) detalle = 'vence el ' + d.getDate() + ' de ' + SHARE_MESES[d.getMonth()];
+  }
+  return { nombre, detalle };
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SOUND_MODES, SOUND_DEFAULT, SOUND_TONES, SOUND_TONE_IDS, soundPrefNormalize, soundToggleMute, soundWithMode,
+    THEME_LABEL, FS_LABEL, soundSummary, SETTINGS_PLAN_NAME, settingsPlanSummary,
     soundShouldPlay, soundShouldVibrate, soundToneNotes, soundToneLength,
     REFERIDO_CADA_DIAS,
     REFERIDO_PREMIO,
