@@ -23908,6 +23908,84 @@ test('🔒 v705 · con la zona que duele, una búsqueda vacía no manda a saltar
 });
 
 // ══════════════════════════════════════════════════════
+// v706 · EL COACH COMPARTE EL PLAN DE ALIMENTACIÓN (pedido del PO, 10-oct-2026)
+// ══════════════════════════════════════════════════════
+// Saca una función de primer nivel de un módulo de la app (hasta la siguiente `function` de primer nivel).
+const _v706Fn = (archivo, nombre) => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, archivo), 'utf8').replace(/\r/g, '');
+  const ini = src.indexOf('\nfunction ' + nombre + '(');
+  assert.ok(ini !== -1, `CONTROL: ${archivo} define ${nombre}`);
+  const fin = src.indexOf('\nfunction ', ini + 1);
+  return src.slice(ini, fin === -1 ? undefined : fin);
+};
+test('🔒 v706 · la ficha del coach, el WhatsApp y la imagen dicen las MISMAS cifras que ve la persona (piso de menores)', () => {
+  const cifras = new Function('nutBaseFor', '_nutPesoDe', _v706Fn('app-5-salud.js', '_nutPlanCifras') + '\nreturn _nutPlanCifras;')(nutBaseFor, c => c.weight);
+  const base = nutBaseFor(MENOR_REAL, PLAN_BAJO, 52);
+  // CONTROL de discriminación: con este plan, lo escrito y lo que ve la persona NO coinciden.
+  assert.notStrictEqual(base.kcalObj, PLAN_BAJO.kcal, 'CONTROL: el caso de la menor tiene que separar lo escrito de lo derivado');
+  const k = cifras(MENOR_REAL, PLAN_BAJO);
+  assert.strictEqual(k.kcal, base.kcalObj, '🔴 la ficha pinta las calorías ESCRITAS, no las que ve la persona');
+  assert.deepStrictEqual([k.prot, k.carb, k.fat], [base.macros.prot_g, base.macros.carb_g, base.macros.fat_g], '🔴 los macros de la ficha no son los de la persona');
+  // Las cuatro superficies salen de la misma función (ficha, WhatsApp de los dos, imagen).
+  const fs = require('fs'), path = require('path');
+  const a5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const ficha = a5.slice(a5.indexOf('function renderNutritionCoach('), a5.indexOf('\nfunction ', a5.indexOf('function renderNutritionCoach(') + 1));
+  assert.ok(/_nutPlanCifras\(_c,nut\)/.test(ficha) && !/nut\.kcal\?`/.test(ficha), '🔴 la ficha del coach volvió a pintar `nut.kcal` crudo');
+  assert.ok(/_nutPlanCifras\(c,nut\)/.test(_v706Fn('app-5-salud.js', '_nutPlanTexto')), '🔴 el mensaje de WhatsApp no usa las cifras de la persona');
+  assert.ok(/_nutPlanCifras\(c,nut\)/.test(_v706Fn('app-5-salud.js', 'nutPlanCanvas')), '🔴 la imagen del plan no usa las cifras de la persona');
+  assert.ok(/_nutPlanTexto\(cl,nut,'yo'\)/.test(_v706Fn('app-5-salud.js', 'shareNutWhatsapp')), '🔴 el WhatsApp del asesorado tiene su propia redacción');
+  assert.ok(/_nutPlanTexto\(c,nut,'tu'\)/.test(_v706Fn('app-5-salud.js', 'nutShareToClient')), '🔴 el WhatsApp del coach tiene su propia redacción');
+});
+test('🔒 v706 · el mensaje del coach va al número de ESA persona y le habla a ella', () => {
+  const texto = new Function('_nutPlanCifras', 'fmtMiles', _v706Fn('app-5-salud.js', '_nutPlanTexto') + '\nreturn _nutPlanTexto;')(
+    () => ({ kcal: 1900, prot: 100, carb: 230, fat: 55 }), fmtMiles);
+  const nut = { kcal: 1800, plan: 'Desayuno con huevo', avoid: 'gaseosa' };
+  const tu = texto({ name: 'Andrea Ruiz' }, nut, 'tu'), yo = texto({ name: 'Andrea Ruiz' }, nut, 'yo');
+  assert.ok(/^Hola Andrea/.test(tu) && /TU PLAN DE ALIMENTACI/.test(tu), '🔴 el mensaje del coach no saluda a la persona ni dice «TU PLAN»');
+  assert.ok(/MI PLAN NUTRICIONAL/.test(yo) && !/Hola/.test(yo), 'el del asesorado sigue en primera persona');
+  for (const m of [tu, yo]) {
+    assert.ok(m.includes(fmtMiles(1900) + ' kcal') && !m.includes(fmtMiles(1800) + ' kcal'), '🔴 el mensaje manda las calorías escritas, no las que ve la persona');
+    assert.ok(m.includes('Desayuno con huevo') && m.includes('gaseosa'), 'las notas y lo que debe evitar viajan');
+  }
+  // Al número de la persona, normalizado (sin waPhone, wa.me sale roto — gotcha v365).
+  const env = _v706Fn('app-5-salud.js', 'nutShareToClient');
+  assert.ok(/waPhone\(c\.phone\)/.test(env) && /'https:\/\/wa\.me\/'\+\(tel\|\|''\)\+'\?text='\+encodeURIComponent\(msg\)/.test(env),
+    '🔴 el WhatsApp del coach no va al número normalizado de la persona');
+});
+test('🔒 v706 · «Avisarle en la app» no se ofrece donde el aviso no le llegaría', () => {
+  const no = new Function('premiumLocked', 'chatDeliveryBlock', _v706Fn('app-5-salud.js', '_nutAvisoNo') + '\nreturn _nutAvisoNo;')(premiumLocked, chatDeliveryBlock);
+  const conCoach = { id: 'a', name: 'Andrea', tier: 'coach' };
+  // CONTROL: la persona con coach no está bloqueada por ninguna de las dos reglas.
+  assert.ok(!premiumLocked(conCoach) && !chatDeliveryBlock(conCoach), 'CONTROL: la persona con coach ve su comida y su chat');
+  assert.strictEqual(no(conCoach), '', '🔴 a quien tiene coach no se le ofrece el aviso');
+  assert.ok(/no le muestra la comida/.test(no({ id: 'b', name: 'B', tier: 'libre' })), '🔴 AVI FREE: el aviso la llevaría a un candado');
+  assert.ok(/no incluye chat/.test(no({ id: 'c', name: 'C', tier: 'app' })), '🔴 plan sin coach: el aviso se guardaría y no le llegaría (v584)');
+  // La ficha esconde el botón con la MISMA regla y dice por qué; la acción la vuelve a comprobar.
+  const fs = require('fs'), path = require('path');
+  const a5 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const ficha = a5.slice(a5.indexOf('function renderNutritionCoach('), a5.indexOf('\nfunction ', a5.indexOf('function renderNutritionCoach(') + 1));
+  assert.ok(/const _bloq=_nutAvisoNo\(_c\);/.test(ficha) && /\(_bloq\?'':`<button[^`]*nutNotifyInApp/.test(ficha), '🔴 la ficha ofrece el aviso sin preguntar si llega');
+  assert.ok(/const no=_nutAvisoNo\(c\); if\(no\)\{ toast\(no\); return; \}/.test(_v706Fn('app-5-salud.js', 'nutNotifyInApp')), '🔴 la acción del aviso no comprueba si llega');
+});
+test('🔒 v706 · el aviso viaja con su marca SOLO en ese mensaje y la persona ve «Ver mi plan»', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const env = a3.slice(a3.indexOf('async function sendCoachChatMsg('), a3.indexOf('\nlet _cchatMediaSubiendo'));
+  // Se consume ANTES de cualquier salida: si el envío se aborta, la marca no se pega al siguiente mensaje.
+  const iCons = env.indexOf('const act=_cchatAct; _cchatAct=null;'), iRet = env.indexOf('if(!text||!id)return;');
+  assert.ok(iCons !== -1 && iRet !== -1 && iCons < iRet, '🔴 la marca del aviso sobrevive a un envío abortado y se pega al próximo mensaje');
+  assert.ok(/if\(act\)_msg\.act=act;/.test(env), '🔴 el mensaje del aviso sale sin su marca');
+  assert.ok(/_cchatId=clientId; _cchatAct=null;/.test(a3) && /_cchatId=null; _cchatAct=null; \}/.test(a3), '🔴 abrir o cerrar el chat no limpia la marca');
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/if\(m\.act==='nutplan'&&!mine&&typeof chatNutActNode==='function'\)con\.appendChild\(chatNutActNode\(\)\);/.test(a4), '🔴 la persona no ve el botón «Ver mi plan» bajo el aviso');
+  assert.ok(/if\(m\.act==='nutplan'&&isC&&typeof chatNutActNode==='function'\)con\.appendChild\(chatNutActNode\(true\)\);/.test(a3), '🔴 el coach ve «tócalo aquí abajo» sin nada abajo');
+  // El botón abre la comida de la persona y se arma sin innerHTML.
+  const nodo = _v706Fn('app-5-salud.js', 'chatNutActNode');
+  assert.ok(/openNutritionRoom\(CUR\.clientId\)/.test(nodo) && !/innerHTML/.test(nodo), '🔴 el botón del aviso no abre su plan (o lo arma con innerHTML)');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

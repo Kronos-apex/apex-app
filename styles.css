@@ -727,6 +727,16 @@ html[data-theme="light"] .mta {
 .mctx.r{align-self:flex-end}
 .mctx-h{font-weight:700;color:var(--t1)}
 .mctx-l{overflow-wrap:anywhere}
+/* v706 · el aviso del plan de alimentación: la persona ve el botón; el coach, una nota de lo que le aparece */
+.mact{align-self:flex-start;margin:3px 0 2px;max-width:78%;min-height:40px}
+.mact-n{align-self:flex-end;max-width:78%;margin:2px 0 0;padding:0 4px;font-size:var(--fs-xs);color:var(--t2);text-align:right}
+/* v706 · la ficha del coach: lo que ve la persona y compartir su plan */
+.nut-ve{font-size:var(--fs-xs);font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.nut-share{margin-top:14px;padding-top:12px;border-top:1px solid var(--br)}
+.nut-share-t{font-size:var(--fs-sm);font-weight:700;color:var(--t1);margin-bottom:8px}
+.nut-share-b{display:flex;flex-wrap:wrap;gap:8px}
+.nut-share-b .btn{min-height:40px}
+.nut-share-n{margin-top:8px;font-size:var(--fs-xs);color:var(--t2);line-height:1.45}
 /* v649 · foto o video dentro de la burbuja */
 .mb.mb-media{padding:4px;max-width:70%}
 .mmedia{font-size:12px;min-width:120px;min-height:60px;display:flex;align-items:center;justify-content:center;border-radius:10px;overflow:hidden}

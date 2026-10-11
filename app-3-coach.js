@@ -4362,10 +4362,13 @@ function coachChatAskDelete(btn){
 // La conversación con un asesorado en una vista dedicada (no enterrada en el perfil). La abren
 // la notificación (openChatFor) y la bandeja (renderMsgs). Aterriza SIEMPRE en el último msg.
 let _cchatId=null;
+// v706 · marca que viaja con el PRÓXIMO mensaje (p. ej. 'nutplan': la persona ve «Ver mi plan»
+// debajo). Se consume al enviar y se limpia al abrir o cerrar el chat: nunca se pega a otro.
+let _cchatAct=null;
 function _cchatGrow(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }
 function openCoachChat(clientId){
   const c=DB.clients.find(x=>x.id===clientId); if(!c)return;
-  _cchatId=clientId;
+  _cchatId=clientId; _cchatAct=null;
   const av=document.getElementById('cchat-av'); if(av){ av.style.background=avc(c.name); av.style.color=inkOn(avc(c.name)); av.textContent=ini(c.name); }
   const nm=document.getElementById('cchat-name'); if(nm)nm.textContent=c.name; // textContent → sin XSS
   renderCoachChatThread(clientId,true); // al abrir SIEMPRE al final
@@ -4415,6 +4418,7 @@ function renderCoachChatThread(clientId, forceBottom){
     else b.textContent=m.text||'';
     con.appendChild(b);
     if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,isC,false));
+    if(m.act==='nutplan'&&isC&&typeof chatNutActNode==='function')con.appendChild(chatNutActNode(true));
     const t=document.createElement('div');t.className=`mt${isC?' r':''}`;
     // v588 · el estado REAL del mensaje. Antes todos se pintaban igual y el que nunca salió
     // se veía idéntico al entregado — con la app diciendo además «Mensaje enviado».
@@ -4433,9 +4437,11 @@ const _cchatSending={};
 // deja al asesorado abriendo un chat vacío).
 async function sendCoachChatMsg(){
   const ta=document.getElementById('cchat-in'); const text=(ta&&ta.value||'').trim(); const id=_cchatId;
+  const act=_cchatAct; _cchatAct=null;   // v706 · se consume aunque no salga nada
   if(!text||!id)return;
   if(!DB.msgs[id])DB.msgs[id]=[];
   const _msg={from:'coach',text,date:new Date().toISOString()};
+  if(act)_msg.act=act;
   DB.msgs[id].push(_msg);
   _cchatSending[_msg.date]=1;
   ta.value=''; ta.style.height='auto';
@@ -4506,7 +4512,7 @@ function coachInviteOpenApp(){
   toast(nota?('✍️ '+nota+' Te lo dejé listo en el chat'):'✍️ Revísalo y envíaselo para invitarlo');
 }
 function closeCoachChat(){ navCloseLayer(_closeCoachChat); }
-function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; }
+function _closeCoachChat(){ const el=document.getElementById('coach-chat'); if(el)el.classList.remove('on'); _cchatId=null; _cchatAct=null; }
 function coachChatOpenProfile(){ const id=_cchatId; if(!id)return; closeCoachChat(); setTimeout(()=>{ if(typeof openDetail==='function')openDetail(id); },60); }
 
 // ══════════ MODERACIÓN — BANDEJA DE REPORTES (lote v3-a #1, backend c14) ══════════

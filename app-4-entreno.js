@@ -4627,6 +4627,8 @@ function _paintMsgThread(con,msgs,coachReadAt){
     else b.textContent=m.text||'';
     con.appendChild(b);
     if(m.ctx&&typeof chatCtxNode==='function')con.appendChild(chatCtxNode(m.ctx,mine,true));
+    // v706 · el aviso del plan de alimentación lleva su botón debajo (solo en lo que manda el coach).
+    if(m.act==='nutplan'&&!mine&&typeof chatNutActNode==='function')con.appendChild(chatNutActNode());
     const t=document.createElement('div');t.className=`mt${mine?' r':''}`;t.textContent=`${mine?'Tú':'Coach'} · ${fmtD(m.date)} ${fmtT(m.date)}${_i===_visto?' · Visto':''}`;con.appendChild(t);
   });
 }

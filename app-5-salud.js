@@ -241,18 +241,40 @@ function renderNutritionCoach(clientId){
   const nut=(DB.nutrition||{})[clientId];
   if(!nut||(!nut.kcal&&!nut.plan)){con.innerHTML='<span style="color:var(--t3)">Sin plan asignado.</span>';return;}
   let html='';
-  if(nut.kcal||nut.prot||nut.carbs||nut.fat){
-    html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      ${nut.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(fmtMiles(nut.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
-      ${nut.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(nut.prot))} g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
-      ${nut.carbs?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(nut.carbs))} g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
-      ${nut.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(nut.fat))} g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
+  const _c=(DB.clients||[]).find(x=>x.id===clientId);
+  // v706 · 🔴 La ficha pintaba las cifras ESCRITAS (`nut.kcal` crudo) y la persona ve las DERIVADAS de
+  // los macros con el piso de menores: justo encima de «Enviar por WhatsApp» y «Crear imagen», que
+  // mandan las derivadas. Dos números para el mismo plan a un toque de distancia (v435/v444). Se
+  // pinta lo que ve la persona y se dice; si lo escrito no cuadra, ya lo explica la tarjeta de revisión.
+  const _k=_c?_nutPlanCifras(_c,nut):{kcal:+nut.kcal||0,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0};
+  if(_k.kcal||_k.prot||_k.carb||_k.fat){
+    html+=`<div class="nut-ve">Lo que ve ${esc(_c&&_c.name?String(_c.name).split(' ')[0]:'tu asesorado')} en su app</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      ${_k.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(fmtMiles(_k.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
+      ${_k.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(_k.prot))} g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
+      ${_k.carb?`<div style="text-align:center;background:var(--yll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--t1)">${esc(String(_k.carb))} g</div><div style="font-size:10px;color:var(--t2)">carbs</div></div>`:''}
+      ${_k.fat?`<div style="text-align:center;background:var(--orl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--ort)">${esc(String(_k.fat))} g</div><div style="font-size:10px;color:var(--t2)">grasas</div></div>`:''}
     </div>`;
   }
   if(nut.meals)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83C\uDF7D\ufe0f ${esc(String(nut.meals))} comidas/d\u00eda</div>`;
   if(nut.water)html+=`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">\uD83D\uDCA7 ${esc(String(nut.water))} vasos de agua/d\u00eda</div>`;
   if(nut.plan)html+=`<div style="white-space:pre-line;font-size:13px;line-height:1.7">${esc(nut.plan)}</div>`;
   if(nut.avoid)html+=`<div style="margin-top:10px;background:var(--rdl);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--rdt)">\u26a0\ufe0f Evitar: ${esc(nut.avoid)}</div>`;
+  // v706 \u00b7 Compartir el plan con ESTA persona (pedido del PO): WhatsApp, imagen y aviso en la app.
+  if(_c&&_hasCoachNutPlan(nut)){
+    const _nom=esc(String(_c.name||'').split(' ')[0]||'tu asesorado');
+    const _tel=(typeof waPhone==='function')?waPhone(_c.phone):'';
+    const _bloq=_nutAvisoNo(_c);
+    const _id=esc(clientId);
+    html+=`<div class="nut-share"><div class="nut-share-t">Compartir con ${_nom}</div><div class="nut-share-b">`
+      +`<button type="button" class="btn bp bsm" onclick="nutShareToClient('${_id}')">Enviar por WhatsApp</button>`
+      +`<button type="button" class="btn bg bsm" onclick="nutShareImage('${_id}')">Crear imagen del plan</button>`
+      +(_bloq?'':`<button type="button" class="btn bg bsm" onclick="nutNotifyInApp('${_id}')">Avisarle en la app</button>`)
+      +`</div>`
+      +(!_tel?`<div class="nut-share-n">No tiene un celular guardado: WhatsApp te pedir\u00e1 elegir su chat.</div>`:'')
+      +(_bloq?`<div class="nut-share-n">${esc(_bloq)}</div>`:'')
+      +`</div>`;
+  }
   con.innerHTML=html;
 }
 
@@ -794,37 +816,54 @@ function closeNutritionRoom(){
   _syncRoomBodyClass();
 }
 
+// v706 · LAS CIFRAS DEL PLAN QUE VE LA PERSONA, en un solo sitio. Las usan el WhatsApp del asesorado,
+// el del coach, la imagen del plan y la ficha del coach: 🔴 el titular se DERIVA de los macros y lleva
+// el piso de menores (`nutBaseFor`) — tres cifras distintas para un mismo plan fue el defecto de v435.
+function _nutPlanCifras(c,nut){
+  const b=(typeof nutBaseFor==='function'&&c)?nutBaseFor(c,nut,_nutPesoDe(c)):null;
+  const m=(b&&b.macros)?b.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
+  return {kcal:(b&&b.kcalObj)?b.kcalObj:(+nut.kcal||0), prot:+m.prot_g||0, carb:+m.carb_g||0, fat:+m.fat_g||0};
+}
+// El cuerpo del mensaje del plan ESCRITO por el coach. `voz`: 'yo' lo manda la persona («MI PLAN»),
+// 'tu' se lo manda su coach («TU PLAN», con saludo). Una sola redacción para los dos botones.
+function _nutPlanTexto(c,nut,voz){
+  const nombre=c&&c.name?String(c.name).split(' ')[0]:'';
+  let msg=voz==='tu'
+    ? `${nombre?'Hola '+nombre+' 👋 ':''}Este es tu plan de alimentación:\n\n🥗 *TU PLAN DE ALIMENTACIÓN · AVI*\n\n`
+    : `🥗 *MI PLAN NUTRICIONAL - AVI*\n${nombre?'👤 '+nombre+'\n':''}\n`;
+  // 🔴 El mensaje que se manda por WhatsApp es UNA SUPERFICIE MÁS: mandaba `nut.kcal` crudo
+  // mientras las otras seis pintan el derivado, así que del mismo plan salían TRES cifras
+  // distintas — y esta se queda en el teléfono de la persona, sin fecha y sin poder corregirla.
+  // Familia v435/v444: al cerrar un bug de consistencia hay que listar TODAS las superficies.
+  const k=_nutPlanCifras(c,nut);
+  if(k.kcal)msg+=`🔥 *Calorías diarias:* ${fmtMiles(k.kcal)} kcal\n`;
+  if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
+  if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
+  if(k.prot||k.carb||k.fat){
+    msg+=`\n📊 *Macros:*\n`;
+    if(k.prot)msg+=`  • Proteína: ${k.prot} g (${fmtMiles(k.prot*4)} kcal)\n`;
+    if(k.carb)msg+=`  • Carbohidratos: ${k.carb} g (${fmtMiles(k.carb*4)} kcal)\n`;
+    if(k.fat)msg+=`  • Grasas saludables: ${k.fat} g (${fmtMiles(k.fat*9)} kcal)\n`;
+  }
+  if(nut.examples){
+    msg+=`\n💡 *Ejemplos de comidas:*\n`;
+    nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>msg+=`  ${l.trim()}\n`);
+  }
+  if(nut.plan){msg+=`\n📋 *Notas de tu coach:*\n${nut.plan}\n`;}
+  if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
+  return msg;
+}
 function shareNutWhatsapp(){
   const nut=(DB.nutrition||{})[CUR.clientId];
   const cl=DB.clients.find(x=>x.id===CUR.clientId);
   const nombre=cl?cl.name.split(' ')[0]:'';
-  let msg=`🥗 *MI PLAN NUTRICIONAL - AVI*\n`;
-  if(nombre)msg+=`👤 ${nombre}\n`;
-  msg+=`\n`;
+  let msg;
   if(_hasCoachNutPlan(nut)){
-    // 🔴 El mensaje que se manda por WhatsApp es UNA SUPERFICIE MÁS: mandaba `nut.kcal` crudo
-    // mientras las otras seis pintan el derivado, así que del mismo plan salían TRES cifras
-    // distintas — y esta se queda en el teléfono de la persona, sin fecha y sin poder corregirla.
-    // Familia v435/v444: al cerrar un bug de consistencia hay que listar TODAS las superficies.
-    const _wb=(typeof nutBaseFor==='function')?nutBaseFor(cl,nut,_nutPesoDe(cl)):null;
-    const _wk=(_wb&&_wb.kcalObj)?_wb.kcalObj:nut.kcal;
-    const _wm=(_wb&&_wb.macros)?_wb.macros:{prot_g:+nut.prot||0,carb_g:+nut.carbs||0,fat_g:+nut.fat||0};
-    if(_wk)msg+=`🔥 *Calorías diarias:* ${fmtMiles(_wk)} kcal\n`;
-    if(nut.water)msg+=`💧 *Agua:* ${nut.water} vasos/día\n`;
-    if(nut.meals)msg+=`🍽️ *Comidas:* ${nut.meals} al día\n`;
-    if(_wm.prot_g||_wm.carb_g||_wm.fat_g){
-      msg+=`\n📊 *Macros:*\n`;
-      if(_wm.prot_g)msg+=`  • Proteína: ${_wm.prot_g} g (${fmtMiles(_wm.prot_g*4)} kcal)\n`;
-      if(_wm.carb_g)msg+=`  • Carbohidratos: ${_wm.carb_g} g (${fmtMiles(_wm.carb_g*4)} kcal)\n`;
-      if(_wm.fat_g)msg+=`  • Grasas saludables: ${_wm.fat_g} g (${fmtMiles(_wm.fat_g*9)} kcal)\n`;
-    }
-    if(nut.examples){
-      msg+=`\n💡 *Ejemplos de comidas:*\n`;
-      nut.examples.split('\n').filter(l=>l.trim()).forEach(l=>msg+=`  ${l.trim()}\n`);
-    }
-    if(nut.plan){msg+=`\n📋 *Notas de tu coach:*\n${nut.plan}\n`;}
-    if(nut.avoid){msg+=`\n⚠️ *Evitar:* ${nut.avoid}\n`;}
+    msg=_nutPlanTexto(cl,nut,'yo');
   } else {
+    msg=`🥗 *MI PLAN NUTRICIONAL - AVI*\n`;
+    if(nombre)msg+=`👤 ${nombre}\n`;
+    msg+=`\n`;
     // Self-serve (Premium sin plan del coach): comparte la ESTIMACIÓN automática. Antes decía
     // "tu coach aún no ha asignado un plan" aunque la app mostraba kcal+macros. Bug #9 auditoría 2026-06-30.
     const est=cl?nutritionEstimate(cl,_nutPesoDe(cl)):null;
@@ -842,6 +881,152 @@ function shareNutWhatsapp(){
   }
   msg+=`\n_Plan generado por AVI 💪_`;
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ══════════ v706 · EL COACH COMPARTE EL PLAN DE ALIMENTACIÓN DESDE LA FICHA ══════════
+// Pedido del PO (10-oct-2026): «en el panel de coach quiero poder compartir el plan de alimentación
+// con mis asesorados». Eligió tres caminos: WhatsApp a ESA persona, una imagen del plan con la marca y
+// un aviso dentro de la app. Los tres dicen las cifras que la persona ve en su app (`_nutPlanCifras`).
+// 1) WhatsApp directo a su número. Sin un celular válido (`waPhone`), WhatsApp abre para elegir el chat.
+function nutShareToClient(cid){
+  const c=(DB.clients||[]).find(x=>x.id===cid); const nut=(DB.nutrition||{})[cid];
+  if(!c||!_hasCoachNutPlan(nut)){ toast('Primero arma su plan de alimentación'); return; }
+  const msg=_nutPlanTexto(c,nut,'tu')+`\n_Tu coach en AVI 💪_`;
+  const tel=(typeof waPhone==='function')?waPhone(c.phone):'';
+  if(!tel) toast('No tiene un celular guardado: elige su chat en WhatsApp');
+  window.open('https://wa.me/'+(tel||'')+'?text='+encodeURIComponent(msg),'_blank');
+}
+// 2) Aviso dentro de la app: va por la MISMA ruta del chat (`sendCoachChatMsg`: espera a la nube, la
+//    cola sin conexión, el ⏳ y el push después de guardar) con una marca que le pone a la persona el
+//    botón «Ver mi plan» debajo del mensaje. El chat se abre para que el coach vea lo que salió.
+//    🔒 Si su plan no le deja ver la comida (AVI FREE o vencido), no se ofrece: la llevaría a un candado.
+//    🔒 Y si su plan no incluye chat (sin coach), el mensaje se guardaría y no le llegaría (v584).
+function _nutAvisoNo(c){
+  if(!c) return 'No se encontró a esta persona.';
+  if(typeof premiumLocked==='function'&&premiumLocked(c)) return 'Su plan de hoy no le muestra la comida en la app, así que no hay aviso dentro de la app: mándaselo por WhatsApp.';
+  const blk=(typeof chatDeliveryBlock==='function')?chatDeliveryBlock(c):null;
+  if(blk) return `Su plan «${blk.label}» no incluye chat, así que el aviso no le llegaría: mándaselo por WhatsApp.`;
+  return '';
+}
+function nutNotifyInApp(cid){
+  const c=(DB.clients||[]).find(x=>x.id===cid); const nut=(DB.nutrition||{})[cid];
+  if(!c||!_hasCoachNutPlan(nut)){ toast('Primero arma su plan de alimentación'); return; }
+  const no=_nutAvisoNo(c); if(no){ toast(no); return; }
+  if(typeof openCoachChat!=='function'||typeof sendCoachChatMsg!=='function'){ toast('No se pudo abrir el chat'); return; }
+  openCoachChat(cid);
+  const ta=document.getElementById('cchat-in'); if(!ta) return;
+  ta.value='Te dejé tu plan de alimentación al día 🍽️ Tócalo aquí abajo para verlo.';
+  _cchatAct='nutplan';
+  sendCoachChatMsg();
+}
+// El botón que ve la PERSONA debajo de ese mensaje (lo pinta `_paintMsgThread`). Sin innerHTML.
+// El COACH, en su hilo, ve una nota de lo que le aparece a la persona: el mensaje dice «tócalo
+// aquí abajo» y sin la nota él vería un «aquí abajo» vacío.
+function chatNutActNode(paraCoach){
+  if(paraCoach){
+    const n=document.createElement('div'); n.className='mact-n';
+    n.textContent='Le aparece el botón «Ver mi plan de alimentación»';
+    return n;
+  }
+  const b=document.createElement('button'); b.type='button'; b.className='btn bp bsm mact';
+  b.textContent='Ver mi plan de alimentación';
+  b.onclick=()=>{ if(typeof openNutritionRoom==='function') openNutritionRoom(CUR.clientId); };
+  return b;
+}
+// 3) La imagen del plan con la marca (1080×1350, lo que WhatsApp e Instagram muestran entero). Mismo
+//    lienzo, tipografía y colores que la tarjeta de progreso (modelo C); sale por `shareCanvasImage`.
+//    Solo cifras y las notas del coach: ni objetivo ni peso (lenguaje de composición corporal: v448).
+function _nutWrap(x,txt,maxW,maxLines){
+  const out=[]; const parrafos=String(txt||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  for(const p of parrafos){
+    let linea='';
+    for(const w of p.split(/\s+/)){
+      const prueba=linea?linea+' '+w:w;
+      if(x.measureText(prueba).width>maxW&&linea){ out.push(linea); linea=w; } else linea=prueba;
+      if(out.length>=maxLines) break;
+    }
+    if(out.length>=maxLines) break;
+    if(linea) out.push(linea);
+  }
+  if(out.length>maxLines) out.length=maxLines;
+  const total=parrafos.join(' ').length, puesto=out.join(' ').length;
+  if(puesto<total-1&&out.length){ let u=out[out.length-1]; while(u.length>3&&x.measureText(u+'…').width>maxW)u=u.slice(0,-1); out[out.length-1]=u.replace(/[\s,.;:]+$/,'')+'…'; }
+  return out;
+}
+function nutPlanCanvas(c,nut){
+  const W=1080,H=1350; const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  const _cf=(typeof canvasFont==='function')?canvasFont:((px,w)=>w+' '+px+'px system-ui,Roboto,sans-serif');
+  const bg=x.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#06120D');bg.addColorStop(.6,'#0A2118');bg.addColorStop(1,'#050C08');
+  x.fillStyle='#06120D';x.fillRect(0,0,W,H); x.fillStyle=bg;x.fillRect(0,0,W,H);
+  const glow=x.createRadialGradient(880,200,60,880,200,640);
+  glow.addColorStop(0,'rgba(16,224,160,.18)');glow.addColorStop(1,'rgba(16,224,160,0)');
+  x.fillStyle=glow;x.fillRect(0,0,W,900);
+  const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
+  x.fillStyle='#EAFBF4';x.font=_cf(72,'900',true);x.fillText('AVI',90,150);
+  x.fillStyle='#10E0A0';x.fillRect(90,172,104,6);
+  x.fillStyle='rgba(16,224,160,.7)';x.font=_cf(30,'800');x.fillText('PLAN DE ALIMENTACIÓN',90,250);
+  const nombre=c&&c.name?String(c.name).split(' ')[0]:'';
+  x.fillStyle='#FFFFFF'; let fn=96; x.font=_cf(fn,'900',true);
+  while(fn>48&&x.measureText(nombre).width>900){fn-=6;x.font=_cf(fn,'900',true);}
+  if(nombre)x.fillText(nombre,90,350);
+  const k=_nutPlanCifras(c,nut);
+  // EL NÚMERO: las calorías del día, con el acento vivo reservado para él (jerarquía de v602).
+  x.fillStyle='#10E0A0';x.font=_cf(170,'900',true);
+  const big=fmtMiles(k.kcal); x.fillText(big,90,540);
+  const wBig=x.measureText(big).width;
+  x.fillStyle='rgba(234,251,244,.85)';x.font=_cf(40,'800');x.fillText('KCAL',120+wBig,470);
+  x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(30,'600');x.fillText('al día',120+wBig,515);
+  // Los tres macros, en gramos.
+  const tiles=[['PROTEÍNA',k.prot],['CARBOHIDRATOS',k.carb],['GRASAS',k.fat]];
+  const tw=290,tg=15; let tx=90;
+  tiles.forEach(([lbl,g])=>{
+    x.fillStyle='rgba(255,255,255,.07)';_rr(tx,590,tw,150,22);x.fill();
+    x.fillStyle='#FFFFFF';x.font=_cf(64,'900',true);x.fillText(fmtMiles(g)+' g',tx+26,672);
+    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(24,'800');x.fillText(lbl,tx+26,716);
+    tx+=tw+tg;
+  });
+  // El texto se reparte en el espacio que de verdad queda: ninguna línea base pasa de TOPE (la raya
+  // del pie va en 1218). Con notas larguísimas, «Evitar» quedaba pegado a la raya (harness de v706).
+  const TOPE=1180; let y=812, ultima=y;
+  const _cabe=(desde,paso,reserva)=>Math.max(0,Math.floor((TOPE-reserva-desde)/paso)+1);
+  const extra=[nut.meals?nut.meals+' comidas al día':'', nut.water?nut.water+' vasos de agua al día':''].filter(Boolean).join('   ·   ');
+  if(extra){ x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');x.fillText(extra,90,y); ultima=y; y+=70; }
+  // Si hay «Evitar», se le guarda su sitio (título y una línea) antes de repartir las notas.
+  const _reservaEvitar=nut.avoid?(18+44+42):0;
+  if(nut.plan){
+    const n=Math.min(nut.avoid?4:6,_cabe(y+48,44,_reservaEvitar));
+    if(n>0){
+      x.fillStyle='rgba(16,224,160,.75)';x.font=_cf(26,'800');x.fillText('NOTAS DE TU COACH',90,y); y+=48;
+      x.fillStyle='rgba(234,251,244,.88)';x.font=_cf(32,'600');
+      _nutWrap(x,nut.plan,900,n).forEach(l=>{ x.fillText(l,90,y); ultima=y; y+=44; });
+      y+=18;
+    }
+  }
+  if(nut.avoid){
+    const n=Math.min(2,_cabe(y+44,42,0));
+    if(n>0){
+      x.fillStyle='rgba(255,155,115,.9)';x.font=_cf(26,'800');x.fillText('EVITAR',90,y); ultima=y; y+=44;
+      x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(30,'600');
+      _nutWrap(x,nut.avoid,900,n).forEach(l=>{ x.fillText(l,90,y); ultima=y; y+=42; });
+    }
+  }
+  x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1218,900,4);
+  x.fillStyle='rgba(234,251,244,.7)';x.font=_cf(30,'700');
+  const coach=(typeof getCoachName==='function'&&getCoachName())||'';
+  const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
+  x.fillText('Tu coach: '+(coach&&coach!=='Mi Coach'?coach:'AVI')+'  ·  '+site,90,1278);
+  try{ cv._ultimaY=ultima; }catch(e){}   // gancho del harness: la última línea base escrita (no pisa el pie)
+  return cv;
+}
+function nutShareImage(cid){
+  const c=(DB.clients||[]).find(x=>x.id===cid); const nut=(DB.nutrition||{})[cid];
+  if(!c||!_hasCoachNutPlan(nut)){ toast('Primero arma su plan de alimentación'); return; }
+  const cv=nutPlanCanvas(c,nut);
+  try{ window._nutLastCanvas=cv; }catch(e){}
+  if(typeof shareCanvasImage==='function')shareCanvasImage(cv,'avi-plan-alimentacion','Plan de alimentación','📥 Imagen guardada — mándasela por WhatsApp');
+  else toast('No se pudo crear la imagen');
 }
 
 
