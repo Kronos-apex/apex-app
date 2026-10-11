@@ -890,6 +890,7 @@ function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.
 // fuera de ellos, el vacío lo dice y ofrece buscar en todos.
 function _pkResetQ(){ CUR.pkQ=''; const q=document.getElementById('pk-q'); if(q) q.value=''; }
 function pkSearch(v){ CUR.pkQ=String(v||''); renderPickerForTarget(); }
+function pkClearQ(){ _pkResetQ(); renderPickerForTarget(); }
 function pkSearchAll(){
   CUR.pkFilter='all'; CUR.pkEnv='all';
   const es=document.getElementById('pk-env'); if(es) es.value='all';
@@ -916,14 +917,20 @@ function renderPickerForTarget(){
   const _pkBase=(typeof searchExercises==='function')?searchExercises(DB.exercises,_pkQ,CUR.pkFilter)
     :DB.exercises.filter(e=>CUR.pkFilter==='all'||e.muscle===CUR.pkFilter);
   const filtered=_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env))&&_pkOk(e));
-  // Sin resultados, se dice POR QUÉ (v599). null = lo que se llama así carga la zona que duele: lo
-  // explica el mensaje de esa zona (candado de Laura), no este.
+  // Sin resultados, se dice POR QUÉ (v599). null = no queda NADA que no cargue la zona que duele:
+  // eso lo dice el mensaje de esa zona (candado de Laura), no este.
   const _pkVacio=defecto=>{
     if(!_pkQ) return defecto;
     const todos=(typeof searchExercises==='function')?searchExercises(DB.exercises,_pkQ,'all'):[];
     const filtrando=(CUR.pkFilter&&CUR.pkFilter!=='all')||env!=='all';
     if(filtrando&&todos.some(_pkOk)) return '<div class="pk-vacio">Aquí no hay ninguno que se llame así, pero sí en otros músculos o entornos.<br><button type="button" class="btn bg bsm" onclick="pkSearchAll()">Buscar en todos</button></div>';
-    if(todos.length&&!todos.some(_pkOk)) return null;
+    // 🔴 Lo buscado carga la zona que duele, pero SIN la búsqueda sí hay con qué cambiarlo: el
+    // «Sáltatelo» del candado empujaba a saltarse un ejercicio que tenía 51 reemplazos (Lucas y
+    // Julián, QA de v705). Se dice qué pasó y se ofrece volver a la lista.
+    if(todos.length&&!todos.some(_pkOk)){
+      const sinQ=DB.exercises.some(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env))&&_pkOk(e));
+      return sinQ?'<div class="pk-vacio">Lo que buscaste carga la zona que te duele.<br><button type="button" class="btn bg bsm" onclick="pkClearQ()">Ver los que sí puedes hacer</button></div>':null;
+    }
     return '<div class="pk-vacio">Ningún ejercicio se llama así. Revisa cómo lo escribiste.</div>';
   };
   const titleEl=document.getElementById('pk-title');

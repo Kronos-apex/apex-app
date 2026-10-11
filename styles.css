@@ -2556,6 +2556,10 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .pk-buscar .inp{padding-left:40px}
 .pk-vacio{text-align:center;padding:18px 10px;color:var(--t2);font-size:13px;line-height:1.6}
 .pk-vacio .btn{margin-top:10px}
+/* v705 · los músculos del selector en una sola fila deslizable: con el teclado abierto, la lista se ve */
+.pk-chips{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:9px;padding-bottom:2px;scrollbar-width:none}
+.pk-chips::-webkit-scrollbar{display:none}
+.pk-chips .btn{flex-shrink:0}
 .aj-accion .aj-lbl{color:var(--rdt)}
 .aj-accion .aj-ic{background:var(--rdl);color:var(--rdt)}
 .aj-campo{display:block;font-size:12.5px;font-weight:700;color:var(--t2);margin:0 0 6px}

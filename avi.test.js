@@ -23864,7 +23864,10 @@ test('🔒 v705 · todo lo que abre el selector de ejercicios arranca con la bú
       const ini = src.lastIndexOf('\nfunction ', i);
       const cuerpo = src.slice(ini, i);
       const nombre = (cuerpo.match(/function ([A-Za-z_$][\w$]*)/) || [])[1];
-      assert.ok(/_pkResetQ\(\)/.test(cuerpo) && cuerpo.indexOf('_pkResetQ()') < cuerpo.indexOf('renderPickerForTarget()'),
+      // La llamada es una sentencia propia (o con la guarda de `typeof`): un `if(false)_pkResetQ()`
+      // también «contiene» la llamada y no limpia nada (Julián QA, patrón v579).
+      const llamada = cuerpo.match(/(?:^|[;{\n]\s*)(?:if\(typeof _pkResetQ==='function'\))?_pkResetQ\(\);/);
+      assert.ok(llamada && cuerpo.indexOf(llamada[0]) < cuerpo.indexOf('renderPickerForTarget()'),
         `🔴 ${f} · ${nombre} abre el selector sin limpiar la búsqueda anterior`);
     }
   }
@@ -23887,6 +23890,21 @@ test('🔒 v705 · el buscador busca como la biblioteca y nunca se salta el filt
   const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
   assert.ok(/if\(cat===\(activo\|\|'all'\)\)/.test(a4) && /buildFilterBtns\('pk-f',pkFilter,CUR\.pkFilter\)/.test(a4),
     '🔴 al cambiar un ejercicio los botones vuelven a marcar «Todos» mientras la lista filtra por su músculo');
+});
+test('🔒 v705 · con la zona que duele, una búsqueda vacía no manda a saltarse el ejercicio si hay con qué cambiarlo (QA)', () => {
+  const fs = require('fs'), path = require('path');
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8')).replace(/\r/g, '');
+  const r = a2.slice(a2.indexOf('function renderPickerForTarget('), a2.indexOf('\nfunction saveTemplate('));
+  const vacio = r.slice(r.indexOf('const _pkVacio='), r.indexOf('const titleEl='));
+  // El «Sáltatelo» (null) solo cuando SIN la búsqueda tampoco queda nada que no cargue la zona.
+  assert.ok(/if\(todos\.length&&!todos\.some\(_pkOk\)\)\{\s*const sinQ=DB\.exercises\.some\(e=>[^;]*&&_pkOk\(e\)\);\s*return sinQ\?'[^']*onclick="pkClearQ\(\)"[^']*':null;/.test(vacio),
+    '🔴 lo buscado carga la zona y el selector manda a saltarse el ejercicio aunque haya reemplazos');
+  assert.ok(/function pkClearQ\(\)\{ _pkResetQ\(\); renderPickerForTarget\(\); \}/.test(a2), '🔴 «Ver los que sí puedes hacer» no borra la búsqueda');
+  // Los botones de músculo en UNA fila que se desliza (en tres filas, la lista quedaba bajo el teclado).
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/<div class="pk-chips" id="pk-f"><\/div>/.test(html) && /\.pk-chips\{[^}]*flex-wrap:nowrap;overflow-x:auto/.test(css),
+    '🔴 los botones de músculo del selector volvieron a ocupar varias filas');
 });
 
 // ══════════════════════════════════════════════════════

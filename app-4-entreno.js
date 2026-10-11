@@ -15,6 +15,11 @@ function buildFilterBtns(containerId,handler,activo){
     if(cat===(activo||'all')){b.style.background='var(--gl)';b.style.color='var(--gt)';b.style.borderColor='var(--g2)'}
     b.onclick=()=>handler(cat,b);con.appendChild(b);
   });
+  // v705 · en una fila que se desliza (selector de ejercicios), el botón marcado se trae a la vista.
+  // En el cuadro siguiente: la ventana todavía está oculta mientras se arma.
+  const _ix=cats.indexOf(activo||'all');
+  requestAnimationFrame(()=>{ const a=con.children[_ix]; if(!a||con.scrollWidth<=con.clientWidth)return;
+    con.scrollLeft+=a.getBoundingClientRect().left-con.getBoundingClientRect().left-(con.clientWidth-a.offsetWidth)/2; });
 }
 function styleFilterBtns(containerId,activeEl){
   const con=document.getElementById(containerId);if(!con)return;

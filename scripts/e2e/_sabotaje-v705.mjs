@@ -33,6 +33,13 @@ const SABOTAJES = [
   // ── Los botones dicen lo que muestra la lista ──
   ['suite', 'al cambiar un ejercicio los botones vuelven a marcar «Todos»', 'e4', "buildFilterBtns('pk-f',pkFilter,CUR.pkFilter)", "buildFilterBtns('pk-f',pkFilter)"],
   ['nav', 'al cambiar un ejercicio los botones vuelven a marcar «Todos» (se ve)', 'e4', "buildFilterBtns('pk-f',pkFilter,CUR.pkFilter)", "buildFilterBtns('pk-f',pkFilter)"],
+  // ── Correcciones del QA (Lucas y Julián) ──
+  ['suite', 'la guarda se vuelve inerte: if(false) delante de la limpieza (patrón v579)', 'e3', "  if(typeof _pkResetQ==='function')_pkResetQ();", '  if(false)_pkResetQ();'],
+  ['suite', 'lo buscado que duele vuelve a mandar a saltarse el ejercicio', 'e2', 'return sinQ?', 'return false?'],
+  ['nav', 'lo buscado que duele vuelve a mandar a saltarse el ejercicio (se ve)', 'e2', 'return sinQ?', 'return false?'],
+  ['suite', 'los botones de músculo vuelven a ocupar varias filas', 'html', '<div class="pk-chips" id="pk-f"></div>', '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px" id="pk-f"></div>'],
+  ['nav', 'los botones de músculo vuelven a ocupar varias filas (la lista baja bajo el teclado)', 'html', '<div class="pk-chips" id="pk-f"></div>', '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px" id="pk-f"></div>'],
+  ['nav', 'el botón marcado se queda fuera de la fila (no se trae a la vista)', 'e4', 'con.scrollLeft+=a.getBoundingClientRect().left', 'con.scrollLeft+=0*a.getBoundingClientRect().left'],
 ];
 
 const correr = capa => {

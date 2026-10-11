@@ -66,6 +66,11 @@ const campo = await ev(`(()=>{ const q=document.getElementById('pk-q'); const r=
   return {seVe:r.height>=36&&r.width>200, toca:el===q, fs:getComputedStyle(q).fontSize, valor:q.value}; })()`);
 A.ok(campo.seVe && campo.toca, 'el buscador está arriba del selector y se puede tocar', campo);
 A.ok(campo.fs === '16px', 'su letra es de 16 px (con menos, el iPhone hace zoom al tocarlo)', campo.fs);
+// QA de v705 (Lucas): en tres filas, los botones de músculo empujaban la lista debajo del teclado.
+const fila = await ev(`(()=>{ const f=document.getElementById('pk-f'), q=document.getElementById('pk-q').getBoundingClientRect(), l=document.getElementById('pk-list').getBoundingClientRect();
+  const tops=[...f.children].map(b=>Math.round(b.getBoundingClientRect().top)); return {botones:tops.length, filas:new Set(tops).size, desliza:f.scrollWidth>f.clientWidth, hueco:Math.round(l.top-q.bottom)}; })()`);
+A.ok(fila.botones >= 10 && fila.filas === 1 && fila.desliza, 'los botones de músculo van en UNA fila que se desliza', fila);
+A.ok(fila.hueco <= 130, 'la lista empieza cerca del buscador (con el teclado abierto se ven resultados)', fila.hueco);
 await ev(`pkEnvFilter('all'); document.getElementById('pk-env').value='all'`); await sleep(200);
 const lleno = await ev(LISTA);
 await escribir('press milit');
@@ -114,6 +119,23 @@ await ev(`todaySubstitute(0)`); await sleep(400);
 const s0 = await ev(LISTA);
 const musc = await ev(`(DB.exercises.find(e=>e.muscle==='piernas')||{}).muscle`);
 A.ok(s0.activo.length === 1 && s0.activo[0] !== 'Todos', 'al cambiar un ejercicio, el filtro marcado es SU músculo, no «Todos»', { activo: s0.activo, musculo: musc });
+// El botón marcado puede ser el 7.º de la fila: se trae a la vista (en el cuadro siguiente).
+await sleep(150);
+const marcado = await ev(`(()=>{ const f=document.getElementById('pk-f'), fr=f.getBoundingClientRect();
+  const a=[...f.children].find(b=>b.style.background.indexOf('--gl')>=0); if(!a) return {ok:false};
+  const r=a.getBoundingClientRect(); return {ok:true, dentro:r.left>=fr.left-1&&r.right<=fr.right+1, scroll:Math.round(f.scrollLeft), texto:a.textContent}; })()`);
+A.ok(marcado.ok && marcado.dentro, 'el botón de su músculo se ve entero en la fila, aunque no sea de los primeros', marcado);
+// QA de v705 (Lucas y Julián): con su músculo puesto, «peso muerto» carga la zona que duele. Antes decía
+// «Sáltatelo» aunque ese músculo tiene reemplazos sin la búsqueda; ahora lo dice y ofrece volver a la lista.
+await escribir('peso muerto');
+const sz = await ev(`(()=>{ const l=document.getElementById('pk-list'); return {texto:l.innerText.slice(0,200), boton:(l.querySelector('.pk-vacio button')||{}).textContent||''}; })()`);
+A.ok(/carga la zona que te duele/.test(sz.texto) && !/Sáltatelo/.test(sz.texto) && /sí puedes hacer/.test(sz.boton),
+  'con un músculo que sí tiene reemplazos, lo buscado que duele NO manda a saltarse el ejercicio', sz);
+await ev(`document.querySelector('#pk-list .pk-vacio button').click()`); await sleep(250);
+const tras = await ev(`(()=>{ const c=DB.clients[0]; const lim=limitationsFor(c,Date.now()).keys;
+  const nombres=[...document.querySelectorAll('#pk-list > div')].filter(x=>x.querySelector('div[style*="font-weight:600"]')).map(f=>f.querySelector('div[style*="font-weight:600"]').firstChild.textContent.trim());
+  return {q:document.getElementById('pk-q').value, n:nombres.length, prohibidos:nombres.filter(n=>{const e=DB.exercises.find(x=>x.name===n);return e&&exerciseContraindicated(e,lim,DB.exercises);}).length}; })()`);
+A.ok(tras.q === '' && tras.n > 0 && tras.prohibidos === 0, '«Ver los que sí puedes hacer» borra la búsqueda y deja solo lo que no carga la zona', tras);
 await ev(`pkSearchAll()`); await sleep(200);
 await escribir('peso muerto');
 const s1 = await ev(`(()=>{ const c=DB.clients[0]; const lim=limitationsFor(c,Date.now()).keys;
@@ -124,7 +146,7 @@ const s1 = await ev(`(()=>{ const c=DB.clients[0]; const lim=limitationsFor(c,Da
   return {n:nombres.length, prohibidos, enCatalogo, texto:document.getElementById('pk-list').innerText.slice(0,160)}; })()`);
 A.ok(s1.enCatalogo >= 2, 'CONTROL: en el catálogo hay «peso muerto» que la zona lumbar prohíbe (si no, el siguiente check no prueba nada)', s1.enCatalogo);
 A.ok(s1.prohibidos.length === 0, '🔒 buscando «peso muerto» con hernia lumbar, no aparece nada que esa zona prohíba', s1);
-A.ok(s1.n > 0 || /esa zona/.test(s1.texto), 'y si no queda ninguno, lo dice el mensaje de la zona (nunca una lista vacía muda)', s1);
+A.ok(s1.n > 0 || /esa zona|zona que te duele/.test(s1.texto), 'y si no queda ninguno, lo dice el mensaje de la zona (nunca una lista vacía muda)', s1);
 await ev(`cm('m-picker')`); await sleep(200);
 
 // ── 5. Con «Muy grande» a 360 px cabe ──

@@ -1221,7 +1221,8 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <option value="gym">Gym</option>
       </select>
     </div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px" id="pk-f"></div>
+    <!-- v705 · UNA fila que se desliza: en tres filas empujaban los resultados debajo del teclado (Lucas QA). -->
+    <div class="pk-chips" id="pk-f"></div>
     <div id="pk-list" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-picker')">Cerrar</button></div>
   </div>
