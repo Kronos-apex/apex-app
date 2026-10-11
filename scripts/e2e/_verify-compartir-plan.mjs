@@ -93,6 +93,14 @@ const im = await ev(`_spy.img[_spy.img.length-1]||null`);
 A.ok(im && im.w === 1080 && im.h === 1350, 'la imagen mide 1080×1350 (lo que WhatsApp e Instagram muestran entero)', im);
 // La última línea base deja aire sobre la raya del pie (y=1218): con 30 px de aire la letra no la toca.
 A.ok(im && im.y > 900 && im.y + 30 <= 1218, 'con notas larguísimas el texto termina ANTES del pie, con aire (y no quedó vacío)', im);
+// Regla de v624: con un plan corto el aire que sobra se parte por la mitad, no se deja todo abajo; y la
+// tarjeta llena casi no se mueve (su CONTROL: si el reparto se aplicara a todo, la llena también bajaría).
+const aire = await ev(`(()=>{ const c=DB.clients.find(x=>x.id==='c1');
+  const corto=nutPlanCanvas(c,{kcal:2200,prot:150,carbs:240,fat:70,meals:4,plan:'Tres comidas fuertes y una merienda con fruta.'});
+  const largo=nutPlanCanvas(c,DB.nutrition.c1);
+  return {dyCorto:corto._dy, abajoCorto:1180-corto._ultimaY, dyLargo:largo._dy}; })()`);
+A.ok(aire.dyCorto > 50 && Math.abs(aire.abajoCorto - aire.dyCorto) <= 1, 'plan corto: el aire se reparte arriba y abajo (no 280 px vacíos al fondo)', aire);
+A.ok(aire.dyLargo <= 20, 'CONTROL: la tarjeta llena casi no se mueve', aire);
 
 // ── 5. El aviso: sale por el chat con su marca SOLO en ese mensaje ──
 await ev(`[...document.querySelectorAll('#d-nut-preview .nut-share-b button')].find(b=>/Avisarle/.test(b.textContent)).click()`); await sleep(600);

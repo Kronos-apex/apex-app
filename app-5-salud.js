@@ -966,25 +966,29 @@ function nutPlanCanvas(c,nut){
   const _rr=(cx,cy,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(cx,cy,w,h,r);else x.rect(cx,cy,w,h);};
   x.fillStyle='#EAFBF4';x.font=_cf(72,'900',true);x.fillText('AVI',90,150);
   x.fillStyle='#10E0A0';x.fillRect(90,172,104,6);
-  x.fillStyle='rgba(16,224,160,.7)';x.font=_cf(30,'800');x.fillText('PLAN DE ALIMENTACIÓN',90,250);
+  // El bloque de la persona (nombre → notas) se ARMA primero como lista de trazos y se dibuja después
+  // con un desplazamiento: lo que sobra hasta TOPE se parte por la mitad (regla de v624 — con un plan
+  // corto quedaban ~280 px vacíos abajo). La tarjeta llena casi no se mueve: le sobra una línea.
+  const ops=[];
+  const T=(s,px,py,font,fill)=>{ ops.push({s,px,py,font,fill}); };
+  T('PLAN DE ALIMENTACIÓN',90,250,_cf(30,'800'),'rgba(16,224,160,.7)');   // el rótulo va pegado al nombre
   const nombre=c&&c.name?String(c.name).split(' ')[0]:'';
-  x.fillStyle='#FFFFFF'; let fn=96; x.font=_cf(fn,'900',true);
+  let fn=96; x.font=_cf(fn,'900',true);
   while(fn>48&&x.measureText(nombre).width>900){fn-=6;x.font=_cf(fn,'900',true);}
-  if(nombre)x.fillText(nombre,90,350);
+  if(nombre)T(nombre,90,350,x.font,'#FFFFFF');
   const k=_nutPlanCifras(c,nut);
   // EL NÚMERO: las calorías del día, con el acento vivo reservado para él (jerarquía de v602).
-  x.fillStyle='#10E0A0';x.font=_cf(170,'900',true);
-  const big=fmtMiles(k.kcal); x.fillText(big,90,540);
+  const big=fmtMiles(k.kcal); x.font=_cf(170,'900',true); T(big,90,540,x.font,'#10E0A0');
   const wBig=x.measureText(big).width;
-  x.fillStyle='rgba(234,251,244,.85)';x.font=_cf(40,'800');x.fillText('KCAL',120+wBig,470);
-  x.fillStyle='rgba(234,251,244,.55)';x.font=_cf(30,'600');x.fillText('al día',120+wBig,515);
+  T('KCAL',120+wBig,470,_cf(40,'800'),'rgba(234,251,244,.85)');
+  T('al día',120+wBig,515,_cf(30,'600'),'rgba(234,251,244,.55)');
   // Los tres macros, en gramos.
   const tiles=[['PROTEÍNA',k.prot],['CARBOHIDRATOS',k.carb],['GRASAS',k.fat]];
-  const tw=290,tg=15; let tx=90;
+  const tw=290,tg=15; let tx=90; const cajas=[];
   tiles.forEach(([lbl,g])=>{
-    x.fillStyle='rgba(255,255,255,.07)';_rr(tx,590,tw,150,22);x.fill();
-    x.fillStyle='#FFFFFF';x.font=_cf(64,'900',true);x.fillText(fmtMiles(g)+' g',tx+26,672);
-    x.fillStyle='rgba(234,251,244,.6)';x.font=_cf(24,'800');x.fillText(lbl,tx+26,716);
+    cajas.push(tx);
+    T(fmtMiles(g)+' g',tx+26,672,_cf(64,'900',true),'#FFFFFF');
+    T(lbl,tx+26,716,_cf(24,'800'),'rgba(234,251,244,.6)');
     tx+=tw+tg;
   });
   // El texto se reparte en el espacio que de verdad queda: ninguna línea base pasa de TOPE (la raya
@@ -992,32 +996,36 @@ function nutPlanCanvas(c,nut){
   const TOPE=1180; let y=812, ultima=y;
   const _cabe=(desde,paso,reserva)=>Math.max(0,Math.floor((TOPE-reserva-desde)/paso)+1);
   const extra=[nut.meals?nut.meals+' comidas al día':'', nut.water?nut.water+' vasos de agua al día':''].filter(Boolean).join('   ·   ');
-  if(extra){ x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(34,'700');x.fillText(extra,90,y); ultima=y; y+=70; }
+  if(extra){ T(extra,90,y,_cf(34,'700'),'rgba(234,251,244,.8)'); ultima=y; y+=70; }
   // Si hay «Evitar», se le guarda su sitio (título y una línea) antes de repartir las notas.
   const _reservaEvitar=nut.avoid?(18+44+42):0;
   if(nut.plan){
     const n=Math.min(nut.avoid?4:6,_cabe(y+48,44,_reservaEvitar));
     if(n>0){
-      x.fillStyle='rgba(16,224,160,.75)';x.font=_cf(26,'800');x.fillText('NOTAS DE TU COACH',90,y); y+=48;
-      x.fillStyle='rgba(234,251,244,.88)';x.font=_cf(32,'600');
-      _nutWrap(x,nut.plan,900,n).forEach(l=>{ x.fillText(l,90,y); ultima=y; y+=44; });
+      T('NOTAS DE TU COACH',90,y,_cf(26,'800'),'rgba(16,224,160,.75)'); y+=48;
+      x.font=_cf(32,'600');
+      _nutWrap(x,nut.plan,900,n).forEach(l=>{ T(l,90,y,x.font,'rgba(234,251,244,.88)'); ultima=y; y+=44; });
       y+=18;
     }
   }
   if(nut.avoid){
     const n=Math.min(2,_cabe(y+44,42,0));
     if(n>0){
-      x.fillStyle='rgba(255,155,115,.9)';x.font=_cf(26,'800');x.fillText('EVITAR',90,y); ultima=y; y+=44;
-      x.fillStyle='rgba(234,251,244,.8)';x.font=_cf(30,'600');
-      _nutWrap(x,nut.avoid,900,n).forEach(l=>{ x.fillText(l,90,y); ultima=y; y+=42; });
+      T('EVITAR',90,y,_cf(26,'800'),'rgba(255,155,115,.9)'); ultima=y; y+=44;
+      x.font=_cf(30,'600');
+      _nutWrap(x,nut.avoid,900,n).forEach(l=>{ T(l,90,y,x.font,'rgba(234,251,244,.8)'); ultima=y; y+=42; });
     }
   }
+  const dy=Math.max(0,Math.floor((TOPE-ultima)/2));
+  cajas.forEach(cx=>{ x.fillStyle='rgba(255,255,255,.07)';_rr(cx,590+dy,tw,150,22);x.fill(); });
+  ops.forEach(o=>{ x.font=o.font; x.fillStyle=o.fill; x.fillText(o.s,o.px,o.py+dy); });
+  ultima+=dy;
   x.fillStyle='rgba(16,224,160,.9)';x.fillRect(90,1218,900,4);
   x.fillStyle='rgba(234,251,244,.7)';x.font=_cf(30,'700');
   const coach=(typeof getCoachName==='function'&&getCoachName())||'';
   const site=(typeof shareSiteLabel==='function')?shareSiteLabel(typeof getCoachSite==='function'?getCoachSite():''):'avientrena.com';
   x.fillText('Tu coach: '+(coach&&coach!=='Mi Coach'?coach:'AVI')+'  ·  '+site,90,1278);
-  try{ cv._ultimaY=ultima; }catch(e){}   // gancho del harness: la última línea base escrita (no pisa el pie)
+  try{ cv._ultimaY=ultima; cv._dy=dy; }catch(e){}   // ganchos del harness: última línea base escrita y desplazamiento
   return cv;
 }
 function nutShareImage(cid){
