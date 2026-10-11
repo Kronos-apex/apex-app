@@ -21,8 +21,8 @@ const SABOTAJES = [
   ['suite', 'busca con otra función (con tildes / frase exacta)', 'e2', 'searchExercises(DB.exercises,_pkQ,CUR.pkFilter)', "DB.exercises.filter(e=>e.name.toLowerCase().includes(_pkQ.toLowerCase())&&(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter))"],
   ['nav', 'busca con otra función (con tildes / frase exacta) — se ve', 'e2', 'searchExercises(DB.exercises,_pkQ,CUR.pkFilter)', "DB.exercises.filter(e=>e.name.toLowerCase().includes(_pkQ.toLowerCase())&&(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter))"],
   // ── 🔒 La zona que duele ──
-  ['suite', 'lo buscado se salta el filtro de la zona que duele', 'e2', "includes(env))&&_pkOk(e));", 'includes(env)));'],
-  ['nav', 'lo buscado se salta el filtro de la zona que duele (se ve)', 'e2', "includes(env))&&_pkOk(e));", 'includes(env)));'],
+  ['suite', 'lo buscado se salta el filtro de la zona que duele', 'e2', "_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env))&&_pkOk(e));", "_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env)));"],
+  ['nav', 'lo buscado se salta el filtro de la zona que duele (se ve)', 'e2', "_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env))&&_pkOk(e));", "_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env)));"],
   // ── Cada vez, vacío ──
   ['suite', 'una puerta al selector hereda la búsqueda anterior', 'e2', "const es=document.getElementById('pk-env');if(es)es.value='all';_pkResetQ();", "const es=document.getElementById('pk-env');if(es)es.value='all';"],
   ['nav', 'el armado de rutinas hereda la búsqueda anterior (se ve)', 'e3', "  buildFilterBtns('pk-f',pkFilter);\n  if(typeof _pkResetQ==='function')_pkResetQ();\n  renderPickerForTarget();om('m-picker');", "  buildFilterBtns('pk-f',pkFilter);\n  renderPickerForTarget();om('m-picker');"],
@@ -34,7 +34,7 @@ const SABOTAJES = [
   ['suite', 'al cambiar un ejercicio los botones vuelven a marcar «Todos»', 'e4', "buildFilterBtns('pk-f',pkFilter,CUR.pkFilter)", "buildFilterBtns('pk-f',pkFilter)"],
   ['nav', 'al cambiar un ejercicio los botones vuelven a marcar «Todos» (se ve)', 'e4', "buildFilterBtns('pk-f',pkFilter,CUR.pkFilter)", "buildFilterBtns('pk-f',pkFilter)"],
   // ── Correcciones del QA (Lucas y Julián) ──
-  ['suite', 'la guarda se vuelve inerte: if(false) delante de la limpieza (patrón v579)', 'e3', "  if(typeof _pkResetQ==='function')_pkResetQ();", '  if(false)_pkResetQ();'],
+  ['suite', 'la guarda se vuelve inerte: if(false) delante de la limpieza (patrón v579)', 'e3', "  if(typeof _pkResetQ==='function')_pkResetQ();\n  renderPickerForTarget();om('m-picker');", "  if(false)_pkResetQ();\n  renderPickerForTarget();om('m-picker');"],
   ['suite', 'lo buscado que duele vuelve a mandar a saltarse el ejercicio', 'e2', 'return sinQ?', 'return false?'],
   ['nav', 'lo buscado que duele vuelve a mandar a saltarse el ejercicio (se ve)', 'e2', 'return sinQ?', 'return false?'],
   ['suite', 'los botones de músculo vuelven a ocupar varias filas', 'html', '<div class="pk-chips" id="pk-f"></div>', '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px" id="pk-f"></div>'],

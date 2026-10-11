@@ -4,6 +4,41 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-11 — v705: buscador en el selector de ejercicios
+
+- **Origen**: pedido del PO: *«necesito introducir un botón de búsqueda en los ejercicios»*. La biblioteca ya
+  buscaba (v405); la ventana que se abre al armar una rutina o una plantilla, en «Excluir / Priorizar» del
+  generador y en «cambiar ejercicio» del asesorado mostraba los 374 sin buscador.
+- **Qué cambió**:
+  - Buscador arriba de `#m-picker` con la MISMA búsqueda de la biblioteca (`searchExercises`: sin tildes, todas
+    las palabras en cualquier orden), a 16 px para que el iPhone no haga zoom.
+  - Arranca vacío en cada una de las cuatro puertas (`_pkResetQ`).
+  - Sin resultados dice por qué: si el nombre existe en otro músculo o entorno ofrece «Buscar en todos»
+    (`pkSearchAll`); si no existe, «Ningún ejercicio se llama así».
+  - 🔒 En «cambiar ejercicio», lo buscado nunca se salta el filtro de la zona que duele (`_pkOk`).
+  - De paso: al cambiar un ejercicio, el botón marcado es su músculo (marcaba «Todos» mientras la lista
+    filtraba por músculo).
+- **Lo que cazó el QA (Lucas funcional, Julián estático), cerrado antes de producción**:
+  - 🟡 **Con el teclado abierto no se veía ningún resultado** (Lucas, medido): los botones de músculo ocupaban
+    tres filas (159 px) y la lista empezaba en y=356 de 640; con una pantalla de 340 px de alto se veían 0 filas.
+    Ahora van en UNA fila que se desliza (`.pk-chips`): la lista empieza en y=235-248 y se ve más de una fila
+    mientras se escribe. El botón marcado se trae a la vista (al cambiar un ejercicio puede ser el 7.º). La
+    biblioteca (`#exf`), que comparte `buildFilterBtns`, no cambió.
+  - 🟡 **«Sáltatelo» sin motivo** (los dos, medido): con hernia lumbar, el filtro Piernas y «peso muerto», salía
+    «Hoy no tenemos con qué reemplazarlo… Sáltatelo» aunque ese músculo tiene 51 reemplazos sin la búsqueda. El
+    mensaje del candado de Laura describe una lista vacía por la zona, no una búsqueda. Ahora dice «Lo que
+    buscaste carga la zona que te duele» con «Ver los que sí puedes hacer» (`pkClearQ`); el «Sáltatelo» queda
+    para cuando de verdad no queda nada (verificado forzando el filtro a excluirlo todo).
+  - 🟢 El candado de «arranca vacío» aceptaba `if(false)_pkResetQ()` (patrón v579): ahora exige la sentencia.
+- **Verificación**: suite 1468 → **1469** en los cuatro modos; `_verify-buscar-ejercicio` **25/25** (las cuatro
+  puertas, tildes, «Buscar en todos», el vacío que dice por qué, lesión lumbar con control de catálogo, la fila
+  única, el botón marcado a la vista, «Muy grande» a 360 px); matriz versionada `_sabotaje-v705` con las filas de
+  las dos correcciones; QA 🟢/🟢 tras re-verificar.
+- **Defecto propio cazado antes de producción**: la corrección del mensaje repitió el texto que dos filas de la
+  matriz usaban de ancla, y quedaron «sin aplicar» (clase v549); reapuntadas a la línea de `filtered`.
+- **Radar**: con la búsqueda escrita, la lista se repinta entera (374 filas) en cada letra: ~250 ms en un teléfono
+  lento con la primera letra (Lucas). No se nota con dos letras; si alguien lo reporta, se le pone un respiro.
+
 ## ⏮️ 2026-10-10 — v704: los ajustes, en un solo lugar (el asesorado y el coach)
 
 - **Origen**: pedido del PO: *«organiza todo lo que tiene que ver con ajustes en Ajustes… esa pantalla de perfil
