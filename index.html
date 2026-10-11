@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=704">
+<link rel="stylesheet" href="styles.css?v=705">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -1205,6 +1205,12 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
 <div class="mdbg" id="m-picker">
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="pk-title">
     <div class="mdtitle" id="pk-title">Seleccionar ejercicio</div>
+    <!-- v705 · Buscador (pedido del PO): 374 ejercicios y hasta hoy solo se filtraba por músculo y
+         entorno. Mismo patrón y misma búsqueda que la biblioteca (`searchExercises`, sin tildes). -->
+    <div class="pk-buscar">
+      <span class="t-ic plain" data-ic="search" data-ic-size="18" aria-hidden="true">🔍</span>
+      <input type="search" class="inp" id="pk-q" placeholder="Buscar ejercicio por nombre..." aria-label="Buscar ejercicio por nombre" autocomplete="off" oninput="pkSearch(this.value)">
+    </div>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
       <span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0">Entorno:</span>
       <select class="sel" id="pk-env" aria-label="Filtrar ejercicios por entorno" onchange="pkEnvFilter(this.value)" style="font-size:16px;padding:5px 8px">
@@ -1382,19 +1388,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=704"></script>
-<script src="muscle-map.js?v=704"></script>
-<script src="exercise-muscles.js?v=704"></script>
+<script src="avi-core.js?v=705"></script>
+<script src="muscle-map.js?v=705"></script>
+<script src="exercise-muscles.js?v=705"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=704"></script>
-<script src="app-2-login.js?v=704"></script>
-<script src="app-3-coach.js?v=704"></script>
-<script src="app-4-entreno.js?v=704"></script>
-<script src="app-5-salud.js?v=704"></script>
-<script src="app-6-extra.js?v=704"></script>
-<script src="app-7-community.js?v=704"></script>
+<script src="app-1-infra.js?v=705"></script>
+<script src="app-2-login.js?v=705"></script>
+<script src="app-3-coach.js?v=705"></script>
+<script src="app-4-entreno.js?v=705"></script>
+<script src="app-5-salud.js?v=705"></script>
+<script src="app-6-extra.js?v=705"></script>
+<script src="app-7-community.js?v=705"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

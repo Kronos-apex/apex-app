@@ -3802,6 +3802,7 @@ function _updateGenPrefBtns(c){ const p=genPrefs(c); const eb=document.getElemen
 function openGenPrefsPicker(kind){
   pickerTarget=kind; CUR.pkFilter='all'; CUR.pkEnv='all';
   const es=document.getElementById('pk-env'); if(es)es.value='all';
+  if(typeof _pkResetQ==='function')_pkResetQ();
   buildFilterBtns('pk-f',pkFilter); renderPickerForTarget(); om('m-picker');
 }
 function openGenRutinas(){
@@ -4155,6 +4156,7 @@ function openPicker(){
   CUR.pkEnv=(c&&c.place)||'all';
   const envSel=document.getElementById('pk-env');if(envSel)envSel.value=CUR.pkEnv;
   buildFilterBtns('pk-f',pkFilter);
+  if(typeof _pkResetQ==='function')_pkResetQ();
   renderPickerForTarget();om('m-picker');
 }
 function pkFilter(muscle,el){CUR.pkFilter=muscle;styleFilterBtns('pk-f',el);renderPickerForTarget()}

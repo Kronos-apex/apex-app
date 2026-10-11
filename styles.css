@@ -2551,6 +2551,11 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .aj-intro{font-size:13px;color:var(--t2);line-height:1.5;margin:2px 2px 12px}
 .aj-panel{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px}
 .aj-guardar{width:100%;margin-top:14px;min-height:46px}
+.pk-buscar{position:relative;margin-bottom:9px}
+.pk-buscar .t-ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none;display:flex;align-items:center}
+.pk-buscar .inp{padding-left:40px}
+.pk-vacio{text-align:center;padding:18px 10px;color:var(--t2);font-size:13px;line-height:1.6}
+.pk-vacio .btn{margin-top:10px}
 .aj-accion .aj-lbl{color:var(--rdt)}
 .aj-accion .aj-ic{background:var(--rdl);color:var(--rdt)}
 .aj-campo{display:block;font-size:12.5px;font-weight:700;color:var(--t2);margin:0 0 6px}

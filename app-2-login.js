@@ -883,7 +883,18 @@ function renderTfExList(){
   con.innerHTML=html;
 }
 
-function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.pkEnv='all';const es=document.getElementById('pk-env');if(es)es.value='all';buildFilterBtns('pk-f',pkFilter);renderPickerForTarget();om('m-picker')}
+function openPickerForTemplate(){pickerTarget='template';CUR.pkFilter='all';CUR.pkEnv='all';const es=document.getElementById('pk-env');if(es)es.value='all';_pkResetQ();buildFilterBtns('pk-f',pkFilter);renderPickerForTarget();om('m-picker')}
+// ── v705 · BUSCAR EN EL SELECTOR DE EJERCICIOS (pedido del PO, 10-oct-2026) ──
+// Cada vez que se abre, la búsqueda arranca vacía: la de la vez anterior escondería ejercicios sin
+// que nadie supiera por qué. Se busca dentro del músculo y el entorno elegidos; si el nombre existe
+// fuera de ellos, el vacío lo dice y ofrece buscar en todos.
+function _pkResetQ(){ CUR.pkQ=''; const q=document.getElementById('pk-q'); if(q) q.value=''; }
+function pkSearch(v){ CUR.pkQ=String(v||''); renderPickerForTarget(); }
+function pkSearchAll(){
+  CUR.pkFilter='all'; CUR.pkEnv='all';
+  const es=document.getElementById('pk-env'); if(es) es.value='all';
+  buildFilterBtns('pk-f',pkFilter); renderPickerForTarget();
+}
 
 function renderPickerForTarget(){
   const list=document.getElementById('pk-list');
@@ -899,8 +910,22 @@ function renderPickerForTarget(){
     const _c=DB.clients.find(x=>x.id===CUR.clientId);
     if(_c) _pkLim=limitationsFor(_c,Date.now()).keys;
   }
-  const filtered=DB.exercises.filter(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter)&&(env==='all'||(e.env||['gym']).includes(env))
-    &&!(_pkLim&&typeof exerciseContraindicated==='function'&&exerciseContraindicated(e,_pkLim,DB.exercises)));
+  // 🔒 El filtro de la zona que duele se aplica SIEMPRE, también a lo que se busca por nombre.
+  const _pkOk=e=>!(_pkLim&&typeof exerciseContraindicated==='function'&&exerciseContraindicated(e,_pkLim,DB.exercises));
+  const _pkQ=String(CUR.pkQ||'').trim();
+  const _pkBase=(typeof searchExercises==='function')?searchExercises(DB.exercises,_pkQ,CUR.pkFilter)
+    :DB.exercises.filter(e=>CUR.pkFilter==='all'||e.muscle===CUR.pkFilter);
+  const filtered=_pkBase.filter(e=>(env==='all'||(e.env||['gym']).includes(env))&&_pkOk(e));
+  // Sin resultados, se dice POR QUÉ (v599). null = lo que se llama así carga la zona que duele: lo
+  // explica el mensaje de esa zona (candado de Laura), no este.
+  const _pkVacio=defecto=>{
+    if(!_pkQ) return defecto;
+    const todos=(typeof searchExercises==='function')?searchExercises(DB.exercises,_pkQ,'all'):[];
+    const filtrando=(CUR.pkFilter&&CUR.pkFilter!=='all')||env!=='all';
+    if(filtrando&&todos.some(_pkOk)) return '<div class="pk-vacio">Aquí no hay ninguno que se llame así, pero sí en otros músculos o entornos.<br><button type="button" class="btn bg bsm" onclick="pkSearchAll()">Buscar en todos</button></div>';
+    if(todos.length&&!todos.some(_pkOk)) return null;
+    return '<div class="pk-vacio">Ningún ejercicio se llama así. Revisa cómo lo escribiste.</div>';
+  };
   const titleEl=document.getElementById('pk-title');
   // Fase C: modos "excluir 🚫" / "priorizar ⭐" → togglean la lista en c.genPrefs.
   if(pickerTarget==='exclude'||pickerTarget==='prefer'){
@@ -923,7 +948,7 @@ function renderPickerForTarget(){
       };
       list.appendChild(div);
     });
-    if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+    if(!filtered.length)list.innerHTML=_pkVacio('<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>')||'';
     return;
   }
   // Sustituir (usuario en "Hoy"): elegir el reemplazo → _applySubstitute.
@@ -943,6 +968,8 @@ function renderPickerForTarget(){
     // Con el catálogo de hoy esto le pasa de verdad a un tríceps en gimnasio con codo declarado.
     // Y la última frase es obligatoria: si saltárselo pareciera costarle algo, nadie se lo salta.
     if(!filtered.length){
+      const _porQ=_pkVacio(null);
+      if(_porQ){ list.innerHTML=_porQ; return; }
       const _porZona=_pkLim&&_pkLim.length&&DB.exercises.some(e=>(CUR.pkFilter==='all'||e.muscle===CUR.pkFilter));
       list.innerHTML=_porZona
         ? '<div style="text-align:center;padding:18px;color:var(--t2);font-size:13px;line-height:1.6">Hoy no tenemos con qué reemplazarlo sin meterte en esa zona.<br><b>Sáltatelo</b> — no cuenta como sesión incompleta.</div>'
@@ -966,7 +993,7 @@ function renderPickerForTarget(){
     };
     list.appendChild(div);
   });
-  if(!filtered.length)list.innerHTML='<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>';
+  if(!filtered.length)list.innerHTML=_pkVacio('<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px">Sin ejercicios en esta categoría</div>')||'';
 }
 
 function saveTemplate(){

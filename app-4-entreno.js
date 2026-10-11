@@ -4,13 +4,15 @@ let exF='all';
 // sesión a propósito: es un filtro de vista, no un ajuste del coach — nada que sincronizar.
 let exQ='', exPage=1;
 const EX_PAGE=30;   // primera tanda; «Ver más» suma otra
-function buildFilterBtns(containerId,handler){
+// `activo` (v705): el músculo que de verdad se está mostrando. Antes siempre se marcaba «Todos», y al
+// cambiar un ejercicio (que filtra por SU músculo) los botones decían una cosa y la lista otra.
+function buildFilterBtns(containerId,handler,activo){
   const cats=['all','pecho','espalda','hombros','biceps','triceps','piernas','gluteo','core','cardio','otro'];
   const labels={all:'Todos',pecho:'Pecho',espalda:'Espalda',hombros:'Hombros',biceps:'Bíceps',triceps:'Tríceps',piernas:'Piernas',gluteo:'Glúteo',core:'Core',cardio:'Cardio',otro:'Otro'};
   const con=document.getElementById(containerId);if(!con)return;con.innerHTML='';
   cats.forEach(cat=>{
     const b=document.createElement('button');b.className='btn bg bsm';b.textContent=labels[cat];
-    if(cat==='all'){b.style.background='var(--gl)';b.style.color='var(--gt)';b.style.borderColor='var(--g2)'}
+    if(cat===(activo||'all')){b.style.background='var(--gl)';b.style.color='var(--gt)';b.style.borderColor='var(--g2)'}
     b.onclick=()=>handler(cat,b);con.appendChild(b);
   });
 }
@@ -2599,7 +2601,8 @@ function todaySubstitute(ei){
   CUR.subEi=ei; pickerTarget='substitute';
   CUR.pkFilter=ex.muscle||'all'; CUR.pkEnv='all';
   const es=document.getElementById('pk-env'); if(es)es.value='all';
-  buildFilterBtns('pk-f',pkFilter); renderPickerForTarget(); om('m-picker');
+  if(typeof _pkResetQ==='function')_pkResetQ();
+  buildFilterBtns('pk-f',pkFilter,CUR.pkFilter); renderPickerForTarget(); om('m-picker');
 }
 function _applySubstitute(newEx){
   const w=_todayWork(); if(!w)return; const ei=CUR.subEi; const old=w.exercises[ei]; if(!old)return;

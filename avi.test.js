@@ -23848,6 +23848,48 @@ test('🔒 v704 · «Tu cuenta de coach» se lee como un formulario de verdad (Q
 });
 
 // ══════════════════════════════════════════════════════
+// v705 · BUSCAR EN EL SELECTOR DE EJERCICIOS (pedido del PO, 10-oct-2026)
+// ══════════════════════════════════════════════════════
+test('🔒 v705 · todo lo que abre el selector de ejercicios arranca con la búsqueda vacía', () => {
+  const fs = require('fs'), path = require('path');
+  // Se DERIVA del código: cada función que abre #m-picker, en cualquier módulo, limpia la búsqueda
+  // antes de pintar. Una puerta nueva que no lo haga heredaría la búsqueda de la vez anterior.
+  const mods = fs.readdirSync(__dirname).filter(f => /^app-\d-[a-z]+\.js$/.test(f));
+  let puertas = 0;
+  for (const f of mods) {
+    const src = sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8')).replace(/\r/g, '');
+    let i = -1;
+    while ((i = src.indexOf("om('m-picker')", i + 1)) !== -1) {
+      puertas++;
+      const ini = src.lastIndexOf('\nfunction ', i);
+      const cuerpo = src.slice(ini, i);
+      const nombre = (cuerpo.match(/function ([A-Za-z_$][\w$]*)/) || [])[1];
+      assert.ok(/_pkResetQ\(\)/.test(cuerpo) && cuerpo.indexOf('_pkResetQ()') < cuerpo.indexOf('renderPickerForTarget()'),
+        `🔴 ${f} · ${nombre} abre el selector sin limpiar la búsqueda anterior`);
+    }
+  }
+  assert.ok(puertas >= 4, `CONTROL: el barrido encontró ${puertas} puertas al selector (hay 4)`);
+});
+test('🔒 v705 · el buscador busca como la biblioteca y nunca se salta el filtro de la zona que duele', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '');
+  const pk = html.slice(html.indexOf('<div class="mdbg" id="m-picker">'), html.indexOf('<div class="mdbg" id="m-ex">'));
+  assert.ok(/<input type="search" class="inp" id="pk-q"[^>]*oninput="pkSearch\(this\.value\)"/.test(pk), '🔴 el selector de ejercicios perdió su buscador');
+  const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8')).replace(/\r/g, '');
+  const r = a2.slice(a2.indexOf('function renderPickerForTarget('), a2.indexOf('\nfunction saveTemplate('));
+  assert.ok(/searchExercises\(DB\.exercises,_pkQ,CUR\.pkFilter\)/.test(r), '🔴 el selector no busca con la MISMA función que la biblioteca (sin tildes, todas las palabras)');
+  assert.ok(/const filtered=_pkBase\.filter\(e=>\(env==='all'\|\|\(e\.env\|\|\['gym'\]\)\.includes\(env\)\)&&_pkOk\(e\)\);/.test(r),
+    '🔴 lo que se busca por nombre se salta el filtro de la zona que duele');
+  // Los tres caminos sin resultados dicen por qué (no «Sin ejercicios en esta categoría» a secas).
+  assert.strictEqual((r.match(/_pkVacio\(/g) || []).length, 3, 'los 3 vacíos usan el mensaje que dice por qué (preferencias, cambiar, rutina/plantilla)');
+  assert.ok(/function pkSearchAll\(\)\{\s*CUR\.pkFilter='all'; CUR\.pkEnv='all';/.test(a2), '🔴 «Buscar en todos» no quita los filtros');
+  // Los botones de filtro marcan el músculo que de verdad se muestra (al cambiar un ejercicio).
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/if\(cat===\(activo\|\|'all'\)\)/.test(a4) && /buildFilterBtns\('pk-f',pkFilter,CUR\.pkFilter\)/.test(a4),
+    '🔴 al cambiar un ejercicio los botones vuelven a marcar «Todos» mientras la lista filtra por su músculo');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
