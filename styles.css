@@ -728,7 +728,8 @@ html[data-theme="light"] .mta {
 .mctx-h{font-weight:700;color:var(--t1)}
 .mctx-l{overflow-wrap:anywhere}
 /* v706 · el aviso del plan de alimentación: la persona ve el botón; el coach, una nota de lo que le aparece */
-.mact{align-self:flex-start;margin:3px 0 2px;max-width:78%;min-height:40px}
+.mact{align-self:flex-start;margin:3px 0 2px;max-width:78%;min-height:40px;white-space:normal;text-align:left;line-height:1.3}
+.mact-n.mact-l{align-self:flex-start;text-align:left}
 .mact-n{align-self:flex-end;max-width:78%;margin:2px 0 0;padding:0 4px;font-size:var(--fs-xs);color:var(--t2);text-align:right}
 /* v706 · la ficha del coach: lo que ve la persona y compartir su plan */
 .nut-ve{font-size:var(--fs-xs);font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}

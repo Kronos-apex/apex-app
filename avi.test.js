@@ -23985,6 +23985,34 @@ test('🔒 v706 · el aviso viaja con su marca SOLO en ese mensaje y la persona 
   assert.ok(/openNutritionRoom\(CUR\.clientId\)/.test(nodo) && !/innerHTML/.test(nodo), '🔴 el botón del aviso no abre su plan (o lo arma con innerHTML)');
 });
 
+test('🔒 v706 · el texto de la imagen parte una palabra que no cabe sola y avisa con «…» si se corta (QA)', () => {
+  const wrap = new Function(_v706Fn('app-5-salud.js', '_nutWrap') + '\nreturn _nutWrap;')();
+  const ctx = { measureText: s => ({ width: String(s).length * 10 }) };   // 10 px por letra: 900 px = 90 letras
+  const enlace = 'https://ejemplo.com/' + 'a'.repeat(200);
+  const l1 = wrap(ctx, 'Mira esto ' + enlace + ' y listo', 900, 6);
+  assert.ok(l1.length >= 3 && l1.every(l => l.length * 10 <= 900), '🔴 una palabra larga se sale del ancho de la imagen');
+  assert.ok(!/…$/.test(l1[l1.length - 1]) && l1.join('').replace(/\s+/g, '').length === ('Mira esto ' + enlace + ' y listo').replace(/\s+/g, '').length, 'si todo cabe, no se pierde ni una letra ni sale «…»');
+  const l2 = wrap(ctx, enlace + ' ' + enlace, 900, 2);
+  assert.ok(l2.length === 2 && /…$/.test(l2[1]), '🔴 lo que no cabe se corta sin «…»: el coach no sabría que falta texto');
+  // CONTROL: un texto corto sale tal cual.
+  assert.deepStrictEqual(wrap(ctx, 'Tres comidas y una merienda.', 900, 4), ['Tres comidas y una merienda.']);
+});
+test('🔒 v706 · con la comida bloqueada, el aviso viejo del archivo del chat no abre el plan (QA)', () => {
+  const abiertos = [];
+  const mkDoc = () => ({ createElement: () => ({ set className(v) { this._c = v; }, get className() { return this._c; } }) });
+  const mk = locked => new Function('document', 'DB', 'CUR', 'premiumLocked', 'openNutritionRoom', _v706Fn('app-5-salud.js', 'chatNutActNode') + '\nreturn chatNutActNode;')(
+    mkDoc(), { clients: [{ id: 'c1' }] }, { clientId: 'c1' }, () => locked.v, id => abiertos.push(id));
+  const estado = { v: false };
+  const nodo = mk(estado)();
+  assert.ok(/\bmact\b/.test(nodo.className) && typeof nodo.onclick === 'function', 'CONTROL: con la comida a la vista, sale el botón');
+  nodo.onclick(); assert.deepStrictEqual(abiertos, ['c1'], 'CONTROL: el botón abre SU plan');
+  estado.v = true; nodo.onclick();
+  assert.strictEqual(abiertos.length, 1, '🔴 un botón ya pintado abre el plan aunque hoy la comida esté bloqueada');
+  const nodoBloq = mk(estado)();
+  assert.ok(/mact-n/.test(nodoBloq.className) && !nodoBloq.onclick, '🔴 con la comida bloqueada se sigue pintando el botón');
+  assert.ok(/no aparece en la app/.test(nodoBloq.textContent), 'y se dice por qué, en vez de un «aquí abajo» vacío');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

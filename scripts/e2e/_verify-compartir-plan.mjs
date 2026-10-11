@@ -125,11 +125,29 @@ A.ok(cl.toca && cl.alto >= 36, 'el botón se ve y recibe el toque', cl);
 await ev(`document.querySelector('#cn-msg-thread button.mact').click()`); await sleep(200);
 const rm = await ev(`_spy.room.slice()`);
 A.ok(Array.isArray(rm) && rm[0] === 'c1', 'tocarlo abre SU plan de alimentación', rm);
+const txt = await ev(`(DB.msgs.c1||[]).find(m=>m.act==='nutplan').text`);
+A.ok(/Mi plan nutricional/.test(txt) && !/aquí abajo/.test(txt), 'el texto del aviso se entiende también en la notificación (dice dónde está, no «aquí abajo»)', txt);
+// QA de v706 (Lucas): con «Muy grande» el rótulo del botón se salía del botón (white-space:nowrap).
+await ev(`setTextSize('xl')`); await sleep(700); await ev(`renderClientMsgs('c1')`); await sleep(200);
+const xl = await ev(`(()=>{ const b=document.querySelector('#cn-msg-thread button.mact'); const th=document.getElementById('cn-msg-thread');
+  const z=(document.querySelector('#cn-messages')||th).currentCSSZoom||1; if(!b) return {z, b:false};
+  return {z:Math.round(z*100)/100, b:true, cabe:b.scrollWidth<=b.clientWidth+1, dentro:b.getBoundingClientRect().right<=th.getBoundingClientRect().right+1}; })()`);
+A.ok(xl.z > 1.3, 'CONTROL: con «Muy grande» el chat de la persona crece', xl);
+A.ok(xl.b && xl.cabe && xl.dentro, 'con «Muy grande» el rótulo del botón cabe en el botón y el botón en el hilo', xl);
+await ev(`setTextSize('normal')`); await sleep(300);
+// QA de v706 (Lucas): en AVI FREE, el aviso viejo del ARCHIVO del chat abría el plan completo.
+const arch = await ev(`(()=>{ const c=DB.clients.find(x=>x.id==='c1'); const antes=c.tier; c.tier='libre'; _spy.room.length=0; renderClientMsgs('c1');
+  const th=document.getElementById('cn-msg-thread'); const r={vista:chatViewMode(c,DB.msgs.c1), botones:th.querySelectorAll('button.mact').length, nota:(th.querySelector('.mact-n')||{}).textContent||''};
+  c.tier=antes; return r; })()`);
+A.ok(arch.vista === 'archive', 'CONTROL: con AVI FREE el chat queda como archivo', arch);
+A.ok(arch.botones === 0 && /no aparece en la app/.test(arch.nota), 'con la comida bloqueada el archivo no ofrece abrir el plan y dice por qué', arch);
 
 // ── 7. Donde el aviso no llegaría, no se ofrece y se dice por qué ──
 await ev(`CUR.loggedAs='coach'; showScreen('s-coach'); openDetail('c3')`); await sleep(600);
 const l3 = await ev(`(()=>{ const con=document.getElementById('d-nut-preview'); return {aviso:!!con.querySelector('button[onclick*="nutNotifyInApp"]'), wa:!!con.querySelector('button[onclick*="nutShareToClient"]'), nota:(con.querySelector('.nut-share-n')||{}).textContent||''}; })()`);
 A.ok(!l3.aviso && l3.wa && /no le muestra la comida/.test(l3.nota), 'AVI FREE: sin aviso en la app (la llevaría a un candado), con WhatsApp y el porqué', l3);
+const ve3 = await ev(`(document.querySelector('#d-nut-preview .nut-ve')||{}).textContent||''`);
+A.ok(/hoy no le aparece/.test(ve3) && !/^Lo que ve/.test(ve3), 'AVI FREE: la ficha no dice «Lo que ve» de alguien que hoy no lo ve', ve3);
 await ev(`openDetail('c4')`); await sleep(600);
 const l4 = await ev(`(()=>{ const con=document.getElementById('d-nut-preview'); const antes=(DB.msgs.c4||[]).length; nutNotifyInApp('c4');
   return {aviso:!!con.querySelector('button[onclick*="nutNotifyInApp"]'), nota:(con.querySelector('.nut-share-n')||{}).textContent||'', escribio:(DB.msgs.c4||[]).length-antes}; })()`);

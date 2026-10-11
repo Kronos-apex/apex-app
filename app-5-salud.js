@@ -248,7 +248,9 @@ function renderNutritionCoach(clientId){
   // pinta lo que ve la persona y se dice; si lo escrito no cuadra, ya lo explica la tarjeta de revisión.
   const _k=_c?_nutPlanCifras(_c,nut):{kcal:+nut.kcal||0,prot:+nut.prot||0,carb:+nut.carbs||0,fat:+nut.fat||0};
   if(_k.kcal||_k.prot||_k.carb||_k.fat){
-    html+=`<div class="nut-ve">Lo que ve ${esc(_c&&_c.name?String(_c.name).split(' ')[0]:'tu asesorado')} en su app</div>
+    const _nomVe=esc(_c&&_c.name?String(_c.name).split(' ')[0]:'tu asesorado');
+    const _noLoVe=_c&&(typeof premiumLocked==='function')&&premiumLocked(_c);
+    html+=`<div class="nut-ve">${_noLoVe?`El plan de ${_nomVe} · hoy no le aparece en la app`:`Lo que ve ${_nomVe} en su app`}</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
       ${_k.kcal?`<div style="text-align:center;background:var(--gl);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--gt)">${esc(fmtMiles(_k.kcal))}</div><div style="font-size:10px;color:var(--t2)">kcal</div></div>`:''}
       ${_k.prot?`<div style="text-align:center;background:var(--bll);border-radius:var(--rsm);padding:8px 4px"><div style="font-size:18px;font-weight:800;color:var(--blt)">${esc(String(_k.prot))} g</div><div style="font-size:10px;color:var(--t2)">prot</div></div>`:''}
@@ -915,7 +917,7 @@ function nutNotifyInApp(cid){
   if(typeof openCoachChat!=='function'||typeof sendCoachChatMsg!=='function'){ toast('No se pudo abrir el chat'); return; }
   openCoachChat(cid);
   const ta=document.getElementById('cchat-in'); if(!ta) return;
-  ta.value='Te dejé tu plan de alimentación al día 🍽️ Tócalo aquí abajo para verlo.';
+  ta.value='Te dejé tu plan de alimentación al día 🍽️ Lo ves en tu Perfil, en «Mi plan nutricional».';
   _cchatAct='nutplan';
   sendCoachChatMsg();
 }
@@ -928,9 +930,18 @@ function chatNutActNode(paraCoach){
     n.textContent='Le aparece el botón «Ver mi plan de alimentación»';
     return n;
   }
+  // 🔒 Si hoy su plan no le muestra la comida (AVI FREE o vencido), el aviso viejo del archivo del chat
+  // no puede abrir el plan: lo de la comida es Premium (`renderNutritionClient`) y la comprobación va en
+  // la ACCIÓN además de en lo que se pinta (v566). Lo que se dijo en el mensaje sigue siendo suyo.
+  const _bloqueada=()=>{ const cc=(DB.clients||[]).find(x=>x.id===CUR.clientId); return (typeof premiumLocked==='function')&&premiumLocked(cc); };
+  if(_bloqueada()){
+    const n=document.createElement('div'); n.className='mact-n mact-l';
+    n.textContent='Con tu plan de hoy, la comida no aparece en la app';
+    return n;
+  }
   const b=document.createElement('button'); b.type='button'; b.className='btn bp bsm mact';
   b.textContent='Ver mi plan de alimentación';
-  b.onclick=()=>{ if(typeof openNutritionRoom==='function') openNutritionRoom(CUR.clientId); };
+  b.onclick=()=>{ if(_bloqueada())return; if(typeof openNutritionRoom==='function') openNutritionRoom(CUR.clientId); };
   return b;
 }
 // 3) La imagen del plan con la marca (1080×1350, lo que WhatsApp e Instagram muestran entero). Mismo
@@ -938,19 +949,30 @@ function chatNutActNode(paraCoach){
 //    Solo cifras y las notas del coach: ni objetivo ni peso (lenguaje de composición corporal: v448).
 function _nutWrap(x,txt,maxW,maxLines){
   const out=[]; const parrafos=String(txt||'').split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const lleno=()=>out.length>=maxLines;
   for(const p of parrafos){
     let linea='';
-    for(const w of p.split(/\s+/)){
+    for(let w of p.split(/\s+/)){
+      // Una palabra que no cabe sola (un enlace pegado en las notas) se parte por letras: si no, se
+      // salía por el borde derecho de la imagen (QA de v706).
+      while(w&&x.measureText(w).width>maxW){
+        let k=w.length-1; while(k>1&&x.measureText(w.slice(0,k)).width>maxW)k--;
+        if(linea){ out.push(linea); linea=''; if(lleno())break; }
+        out.push(w.slice(0,k)); w=w.slice(k); if(lleno())break;
+      }
+      if(lleno())break;
+      if(!w)continue;
       const prueba=linea?linea+' '+w:w;
       if(x.measureText(prueba).width>maxW&&linea){ out.push(linea); linea=w; } else linea=prueba;
-      if(out.length>=maxLines) break;
+      if(lleno()) break;
     }
-    if(out.length>=maxLines) break;
+    if(lleno()) break;
     if(linea) out.push(linea);
   }
   if(out.length>maxLines) out.length=maxLines;
-  const total=parrafos.join(' ').length, puesto=out.join(' ').length;
-  if(puesto<total-1&&out.length){ let u=out[out.length-1]; while(u.length>3&&x.measureText(u+'…').width>maxW)u=u.slice(0,-1); out[out.length-1]=u.replace(/[\s,.;:]+$/,'')+'…'; }
+  // ¿Quedó texto fuera? Se compara sin espacios: partir una palabra añade cortes que no estaban.
+  const total=parrafos.join('').replace(/\s+/g,'').length, puesto=out.join('').replace(/\s+/g,'').length;
+  if(puesto<total&&out.length){ let u=out[out.length-1]; while(u.length>3&&x.measureText(u+'…').width>maxW)u=u.slice(0,-1); out[out.length-1]=u.replace(/[\s,.;:]+$/,'')+'…'; }
   return out;
 }
 function nutPlanCanvas(c,nut){

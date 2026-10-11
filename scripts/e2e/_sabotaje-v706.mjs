@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const F = { e3: join(ROOT, 'app-3-coach.js'), e4: join(ROOT, 'app-4-entreno.js'), e5: join(ROOT, 'app-5-salud.js') };
+const F = { e3: join(ROOT, 'app-3-coach.js'), e4: join(ROOT, 'app-4-entreno.js'), e5: join(ROOT, 'app-5-salud.js'), css: join(ROOT, 'styles.css') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 const SOLO_SUITE = process.argv.includes('--solo-suite');
 
@@ -42,6 +42,14 @@ const SABOTAJES = [
   // ── La imagen ──
   ['nav', 'el texto de la imagen vuelve a tocar el pie', 'e5', 'const TOPE=1180;', 'const TOPE=1240;'],
   ['nav', 'el aire del plan corto vuelve a quedar todo abajo', 'e5', 'const dy=Math.max(0,Math.floor((TOPE-ultima)/2));', 'const dy=0;'],
+  // ── Correcciones del QA (Lucas) ──
+  ['suite', 'una palabra larga vuelve a salirse de la imagen', 'e5', 'while(w&&x.measureText(w).width>maxW){', 'while(false){'],
+  ['suite', 'el archivo del chat vuelve a pintar el botón con la comida bloqueada', 'e5', '  if(_bloqueada()){', '  if(false){'],
+  ['nav', 'el archivo del chat vuelve a pintar el botón con la comida bloqueada (se ve)', 'e5', '  if(_bloqueada()){', '  if(false){'],
+  ['suite', 'un botón ya pintado abre el plan aunque hoy esté bloqueado', 'e5', 'b.onclick=()=>{ if(_bloqueada())return; ', 'b.onclick=()=>{ '],
+  ['nav', 'con «Muy grande» el rótulo vuelve a salirse del botón', 'css', 'white-space:normal;text-align:left;line-height:1.3}', 'line-height:1.3}'],
+  ['nav', 'la ficha vuelve a decir «Lo que ve» de alguien que no lo ve', 'e5', '${_noLoVe?', '${false?'],
+  ['nav', 'el aviso vuelve a decir «aquí abajo» (sin sentido en la notificación)', 'e5', 'Lo ves en tu Perfil, en «Mi plan nutricional».', 'Tócalo aquí abajo para verlo.'],
 ];
 
 const correr = capa => {
