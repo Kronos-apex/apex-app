@@ -94,7 +94,7 @@ const montar = async () => ev(`(()=>{
      Y el PANEL NO BASTA: vive dentro de la pantalla del coach, que esta apagada hasta que el
      entra — medido aqui mismo, el innerHTML tenia 2.064 caracteres con alto 0.
      (Sin comillas invertidas: esto vive DENTRO de un template literal.) */
-  showScreen('s-coach'); gp('p-detail',null,'Detalle',true);
+  showScreen('s-coach'); gp('p-detail',null,'Detalle',true); detailTab('entreno');
   renderStoryCard(window.__c);
   return 1})()`);
 
@@ -206,7 +206,7 @@ for (const t of [{ n: 'iPhone 12 / Android medio', w: 390, h: 844 },
 console.log('\n\u2500\u2500 CONTROL DE DISCRIMINACION (la misma pantalla con una adulta) \u2500\u2500');
 await ev(`DB.clients=[{id:'ax',name:'Andrea Bernal',age:33}];
           DB.history={ax:${HIST}}; CUR.clientId='ax'; window.__c=DB.clients[0];
-          showScreen('s-coach'); gp('p-detail',null,'Detalle',true); renderStoryCard(window.__c);1`);
+          showScreen('s-coach'); gp('p-detail',null,'Detalle',true); detailTab('entreno'); renderStoryCard(window.__c);1`);
 const a = await leer();
 afirma(a.pintoAlgo, 'CONTROL: la tarjeta de la adulta se pinto');
 afirma(!a.puertaVisible && !a.casillaExiste, 'a una adulta NO se le pide permiso de acudiente');

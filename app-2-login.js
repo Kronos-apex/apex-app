@@ -1088,6 +1088,7 @@ function openNewRoutineFromTemplate(tpl){
   renderRfExList();
   // Go to client detail first
   openDetail(CUR.clientId);
+  if(typeof detailTab==='function')detailTab('entreno',{quieto:true}); // v707 · detrás del editor, sus rutinas
   setTimeout(()=>om('m-routine'),50);
   toast(`📂 Plantilla "${tpl.name}" cargada`);
 }
@@ -1839,7 +1840,7 @@ const _COACH_PANELS={
 function _coachRestore(snap){
   if(snap.id==='p-detail'){
     const exists=snap.cid&&(DB.clients||[]).some(x=>x.id===snap.cid);
-    if(exists&&typeof openDetail==='function'){ openDetail(snap.cid,true); return; }
+    if(exists&&typeof openDetail==='function'){ openDetail(snap.cid,true); if(snap.dtab&&typeof detailTab==='function')detailTab(snap.dtab,{quieto:true}); return; }
     gp('p-clients',document.getElementById('sbi-clients'),'Asesorados',true);
     const it=document.querySelectorAll('.cbnav-item'); if(it[1])setBottomNav(it[1]);
     return;
@@ -1855,7 +1856,8 @@ function gp(id,sidebarEl,pageTitle,_silent){
   if(_silent){ AVINAV.curTab=id; }
   else if(id!==AVINAV.curTab){
     const prev=AVINAV.curTab;
-    if(prev&&_COACH_PANELS[prev]){ const snap={id:prev,cid:CUR.clientId}; navRecord(function(){ _coachRestore(snap); }); }
+    // v707 · la ficha recuerda en qué pestaña estaba, para que el atrás la devuelva igual.
+    if(prev&&_COACH_PANELS[prev]){ const snap={id:prev,cid:CUR.clientId,dtab:CUR.detailTab}; navRecord(function(){ _coachRestore(snap); }); }
     AVINAV.curTab=id;
   }
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
@@ -2473,6 +2475,7 @@ function _pulseGo(id,type){
   if(typeof openDetail!=='function')return;
   openDetail(id);
   if(type!=='estancado')return;
+  if(typeof detailTab==='function')detailTab('entreno',{quieto:true}); // v707 · el plan de choque vive en «Entreno»
   setTimeout(()=>{
     const el=document.getElementById('d-shock');
     if(el&&el.style.display!=='none')el.scrollIntoView({behavior:'smooth',block:'center'});

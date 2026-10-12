@@ -4,6 +4,40 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-11 — v707: la ficha del asesorado en pestañas
+
+- **Origen**: lote 2 del estudio de organización, que el PO aprobó entero («dale con las tres, en el orden que
+  recomiendas»). La ficha del coach eran 13 bloques seguidos: medida con cuatro asesorados reales, **de 4.660 a
+  5.759 px (5,8 a 7,2 pantallas)**, y el plan de comida a más de dos pantallas de la cabecera.
+- **Qué cambió**: cabecera corta (foto, nombre, etiquetas, Editar · + Rutina · borrar) y cinco pestañas fijas
+  arriba como control segmentado: **Resumen** (notas/dolor, la semana contra su plan, el estado del plan con la
+  MISMA cuenta de días que su etiqueta, «Para revisar» con la pestaña donde se resuelve, hábitos, mensajes, datos)
+  · **Entreno** · **Comida** (con los tres botones de compartir de v706) · **Cuerpo** · **Pagos**. Las pestañas con
+  algo por revisar llevan un punto. Entrar abre Resumen; re-pintar la misma ficha (registrar un pago, cambiar el
+  plan) se queda donde está; el atrás vuelve a la lista sin recorrer pestañas y, al regresar, recupera la pestaña.
+  Con la ficha bajada, cambiar de pestaña vuelve al principio de la pestaña nueva. Ningún renderizador cambió: la
+  pestaña la decide el atributo del panel y el CSS.
+- **Medido después** (mismos cuatro asesorados, 360×800, desde el tope de la ficha): Resumen 874-1.008 px, Comida
+  880-928, Cuerpo 743-970, Pagos 844-968 y **Entreno 2.397-3.701** — Entreno NO cabe en una pantalla (rutinas,
+  récords, historial y progreso juntos); el estudio prometía «cada una cabe en una pantalla» y en Entreno no se
+  cumple. Las rutinas van primero.
+- **Lo que cazó mirar y medir antes de producción**: a 360 px «Pagos» quedaba fuera de la barra (se rehízo como
+  control segmentado); «5 de 4 días» para quien entrenó más que su plan (ahora «5 días · cumplió»); y el
+  Resumen le decía «su plan de comida tiene algo que revisar» a quien no tiene plan (lo cazó un control del
+  harness; la tarjeta ahora deja dicho qué caso pintó).
+- **Puertas que este cambio dejaba mal, corregidas**: guardar una rutina (aunque se cree desde la cabecera) y aplicar
+  una plantilla terminan en «Entreno», que es donde se ve; el pulso del Inicio abre «Entreno» antes de ir al plan
+  de choque y la notificación de un mensaje abre el Resumen.
+- **QA**: Julián 🟡 → corregido: «Último: hoy» para quien entrenó anoche (contaba horas; ahora días de
+  calendario), el Resumen repetía «No tiene plan de alimentación» mientras se cargaban los datos pesados, y con
+  teclado solo se llegaba a la pestaña elegida (ahora ← → Inicio Fin).
+- **Verificación**: suite 1475 → **1480**; `_verify-ficha-pestanas` (nuevo) con controles de montaje, de zoom y de
+  la sonda de contraste; matriz `_sabotaje-v707`; los harnesses que leen bloques de la ficha entran ahora por su
+  pestaña (`_verify-compartir-plan` → Comida, `_verify-coach-tarjetas` y `_verify-shock` → Entreno, fotos y
+  valoración → Cuerpo…). Línea base medida en una copia de antes del cambio: `_verify-fotos-coach`,
+  `_verify-peso-fuente` («la app no arrancó»), `_verify-shock` (S12e) y `_verify-versiones` (V0) **ya estaban
+  rojos** y siguen con el mismo fallo; otros cuatro que también estaban rojos pasan ahora.
+
 ## ⏮️ 2026-10-11 — kronos-apex.github.io APAGADA: la app vive solo en app.avientrena.com
 
 - **Origen**: decisión del PO junto con el plan de organización: *«ELIMINA LA DIRECCION ANTIGUA»*.

@@ -77,7 +77,7 @@ const fixture = (extra) => `(()=>{try{
   for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&(kk.indexOf('shockmute_')===0||kk.indexOf('coachpulse_')===0))localStorage.removeItem(kk);}
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
   showScreen('s-coach');
-  gp('p-detail',null,'Detalle',true); // los shots deben mostrar la ficha, que es donde vive la tarjeta
+  gp('p-detail',null,'Detalle',true); detailTab('entreno'); // los shots deben mostrar la ficha, que es donde vive la tarjeta
   CUR.clientId=c.id;
   renderShockCard(c);
   document.getElementById('s-coach').scrollTop=0;
@@ -106,7 +106,7 @@ const multiFixture = (specs, spacingDays = 3, endOffset = 2, extraClient = '') =
   for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&(kk.indexOf('shockmute_')===0||kk.indexOf('coachpulse_')===0))localStorage.removeItem(kk);}
   window.CUR=window.CUR||{}; CUR.loggedAs='coach';
   showScreen('s-coach');
-  gp('p-detail',null,'Detalle',true);
+  gp('p-detail',null,'Detalle',true); detailTab('entreno');
   CUR.clientId=c.id;
   renderShockCard(c);
   document.getElementById('s-coach').scrollTop=0;
@@ -384,7 +384,7 @@ try {
         {id:'r2',name:'B',day:'Miércoles',restSec:60,exercises:[]},{id:'r3',name:'C',day:'Viernes',restSec:60,exercises:[]}]};
     DB.clients=[c];DB.history={a1:sess};DB.prs={};DB.msgs={};
     for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&kk.indexOf('shockmute_')===0)localStorage.removeItem(kk);}
-    window.CUR=window.CUR||{};CUR.loggedAs='coach';showScreen('s-coach');gp('p-detail',null,'Detalle',true);CUR.clientId=c.id;
+    window.CUR=window.CUR||{};CUR.loggedAs='coach';showScreen('s-coach');gp('p-detail',null,'Detalle',true); detailTab('entreno');CUR.clientId=c.id;
     renderShockCard(c);return true;}catch(e){return 'err:'+e.message}})()`);
   if (s15 !== true) throw new Error('S15 setup: ' + s15);
   await sleep(400);
@@ -413,7 +413,7 @@ try {
   // ── Shots ambos temas ──
   await ev(fixture());
   await sleep(300);
-  await ev(`(()=>{gp('p-detail',null,'Detalle',true);document.getElementById('s-coach').scrollTop=0;
+  await ev(`(()=>{gp('p-detail',null,'Detalle',true); detailTab('entreno');document.getElementById('s-coach').scrollTop=0;
     const el=document.getElementById('d-shock'); if(el)el.scrollIntoView();})()`);
   await sleep(400);
   await setTheme('light'); await shot('shock-light');

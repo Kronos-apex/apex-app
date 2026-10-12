@@ -105,7 +105,7 @@ const PR = `(()=>{const el=document.getElementById('d-prs'); if(!el) return null
   return {visible:el.style.display!=='none', filas:filas.length, boton:tg?tg.textContent.trim():null,
     alto:Math.round(el.getBoundingClientRect().height), lapiz: lapiz?[Math.round(lapiz.width),Math.round(lapiz.height)]:null,
     desborde: el.scrollWidth>el.clientWidth+1, texto: el.innerText};})()`;
-await ev(`(()=>{CUR.clientId='c0'; showScreen('s-coach'); gp('p-detail'); renderCoachPRsCard(DB.clients[0]);})()`);
+await ev(`(()=>{CUR.clientId='c0'; showScreen('s-coach'); gp('p-detail'); detailTab('entreno'); renderCoachPRsCard(DB.clients[0]);  /* v707: los récords viven en «Entreno» */})()`);
 await sleep(300);
 const cerrado = await ev(PR);
 A.ok(cerrado && cerrado.visible, 'la tarjeta de récords se pinta', cerrado && cerrado.visible);

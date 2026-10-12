@@ -57,7 +57,7 @@ const montaje = await ev(`(()=>{try{
   DB.clients=[{id:'${U}',name:'Pri Vada',tier:'premium',level:'Intermedio',days:3,routines:[]}];
   const d=n=>new Date(Date.now()-n*86400000).toISOString();
   DB.photos={'${U}':[{id:'p2',label:'Privada',date:d(2),mAt:d(2),path:'${U}/progreso-p2.jpg'},{id:'p1',label:'Vieja',date:d(40),src:window.__b64}]};
-  showScreen('s-coach'); gp('p-detail',null,'Detalle'); CUR.clientId='${U}';
+  showScreen('s-coach'); gp('p-detail',null,'Detalle'); detailTab('cuerpo'); CUR.clientId='${U}';
   renderPhotosCoach('${U}');
   const s=document.getElementById('avi-loading'); if(s)s.style.display='none';
   const b=document.getElementById('install-banner'); if(b)b.style.display='none';
@@ -121,7 +121,7 @@ await sleep(500);
 const a1 = await ev(`(()=>{const i=document.querySelector('#cn-prof-card .profav-img'); return {img:!!i, src:!!i&&!!i.src&&i.src.startsWith('data:image/'), firma:JSON.stringify(window.__firmas)};})()`);
 check('A1 el perfil muestra SU foto privada (enlace firmado del bucket privado)', a1.img && a1.src && a1.firma.includes('perfil-k1.jpg') && a1.firma.includes('progress-photos'), JSON.stringify(a1));
 await ev(`document.getElementById('cn-prof-card').scrollIntoView({block:'center'})`); await sleep(150); await shot('perfil-privado');
-await ev(`(()=>{ showScreen('s-coach'); CUR.loggedAs='coach'; gp('p-detail',null,'Detalle'); openDetail('${A}'); })()`); await sleep(500);
+await ev(`(()=>{ showScreen('s-coach'); CUR.loggedAs='coach'; gp('p-detail',null,'Detalle'); openDetail('${A}'); detailTab('cuerpo'); })()`); await sleep(500);
 const a2 = await ev(`(()=>{const av=document.getElementById('d-av'); return {bg:av.style.background.indexOf('data:image/')>=0, txt:av.textContent};})()`);
 check('A2 la ficha del coach muestra la foto privada del asesorado', a2.bg && a2.txt === '', JSON.stringify(a2));
 // Subir una foto nueva: al privado, sin enlace en la ficha, y la anterior se borra DESPUÉS.

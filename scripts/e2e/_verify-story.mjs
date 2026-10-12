@@ -44,6 +44,7 @@ const MONTAR = (edad) => `(()=>{try{
   // aserciones darian rojo por el montaje, no por la app.
   document.querySelectorAll('#s-coach .panel').forEach(p=>p.classList.remove('on'));
   const pd=document.getElementById('p-detail'); if(pd)pd.classList.add('on');
+  detailTab('entreno');  // v707: la historia vive en la pestaña «Entreno»
   renderStoryCard(c);
   return 'ok';
 }catch(e){return 'err:'+e.message;}})()`;

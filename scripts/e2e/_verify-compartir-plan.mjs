@@ -63,7 +63,7 @@ const m = await ev(`(()=>{try{
 A.ok(m && m.ok, 'montaje: cuatro asesorados con su plan y los espías puestos', m);
 
 // ── 1. La ficha dice lo que VE la persona (control: una menor cuyo plan escrito no cuadra) ──
-await ev(`openDetail('c2')`); await sleep(700);
+await ev(`openDetail('c2'); detailTab('comida')`); await sleep(700);
 const f2 = await ev(`(()=>{ const c=DB.clients.find(x=>x.id==='c2'), nut=DB.nutrition.c2; const b=nutBaseFor(c,nut,_nutPesoDe(c));
   const con=document.getElementById('d-nut-preview'); const t=con.innerText;
   return {derivado:b.kcalObj, escrito:nut.kcal, texto:t.slice(0,160), dice:t.indexOf(fmtMiles(b.kcalObj))>=0, diceEscrito:t.indexOf(fmtMiles(nut.kcal))>=0, ve:/lo que ve menor/i.test(t)}; })()`);
@@ -71,7 +71,7 @@ A.ok(f2.derivado && f2.derivado !== f2.escrito, 'CONTROL: en la menor, lo escrit
 A.ok(f2.dice && !f2.diceEscrito && f2.ve, 'la ficha pinta las calorías que ve la persona y lo dice («Lo que ve…»), no las escritas', f2);
 
 // ── 2. Los tres botones se ven y se tocan (360 px) ──
-await ev(`openDetail('c1')`); await sleep(700);
+await ev(`openDetail('c1'); detailTab('comida')`); await sleep(700);
 const bt = await ev(`(()=>{ const con=document.getElementById('d-nut-preview'); const bs=[...con.querySelectorAll('.nut-share-b button')];
   return bs.map(b=>{ b.scrollIntoView({block:'center'}); const r=b.getBoundingClientRect(); const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
     return {t:b.textContent.trim(), alto:Math.round(r.height), toca:el===b||b.contains(el), dentro:r.left>=0&&r.right<=innerWidth}; }); })()`);
@@ -143,12 +143,12 @@ A.ok(arch.vista === 'archive', 'CONTROL: con AVI FREE el chat queda como archivo
 A.ok(arch.botones === 0 && /no aparece en la app/.test(arch.nota), 'con la comida bloqueada el archivo no ofrece abrir el plan y dice por qué', arch);
 
 // ── 7. Donde el aviso no llegaría, no se ofrece y se dice por qué ──
-await ev(`CUR.loggedAs='coach'; showScreen('s-coach'); openDetail('c3')`); await sleep(600);
+await ev(`CUR.loggedAs='coach'; showScreen('s-coach'); openDetail('c3'); detailTab('comida')`); await sleep(600);
 const l3 = await ev(`(()=>{ const con=document.getElementById('d-nut-preview'); return {aviso:!!con.querySelector('button[onclick*="nutNotifyInApp"]'), wa:!!con.querySelector('button[onclick*="nutShareToClient"]'), nota:(con.querySelector('.nut-share-n')||{}).textContent||''}; })()`);
 A.ok(!l3.aviso && l3.wa && /no le muestra la comida/.test(l3.nota), 'AVI FREE: sin aviso en la app (la llevaría a un candado), con WhatsApp y el porqué', l3);
 const ve3 = await ev(`(document.querySelector('#d-nut-preview .nut-ve')||{}).textContent||''`);
 A.ok(/hoy no le aparece/.test(ve3) && !/^Lo que ve/.test(ve3), 'AVI FREE: la ficha no dice «Lo que ve» de alguien que hoy no lo ve', ve3);
-await ev(`openDetail('c4')`); await sleep(600);
+await ev(`openDetail('c4'); detailTab('comida')`); await sleep(600);
 const l4 = await ev(`(()=>{ const con=document.getElementById('d-nut-preview'); const antes=(DB.msgs.c4||[]).length; nutNotifyInApp('c4');
   return {aviso:!!con.querySelector('button[onclick*="nutNotifyInApp"]'), nota:(con.querySelector('.nut-share-n')||{}).textContent||'', escribio:(DB.msgs.c4||[]).length-antes}; })()`);
 A.ok(!l4.aviso && /no incluye chat/.test(l4.nota), 'plan sin coach: sin aviso (se guardaría y no le llegaría) y se dice por qué', l4);

@@ -67,7 +67,7 @@ const montaje = await ev(`(()=>{try{
     w3:[{date:new Date(hoy-6*dia).toISOString(),kg:60}],
     w4:[{date:new Date(hoy-5*dia).toISOString(),kg:86},{date:new Date(hoy-40*dia).toISOString(),kg:88}],
   };
-  showScreen('s-coach'); gp('p-detail',null,'Detalle');
+  showScreen('s-coach'); gp('p-detail',null,'Detalle'); detailTab('cuerpo');
   const s=document.getElementById('avi-loading'); if(s)s.style.display='none';
   const b=document.getElementById('install-banner'); if(b)b.style.display='none';
   return 'ok';

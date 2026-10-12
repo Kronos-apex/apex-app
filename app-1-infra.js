@@ -1251,7 +1251,7 @@ function openChatFor(chatId){
     // v321: chat de pantalla completa directo a la conversación (antes abría el perfil y había
     // que scrollear hasta el chat enterrado). Fallback al detalle si el chat no está montado.
     if(typeof openCoachChat==='function')openCoachChat(chatId);
-    else { openDetail(chatId); setTimeout(()=>{const el=document.getElementById('d-msgs');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350); }
+    else { openDetail(chatId); if(typeof detailTab==='function')detailTab('resumen',{quieto:true}); setTimeout(()=>{const el=document.getElementById('d-msgs');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350); }
   } else {
     const tab=document.getElementById('tab-msgs');
     cnTab('cn-messages',tab);markMsgsRead();

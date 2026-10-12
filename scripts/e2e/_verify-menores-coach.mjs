@@ -46,7 +46,7 @@ const setup = await ev(`(()=>{try{
   DB.nutrition={c1:{goal:'volumen',kcal:3200,prot:158,carbs:500,fat:80,water:10,meals:5}};
   DB.history={}; DB.bodyweight={}; window.CUR=window.CUR||{}; CUR.loggedAs='coach';
   showScreen('s-coach'); if(typeof renderAll==='function')renderAll();
-  openDetail('c1'); return 'ok';
+  openDetail('c1'); detailTab('comida'); return 'ok';
 }catch(e){return 'err:'+e.message}})()`);
 A.ok(setup === 'ok', 'montaje del fixture del coach', setup);
 await sleep(1200);
@@ -98,7 +98,7 @@ const setup2 = await ev(`(()=>{try{
   DB.clients=[{id:'c1',name:'Carla Vargas',email:'c@x.com',goal:'Recomposición',level:'Intermedio',days:4,
     age:34,sex:'F',weight:74,height:156,activityFactor:1.55,tier:'premium',payments:[],routines:[]}];
   DB.nutrition={c1:{goal:'mantenimiento',kcal:2146,prot:107,carbs:268,fat:71,water:10,meals:4}};
-  openDetail('c1'); return 'ok';
+  openDetail('c1'); detailTab('comida'); return 'ok';
 }catch(e){return 'err:'+e.message}})()`);
 A.ok(setup2 === 'ok', 'montaje del caso de proteína', setup2);
 await sleep(1000);

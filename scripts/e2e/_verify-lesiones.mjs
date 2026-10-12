@@ -92,7 +92,7 @@ const wu = JSON.parse(await ev(`JSON.stringify((()=>{try{
   c.routines=[{id:'rQA',name:'Full Body',day:'Lunes',restSec:60,exercises:[
     {id:'x1',name:'Plancha Frontal',muscle:'core',type:'Isométrico',sets:3,reps:'30s'},
     {id:'x2',name:'Jalón al Pecho',muscle:'espalda',type:'Compuesto',sets:4,reps:'10'}]}];
-  openDetail('cLes'); renderDetailRoutines(c);
+  openDetail('cLes'); detailTab('entreno'); renderDetailRoutines(c);
   // Como lo abriría el coach: clic en la tarjeta y clic en la cabecera del calentamiento.
   // (Sin esto, innerText devuelve '' sobre lo colapsado y las aserciones "NO manda X" salen
   // verdes sobre algo que NUNCA se pintó — la trampa de v411/v413.)

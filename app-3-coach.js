@@ -2009,8 +2009,82 @@ function setClientPlan(cid,plan){
 // Compat: alias del botón anterior (Premium = con coach).
 function convertToPremium(cid){ setClientPlan(cid,'coach'); }
 
+// ══════════════════════════════════════════
+// 🗂️ LA FICHA EN PESTAÑAS (v707, lote 2 del estudio de organización)
+// ══════════════════════════════════════════
+// Decisión del PO (11-oct-2026): Resumen · Entreno · Comida · Cuerpo · Pagos, en vez de 13 bloques
+// seguidos (medido: de 5,8 a 7,2 pantallas con asesorados reales). La pestaña la decide un ATRIBUTO
+// del panel (`data-dtab`) más el CSS: cada renderizador sigue pintando su bloque como siempre y
+// ninguno pelea con otro por el mismo `style.display` (lección v505).
+// 🔒 Cambiar de pestaña NO empuja historial: es la misma pantalla, y el atrás vuelve a la lista.
+function detailTab(t,opts){
+  t=(typeof detailTabValid==='function')?detailTabValid(t):'resumen';
+  const P=document.getElementById('p-detail'); if(!P)return;
+  const antes=P.getAttribute('data-dtab');
+  CUR.detailTab=t; P.setAttribute('data-dtab',t);
+  const bar=document.getElementById('d-tabs');
+  if(bar){
+    bar.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===t; b.setAttribute('aria-selected',on?'true':'false'); b.tabIndex=on?0:-1; });
+    // Con letra grande las cinco no caben a lo ancho: la elegida se trae a la vista (como los
+    // filtros del selector de ejercicios, v705).
+    const on=bar.querySelector('.dt-tab[aria-selected="true"]'), seg=bar.querySelector('.dt-seg')||bar;
+    if(on&&seg.scrollWidth>seg.clientWidth) requestAnimationFrame(()=>{ const r=on.getBoundingClientRect(), sr=seg.getBoundingClientRect(); seg.scrollLeft+=(r.left+r.width/2)-(sr.left+sr.width/2); });
+  }
+  // Si la ficha estaba bajada, la pestaña nueva empieza arriba (justo bajo la cabecera): quedarse a
+  // media altura enseñaría el final de otra cosa.
+  if(antes!==t&&!(opts&&opts.quieto)&&P.classList.contains('on')){
+    const main=P.closest('.main'), head=P.querySelector('.dt-head');
+    if(main&&head){ const y=main.scrollTop+head.getBoundingClientRect().bottom-main.getBoundingClientRect().top; if(main.scrollTop>y) main.scrollTop=y; }
+  }
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+  if(c&&antes!==t) renderDetailSummary(c);
+}
+// Con teclado (el coach también usa la app en el computador): ← → Inicio Fin recorren las pestañas,
+// y solo la elegida queda en el orden de Tab (QA Julián: sin esto, las otras cuatro eran inalcanzables).
+function detailTabKey(e){
+  const k=e&&e.key, tabs=(typeof DETAIL_TABS!=='undefined')?DETAIL_TABS:['resumen','entreno','comida','cuerpo','pagos'];
+  const i=tabs.indexOf(CUR.detailTab||'resumen');
+  const j=k==='ArrowRight'?Math.min(tabs.length-1,i+1):k==='ArrowLeft'?Math.max(0,i-1):k==='Home'?0:k==='End'?tabs.length-1:-1;
+  if(j<0)return;
+  e.preventDefault(); detailTab(tabs[j]);
+  const b=document.querySelector('#d-tabs .dt-tab[data-t="'+tabs[j]+'"]'); if(b)b.focus();
+}
+// ¿La tarjeta se está mostrando? Lo que ya decidió cada tarjeta se LEE de ella (el plan de choque, la
+// revisión del plan de comida): re-derivarlo sería una segunda cuenta que acaba diciendo otra cosa.
+function _detailVisible(id){ const el=document.getElementById(id); return !!(el&&el.style.display!=='none'&&el.innerHTML.trim()); }
+const _DT_NOMBRE={resumen:'Resumen',entreno:'Entreno',comida:'Comida',cuerpo:'Cuerpo',pagos:'Pagos'};
+function renderDetailSummary(c){
+  const el=document.getElementById('d-sum'); if(!el||!c)return;
+  if(typeof detailSummary!=='function'){ el.innerHTML=''; return; }
+  // Mientras no llegan sus datos pesados (el plan de comida entre ellos), la tarjeta de revisión cree que no
+  // tiene plan: el Resumen no lo repite hasta que llegan (QA Julián; se re-pinta al final de la carga).
+  const _nr=document.getElementById('d-nutreview');
+  const _pesados=!(typeof AUTH_MODE!=='undefined'&&AUTH_MODE)||!!_heavyLoaded[c.id];
+  const s=detailSummary(c,DB.history[c.id]||[],Date.now(),{choque:_detailVisible('d-shock'),comida:(_pesados&&_detailVisible('d-nutreview'))?((_nr&&_nr.dataset.rev)||'revisar'):null});
+  const semana=`<div class="dt-tile"><span class="dt-k">Esta semana</span><span class="dt-v">${esc(s.semana.titulo)}</span><span class="dt-s">Último: ${esc(s.semana.ultimo)}</span></div>`;
+  const plan=s.plan?`<button class="dt-tile" onclick="detailTab('pagos')"><span class="dt-k">Plan</span><span class="dt-v">${esc(s.plan.etiqueta)}</span><span class="dt-s">${esc(s.plan.detalle)}</span></button>`:'';
+  const rev=s.revisar.length
+    ? s.revisar.map(r=>`<button class="dt-rev-row" onclick="detailTab('${r.tab}')"><span style="flex:1;min-width:0">${esc(r.texto)}</span><span class="dt-go">${_DT_NOMBRE[r.tab]} ›</span></button>`).join('')
+    : '<div class="dt-rev-nada">Nada pendiente por ahora.</div>';
+  el.innerHTML=`<div class="dt-tiles${s.plan?'':' solo'}">${semana}${plan}</div><div class="dt-rev"><span class="dt-k">Para revisar</span>${rev}</div>`;
+  // Un punto en la pestaña donde hay algo por revisar (y el lector de pantalla lo dice).
+  document.querySelectorAll('#d-tabs .dt-tab').forEach(b=>{
+    const t=b.getAttribute('data-t'); let d=b.querySelector('.dt-dot');
+    if(s.marcas[t]){
+      if(!d){ d=document.createElement('span'); d.className='dt-dot'; d.setAttribute('aria-hidden','true'); b.appendChild(d); }
+      b.setAttribute('aria-label',_DT_NOMBRE[t]+', tiene algo por revisar');
+    } else { if(d)d.remove(); b.removeAttribute('aria-label'); }
+  });
+}
 async function openDetail(id,_silent){
-  const c=DB.clients.find(x=>x.id===id);if(!c)return;CUR.clientId=id;
+  const c=DB.clients.find(x=>x.id===id);if(!c)return;
+  // v707 · Al ENTRAR a la ficha (la lista, el Inicio, una notificación) se abre en Resumen; un
+  // re-pintado de la MISMA ficha —registrar un pago, cambiar el plan, guardar sus datos— se queda en
+  // la pestaña donde está el coach (si no, cada acción en «Pagos» lo devolvería al Resumen).
+  const _yaEnFicha=document.getElementById('p-detail').classList.contains('on')&&CUR.detailTabFor===id;
+  if(!_yaEnFicha) CUR.detailTab='resumen';
+  CUR.detailTabFor=id; CUR.clientId=id;
+  detailTab(CUR.detailTab,{quieto:true});
   const av=document.getElementById('d-av');
   // v652 · primero las iniciales; la foto (privada, con enlace firmado) llega después si la hay.
   av.textContent=ini(c.name);av.style.background=avc(c.name);av.style.color=inkOn(avc(c.name));av.style.backgroundImage='';
@@ -2106,6 +2180,7 @@ async function openDetail(id,_silent){
   renderStoryCard(c);
   renderDetailRoutines(c);renderDetailMsgs(id);renderCoachClientHistory(id);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);renderPhotosCoach(id);
   renderDetailMembership(id);
+  renderDetailSummary(c);   // v707 · va al final: lee lo que las tarjetas de arriba decidieron mostrar
   gp('p-detail',null,'Detalle',_silent);document.querySelectorAll('.sbi').forEach(s=>s.classList.remove('on'));document.getElementById('sbi-clients').classList.add('on');
   document.querySelectorAll('.cbnav-item').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.cbnav-item')[1].classList.add('on');
   // El panel YA se mostró con lo que había en memoria (perfil/rutinas/historial/mensajes).
@@ -2117,6 +2192,7 @@ async function openDetail(id,_silent){
     renderValoracion(c);renderCoachExProgress(id);renderNutritionCoach(id);renderMedidasCoach(id);renderPhotosCoach(id);
     renderNutReviewCard(c);   // la nutrición llega con los datos pesados: recién ahí se puede revisar
     renderCoachHabitsCard(c); // la meta puede afinarse con el plan nutricional recién cargado
+    renderDetailSummary(c);   // la revisión del plan de comida recién se pudo decidir
   }
 }
 
@@ -3030,7 +3106,7 @@ function _protFrase(p){
 }
 function renderNutReviewCard(c){
   const el=document.getElementById('d-nutreview'); if(!el)return;
-  el.innerHTML='';el.style.display='none';
+  el.innerHTML='';el.style.display='none';el.dataset.rev=''; // v707 · el Resumen lee QUÉ caso se pintó
   if(typeof nutPlanReview!=='function'||!c)return;
   // El coach también se revisa a sí mismo: su plan es uno más y puede estar igual de desviado.
   try{
@@ -3067,7 +3143,7 @@ function renderNutReviewCard(c){
     if(!_hayReview&&!_desfase)return;              // plan sano → sin ruido
     if(!_hayReview&&_desfase){
       // El descuadre es lo ÚNICO que falla: entonces sí es el titular.
-      el.style.display='';
+      el.style.display='';el.dataset.rev='desfase';
       el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(--yll);border-left:3px solid var(--yl)">
         <div style="font-size:13px;font-weight:800;color:var(--ylt);margin-bottom:5px">${_coIco('alert',13,'⚠️')} El plan dice ${esc(fmtMiles(_desfase.titular))} kcal, pero sus macros suman ${_desfase.real}</div>
         <div style="font-size:12.5px;color:var(--t1);line-height:1.5">La comida se arma con los <b>macros</b>, así que está comiendo <b>${fmtMiles(_desfase.real)} kcal</b> — ${Math.abs(_desfase.dif)} ${_desfase.dif<0?'menos':'más'} de lo que dice el titular. Ajusta el número o los macros en <b>Nutrición</b> para que digan lo mismo.</div>
@@ -3154,7 +3230,7 @@ function renderNutReviewCard(c){
     if(_desfase&&r.status!=='sin_plan'&&r.status!=='sin_datos'){
       cuerpo+=` <span style="opacity:.9">Además, su plan dice <b>${fmtMiles(_desfase.titular)} kcal</b> y sus macros suman <b>${_desfase.real}</b>: como la comida se arma con los macros, el titular está de más.</span>`;
     }
-    el.style.display='';
+    el.style.display='';el.dataset.rev=r.status;
     el.innerHTML=`<div class="card" style="padding:12px 14px;background:var(${tono});border-left:3px solid var(${tinta})">
       <div style="font-size:13px;font-weight:800;color:var(${tinta});margin-bottom:5px">${_coIco('alert',13,'⚠️')} ${esc(titulo)}</div>
       <div style="font-size:12.5px;color:var(--t1);line-height:1.5">${cuerpo}</div>
@@ -4120,6 +4196,8 @@ function saveRoutine(){
   }
   c.routines=sortRoutinesByDay(c.routines);
   sv('ax_c',DB.clients);cm('m-routine');renderDetailRoutines(c);renderHome();
+  // v707 · la rutina recién guardada se VE: la ficha pasa a «Entreno» aunque se haya creado desde la cabecera.
+  if(typeof detailTab==='function')detailTab('entreno');
   // v590 · si el NOMBRE promete un músculo que no está adentro, se dice — después de guardar y
   // sin bloquear: puede sobrar la palabra en el nombre o faltar el ejercicio, y eso lo sabe él.
   const _gap=(typeof routinePromiseGap==='function')?routinePromiseGap(name,rutData.exercises):[];

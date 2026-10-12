@@ -13314,7 +13314,9 @@ test('el detector de descarga sigue midiendo contra planDays, NO contra streakTa
   const deload = src.split('\n')
     .map((l, i) => ({ l: l, n: i + 1 }))
     .filter(x => /weekStreak\(/.test(x.l) && /nowTs/.test(x.l));
-  assert.strictEqual(deload.length, 2, 'esperaba los 2 sitios de carga (coachInsight/coachPulse), hay ' + deload.length);
+  // v707 · el tercero es el Resumen de la ficha del coach («esta semana: N de los días de su plan»):
+  // MUESTRA la semana contra el plan, que es justo lo que esta regla exige.
+  assert.strictEqual(deload.length, 3, 'esperaba 3 sitios (coachInsight, coachPulse y detailSummary), hay ' + deload.length);
   deload.forEach(x => assert.ok(/planDays\(/.test(x.l),
     'avi-core.js:' + x.n + ' usa el umbral de racha para medir CARGA: ' + x.l.trim()));
 });
@@ -24019,6 +24021,140 @@ test('🔒 v706 · con la comida bloqueada, el aviso viejo del archivo del chat 
   const nodoBloq = mk(estado)();
   assert.ok(/mact-n/.test(nodoBloq.className) && !nodoBloq.onclick, '🔴 con la comida bloqueada se sigue pintando el botón');
   assert.ok(/no aparece en la app/.test(nodoBloq.textContent), 'y se dice por qué, en vez de un «aquí abajo» vacío');
+});
+
+// ══════════════════════════════════════════════════════
+// v707 · LA FICHA DEL ASESORADO EN PESTAÑAS (lote 2 del estudio de organización, decisión del PO)
+// ══════════════════════════════════════════════════════
+const _V707_NOW = new Date(2026, 9, 11, 10).getTime();            // domingo 11-oct-2026, 10 a. m.
+const _v707d = k => new Date(2026, 9, k, 9).toISOString();
+const _V707_CL = { id: 'c1', name: 'Ana', days: 4, tier: 'premium',
+  routines: [{ day: 'Lunes' }, { day: 'Martes' }, { day: 'Jueves' }, { day: 'Viernes' }] };
+const _v707Pago = due => Object.assign({}, _V707_CL, { payments: [{ date: '2026-09-01', dueDate: due, amount: 150000 }] });
+test('🔒 v707 · el Resumen dice la semana contra su plan, y quien entrena de más no lee «5 de 4 días»', () => {
+  const s = core.detailSummary(_V707_CL, [{ date: _v707d(6) }, { date: _v707d(7) }, { date: _v707d(7) }], _V707_NOW);
+  assert.strictEqual(s.semana.titulo, '2 de 4 días', 'dos días distintos (el mismo día dos veces cuenta 1)');
+  assert.strictEqual(s.semana.ultimo, 'hace 4 días');
+  const mas = core.detailSummary(_V707_CL, [5, 6, 7, 8, 9].map(k => ({ date: _v707d(k) })), _V707_NOW);
+  assert.strictEqual(mas.semana.titulo, '5 días · cumplió', '🔴 quien entrena más que su plan lee «5 de 4 días»');
+  assert.strictEqual(core.detailSummary(_V707_CL, [{ date: _v707d(10) }], _V707_NOW).semana.ultimo, 'ayer');
+  // Días de CALENDARIO (QA Julián): anoche a las 8 p. m., mirado hoy a las 10 a. m., fue «ayer» (no «hoy»).
+  assert.strictEqual(core.detailSummary(_V707_CL, [{ date: new Date(2026, 9, 10, 20).toISOString() }], _V707_NOW).semana.ultimo, 'ayer',
+    '🔴 cuenta horas y no días: lo de anoche sale como «hoy»');
+  assert.strictEqual(core.detailSummary(_V707_CL, [{ date: new Date(2026, 9, 11, 7).toISOString() }], _V707_NOW).semana.ultimo, 'hoy');
+  assert.strictEqual(core.detailSummary(_V707_CL, [{ date: new Date(2026, 9, 9, 22).toISOString() }], _V707_NOW).semana.ultimo, 'hace 2 días');
+  assert.strictEqual(core.detailSummary(_V707_CL, [], _V707_NOW).semana.ultimo, 'todavía no ha entrenado',
+    'sin sesiones no se inventa un «hace N días»');
+});
+test('🔒 v707 · el plan del Resumen cuenta los días con la MISMA regla que su etiqueta (MS.getStatus)', () => {
+  for (const [due, st] of [['2026-11-02', 'active'], ['2026-10-15', 'expiring'], ['2026-10-08', 'grace'], ['2026-09-20', 'overdue']]) {
+    const s = core.detailSummary(_v707Pago(due), [], _V707_NOW);
+    assert.strictEqual(s.plan.estado, core.MS.getStatus(_v707Pago(due), _V707_NOW), '🔴 el Resumen y la etiqueta cuentan distinto: ' + due);
+    assert.strictEqual(s.plan.estado, st, due);
+    assert.strictEqual(s.plan.etiqueta, core.MS.badge(st).label, 'la etiqueta es la misma de la ficha y la lista');
+  }
+  assert.strictEqual(core.detailSummary(_v707Pago('2026-11-02'), [], _V707_NOW).plan.detalle, 'vence el 2 de noviembre · en 22 días');
+  assert.strictEqual(core.detailSummary(_v707Pago('2026-10-08'), [], _V707_NOW).plan.detalle, 'venció hace 3 días');
+  assert.ok(/está en AVI FREE/.test(core.detailSummary(_v707Pago('2026-09-20'), [], _V707_NOW).plan.detalle), 'vencido = vuelve a AVI FREE (v564)');
+  // Quien no paga no se trata como deudor.
+  assert.strictEqual(core.detailSummary(Object.assign({}, _V707_CL, { courtesy: true }), [], _V707_NOW).plan.detalle, 'no se le cobra');
+  assert.strictEqual(core.detailSummary(Object.assign({}, _V707_CL, { tier: 'libre' }), [], _V707_NOW).plan.etiqueta, 'AVI FREE');
+  assert.strictEqual(core.detailSummary(_V707_CL, [], _V707_NOW).plan.etiqueta, 'Sin pago');
+  // CONTROL: el coach consigo mismo no tiene tarjeta de plan (no se cobra a sí mismo, v539).
+  assert.strictEqual(core.detailSummary({ id: core.SELF_CLIENT_ID, name: 'Yo' }, [], _V707_NOW).plan, null);
+});
+test('🔒 v707 · «Para revisar» lleva cada cosa a la pestaña donde se resuelve, y las marcas salen de ahí', () => {
+  const vacio = core.detailSummary(_v707Pago('2026-11-02'), [], _V707_NOW);
+  assert.deepStrictEqual(vacio.revisar, [], 'CONTROL: un plan al día y sin avisos no tiene nada que revisar');
+  assert.deepStrictEqual(vacio.marcas, {});
+  const tabs = (c, f) => core.detailSummary(c, [], _V707_NOW, f).revisar.map(r => r.tab + ':' + r.tipo);
+  assert.deepStrictEqual(tabs(_v707Pago('2026-11-02'), { choque: true }), ['entreno:choque']);
+  assert.deepStrictEqual(tabs(_v707Pago('2026-11-02'), { comida: 'desviado' }), ['comida:comida']);
+  const txtComida = k => core.detailSummary(_v707Pago('2026-11-02'), [], _V707_NOW, { comida: k }).revisar[0].texto;
+  assert.strictEqual(txtComida('sin_plan'), 'No tiene plan de alimentación', '🔴 a quien no tiene plan se le dice «su plan tiene algo que revisar»');
+  assert.ok(/Faltan datos/.test(txtComida('sin_datos')));
+  assert.strictEqual(txtComida('rotulo_miente'), 'Su plan de comida tiene algo que revisar');
+  assert.deepStrictEqual(tabs(Object.assign(_v707Pago('2026-11-02'), { deload: { from: '2026-10-01', until: '2026-10-08' } })), ['entreno:descarga'],
+    'una descarga vencida se avisa (la misma `deloadState` del panel)');
+  assert.deepStrictEqual(tabs(Object.assign(_v707Pago('2026-11-02'), { levelHealed: { cambios: [{ de: 'A', a: 'B' }, { de: 'C', a: 'D' }] } })), ['entreno:nivel']);
+  assert.deepStrictEqual(tabs(_v707Pago('2026-10-15')), ['pagos:plan']);
+  assert.deepStrictEqual(tabs(_v707Pago('2026-10-08')), ['pagos:plan']);
+  assert.deepStrictEqual(tabs(Object.assign({}, _V707_CL, { courtesy: true })), [], 'CONTROL: la cortesía no se avisa como cobro');
+  assert.deepStrictEqual(tabs(_V707_CL), [], 'CONTROL: «sin pago» de alguien nuevo no es una alarma (v540)');
+  assert.deepStrictEqual(tabs(Object.assign(_v707Pago('2026-09-20'), { tier: 'libre' })), [], 'quien está en AVI FREE no se avisa como deudor por un pago viejo');
+  const todo = core.detailSummary(_v707Pago('2026-10-08'), [], _V707_NOW, { choque: true, comida: 'desviado' });
+  assert.deepStrictEqual(todo.marcas, { entreno: true, comida: true, pagos: true }, 'una marca por cada pestaña con algo por revisar');
+  todo.revisar.forEach(r => assert.ok(core.DETAIL_TABS.indexOf(r.tab) >= 0, '🔴 lleva a una pestaña que no existe: ' + r.tab));
+  assert.strictEqual(core.detailTabValid('x'), 'resumen', 'una pestaña desconocida cae al Resumen');
+  assert.strictEqual(core.detailTabValid('pagos'), 'pagos');
+});
+test('🔒 v707 · cada bloque de la ficha vive en SU pestaña, y la barra tiene las cinco en orden', () => {
+  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '');
+  const i = html.indexOf('<div id="p-detail"'), f = html.indexOf('<!-- CARGAS / PROGRESO -->', i);
+  assert.ok(i > 0 && f > i, 'no se encontró la ficha');
+  const ficha = html.slice(i, f).replace(/<!--[\s\S]*?-->/g, '');
+  const tabs = [...ficha.matchAll(/class="dt-tab"[^>]*data-t="([a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(tabs, core.DETAIL_TABS, 'la barra y la lista de pestañas tienen que coincidir');
+  const secs = {};
+  for (const m of ficha.matchAll(/<section class="dt-sec" data-dt="([a-z]+)"[\s\S]*?<\/section>/g)) secs[m[1]] = m[0];
+  assert.deepStrictEqual(Object.keys(secs), core.DETAIL_TABS, 'una sección por pestaña, en el mismo orden');
+  const DONDE = {
+    resumen: ['d-notes', 'd-sum', 'd-habits', 'd-msgs', 'd-email', 'd-stats'],
+    entreno: ['d-routines', 'd-deload', 'd-levelheal', 'd-shock', 'd-prs', 'd-history', 'd-exprog-wrap', 'd-story'],
+    comida: ['d-nutreview', 'd-nut-wrap', 'd-nut-preview', 'd-foodlog'],
+    cuerpo: ['d-valoracion-card', 'd-med-wrap', 'd-photos-wrap'],
+    pagos: ['d-freelead', 'd-membership'],
+  };
+  for (const t of core.DETAIL_TABS) for (const id of DONDE[t])
+    assert.ok(secs[t].includes('id="' + id + '"'), '🔴 #' + id + ' no está en la pestaña ' + t);
+  // Fuera de las pestañas solo queda la cabecera: quién es y lo que se hace con su ficha.
+  const fuera = ficha.replace(/<section class="dt-sec"[\s\S]*?<\/section>/g, '');
+  const idsFuera = [...fuera.matchAll(/id="([^"]+)"/g)].map(m => m[1]).sort();
+  assert.deepStrictEqual(idsFuera, ['d-av', 'd-name', 'd-tabs', 'd-tags', 'p-detail'], 'un bloque quedó fuera de las pestañas');
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  for (const t of core.DETAIL_TABS)
+    assert.ok(css.includes('#p-detail[data-dtab="' + t + '"] .dt-sec[data-dt="' + t + '"]'), '🔴 la pestaña ' + t + ' no se puede ver');
+  assert.ok(/#p-detail \.dt-sec\{display:none\}/.test(css), '🔴 sin la regla base, todas las pestañas se ven a la vez');
+});
+test('🔒 v707 · entrar a la ficha abre el Resumen; re-pintarla deja al coach donde estaba, y el atrás la devuelve igual', () => {
+  const fs = require('fs'), path = require('path');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const a = coach.indexOf('async function openDetail('), b = coach.indexOf('\nfunction ', a + 10);
+  const od = coach.slice(a, b > a ? b : a + 20000);
+  assert.ok(/const _yaEnFicha=document\.getElementById\('p-detail'\)\.classList\.contains\('on'\)&&CUR\.detailTabFor===id;/.test(od),
+    '🔴 la ficha ya no distingue entrar de re-pintar');
+  assert.ok(/^\s*if\(!_yaEnFicha\) CUR\.detailTab='resumen';\s*$/m.test(od), '🔴 entrar a la ficha no abre el Resumen');
+  assert.ok(/^\s*detailTab\(CUR\.detailTab,\{quieto:true\}\);\s*$/m.test(od), '🔴 la pestaña no se aplica al abrir');
+  const iM = od.indexOf('renderDetailMembership(id);'), iS = od.indexOf('renderDetailSummary(c);'), iG = od.indexOf("gp('p-detail'");
+  assert.ok(iM > 0 && iS > iM && iG > iS, '🔴 el Resumen se pinta antes de que las tarjetas decidan qué mostrar');
+  const dt = coach.slice(coach.indexOf('function detailTab('), coach.indexOf('function detailTabKey('));
+  // Mientras no llegan los datos pesados, el Resumen no repite el «no tiene plan» de la tarjeta (QA Julián).
+  assert.ok(/const _pesados=!\(typeof AUTH_MODE!=='undefined'&&AUTH_MODE\)\|\|!!_heavyLoaded\[c\.id\];/.test(coach)
+    && /comida:\(_pesados&&_detailVisible\('d-nutreview'\)\)\?/.test(coach), '🔴 sin los datos pesados, el Resumen dice «No tiene plan de alimentación» de quien sí lo tiene');
+  // Teclado: la barra se recorre con flechas (QA Julián).
+  const html707 = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/class="dt-seg" role="tablist"[^>]*onkeydown="detailTabKey\(event\)"/.test(html707), '🔴 con teclado solo se llega a la pestaña elegida');
+  assert.ok(/k==='ArrowRight'/.test(coach) && /k==='ArrowLeft'/.test(coach), '🔴 las flechas no recorren las pestañas');
+  assert.ok(!/navPush|pushState|navRecord/.test(dt), '🔴 cambiar de pestaña empuja historial: el atrás recorrería pestañas');
+  const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.ok(/const snap=\{id:prev,cid:CUR\.clientId,dtab:CUR\.detailTab\};/.test(login), '🔴 el atrás olvida la pestaña');
+  assert.ok(/openDetail\(snap\.cid,true\); if\(snap\.dtab&&typeof detailTab==='function'\)detailTab\(snap\.dtab,\{quieto:true\}\);/.test(login),
+    '🔴 al volver con el atrás, la ficha no recupera su pestaña');
+  // Los saltos directos a un bloque abren antes SU pestaña (o se desplazarían a algo escondido).
+  assert.ok(/if\(typeof detailTab==='function'\)detailTab\('entreno',\{quieto:true\}\);[^\n]*\n\s*setTimeout\(\(\)=>\{\s*\n\s*const el=document\.getElementById\('d-shock'\)/.test(login),
+    '🔴 el pulso lleva al plan de choque sin abrir «Entreno»');
+  // Crear una rutina termina enseñándola: guardar y aplicar una plantilla pasan a «Entreno».
+  const iSR = coach.indexOf('function saveRoutine(');
+  const sr = coach.slice(iSR, coach.indexOf('\nfunction ', iSR + 10));
+  assert.ok(/cm\('m-routine'\);renderDetailRoutines\(c\);renderHome\(\);\s*\n\s*if\(typeof detailTab==='function'\)detailTab\('entreno'\);/.test(sr),
+    '🔴 la rutina recién guardada queda escondida en otra pestaña');
+  assert.ok(/openDetail\(CUR\.clientId\);\s*\n\s*if\(typeof detailTab==='function'\)detailTab\('entreno',\{quieto:true\}\);/.test(login),
+    '🔴 aplicar una plantilla deja detrás del editor el Resumen y no sus rutinas');
+  assert.ok(/if\(antes!==t&&!\(opts&&opts\.quieto\)&&P\.classList\.contains\('on'\)\)\{/.test(dt),
+    '🔴 cambiar la pestaña de una ficha que no se ve mueve el scroll de otra pantalla');
+  const infra = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  assert.ok(/openDetail\(chatId\); if\(typeof detailTab==='function'\)detailTab\('resumen',\{quieto:true\}\); setTimeout\(\(\)=>\{const el=document\.getElementById\('d-msgs'\)/.test(infra),
+    '🔴 la notificación de un mensaje lleva a los mensajes sin abrir el Resumen');
 });
 
 // ══════════════════════════════════════════════════════

@@ -12500,8 +12500,87 @@ function settingsPlanSummary(client, now) {
   }
   return { nombre, detalle };
 }
+
+// ── LA FICHA DEL ASESORADO EN PESTAÑAS (v707, lote 2 del estudio de organización) ──────────────
+// Decisión del PO (11-oct-2026, «dale con las tres»): la ficha pasa de una columna de 13 bloques
+// —medida con cuatro asesorados reales: de 4.660 a 5.759 px, entre 5,8 y 7,2 pantallas— a cinco
+// pestañas. El Resumen responde lo que el coach mira primero: cómo va la semana, cómo está su plan y
+// qué tiene que revisar; y cada «para revisar» dice en qué pestaña se resuelve.
+const DETAIL_TABS = ['resumen', 'entreno', 'comida', 'cuerpo', 'pagos'];
+function detailTabValid(t) { return DETAIL_TABS.indexOf(t) >= 0 ? t : 'resumen'; }
+// PURA. `flags` trae lo que los renderizadores YA decidieron mostrar y aquí no se puede recalcular
+// sin duplicar su regla (el plan de choque, la revisión del plan de comida): una segunda cuenta de
+// «hay algo que revisar» acabaría diciendo otra cosa que la tarjeta de al lado. Lo que sí es puro
+// (la descarga vencida, el cambio de nivel, el estado del plan) se deriva aquí, de la MISMA función
+// que usan sus pantallas.
+function detailSummary(client, sessions, now, flags) {
+  const c = client || {};
+  const f = flags || {};
+  const nowTs = now != null ? new Date(now).getTime() : Date.now();
+  const ses = Array.isArray(sessions) ? sessions : [];
+  const pd = planDays(c);
+  // Lo que se MUESTRA es «N de los días de su plan» (la regla de la racha: la meta que se enseña es
+  // el plan, no el umbral topado de la racha).
+  const ws = weekStreak(ses, planDays(c), nowTs);
+  // Días de CALENDARIO (QA Julián): quien entrenó anoche a las 8 p. m. y se mira hoy a las 10 a. m.
+  // entrenó «ayer», no «hoy» — `daysSinceLastSession` cuenta horas transcurridas.
+  let lastTs = 0;
+  ses.forEach(s => { const t = new Date(s && s.date).getTime(); if (t > lastTs) lastTs = t; });
+  const dias = lastTs ? Math.round((localDayStart(nowTs) - localDayStart(lastTs)) / 86400000) : Infinity;
+  const ultimo = !isFinite(dias) ? 'todavía no ha entrenado'
+    : dias <= 0 ? 'hoy' : dias === 1 ? 'ayer' : 'hace ' + dias + ' días';
+  // Quien entrena MÁS que su plan no lee «5 de 4 días» (lo cazó mirar la ficha con datos reales).
+  const h = ws.thisWeekDays;
+  const titulo = h >= pd ? h + (h === 1 ? ' día' : ' días') + ' · cumplió' : h + ' de ' + pd + ' días';
+  const semana = { hechos: h, plan: pd, ultimo, titulo };
+  const revisar = [];
+  if (f.choque) revisar.push({ tab: 'entreno', tipo: 'choque', texto: 'Tiene ejercicios estancados: hay un plan para destrabarlos' });
+  const dl = deloadState(c, nowTs);
+  if (dl && dl.over) revisar.push({ tab: 'entreno', tipo: 'descarga', texto: 'Su semana de descarga ya terminó: devuélvelo a su plan normal' });
+  const lh = c.levelHealed && Array.isArray(c.levelHealed.cambios) ? c.levelHealed.cambios.length : 0;
+  if (lh) revisar.push({ tab: 'entreno', tipo: 'nivel', texto: 'La app cambió ' + (lh === 1 ? 'un ejercicio' : lh + ' ejercicios') + ' de su plan por su nivel' });
+  // `comida` es el CASO que pintó la tarjeta de revisión (v707): el Resumen dice lo mismo que ella —un
+  // «su plan tiene algo que revisar» de quien no tiene plan sería falso (lo cazó el control del harness).
+  if (f.comida) {
+    const TXT = { sin_plan: 'No tiene plan de alimentación', sin_datos: 'Faltan datos para calcularle el plan de comida' };
+    revisar.push({ tab: 'comida', tipo: 'comida', texto: TXT[f.comida] || 'Su plan de comida tiene algo que revisar' });
+  }
+  // El plan: el coach consigo mismo no se cobra (no hay tarjeta). La cuenta de días es la MISMA de
+  // `MS.getStatus` —si no, el Resumen diría «vence en 3 días» el día que la etiqueta ya dice otra cosa.
+  let plan = null;
+  if (!isSelfClient(c)) {
+    const st = MS.getStatus(c, nowTs);
+    const pays = (c.payments || []).filter(p => p && p.dueDate);
+    const due = _settingsDueDate(c);
+    const fecha = due ? due.getDate() + ' de ' + SHARE_MESES[due.getMonth()] : '';
+    let restan = null;
+    if (pays.length) {
+      const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
+      restan = Math.ceil((new Date(last.dueDate) - nowTs) / 86400000);
+    }
+    const enDias = n => n === 0 ? 'hoy' : n === 1 ? 'mañana' : 'en ' + n + ' días';
+    const hace = n => n === 1 ? 'hace 1 día' : 'hace ' + n + ' días';
+    let etiqueta = MS.badge(st).label, detalle = '';
+    if (clientPlan(c) === 'libre') { etiqueta = 'AVI FREE'; detalle = 'sin plan pagado'; }
+    else if (st === 'courtesy') detalle = 'no se le cobra';
+    else if (st === 'inactive') detalle = 'en pausa';
+    else if (st === 'pending') detalle = 'todavía no tiene pagos';
+    else if (st === 'active' || st === 'expiring') detalle = (fecha ? 'vence el ' + fecha + ' · ' : 'vence ') + enDias(Math.max(0, restan));
+    else if (st === 'grace' || st === 'overdue') detalle = 'venció ' + hace(Math.max(1, -restan)) + (st === 'overdue' ? ' · está en AVI FREE' : '');
+    plan = { estado: st, etiqueta, detalle };
+    if (clientPlan(c) !== 'libre') {
+      if (st === 'expiring') revisar.push({ tab: 'pagos', tipo: 'plan', texto: 'Su plan vence ' + enDias(Math.max(0, restan)) });
+      else if (st === 'grace') revisar.push({ tab: 'pagos', tipo: 'plan', texto: 'Su plan venció ' + hace(Math.max(1, -restan)) + ': está por renovar' });
+      else if (st === 'overdue') revisar.push({ tab: 'pagos', tipo: 'plan', texto: 'Su plan venció ' + hace(Math.max(1, -restan)) + ': volvió a AVI FREE' });
+    }
+  }
+  const marcas = {};
+  revisar.forEach(r => { marcas[r.tab] = true; });
+  return { semana, plan, revisar, marcas };
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    DETAIL_TABS, detailTabValid, detailSummary,
     SOUND_MODES, SOUND_DEFAULT, SOUND_TONES, SOUND_TONE_IDS, soundPrefNormalize, soundToggleMute, soundWithMode,
     THEME_LABEL, FS_LABEL, soundSummary, SETTINGS_PLAN_NAME, settingsPlanSummary,
     soundShouldPlay, soundShouldVibrate, soundToneNotes, soundToneLength,

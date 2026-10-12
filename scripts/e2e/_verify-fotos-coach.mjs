@@ -67,7 +67,7 @@ const montaje = await ev(`(()=>{try{
     ph2:[],
     ph3:[{id:'g1',label:'Punto de partida',date:new Date(hoy-10*dia).toISOString(),src:img('#E76F51','L')}],
   };
-  showScreen('s-coach'); gp('p-detail',null,'Detalle');
+  showScreen('s-coach'); gp('p-detail',null,'Detalle'); detailTab('cuerpo');
   CUR.clientId='ph1';
   renderPhotosCoach('ph1');
   return 'ok';
@@ -142,7 +142,7 @@ check('F8 CONTROL a un PREMIUM SIN COACH (tier app) no se le promete un lector q
   !dice(aviso.sinCoach), (aviso.sinCoach || '').slice(0, 90));
 
 // ── CAPTURAS de la ficha del coach, los dos temas (el tema vive en documentElement) ──
-const pinta = `showScreen('s-coach');gp('p-detail',null,'Detalle');CUR.clientId='ph1';renderPhotosCoach('ph1');
+const pinta = `showScreen('s-coach');gp('p-detail',null,'Detalle'); detailTab('cuerpo');CUR.clientId='ph1';renderPhotosCoach('ph1');
   const s=document.getElementById('avi-loading');if(s)s.style.display='none';
   const b=document.getElementById('install-banner');if(b)b.style.display='none';
   document.getElementById('d-photos-wrap').scrollIntoView({block:'center'});`;
