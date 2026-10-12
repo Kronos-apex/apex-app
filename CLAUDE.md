@@ -332,7 +332,9 @@ SB_KEYS = [
 --surface:#F9F9F6                          /* ✅ v1.3.0 */
 
 /* Tipografía */
---t1:#1A1A1A   --t2:#6A6A6A   --t3:#B0B0B0
+--t1:#1A1A1A   --t2:#636363   --t3:#6C6C6C   /* claro; oscuro: --t2:#8FAF98 --t3:#669B74.
+   Valores REALES verificados el 12-oct-2026: --t3 ya NO es el gris claro #B0B0B0 (la FASE 3 lo
+   oscureció para que se lea) — un sabotaje de contraste con --t3 no apaga nada */
 
 /* Verde marca (valores REALES corregidos 2026-07-13 — el doc decía #2D6A4F y no era) */
 --g:#0A7C5B   --g2:#13B583   --gl:#D3F4E8   --gt:#06402E (claro) / #5FE3B0 (oscuro)

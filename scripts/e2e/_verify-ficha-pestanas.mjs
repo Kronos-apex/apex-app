@@ -91,7 +91,11 @@ for (const t of ['entreno', 'comida', 'cuerpo', 'pagos', 'resumen']) {
 const res = await ev(`(()=>{ const s=document.getElementById('d-sum'); return { txt:s.innerText,
   filas:[...s.querySelectorAll('.dt-rev-row')].map(b=>b.innerText.replace(/\\s+/g,' ').trim()),
   marcas:[...document.querySelectorAll('#d-tabs .dt-tab')].filter(b=>b.querySelector('.dt-dot')).map(b=>b.dataset.t) }; })()`);
-A.ok(/esta semana/i.test(res.txt) && /2 de 4 días/.test(res.txt) && /Último: ayer/.test(res.txt), 'el Resumen dice cómo va su semana contra su plan', res.txt);
+// La cifra se DERIVA del calendario del día en que corre (un lunes, «ayer» ya es la semana pasada): las sesiones
+// de Ana son de hace 1, 3, 9 y 11 días, y cuentan las que caen desde el lunes de esta semana, días distintos.
+const lunes = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); })();
+const enSemana = new Set([1, 3, 9, 11].map(k => Date.now() - k * 864e5).filter(t => t >= lunes).map(t => new Date(t).toDateString())).size;
+A.ok(/esta semana/i.test(res.txt) && res.txt.includes(enSemana + ' de 4 días') && /Último: ayer/.test(res.txt), `el Resumen dice cómo va su semana contra su plan (${enSemana} de 4 días hoy)`, res.txt);
 A.ok(/Por vencer/.test(res.txt) && /vence el \d+ de [a-z]+ · en 3 días/.test(res.txt), 'y cómo está su plan, con la fecha y los días', res.txt);
 A.ok(res.filas.some(f => /descarga ya terminó/.test(f) && /Entreno/.test(f)) && res.filas.some(f => /vence en 3 días/.test(f) && /Pagos/.test(f)), '«Para revisar» trae la descarga vencida (→ Entreno) y el vencimiento (→ Pagos)', res.filas);
 A.ok(res.marcas.sort().join() === 'entreno,pagos', 'las pestañas con algo por revisar llevan su marca (y solo ellas)', res.marcas);
@@ -155,9 +159,14 @@ await tocar('#d-tabs .dt-tab[data-t="entreno"]'); await sleep(300);
 const fija = await ev(`(async()=>{ const main=document.querySelector('.main'); main.scrollTop=900; await new Promise(r=>setTimeout(r,250));
   const bt=document.getElementById('d-tabs').getBoundingClientRect().top, mt=main.getBoundingClientRect().top; return {scroll:main.scrollTop, bt:Math.round(bt), mt:Math.round(mt)}; })()`);
 A.ok(fija.scroll > 300 && Math.abs(fija.bt - fija.mt) <= 2, 'con la ficha bajada, la barra de pestañas sigue arriba', fija);
+// «Pagos» se alarga a propósito: con una pestaña corta el navegador recorta el scroll solo y esto aprobaría
+// sin el código (salió VERDE en la matriz). Un coach con muchos pagos tiene esa pestaña así de larga.
+await ev(`(()=>{ const d=document.createElement('div'); d.id='qa-largo'; d.style.height='2200px'; document.querySelector('.dt-sec[data-dt="pagos"]').appendChild(d); })()`);
 await tocar('#d-tabs .dt-tab[data-t="pagos"]'); await sleep(300);
-const arriba = await ev(`(()=>{ const main=document.querySelector('.main'); const tb=document.getElementById('d-tabs').getBoundingClientRect(); const pr=document.querySelector('.dt-sec[data-dt="pagos"]').getBoundingClientRect(); return {scroll:main.scrollTop, inicioVisible:pr.top>=tb.bottom-1&&pr.top<innerHeight}; })()`);
+const arriba = await ev(`(()=>{ const main=document.querySelector('.main'); const tb=document.getElementById('d-tabs').getBoundingClientRect(); const pr=document.querySelector('.dt-sec[data-dt="pagos"]').getBoundingClientRect(); return {scroll:main.scrollTop, maxScroll:main.scrollHeight-main.clientHeight, inicioVisible:pr.top>=tb.bottom-1&&pr.top<innerHeight}; })()`);
+A.ok(arriba.maxScroll > fija.scroll, 'CONTROL: la pestaña nueva es lo bastante larga como para quedarse a media altura', arriba);
 A.ok(arriba.scroll < fija.scroll && arriba.inicioVisible, 'cambiar de pestaña con la ficha bajada enseña el principio de la pestaña nueva', arriba);
+await ev(`document.getElementById('qa-largo').remove()`);
 
 // ── 8. Nada se sale de la pantalla en ninguna pestaña ──
 const desb = [];

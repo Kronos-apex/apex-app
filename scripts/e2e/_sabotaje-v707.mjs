@@ -15,6 +15,7 @@ const F = { core: join(ROOT, 'avi-core.js'), e1: join(ROOT, 'app-1-infra.js'), e
   html: join(ROOT, 'index.html'), css: join(ROOT, 'styles.css') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 const SOLO_SUITE = process.argv.includes('--solo-suite');
+const FILA = (process.argv.find(a => a.startsWith('--fila=')) || '').slice(7);   // re-correr solo las filas que contengan ese texto
 
 const SABOTAJES = [
   // ── Qué pestaña se ve ──
@@ -60,7 +61,7 @@ const SABOTAJES = [
   ['suite', 'el Resumen se pinta antes de que las tarjetas decidan', 'e3', "  renderDetailSummary(c);   // v707 · va al final", "  void 0;   // v707 · va al final"],
   ['nav', 'las pestañas pierden su marca', 'e3', "if(s.marcas[t]){", "if(false){"],
   ['nav', 'una fila de «Para revisar» no lleva a su pestaña', 'e3', "onclick=\"detailTab('${r.tab}')\"><span style=\"flex:1;min-width:0\">", "onclick=\"void 0\"><span style=\"flex:1;min-width:0\">"],
-  ['nav', 'el texto nuevo se apaga hasta no leerse', 'css', '.dt-k{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}', '.dt-k{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}'],
+  ['nav', 'el texto nuevo se apaga hasta no leerse', 'css', '.dt-k{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}', '.dt-k{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--br2)}'],
 ];
 
 const correr = capa => {
@@ -72,6 +73,7 @@ const orig = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, readFileSy
 let muerden = 0, noAplican = 0, corridas = 0;
 for (const [capa, nombre, archivo, buscar0, poner0] of SABOTAJES) {
   if (SOLO_SUITE && capa !== 'suite') continue;
+  if (FILA && !nombre.includes(FILA)) continue;
   corridas++;
   const src = orig[archivo];
   const eol = src.includes('\r\n') ? '\r\n' : '\n';
