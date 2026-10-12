@@ -153,10 +153,10 @@ Solo cuando el grep devuelva la versión nueva se puede decir "está en producci
 |---|---|
 | Schema de datos (`DB`, cliente, sesión) | Si se añadió/cambió algún campo |
 | `SB_KEYS` | Si se añadió/eliminó alguna clave |
-| Funciones clave documentadas | Si se creó una función importante nueva |
-| GOTCHAS VIGENTES | Si la sesión dejó una lección que no expira |
-| ROADMAP → Backlog vigente | Item completado ✅ o item nuevo |
-| Footer `*Última actualización:*` | Versión avi-vNNN + conteo de suite |
+| `docs/funciones-clave.md` | Si se creó una función importante nueva |
+| `docs/gotchas.md` (en su zona) | Si la sesión dejó una lección que no expira — en CLAUDE.md solo si muerde en CADA sesión |
+| `docs/roadmap.md` → Backlog vigente | Item completado ✅ o item nuevo |
+| Línea `*Última actualización:*` al pie de CLAUDE.md (se REEMPLAZA) + entrada nueva ARRIBA en `docs/historial-versiones.md` | Versión avi-vNNN + conteo de suite |
 
 **Si no hubo cambio relevante para documentar:** confirmarlo explícitamente — "CLAUDE.md revisado, sin cambios necesarios."
 

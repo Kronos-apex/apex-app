@@ -18,7 +18,7 @@ Si la feature depende de CÓMO alguien usa la app (el coach, un asesorado), cons
 en Supabase (read-only) ANTES de diseñar. *Origen: v369 — Camilo dijo "cuenta aparte", la data
 dijo COACH_SELF en su fila propia; medio deploy a la basura por creerle a la frase y no al dato.*
 
-**R0.2 — Lee GOTCHAS VIGENTES (CLAUDE.md) y el plan vivo del área ANTES de editar.** Si el área
+**R0.2 — Busca en `docs/gotchas.md` (los GOTCHAS VIGENTES, fuera de CLAUDE.md desde 2026-10-12) lo de la zona y el plan vivo del área ANTES de editar.** Si el área
 tiene doc de plan (`docs/plan-*.md`), el spec de Fable manda. Si no hay spec y la feature es
 no-trivial, el diseño se escribe primero (scratchpad o `docs/`) y se valida contra el código
 existente (¿qué vía de persistencia YA existe? ¿qué función pura YA hace esto?).
@@ -34,7 +34,7 @@ respuesta, con razones y alternativa. "¡Excelente idea!" sin análisis = fallo 
 **R0.5 — Busca la CLASE antes de escribir.** Toda feature nueva se pregunta: ¿qué bug de clase
 ya conocido aplica aquí? (parcial-en-curso que pisa vistas [v367→v368], aserciones clavadas a
 versiones [_verify-news], upsert-sin-SELECT, wa.me sin waPhone, let-no-es-window…). El catálogo
-vivo de clases es GOTCHAS VIGENTES.
+vivo de clases es `docs/gotchas.md`.
 
 ## FASE 1 — EJECUCIÓN
 
@@ -104,7 +104,7 @@ solo se dice con curl + prodcheck en la mano.**
 
 **R3.2 — Documentación en el MISMO commit del deploy:** bitácora (parte nueva, más reciente
 primero), CLAUDE.md solo si cambió el contexto vivo (arquitectura/gotcha/backlog/footer),
-memoria de sesión al cierre. Gotcha nuevo → GOTCHAS VIGENTES, no enterrado en un hito.
+memoria de sesión al cierre. Gotcha nuevo → `docs/gotchas.md`, no enterrado en un hito.
 
 **R3.3 — Feature visible al asesorado → evaluar entrada AVI_NEWS** (y si se añade, R2.4 aplica).
 No toda feature la lleva (un banner que se explica solo, no); la decisión se declara.

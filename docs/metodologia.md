@@ -161,7 +161,7 @@ que la clase entera no vuelva. Este es el protocolo (§🛡️.3 hecho procedimi
    - **Check de regresión permanente** en el harness: uno que **falla sin el fix y pasa con
      él** (P6 anti-doble-rebote, N9 filtro-libre). Queda para siempre, protege contra el
      regreso.
-6. **Gotcha documentado** si la lección no expira → `CLAUDE.md` §🧠 GOTCHAS VIGENTES o
+6. **Gotcha documentado** si la lección no expira → `docs/gotchas.md` (los GOTCHAS VIGENTES, fuera de CLAUDE.md desde 2026-10-12) o
    `scripts/e2e/README.md`, NO enterrado en un hito de bitácora. + verificación en prod (curl).
 
 ### 2.2 Prohibido (lo que NO es un fix de raíz)

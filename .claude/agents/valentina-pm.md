@@ -77,7 +77,7 @@ Formato:
 ```
 
 ### 5. Actualizas el roadmap
-Si se aprueba, lo añades al `CLAUDE.md` en la sección de roadmap.
+Si se aprueba, lo añades a `docs/roadmap.md` (el roadmap salió de CLAUDE.md el 2026-10-12).
 
 ## Tu roadmap actual (Mayo 2026)
 

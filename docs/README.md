@@ -14,6 +14,17 @@ Los archivos **no se movieron** de sitio: la bitácora, CLAUDE.md y el código l
 
 ---
 
+## 📦 Lo que salió de CLAUDE.md (2026-10-12)
+
+CLAUDE.md se cargaba entero en cada sesión y pesaba 635 KB; quedó en ~38 KB con lo esencial. El resto se movió
+SIN cambiar una palabra (comprobado línea por línea):
+
+- [`gotchas.md`](gotchas.md) — las lecciones que no expiran, por zona (~390 KB: se busca con grep, no se lee entero).
+- [`historial-versiones.md`](historial-versiones.md) — el pie de CLAUDE.md: qué trajo cada versión, la más nueva arriba.
+- [`roadmap.md`](roadmap.md) — backlog, estudios y lo congelado.
+- [`funciones-clave.md`](funciones-clave.md) — referencia de funciones por área.
+- [`arquitectura.md`](arquitectura.md) — el detalle de cada panel, sección y modal (CLAUDE.md lleva la versión corta).
+
 ## 🟢 Reglas de trabajo (leer antes de tocar código)
 
 | Documento | Qué es | Estado |
