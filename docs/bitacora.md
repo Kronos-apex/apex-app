@@ -4,6 +4,45 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-11 — v706: el coach comparte el plan de alimentación
+
+- **Origen**: pedido del PO: *«en el panel de coach quiero poder compartir el plan de alimentación con mis
+  asesorados»*. Eligió los tres caminos: WhatsApp a ESA persona, una imagen del plan con la marca y un aviso
+  dentro de la app (no «el mismo plan a varios»).
+- **Qué cambió** (ficha del asesorado → «Plan nutricional», bloque «Compartir con <nombre>»):
+  - **La ficha pinta lo que VE la persona** (`_nutPlanCifras`: derivado de los macros con el piso de menores,
+    `nutBaseFor`) y lo dice («Lo que ve <nombre> en su app»). Antes pintaba lo ESCRITO, a un toque de los botones
+    que mandan lo derivado: dos números para el mismo plan (familia v435/v444).
+  - **WhatsApp** (`nutShareToClient`): al número normalizado (`waPhone`); sin celular guardado, WhatsApp abre para
+    elegir el chat y la ficha lo avisa. La redacción es una sola (`_nutPlanTexto`, «TU PLAN» con saludo; el botón
+    del asesorado usa la misma con «MI PLAN»).
+  - **Imagen** (`nutPlanCanvas`, 1080×1350, `shareCanvasImage`): el número del día, los tres macros, comidas y
+    agua, las notas del coach y «Evitar». Ni objetivo ni peso (lenguaje de composición corporal, v448).
+  - **Aviso dentro de la app** (`nutNotifyInApp`): sale por la misma ruta del chat (espera a la nube, cola sin
+    conexión, push después de guardar) con la marca `act:'nutplan'` SOLO en ese mensaje (`_cchatAct`, se consume
+    antes de cualquier salida); la persona ve «Ver mi plan de alimentación» debajo y el coach una nota de lo que
+    le aparece. **No se ofrece si no le llegaría** (`_nutAvisoNo`): AVI FREE o plan vencido (`premiumLocked`) y
+    plan sin coach (`chatDeliveryBlock`, el chat no le llega — v584); en su lugar, la ficha dice por qué.
+- **Lo que cazó el harness antes de producción**: con notas larguísimas la última línea de «Evitar» quedaba
+  pegada a la raya del pie (línea base 1210, raya 1218) y el gancho medía el cursor y no la última línea. Ahora el
+  texto se recorta al espacio que de verdad queda (TOPE 1180, con sitio guardado para «Evitar»). Y MIRANDO la
+  imagen: con un plan corto quedaban ~280 px vacíos abajo → el aire se reparte (regla v624), con su control (la
+  tarjeta llena casi no se mueve).
+- **Verificación**: suite 1469 → **1475** en los cuatro modos; `_verify-compartir-plan` (**34**: cifras con control
+  de menor, los tres botones a 360 px con hit-testing, número de WhatsApp, imagen y su aire, la marca solo en ese
+  mensaje, el botón de la persona y lo que abre, «Muy grande», el archivo con la comida bloqueada, AVI FREE y plan
+  sin coach); matriz versionada `_sabotaje-v706` **29/29 muerden** (15 en la suite, 14 que se ven en el harness), con el control en verde.
+- **Lo que cazó el QA (Julián estático 🟢, Lucas funcional 🟡→🟢 tras re-verificar los cinco puntos), cerrado antes de producción**:
+  - 🟡 **El aviso viejo saltaba el candado** (Lucas, medido): con la persona ya en AVI FREE, el ARCHIVO del chat
+    seguía pintando «Ver mi plan» y abría el plan completo, que es Premium. Ahora no se pinta (una nota dice por
+    qué) y la acción lo vuelve a preguntar (patrón v566). El mensaje se conserva (v584).
+  - 🟡 **Con «Muy grande» el rótulo del botón se salía del botón** (`.btn` es `nowrap`): ahora parte su texto.
+  - 🟢 La ficha decía «Lo que ve X en su app» de alguien que hoy no lo ve; una palabra larga sin espacios (un
+    enlace) se salía de la imagen; «tócalo aquí abajo» no significaba nada en la notificación → ahora el texto
+    dice dónde está el plan («en tu Perfil, en «Mi plan nutricional»»).
+  - Descartados con razón (Julián): el borrador del chat ya lo vaciaba `openCoachChat` antes de v706; el doble
+    toque cae sobre el chat, que tapa la ficha.
+
 ## ⏮️ 2026-10-11 — v705: buscador en el selector de ejercicios
 
 - **Origen**: pedido del PO: *«necesito introducir un botón de búsqueda en los ejercicios»*. La biblioteca ya
