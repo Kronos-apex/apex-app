@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#06090A">
+<title>AVI se mudó</title>
+<link rel="canonical" href="https://app.avientrena.com/">
+<style>
+  :root{--bg:#06120D;--card:#0E2219;--t1:#EAFBF4;--t2:#A9C9B8;--g:#10E0A0;--on-g:#04140D;--br:#1F3D2A}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--t1);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 20px calc(32px + env(safe-area-inset-bottom));max-width:440px;margin:0 auto}
+  .marca{font-weight:900;font-size:40px;letter-spacing:.02em;margin:0 0 4px}
+  .raya{width:56px;height:5px;background:var(--g);border-radius:3px;margin-bottom:28px}
+  h1{font-size:26px;line-height:1.2;margin:0 0 12px}
+  p{font-size:16px;line-height:1.55;color:var(--t2);margin:0 0 16px}
+  b{color:var(--t1)}
+  .btn{display:block;text-align:center;background:var(--g);color:var(--on-g);font-weight:800;font-size:17px;text-decoration:none;padding:16px 18px;border-radius:14px;margin:8px 0 20px;min-height:52px}
+  .pasos{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:16px 18px;margin:0}
+  .pasos h2{font-size:15px;margin:0 0 10px}
+  .pasos ol{margin:0;padding-left:20px;color:var(--t2);font-size:15px;line-height:1.6}
+  .pasos[hidden]{display:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="marca">AVI</div>
+  <div class="raya" aria-hidden="true"></div>
+  <h1>AVI se mudó</h1>
+  <p>Ahora AVI vive en <b>app.avientrena.com</b>. Tu cuenta, tus rutinas y tu historial están allá, igual que siempre.</p>
+  <a class="btn" id="ir" href="https://app.avientrena.com/">Abrir AVI</a>
+  <section class="pasos" id="pasos" hidden>
+    <h2>Tienes instalado el ícono viejo. Cámbialo así:</h2>
+    <ol>
+      <li>Toca «Abrir AVI» y entra con tu correo y tu contraseña.</li>
+      <li id="paso-ios">En Safari toca <b>Compartir</b> y luego <b>«Agregar a inicio»</b>.</li>
+      <li>Borra este ícono viejo de tu pantalla.</li>
+    </ol>
+  </section>
+</main>
+<script>
+(function(){
+  // github.io ya no sirve la app (decisión del PO, 11-oct-2026): esta página manda a la dirección nueva.
+  // Se conserva la ruta y los parámetros (?canal=, ?origen=), NUNCA el «#»: ahí viajaba la sesión de la
+  // mudanza (#avimv) y reenviarlo dejaría a alguien dentro de una cuenta ajena (v669).
+  var ruta = location.pathname.replace(/^\/apex-app\/?/, '');
+  if (ruta === 'index.html' || ruta === '404.html') ruta = '';
+  var destino = 'https://app.avientrena.com/' + ruta + location.search;
+  document.getElementById('ir').href = destino;
+  var instalada = (window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if (instalada) {
+    // Con el ícono viejo instalado, saltar solo no sirve: cada vez volvería a abrir aquí. Se explica.
+    document.getElementById('pasos').hidden = false;
+    if (window.navigator.standalone !== true) {
+      document.getElementById('paso-ios').textContent = 'Instala la app desde allá: menú del navegador → «Instalar app».';
+    }
+  } else {
+    location.replace(destino);
+  }
+})();
+</script>
+</body>
+</html>
