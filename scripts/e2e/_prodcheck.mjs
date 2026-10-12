@@ -10,9 +10,9 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 const EXPECT = (process.argv[2] || '').replace(/^v/, '').trim(); // '326' | ''
-// v658 · El 2.º argumento permite apuntar al HOGAR NUEVO (app.avientrena.com) durante la mudanza:
-// `node scripts/e2e/_prodcheck.mjs v658 https://app.avientrena.com/`. Sin él, la dirección de siempre.
-const BASE = (process.argv[3] || 'https://kronos-apex.github.io/apex-app/').replace(/\/?$/, '/');
+// El 2.º argumento cambia la URL. Desde el 11-oct-2026 la app vive SOLO en app.avientrena.com
+// (kronos-apex.github.io muestra la página «AVI se mudó»), así que esa es la de por defecto.
+const BASE = (process.argv[3] || 'https://app.avientrena.com/').replace(/\/?$/, '/');
 const HOST = new global.URL(BASE).host;
 const URL = BASE + '?nocache=' + Date.now();
 const sleep = ms => new Promise(r => setTimeout(r, ms));

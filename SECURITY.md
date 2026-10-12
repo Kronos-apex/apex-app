@@ -51,7 +51,7 @@ Para no gastar tiempo de nadie, esto es conocido y está decidido:
 
 ## Alcance
 
-Dentro: la app en `kronos-apex.github.io/apex-app`, este repositorio, las funciones de borde y el
+Dentro: la app en `app.avientrena.com`, este repositorio, las funciones de borde y el
 esquema de base de datos en `supabase/`.
 
 Fuera: el sitio de venta (otro repositorio), las cuentas de redes sociales del entrenador y la

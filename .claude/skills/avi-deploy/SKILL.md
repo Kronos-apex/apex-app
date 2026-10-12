@@ -123,6 +123,7 @@ Tested: ✅ Lucas QA — [feature principal] LISTO
 git add [archivos del cambio]  # revisar git status antes; nunca git add -A a ciegas
 git commit -m "[mensaje descriptivo]"   # mensajes multilínea: git commit -F <archivo>
 git push origin main
+node scripts/publicar-hogar.mjs   # un push NO publica: la app vive en app.avientrena.com (Vercel)
 ```
 
 **NUNCA:**
@@ -135,9 +136,9 @@ git push origin main
 ### PASO 6 — VERIFICAR producción (obligatorio — nunca "debería estar ya")
 
 ```bash
-# bucle hasta ver la versión nueva (Pages tarda 30s-3min; a veces el paso deploy
-# falla flaky → relanzar con commit vacío)
-curl -s "https://kronos-apex.github.io/apex-app/index.html?nocache=$(date +%s)" | grep -o 'app-1-infra.js?v=[0-9]*'
+# bucle hasta ver la versión nueva. kronos-apex.github.io está APAGADA desde el 11-oct-2026
+# (muestra «AVI se mudó»): la única dirección es app.avientrena.com
+curl -s "https://app.avientrena.com/index.html?nocache=$(date +%s)" | grep -o 'app-1-infra.js?v=[0-9]*'
 ```
 
 Solo cuando el grep devuelva la versión nueva se puede decir "está en producción".
@@ -169,7 +170,7 @@ Después de todo, confirmar al usuario:
 ✅ Lucas QA   : [feature] — LISTO
 ✅ Commit     : [tipo]: [resumen]
 ✅ Push       : origin/main → github.com/Kronos-apex/apex-app
-✅ Producción : curl confirma ?v=NNN en Pages
+✅ Producción : curl confirma ?v=NNN en app.avientrena.com + _prodcheck.mjs vNNN
 ✅ Bitácora   : hito registrado en docs/bitacora.md
 ```
 

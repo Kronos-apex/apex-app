@@ -17,7 +17,7 @@ import WebSocket from 'ws';
 // Por defecto mide PRODUCCION; con AVI_URL se apunta a una copia local para probar un
 // arreglo antes de desplegarlo (localhost cuenta como contexto seguro, asi que el
 // Service Worker se registra igual).
-const URL = process.env.AVI_URL || 'https://kronos-apex.github.io/apex-app/';
+const URL = process.env.AVI_URL || 'https://app.avientrena.com/';
 const CREDS = JSON.parse(readFileSync(join(homedir(), '.avi', 'e2e-creds.json'), 'utf8'));
 const PORT = 9407;
 

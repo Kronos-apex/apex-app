@@ -33,7 +33,7 @@ if (!r.ok) { console.error('Supabase respondió', r.status); process.exit(1); }
 const filas = await r.json();
 
 // La versión que sirve producción AHORA (la misma que lee `_prodcheck`).
-const sw = await (await fetch('https://kronos-apex.github.io/apex-app/sw.js')).text();
+const sw = await (await fetch('https://app.avientrena.com/sw.js?nc=' + Date.now())).text();
 const build = parseInt((sw.match(/avi-v(\d+)/) || [])[1], 10);
 
 const clientes = filas

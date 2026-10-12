@@ -4,6 +4,34 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-11 — kronos-apex.github.io APAGADA: la app vive solo en app.avientrena.com
+
+- **Origen**: decisión del PO junto con el plan de organización: *«ELIMINA LA DIRECCION ANTIGUA»*.
+- **Medido antes de apagar** (`push_subscriptions.origin`): una sola persona conservaba la suscripción de la
+  dirección vieja (Lucía Ríos, iPhone, actualizada el 9-oct); su último latido del 11-oct ya trae los avisos sin
+  activar, que es lo que se ve cuando abre desde la dirección nueva — probable, no confirmado.
+- **Cómo se apagó sin dejar a nadie colgado**: GitHub Pages publica ahora la rama huérfana `pages-mudanza`
+  (fuente cambiada por la API, `PUT /pages`), no `main`:
+  - `index.html` y `404.html`: página «AVI se mudó». En una pestaña salta sola a la MISMA ruta y parámetros en
+    app.avientrena.com y **nunca reenvía el `#`** (ahí viajaba la sesión de la mudanza; reenviarlo reabría la
+    fijación de sesión de v669). Con el ícono viejo instalado no salta —volvería a caer ahí en cada apertura—:
+    explica entrar con correo y contraseña, instalar desde la nueva y borrar el ícono viejo.
+  - `sw.js`: a los teléfonos que tenían la app instalada les llega como actualización del service worker,
+    **borra la caché, se da de baja y recarga** la ventana para que vean la página y no la copia vieja.
+- **Verificación local** (`scripts/_tmp-github-mudanza.mjs`, no versionado): la app vieja instalada con su SW →
+  se cambia el sitio → salta con sus parámetros, el SW viejo queda dado de baja y sin caché, una ruta vieja va a
+  la misma ruta nueva sin el `#`, y con el ícono instalado (iPhone y Android) se queda con los pasos; control: sin
+  ícono la misma página salta. Dos fallos eran del montaje: `python -m http.server` no sirve `404.html` y
+  `display-mode` no se emula en Chrome headless.
+- **Lo que cambió en el repo**: CI deja el job `dos-direcciones` por `produccion` (espera la versión en
+  app.avientrena.com y comprueba que la vieja siga mostrando la página de mudanza); `_prodcheck`,
+  `versiones-telefonos` y los harness contra producción apuntan a app.avientrena.com; se retira
+  `_prodcheck-mudanza.mjs` (probaba el salto desde la dirección vieja, que ya no existe); README, SECURITY,
+  skill de deploy y CLAUDE.md al día.
+- **Queda para después** (sin urgencia): la lógica de llegada de la mudanza en la app (`AVI_OLD_HOSTS`,
+  `mudanzaReferrerOk`) ya no recibe a nadie y sale en un lote de app; los orígenes CORS de las funciones de borde
+  y la lista de redirecciones de Supabase Auth todavía nombran github.io (inofensivo: ahí ya no corre código).
+
 ## ⏮️ 2026-10-11 — v706: el coach comparte el plan de alimentación
 
 - **Origen**: pedido del PO: *«en el panel de coach quiero poder compartir el plan de alimentación con mis

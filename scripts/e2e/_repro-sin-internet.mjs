@@ -17,7 +17,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 
-const URL = 'https://kronos-apex.github.io/apex-app/';
+const URL = 'https://app.avientrena.com/';
 const CREDS = JSON.parse(readFileSync(join(homedir(), '.avi', 'e2e-creds.json'), 'utf8'));
 const PORT = 9405;
 const PERFIL = join(process.env.TEMP, 'offprof-' + Date.now());

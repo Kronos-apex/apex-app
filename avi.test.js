@@ -21629,16 +21629,24 @@ test('🔒 v670 · al activar los avisos en el hogar nuevo se retiran los de la 
   assert.ok(/\.delete\(\)\.in\('id',_sobran\)/.test(bloque), '🔴 no borra lo que la regla dijo que sobra');
   assert.ok(/\.eq\('client_id',_cid\)/.test(bloque), '🔴 leería suscripciones que no son de esta persona');
 });
-test('🔒 CI · un push no puede dejar las dos direcciones en versiones distintas sin ponerse en ROJO', () => {
+test('🔒 CI · un push no puede dejar producción atrás ni la dirección vieja encendida sin ponerse en ROJO', () => {
+  // Auditoría del 25-sep, F1-3, re-encuadrado el 11-oct-2026: kronos-apex.github.io se apagó (decisión del PO) y
+  // la app vive solo en app.avientrena.com, que se publica APARTE del push. Lo que protege sigue igual: un arreglo
+  // que se queda en el repo no le llega a nadie. Y se suma lo nuevo: la dirección vieja tiene que seguir apagada.
   const ci = require('fs').readFileSync(require('path').join(__dirname, '.github', 'workflows', 'ci.yml'), 'utf8');
-  const i = ci.indexOf('\n  dos-direcciones:');
-  assert.ok(i > 0, '🔴 CI dejó de comprobar que las dos direcciones sirvan la misma versión');
+  const i = ci.indexOf('\n  produccion:');
+  assert.ok(i > 0, '🔴 CI dejó de comprobar lo que sirve producción');
   const job = ci.slice(i);
-  assert.ok(/kronos-apex\.github\.io\/apex-app\/sw\.js/.test(job) && /app\.avientrena\.com\/sw\.js/.test(job), '🔴 compara menos de las dos direcciones');
-  assert.ok(/\[ "\$A" = "\$B" \]/.test(job), '🔴 no exige que las dos sirvan LA MISMA versión');
+  assert.ok(/app\.avientrena\.com\/sw\.js/.test(job), '🔴 no mira lo que sirve app.avientrena.com');
   assert.ok(/-ge "\$\(num "\$V"\)"/.test(job), '🔴 no exige que sea la versión de este commit (o una más nueva)');
-  assert.ok(/exit 1\s*$/.test(job.trimEnd() + '\n'), '🔴 si no se alinean, el paso tiene que FALLAR (y llegar el correo)');
+  // Se ata a la CONDICIÓN: «AVI se mudó» también sale en el mensaje de error y en el comentario (un sabotaje
+  // que dejaba la condición en `if false` salía verde con la aserción que solo buscaba el texto).
+  assert.ok(/if ! echo "\$P" \| grep -q 'AVI se mudó'; then/.test(job), '🔴 no comprueba que la dirección vieja siga mostrando la página de mudanza');
+  assert.ok(/kronos-apex\.github\.io\/apex-app\/sw\.js/.test(job) && /grep -q 'avi-v\[0-9\]'/.test(job),
+    '🔴 no comprueba que la dirección vieja NO vuelva a servir la app');
+  assert.ok((job.match(/exit 1/g) || []).length >= 3, '🔴 cada comprobación tiene que FALLAR el paso (y llegar el correo)');
   assert.ok(/publicar-hogar\.mjs/.test(job), 'el error tiene que decir qué hacer');
+  assert.ok(!/\n  dos-direcciones:/.test(ci), '🔴 volvió el job viejo que exigía que github.io sirviera la app');
 });
 test('🔒 v671 · SIN EDAD NO SE PRESUME ADULTO: ni se publica, ni se comparte, ni se le habla de grasa o cintura', () => {
   // Auditoría del 25-sep, F2-1: `parseInt('')` es NaN, y `NaN && …` / `NaN < 18` son false — una ficha sin

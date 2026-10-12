@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
-const APP = 'https://kronos-apex.github.io/apex-app/';
+const APP = 'https://app.avientrena.com/';
 import { EMAIL, PASS } from './_creds.mjs';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PROFILE = process.env.TEMP + '/cdp-salomon-' + Date.now();
