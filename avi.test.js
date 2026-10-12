@@ -24270,6 +24270,48 @@ test('🔒 v708 · el Perfil enseña filas y cada sección abre su pantalla; el 
   assert.ok(iPu > 0 && iPf > iPu, '🔴 el atrás cerraría la pantalla de la fila por DEBAJO del candado abierto desde ella');
 });
 // ══════════════════════════════════════════════════════
+// v709 · PROGRESO EN PESTAÑAS (lote 4 del estudio de organización, decisión del PO)
+// ══════════════════════════════════════════════════════
+test('🔒 v709 · Progreso va en cuatro pestañas y cada bloque vive en la suya', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const i = html.indexOf('<div id="cn-history"'), f = html.indexOf('<div id="cn-profile"', i);
+  const prog = html.slice(i, f);
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const TABS = JSON.parse(ent.match(/const PROG_TABS=(\[[^\]]*\]);/)[1].replace(/'/g, '"'));
+  assert.deepStrictEqual(TABS, ['resumen', 'historial', 'records', 'logros'], 'las pestañas del estudio');
+  const botones = [...prog.matchAll(/class="dt-tab"[^>]*data-t="([a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(botones, TABS, 'la barra y la lista de pestañas coinciden');
+  assert.ok(/class="dt-seg" role="tablist"[^>]*onkeydown="progTabKey\(event\)"/.test(prog), '🔴 con teclado no se recorren las pestañas');
+  const secs = {};
+  for (const m of prog.matchAll(/<section class="pg-sec" data-pt="([a-z]+)"[\s\S]*?<\/section>/g)) secs[m[1]] = m[0];
+  assert.deepStrictEqual(Object.keys(secs), TABS, 'una sección por pestaña, en orden');
+  const DONDE = { resumen: ['cn-streak', 'cn-advstats'], historial: ['vol-chart-wrap', 'cn-hist-list'], records: ['cn-exprog-wrap', 'cn-exprog-list'], logros: ['cn-gamif', 'pg-logros-vacio'] };
+  for (const t of TABS) for (const id of DONDE[t]) assert.ok(secs[t].includes('id="' + id + '"'), '🔴 #' + id + ' no está en «' + t + '»');
+  assert.ok(!/prog-anchors|progJump/.test(prog + ent), 'la fila de anclas de v314 se retiró (las pestañas la reemplazan)');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/#cn-history \.pg-sec\{display:none\}/.test(css), '🔴 sin la regla base, las cuatro pestañas se ven a la vez');
+  for (const t of TABS) assert.ok(css.includes('#cn-history[data-ptab="' + t + '"] .pg-sec[data-pt="' + t + '"]'), '🔴 «' + t + '» no se puede ver');
+});
+test('🔒 v709 · Progreso pinta sus cuatro pestañas al abrirse, sin empujar historial y sin pestañas en blanco', () => {
+  const fs = require('fs'), path = require('path');
+  const ent = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const rh = ent.slice(ent.indexOf('function renderClientHistory('), ent.indexOf('\nfunction ', ent.indexOf('function renderClientHistory(') + 10));
+  assert.ok(/if\(typeof renderClientExProgress==='function'\) renderClientExProgress\(clientId\);\s*\n\s*_progSync\(\);/.test(rh),
+    '🔴 «Récords» depende de haber abierto el Perfil (el progreso por ejercicio solo lo pintaba él)');
+  const pt = ent.slice(ent.indexOf('function progTab('), ent.indexOf('function progTabKey('));
+  assert.ok(!/navPush|pushState|navRecord/.test(pt), '🔴 cambiar de pestaña empuja historial: el atrás recorrería pestañas');
+  assert.ok(/CUR\.progTab=t;/.test(pt), '🔴 la pestaña no se recuerda');
+  assert.ok(/if\(sc&&sc\.scrollTop>0\) sc\.scrollTop=0;/.test(pt), '🔴 con la pantalla bajada, la pestaña nueva no empieza arriba');
+  const ps = ent.slice(ent.indexOf('function _progSync('), ent.indexOf('\n}', ent.indexOf('function _progSync(')));
+  assert.ok(/progTab\(CUR\.progTab\|\|'resumen',\{quieto:true\}\)/.test(ps), '🔴 al abrir Progreso no se aplica la pestaña');
+  assert.ok(/v\.hidden=!!\(g&&g\.innerHTML\.trim\(\)\)/.test(ps), '🔴 «Logros» queda en blanco para una asesorada nueva');
+  // Las ayudas dicen cómo está la pantalla HOY (la del Perfil hablaba de una «racha» que no vive ahí).
+  const extra = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  assert.ok(/<b>Resumen<\/b>[\s\S]{0,120}<b>Historial<\/b>[\s\S]{0,80}<b>Récords<\/b>[\s\S]{0,80}<b>Logros<\/b>/.test(extra), '🔴 la ayuda de Progreso no nombra sus pestañas');
+  assert.ok(/<b>Toca una fila<\/b>/.test(extra) && !/Aquí están tus datos y tu <b>racha<\/b>/.test(extra), '🔴 la ayuda del Perfil no dice cómo está hoy');
+});
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

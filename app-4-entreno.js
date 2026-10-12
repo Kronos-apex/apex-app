@@ -4452,22 +4452,43 @@ function _exSubregions(ex){
 }
 
 let _cnHistOpen={}; // clientId -> ver TODO el historial (por defecto colapsado a 2)
-// v314 (estudio, mejora 3): salto por anclas dentro de Progreso. La fila solo aparece
-// cuando hay sesiones; cada chip se oculta si su bloque está vacío (gamif con 0 entrenos).
-function progJump(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
-function _syncProgAnchors(hasSessions){
-  const row=document.getElementById('prog-anchors'); if(!row)return;
-  row.style.display=hasSessions?'flex':'none';
-  // CANDADO: el scroll del asesorado vive en .cnbody (overflow:auto) y la barra superior
-  // queda FUERA de ese scroller → top:0 (styles.css) pega la fila JUSTO debajo de la barra.
-  // No poner top en px aquí: 55px dentro de .cnbody = hueco de 55px (bug cazado 2026-07-10).
-  // El salto sí necesita despejar la fila: scroll-margin medido en vivo (letra grande cambia el alto).
-  const clear=(row.offsetHeight||38)+8; // fila + aire
-  row.querySelectorAll('[data-jump]').forEach(b=>{
-    const t=document.getElementById(b.getAttribute('data-jump'));
-    b.style.display=(t&&(t.id==='prog-hist-sec'||t.innerHTML.trim()))?'':'none';
-    if(t)t.style.scrollMarginTop=clear+'px'; // que el salto no deje el título tapado
-  });
+// ── PROGRESO EN PESTAÑAS (v709, lote 4 del estudio de organización) ─────────────────────────────────
+// Decisión del PO (11-oct-2026): Resumen · Historial · Récords · Logros, con el control segmentado de la ficha
+// del coach (v707). Reemplaza a la fila de anclas de v314 (Progreso medía ~3,7 pantallas). La pestaña la decide
+// un atributo de la pantalla + CSS (`.pg-sec`): ningún renderizador pelea por un `style.display` (v505).
+// 🔒 Cambiar de pestaña NO empuja historial (el atrás no recorre pestañas); la elegida se recuerda mientras la
+//    app esté abierta, como en cualquier app con pestañas abajo.
+const PROG_TABS=['resumen','historial','records','logros'];
+function progTab(t,opts){
+  t=PROG_TABS.indexOf(t)>=0?t:'resumen';
+  const P=document.getElementById('cn-history'); if(!P) return;
+  const antes=P.getAttribute('data-ptab');
+  CUR.progTab=t; P.setAttribute('data-ptab',t);
+  const bar=document.getElementById('pg-tabs');
+  if(bar){
+    bar.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===t; b.setAttribute('aria-selected',on?'true':'false'); b.tabIndex=on?0:-1; });
+    const on=bar.querySelector('.dt-tab[aria-selected="true"]'), seg=bar.querySelector('.dt-seg')||bar;
+    if(on&&seg.scrollWidth>seg.clientWidth) requestAnimationFrame(()=>{ const r=on.getBoundingClientRect(), sr=seg.getBoundingClientRect(); seg.scrollLeft+=(r.left+r.width/2)-(sr.left+sr.width/2); });
+  }
+  // Con la pantalla bajada, la pestaña nueva empieza arriba (la barra queda fija debajo de la cabecera).
+  if(antes!==t&&!(opts&&opts.quieto)&&P.classList.contains('on')){
+    const sc=P.closest('.cnbody'); if(sc&&sc.scrollTop>0) sc.scrollTop=0;
+  }
+}
+// Teclado: ← → Inicio Fin (lo que Julián pidió para la ficha del coach, v707).
+function progTabKey(e){
+  const k=e&&e.key, i=PROG_TABS.indexOf(CUR.progTab||'resumen');
+  const j=k==='ArrowRight'?Math.min(PROG_TABS.length-1,i+1):k==='ArrowLeft'?Math.max(0,i-1):k==='Home'?0:k==='End'?PROG_TABS.length-1:-1;
+  if(j<0) return;
+  e.preventDefault(); progTab(PROG_TABS[j]);
+  const b=document.querySelector('#pg-tabs .dt-tab[data-t="'+PROG_TABS[j]+'"]'); if(b) b.focus();
+}
+// Con todo pintado: la pestaña que toca, y Logros dice qué esperar cuando todavía no hay nada (renderGamification
+// lo deja vacío a propósito en un asesorado nuevo, y una pestaña en blanco se lee como un error).
+function _progSync(){
+  progTab(CUR.progTab||'resumen',{quieto:true});
+  const g=document.getElementById('cn-gamif'), v=document.getElementById('pg-logros-vacio');
+  if(v) v.hidden=!!(g&&g.innerHTML.trim());
 }
 function renderClientHistory(clientId){
   if(!DB.history)DB.history=ld('ax_hist',{});
@@ -4479,7 +4500,10 @@ function renderClientHistory(clientId){
   renderClientStreak(clientId);
   renderAdvStats(clientId);
   renderVolChart(sessions);
-  _syncProgAnchors(sessions.length>0);
+  // v709 · «Mi progreso por ejercicio» vive en esta pantalla (pestaña Récords) y solo se pintaba al abrir el
+  // Perfil o al terminar un entreno: quien entraba directo aquí la veía vacía o vieja.
+  if(typeof renderClientExProgress==='function') renderClientExProgress(clientId);
+  _progSync();
   if(!sessions.length){
     con.innerHTML='<div class="empty" style="padding:36px"><div class="eico" style="color:var(--g2)">'+(typeof aviIcon==='function'?aviIcon('chart',34):'📊')+'</div><div class="etxt">Aquí verás tu progreso</div><div class="esub">Cada entrenamiento que completes en <b>"Hoy"</b> queda guardado aquí. Con las semanas verás cómo avanzas 📈<br><br>Al principio está vacío — ¡es normal!</div><button class="btn bp bsm" style="margin-top:14px" onclick="cnTab(\'cn-today\',document.querySelectorAll(\'.cntab\')[0])">Ir a mi entrenamiento →</button></div>';
     return;

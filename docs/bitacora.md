@@ -4,6 +4,22 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-12 — v709: Progreso en pestañas
+
+- **Origen**: lote 4 del estudio de organización (decisión del PO). Progreso medía ~3,7 pantallas con nivel,
+  constancia, números, historial y progreso por ejercicio apilados, y una fila de anclas para saltar.
+- **Qué cambió**: cuatro pestañas fijas arriba con el control de la ficha del coach: **Resumen** (constancia y
+  números), **Historial** (la gráfica de volumen y cada entreno), **Récords** (cómo avanza cada ejercicio) y
+  **Logros** (nivel y medallas). La pestaña se recuerda al ir a otra pantalla y volver; cambiarla no añade pasos
+  al atrás; con la pantalla bajada, la pestaña nueva empieza arriba; teclado ← → Inicio Fin. A una asesorada
+  nueva ninguna pestaña le queda en blanco (Logros dice que su nivel aparece con su primer entreno).
+- **Un hueco que salió de paso**: «Mi progreso por ejercicio» vive en Progreso pero solo lo pintaba el Perfil (o
+  terminar un entreno): quien entraba directo a Progreso lo veía vacío o viejo. Ahora Progreso lo pinta al abrirse.
+- **Ayudas al día**: la de Progreso nombra sus pestañas y la del Perfil explica las filas (hablaba de una «racha»
+  que no vive ahí).
+- **Verificación**: suite 1483 → **1485**; `_verify-progreso-pestanas` (nuevo); matriz `_sabotaje-v709`; de
+  `_verify-v314` se retiró la parte de las anclas (lo que vigilaba lo vigila el harness nuevo).
+
 ## ⏮️ 2026-10-12 — v708: el Perfil del asesorado en filas
 
 - **Origen**: lote 3 del estudio de organización (decisión del PO, «dale con las tres»). El Perfil medía 4,3

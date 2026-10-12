@@ -633,8 +633,6 @@ html[data-theme="light"] .mta {
 .exlb-close{position:absolute;top:max(16px,calc(env(safe-area-inset-top) + 8px));right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
 @keyframes exlbIn{from{opacity:0}to{opacity:1}}
 /* ══ PROGRESO (pestaña consolidada): header de sección + tarjetas de sesión premium ══ */
-.prog-sech{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--t2);margin:20px 2px 12px;display:flex;align-items:center;gap:9px}
-.prog-sech::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--br2),transparent)}
 .sescard{background:var(--w);border:1px solid var(--br);border-left:3px solid var(--g2);border-radius:var(--r);margin-bottom:9px;overflow:hidden;box-shadow:var(--sh)}
 .sescard.done{border-left-color:var(--gt)}
 .sescard-h{padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:7px}
@@ -1598,9 +1596,6 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 /* v313 (estudio, mejora 2): compartir — secundario sobre la foto, no compite con Continuar */
 .wf-btn.wf-share{background:rgba(4,8,10,.58);color:#EAFBF4;border:1.5px solid rgba(16,224,160,.55);box-shadow:none;margin-bottom:10px;backdrop-filter:blur(6px)}
 /* v314 (estudio, mejora 3): anclas de salto en Progreso — pegajosas al hacer scroll */
-.prog-anchors{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;position:sticky;top:0;z-index:5;background:var(--bg)}
-.prog-anchors button{flex-shrink:0;min-height:36px;font-family:inherit;font-size:12px;font-weight:700;color:var(--gt);background:var(--gl);border:1px solid var(--g2);border-radius:99px;padding:7px 14px;cursor:pointer}
-.prog-anchors button:active{transform:scale(.97)}
 /* v314 (estudio, mejora 5): micro-celebración al marcar una serie. CANDADO: el selector
    lleva .checked porque .gm-check.checked (más abajo) trae animation:checkDone y con igual
    especificidad ganaría por orden — el pop solo existe los 450ms de la marca (clase _gmPop). */
@@ -2612,3 +2607,6 @@ button.dt-tile:active{transform:scale(.97)}
 #pfroom-body .ch:not(:has(button)){display:none}
 .pf-bloq .aj-val{color:var(--t2);font-style:italic}
 .pf-cerrada .ch button{display:none}
+/* v709 · Progreso en pestañas (lote 4): el control segmentado es el de la ficha del coach (.dt-*). */
+#cn-history .pg-sec{display:none}
+#cn-history[data-ptab="resumen"] .pg-sec[data-pt="resumen"],#cn-history[data-ptab="historial"] .pg-sec[data-pt="historial"],#cn-history[data-ptab="records"] .pg-sec[data-pt="records"],#cn-history[data-ptab="logros"] .pg-sec[data-pt="logros"]{display:block}

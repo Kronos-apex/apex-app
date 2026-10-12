@@ -2043,14 +2043,16 @@ const HELP_SECTIONS = {
     </ul>
     <div style="margin-top:10px">Nunca te quedes con la duda: para eso está tu entrenador 🙂</div>` },
   'cn-history': { emoji:'📊', title:'Tu "Historial" (progreso)', html:`
-    Aquí ves cómo <b>avanzas con el tiempo</b>.
+    Aquí ves cómo <b>avanzas con el tiempo</b>, en cuatro pestañas: <b>Resumen</b> (tu constancia y tus números),
+    <b>Historial</b> (cada entreno), <b>Récords</b> (cómo avanza cada ejercicio) y <b>Logros</b> (tu nivel).
     <ul style="margin:10px 0 0;padding-left:18px">
       <li style="margin-bottom:7px">Cada entrenamiento que completas queda <b>guardado</b> solo.</li>
       <li style="margin-bottom:7px">Con las semanas verás cómo subes de peso o repeticiones 📈</li>
     </ul>
     <div style="margin-top:10px">Al principio estará casi vacío — es normal. <b>Entrena y vuelve en unas semanas</b> para ver tu cambio.</div>` },
   'cn-profile': { emoji:'👤', title:'Tu "Perfil"', html:`
-    Aquí están tus datos y tu <b>racha</b> de entrenamientos.
+    Aquí está lo tuyo, en filas: tus datos, tus récords, tu plan de alimentación, tu peso, tus medidas y tus fotos.
+    <b>Toca una fila</b> para verla completa y vuelve con «‹ Perfil».
     <ul style="margin:10px 0 0;padding-left:18px">
       <li style="margin-bottom:7px">Puedes anotar tu <b>peso y medidas</b> para ver cómo cambian con el tiempo.</li>
       <li style="margin-bottom:7px">Tu entrenador usa estos datos para <b>ajustar tu plan</b>.</li>

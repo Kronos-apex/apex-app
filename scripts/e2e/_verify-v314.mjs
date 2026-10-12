@@ -1,6 +1,5 @@
 // Verificación E2E de v314 (estudio de interfaz, mejoras 3 y 5):
-// (A) anclas en Progreso: ocultas sin sesiones, fila sticky con sesiones, chips según
-//     contenido de su bloque, progJump apunta al elemento correcto.
+// (A) anclas en Progreso — RETIRADA en v709 (Progreso pasó a pestañas; ver _verify-progreso-pestanas).
 // (P) micro-pop al marcar serie: _gmPop agrega y retira .gm-pop; la marca real en el
 //     guiado (click en el check, como el usuario) dispara la animación gmPop.
 // Shot del pop: serie FUERA de orden (sin descanso) — marcar el paso activo abre la
@@ -53,54 +52,10 @@ try {
   for (let k = 0; k < 6; k++) { await ev(`(()=>{try{hideClientWelcome();}catch(e){}['data-ob','cwelcome','m-fsintro','m-textsize'].forEach(i=>{const e=document.getElementById(i);if(e){e.classList.remove('on');e.style.display='none';}});const ob=document.getElementById('onboarding');if(ob)ob.style.display='none';try{localStorage.setItem('ax_news_seen',String(AVI_NEWS.reduce((m,n)=>Math.max(m,n.v),0)));ntClose(false);}catch(e){}})()`); await sleep(150); }
   await ev(`(()=>{try{UD.loadOwn=async()=>null;}catch(e){}})()`);
 
-  // ── (A) ANCLAS EN PROGRESO ──
-  // A1: sin sesiones → fila oculta (el estado vacío no necesita saltos)
-  let s = JSON.parse(await ev(`JSON.stringify((()=>{
-    DB.history[CUR.clientId]=[];
-    renderClientHistory(CUR.clientId);
-    const row=document.getElementById('prog-anchors');
-    return {disp:row.style.display};})())`));
-  check('A1 sin sesiones: fila de anclas oculta', s.disp === 'none', JSON.stringify(s));
-
-  // A2: con sesiones → fila visible, sticky, y los 4 chips con bloque lleno visibles
-  s = JSON.parse(await ev(`JSON.stringify((()=>{
-    const mk=i=>({id:'sQA'+i,date:new Date(Date.now()-i*86400000).toISOString(),routineName:'Full-Body QA',doneSets:12,totalSets:12,totalVol:2450,durationSec:2530});
-    DB.history[CUR.clientId]=[0,1,2,3,4].map(mk);
-    renderClientHistory(CUR.clientId);
-    const row=document.getElementById('prog-anchors');
-    const cs=getComputedStyle(row);
-    const bar=document.querySelector('#s-client .cntopbar');
-    const chips=[...row.querySelectorAll('[data-jump]')].map(b=>({j:b.getAttribute('data-jump'),vis:b.style.display!=='none'}));
-    const smt=(document.getElementById('prog-hist-sec')||{style:{}}).style.scrollMarginTop;
-    return {disp:row.style.display,sticky:cs.position,top:cs.top,rowH:row.offsetHeight,smt,chips};})())`));
-  check('A2 con sesiones: fila visible, sticky top:0 (el scroller .cnbody arranca bajo la barra) y scroll-margin = fila+aire', s.disp === 'flex' && s.sticky === 'sticky' && s.top === '0px' && parseFloat(s.smt) >= s.rowH, JSON.stringify({disp:s.disp,sticky:s.sticky,top:s.top,rowH:s.rowH,smt:s.smt}));
-  const histChip = (s.chips||[]).find(c => c.j === 'prog-hist-sec');
-  check('A3 chips visibles solo con bloque lleno (Historial siempre)', !!histChip && histChip.vis && (s.chips||[]).every(c => typeof c.vis === 'boolean'), JSON.stringify(s.chips));
-
-  // A4: progJump apunta al elemento correcto (espía scrollIntoView)
-  s = JSON.parse(await ev(`JSON.stringify((()=>{
-    const calls=[];const orig=Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView=function(){calls.push(this.id);};
-    try{progJump('cn-gamif');progJump('prog-hist-sec');progJump('no-existe-xyz');}
-    finally{Element.prototype.scrollIntoView=orig;}
-    return {calls};})())`));
-  check('A4 progJump hace scroll al bloque pedido (y aguanta id inexistente)', Array.isArray(s.calls) && s.calls.length === 2 && s.calls[0] === 'cn-gamif' && s.calls[1] === 'prog-hist-sec', JSON.stringify(s));
-
-  // Shot de la fila en el panel real de Progreso
-  await ev(`(()=>{const tabs=[...document.querySelectorAll('.cntab')];const t=tabs.find(x=>(x.getAttribute('onclick')||'').includes('cn-history'));if(t)t.click();})()`);
-  await sleep(900);
-  await shot('v314-anclas');
-
-  // A5: salto REAL — la fila queda visible bajo la barra y el título del bloque NO queda tapado
-  await ev(`progJump('prog-hist-sec')`);
-  await sleep(1200); // scroll smooth
-  s = JSON.parse(await ev(`JSON.stringify((()=>{
-    const bar=document.querySelector('#s-client .cntopbar').getBoundingClientRect();
-    const row=document.getElementById('prog-anchors').getBoundingClientRect();
-    const sec=document.getElementById('prog-hist-sec').getBoundingClientRect();
-    return {barB:Math.round(bar.bottom),rowT:Math.round(row.top),rowB:Math.round(row.bottom),secT:Math.round(sec.top)};})())`));
-  check('A5 tras el salto: fila AL RAS bajo la barra (sin hueco) y título destapado', s.rowT >= s.barB - 2 && s.rowT <= s.barB + 6 && s.secT >= s.rowB - 4, JSON.stringify(s));
-  await shot('v314-anclas-sticky');
+  // ── (A) ANCLAS EN PROGRESO: RETIRADA en v709 ──
+  // Progreso pasó a pestañas (Resumen · Historial · Récords · Logros) y la fila de anclas ya no existe;
+  // lo que esta parte vigilaba lo vigila ahora `_verify-progreso-pestanas`.
+  let s;
 
   // ── (P) MICRO-POP AL MARCAR SERIE ──
   // P1: _gmPop pone la clase y la retira sola (~500ms)
