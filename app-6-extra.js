@@ -3034,10 +3034,17 @@ function openExYoutube(){
 // ══════════════════════════════════════════
 
 function renderDetailMembership(id){
+  if(typeof detailSummaryLater==='function') detailSummaryLater(); // v707 · el Resumen y la marca de «Pagos»
   const con=document.getElementById('d-membership');
   if(!con)return;
   const c=DB.clients.find(x=>x.id===id);
   if(!c){con.innerHTML='';return;}
+  // v707 · en su propia ficha el coach no se cobra a sí mismo: la pestaña lo dice en vez de enseñarle
+  // una membresía «Sin pago» con botones de cobro (QA Lucas; el Resumen ya callaba el plan).
+  if(typeof isSelfClient==='function'&&isSelfClient(c)){
+    con.innerHTML='<div class="card"><div class="cb" style="font-size:13px;color:var(--t2);line-height:1.5">Esta es tu propia ficha: no te cobras a ti mismo, así que aquí no hay membresía ni pagos.</div></div>';
+    return;
+  }
   const st=MS.getStatus(c);
   const badge=MS.badge(st);
   const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));

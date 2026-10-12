@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const F = { core: join(ROOT, 'avi-core.js'), e1: join(ROOT, 'app-1-infra.js'), e2: join(ROOT, 'app-2-login.js'), e3: join(ROOT, 'app-3-coach.js'),
-  html: join(ROOT, 'index.html'), css: join(ROOT, 'styles.css') };
+  e6: join(ROOT, 'app-6-extra.js'), html: join(ROOT, 'index.html'), css: join(ROOT, 'styles.css') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 const SOLO_SUITE = process.argv.includes('--solo-suite');
 const FILA = (process.argv.find(a => a.startsWith('--fila=')) || '').slice(7);   // re-correr solo las filas que contengan ese texto
@@ -48,6 +48,15 @@ const SABOTAJES = [
   ['nav', 'sin los datos pesados, el Resumen repite «No tiene plan» (se ve)', 'e3', "const _pesados=!(typeof AUTH_MODE!=='undefined'&&AUTH_MODE)||!!_heavyLoaded[c.id];", 'const _pesados=true;'],
   ['suite', 'con teclado solo se llega a la pestaña elegida', 'html', ' onkeydown="detailTabKey(event)">', '>'],
   ['nav', 'con teclado solo se llega a la pestaña elegida (se ve)', 'html', ' onkeydown="detailTabKey(event)">', '>'],
+  // ── Correcciones del QA (Lucas) ──
+  ['suite', '«Pidió un coach» no llega al Resumen (QA Lucas)', 'core', '  if (f.lead) revisar.push(', '  if (false) revisar.push('],
+  ['nav', '«Pidió un coach» no llega al Resumen, se ve (QA Lucas)', 'e3', "lead:clientPlan(c)!=='coach'&&_leadPending(c)});", 'lead:false});'],
+  ['suite', 'registrar un pago deja vieja la marca de «Pagos» (QA Lucas)', 'e6', "  if(typeof detailSummaryLater==='function') detailSummaryLater(); // v707 · el Resumen y la marca de «Pagos»\n", ''],
+  ['nav', 'registrar un pago deja vieja la marca de «Pagos», se ve (QA Lucas)', 'e6', "  if(typeof detailSummaryLater==='function') detailSummaryLater(); // v707 · el Resumen y la marca de «Pagos»\n", ''],
+  ['suite', 'el coach ve cobros en su propia ficha (QA Lucas)', 'e6', "  if(typeof isSelfClient==='function'&&isSelfClient(c)){\n    con.innerHTML=", "  if(false){\n    con.innerHTML="],
+  ['nav', 'el coach ve cobros en su propia ficha, se ve (QA Lucas)', 'e6', "  if(typeof isSelfClient==='function'&&isSelfClient(c)){\n    con.innerHTML=", "  if(false){\n    con.innerHTML="],
+  ['suite', 'una nota con un enlace largo arrastra la pantalla (QA Lucas)', 'html', ';overflow-wrap:anywhere" id="d-notes"', '" id="d-notes"'],
+  ['nav', 'una nota con un enlace largo arrastra la pantalla, se ve (QA Lucas)', 'html', ';overflow-wrap:anywhere" id="d-notes"', '" id="d-notes"'],
   // ── El Resumen ──
   ['suite', 'quien entrena de más vuelve a leer «5 de 4 días»', 'core', "const titulo = h >= pd ? h + (h === 1 ? ' día' : ' días') + ' · cumplió' : h + ' de ' + pd + ' días';", "const titulo = h + ' de ' + pd + ' días';"],
   ['suite', 'el plan del Resumen cuenta los días distinto que su etiqueta', 'core', '      restan = Math.ceil((new Date(last.dueDate) - nowTs) / 86400000);', '      restan = Math.floor((new Date(last.dueDate) - nowTs) / 86400000);'],

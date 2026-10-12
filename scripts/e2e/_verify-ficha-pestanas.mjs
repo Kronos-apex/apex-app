@@ -187,7 +187,29 @@ const xl = await ev(`(()=>{ const seg=document.querySelector('#d-tabs .dt-seg');
 A.ok(xl.desliza && xl.dentro && xl.scrollLeft > 0, 'con «Muy grande» la barra se desliza y «Pagos» queda entera a la vista', xl);
 await ev(`document.documentElement.removeAttribute('data-fs')`); await sleep(500);
 
-// ── 10. Lo nuevo se lee en los dos temas (texto sobre fondo sólido) ──
+// ── 10. Lo que cazó el QA funcional (Lucas) ──
+// a) «Pidió un coach» se ve desde el Resumen y marca «Pagos».
+await ev(`(()=>{ DB.clients.push({id:'c3',name:'Caro Prueba',goal:'Salud general',level:'Principiante',days:3,tier:'libre',selfReg:true,wantsCoach:true,wantsCoachAt:new Date().toISOString(),routines:[],payments:[]});
+  DB.history.c3=[]; DB.msgs.c3=[]; DB.prs.c3={}; DB.bodyweight.c3=[]; DB.medidas.c3=[]; DB.photos.c3=[]; DB.nutrition.c3={}; _heavyLoaded.c3=true; openDetail('c3'); })()`); await sleep(500);
+const lead = await ev(`({txt:document.getElementById('d-sum').innerText, marcas:[...document.querySelectorAll('#d-tabs .dt-tab')].filter(b=>b.querySelector('.dt-dot')).map(b=>b.dataset.t)})`);
+A.ok(/Pidió un coach/.test(lead.txt) && lead.marcas.includes('pagos'), '«Pidió un coach» se ve desde el Resumen y «Pagos» lleva su marca', lead);
+// b) Registrar el pago desde «Pagos» apaga su marca sin tener que cambiar de pestaña.
+await ev(`openDetail('c1'); detailTab('pagos')`); await sleep(400);
+const antesPago = await ev(`!!document.querySelector('#d-tabs .dt-tab[data-t="pagos"] .dt-dot')`);
+await ev(`(()=>{ openPaymentModal('c1'); registerPayment(); })()`); await sleep(500);
+const trasPago = await ev(`({tab:document.getElementById('p-detail').getAttribute('data-dtab'), punto:!!document.querySelector('#d-tabs .dt-tab[data-t="pagos"] .dt-dot'), pagos:(DB.clients.find(x=>x.id==='c1').payments||[]).length})`);
+A.ok(antesPago && trasPago.pagos === 2 && trasPago.tab === 'pagos' && !trasPago.punto, 'registrar el pago deja al coach en «Pagos» y apaga su marca en el acto', { antesPago, trasPago });
+// c) En su propia ficha el coach no ve cobros.
+await ev(`(()=>{ DB.clients.push({id:SELF_CLIENT_ID,name:'Coach Prueba',days:4,routines:[]}); DB.history[SELF_CLIENT_ID]=[]; DB.msgs[SELF_CLIENT_ID]=[]; DB.prs[SELF_CLIENT_ID]={};
+  DB.bodyweight[SELF_CLIENT_ID]=[]; DB.medidas[SELF_CLIENT_ID]=[]; DB.photos[SELF_CLIENT_ID]=[]; DB.nutrition[SELF_CLIENT_ID]={}; _heavyLoaded[SELF_CLIENT_ID]=true; openDetail(SELF_CLIENT_ID); detailTab('pagos'); })()`); await sleep(500);
+const yo = await ev(`({txt:document.querySelector('.dt-sec[data-dt="pagos"]').innerText, cobrar:!!document.querySelector('#d-membership button[onclick*="openPaymentModal"]'), nivel:document.getElementById('d-freelead').innerHTML.trim().length})`);
+A.ok(/no te cobras a ti mismo/.test(yo.txt) && !yo.cobrar && yo.nivel === 0, 'en su propia ficha el coach no ve membresía ni botones de cobro, y se le dice por qué', yo);
+// d) Una nota con un enlace largo se parte en vez de arrastrar la pantalla.
+await ev(`(()=>{ DB.clients.find(x=>x.id==='c1').notes='https://www.ejemplo.com/un/camino/muy/largo/de/una/url/de/informe/medico?id=1234567890abcdef&otro=parametro'; openDetail('c1'); })()`); await sleep(500);
+const nota = await ev(`(()=>{ const main=document.querySelector('.main'); return {lado:Math.max(document.documentElement.scrollWidth-innerWidth, main.scrollWidth-main.clientWidth), ancho:Math.round(document.getElementById('d-notes').getBoundingClientRect().width), vis:document.getElementById('d-notes').offsetHeight>0}; })()`);
+A.ok(nota.vis && nota.lado === 0, 'una nota con un enlace larguísimo se parte y no arrastra la pantalla de lado', nota);
+
+// ── 11. Lo nuevo se lee en los dos temas (texto sobre fondo sólido) ──
 const CONTRASTE = `(()=>{ const rgb=s=>{const m=String(s).match(/[\\d.]+/g)||[];return m.slice(0,3).map(Number);};
   const L=c=>{const a=c.map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2];};
   const fondo=el=>{ while(el){ const b=getComputedStyle(el).backgroundColor; const m=String(b).match(/[\\d.]+/g); if(m&&(m.length<4||Number(m[3])>0.95)) return rgb(b); el=el.parentElement; } return [255,255,255]; };

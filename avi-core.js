@@ -12534,6 +12534,8 @@ function detailSummary(client, sessions, now, flags) {
   const titulo = h >= pd ? h + (h === 1 ? ' día' : ' días') + ' · cumplió' : h + ' de ' + pd + ' días';
   const semana = { hechos: h, plan: pd, ultimo, titulo };
   const revisar = [];
+  // Un lead caliente va PRIMERO: antes de v707 su aviso era lo primero de la ficha (QA Lucas).
+  if (f.lead) revisar.push({ tab: 'pagos', tipo: 'lead', texto: 'Pidió un coach: súbelo a Premium + Coach cuando confirmes el pago' });
   if (f.choque) revisar.push({ tab: 'entreno', tipo: 'choque', texto: 'Tiene ejercicios estancados: hay un plan para destrabarlos' });
   const dl = deloadState(c, nowTs);
   if (dl && dl.over) revisar.push({ tab: 'entreno', tipo: 'descarga', texto: 'Su semana de descarga ya terminó: devuélvelo a su plan normal' });

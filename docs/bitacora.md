@@ -30,7 +30,11 @@
   de choque y la notificación de un mensaje abre el Resumen.
 - **QA**: Julián 🟡 → corregido: «Último: hoy» para quien entrenó anoche (contaba horas; ahora días de
   calendario), el Resumen repetía «No tiene plan de alimentación» mientras se cargaban los datos pesados, y con
-  teclado solo se llegaba a la pestaña elegida (ahora ← → Inicio Fin).
+  teclado solo se llegaba a la pestaña elegida (ahora ← → Inicio Fin). Lucas 🟡 → corregido: «Pidió un coach»
+  había quedado escondido en Pagos (vuelve al Resumen, primero); las marcas se quedaban viejas tras registrar un
+  pago, suspender o marcar cortesía (cada tarjeta pide repintar el Resumen, `detailSummaryLater`); en su propia
+  ficha el coach veía una membresía «Sin pago» con botones de cobro (ahora le dice que no se cobra); una nota con
+  un enlace largo arrastraba la pantalla de lado; «Nivel de acceso» medía 16 px de alto (ahora 36).
 - **Verificación**: suite 1475 → **1480**; `_verify-ficha-pestanas` (nuevo) con controles de montaje, de zoom y de
   la sonda de contraste; matriz `_sabotaje-v707`; los harnesses que leen bloques de la ficha entran ahora por su
   pestaña (`_verify-compartir-plan` → Comida, `_verify-coach-tarjetas` y `_verify-shock` → Entreno, fotos y

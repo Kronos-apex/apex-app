@@ -24069,6 +24069,8 @@ test('🔒 v707 · «Para revisar» lleva cada cosa a la pestaña donde se resue
   assert.deepStrictEqual(vacio.marcas, {});
   const tabs = (c, f) => core.detailSummary(c, [], _V707_NOW, f).revisar.map(r => r.tab + ':' + r.tipo);
   assert.deepStrictEqual(tabs(_v707Pago('2026-11-02'), { choque: true }), ['entreno:choque']);
+  // Un lead («Pidió un coach») se ve desde el Resumen y va primero (QA Lucas).
+  assert.deepStrictEqual(tabs(_v707Pago('2026-10-15'), { lead: true }), ['pagos:lead', 'pagos:plan']);
   assert.deepStrictEqual(tabs(_v707Pago('2026-11-02'), { comida: 'desviado' }), ['comida:comida']);
   const txtComida = k => core.detailSummary(_v707Pago('2026-11-02'), [], _V707_NOW, { comida: k }).revisar[0].texto;
   assert.strictEqual(txtComida('sin_plan'), 'No tiene plan de alimentación', '🔴 a quien no tiene plan se le dice «su plan tiene algo que revisar»');
@@ -24135,6 +24137,15 @@ test('🔒 v707 · entrar a la ficha abre el Resumen; re-pintarla deja al coach 
   const html707 = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert.ok(/class="dt-seg" role="tablist"[^>]*onkeydown="detailTabKey\(event\)"/.test(html707), '🔴 con teclado solo se llega a la pestaña elegida');
   assert.ok(/k==='ArrowRight'/.test(coach) && /k==='ArrowLeft'/.test(coach), '🔴 las flechas no recorren las pestañas');
+  // QA Lucas: el lead llega al Resumen; las tarjetas que lo alimentan piden repintarlo; el coach no ve cobros
+  // en su propia ficha; una nota con un enlace largo se parte.
+  assert.ok(/lead:clientPlan\(c\)!=='coach'&&_leadPending\(c\)/.test(coach), '🔴 «Pidió un coach» no llega al Resumen');
+  for (const fn of ['renderShockCard', 'renderDeloadPanel', 'renderLevelHealCard', 'renderNutReviewCard'])
+    assert.ok(new RegExp('function ' + fn + '\\(c\\)\\{\\s*\\n\\s*detailSummaryLater\\(\\);').test(coach), '🔴 ' + fn + ' no avisa al Resumen y la marca se queda vieja');
+  const extra = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  assert.ok(/function renderDetailMembership\(id\)\{\s*\n\s*if\(typeof detailSummaryLater==='function'\) detailSummaryLater\(\);/.test(extra), '🔴 registrar un pago deja la marca de «Pagos» vieja');
+  assert.ok(/isSelfClient\(c\)\)\{\s*\n\s*con\.innerHTML='<div class="card"><div class="cb"[^']*no te cobras a ti mismo/.test(extra), '🔴 el coach ve una membresía «Sin pago» en su propia ficha');
+  assert.ok(/id="d-notes"/.test(html707) && /overflow-wrap:anywhere" id="d-notes"/.test(html707), '🔴 una nota con un enlace largo arrastra la pantalla de lado');
   assert.ok(!/navPush|pushState|navRecord/.test(dt), '🔴 cambiar de pestaña empuja historial: el atrás recorrería pestañas');
   const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
   assert.ok(/const snap=\{id:prev,cid:CUR\.clientId,dtab:CUR\.detailTab\};/.test(login), '🔴 el atrás olvida la pestaña');

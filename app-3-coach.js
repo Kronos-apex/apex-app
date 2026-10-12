@@ -2049,6 +2049,14 @@ function detailTabKey(e){
   e.preventDefault(); detailTab(tabs[j]);
   const b=document.querySelector('#d-tabs .dt-tab[data-t="'+tabs[j]+'"]'); if(b)b.focus();
 }
+// Repinta el Resumen DESPUÉS de que termine la tarjeta que lo pidió (setTimeout 0): así sirve aunque la
+// tarjeta salga antes por un `return`, y varias peticiones seguidas se juntan en una.
+let _dtSumT=0;
+function detailSummaryLater(){
+  clearTimeout(_dtSumT);
+  _dtSumT=setTimeout(()=>{ const P=document.getElementById('p-detail'); const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+    if(P&&P.classList.contains('on')&&c) renderDetailSummary(c); },0);
+}
 // ¿La tarjeta se está mostrando? Lo que ya decidió cada tarjeta se LEE de ella (el plan de choque, la
 // revisión del plan de comida): re-derivarlo sería una segunda cuenta que acaba diciendo otra cosa.
 function _detailVisible(id){ const el=document.getElementById(id); return !!(el&&el.style.display!=='none'&&el.innerHTML.trim()); }
@@ -2060,7 +2068,8 @@ function renderDetailSummary(c){
   // tiene plan: el Resumen no lo repite hasta que llegan (QA Julián; se re-pinta al final de la carga).
   const _nr=document.getElementById('d-nutreview');
   const _pesados=!(typeof AUTH_MODE!=='undefined'&&AUTH_MODE)||!!_heavyLoaded[c.id];
-  const s=detailSummary(c,DB.history[c.id]||[],Date.now(),{choque:_detailVisible('d-shock'),comida:(_pesados&&_detailVisible('d-nutreview'))?((_nr&&_nr.dataset.rev)||'revisar'):null});
+  const s=detailSummary(c,DB.history[c.id]||[],Date.now(),{choque:_detailVisible('d-shock'),comida:(_pesados&&_detailVisible('d-nutreview'))?((_nr&&_nr.dataset.rev)||'revisar'):null,
+    lead:clientPlan(c)!=='coach'&&_leadPending(c)});
   const semana=`<div class="dt-tile"><span class="dt-k">Esta semana</span><span class="dt-v">${esc(s.semana.titulo)}</span><span class="dt-s">Último: ${esc(s.semana.ultimo)}</span></div>`;
   const plan=s.plan?`<button class="dt-tile" onclick="detailTab('pagos')"><span class="dt-k">Plan</span><span class="dt-v">${esc(s.plan.etiqueta)}</span><span class="dt-s">${esc(s.plan.detalle)}</span></button>`:'';
   const rev=s.revisar.length
@@ -2134,7 +2143,7 @@ async function openDetail(id,_silent){
   const _wantsTag=(_plan!=='coach'&&_leadPending(c))?`<span class="tag" style="background:var(--orl);color:var(--ort)">🙋 Quiere coach</span>`:'';
   document.getElementById('d-tags').innerHTML=`<span class="tag ${c.level==='Principiante'?'tg':c.level==='Intermedio'?'tb':'to'}">${esc(c.level)}</span><span class="tag ty">${_coIco('target',12,'🎯')} ${esc(c.goal)}</span><span class="tag tg">${_coIco('calendar',12,'📅')} ${esc(String(c.days))} días/sem</span><span class="tag ${_planCls}">${_planIco} ${PLAN_LABEL[_plan]}</span>${_wantsTag}`;
   const freeLead=document.getElementById('d-freelead');
-  if(freeLead) freeLead.innerHTML=planControlHTML(c);
+  if(freeLead) freeLead.innerHTML=(typeof isSelfClient==='function'&&isSelfClient(c))?'':planControlHTML(c);
   const dn=document.getElementById('d-notes');
   // Dolor vigente reportado por el asesorado (feature 2026-07-07): el coach lo ve de
   // frente en la ficha, con qué ejercicio y hace cuánto — para ajustar la rutina.
@@ -3105,6 +3114,7 @@ function _protFrase(p){
     : `Esos ${fmtMiles(kcal)} kcal rinden más como <b>carbohidrato</b>, que es el combustible del entrenamiento.`;
 }
 function renderNutReviewCard(c){
+  detailSummaryLater(); // v707 · el Resumen y las marcas leen lo que esta tarjeta decide
   const el=document.getElementById('d-nutreview'); if(!el)return;
   el.innerHTML='';el.style.display='none';el.dataset.rev=''; // v707 · el Resumen lee QUÉ caso se pintó
   if(typeof nutPlanReview!=='function'||!c)return;
@@ -3251,6 +3261,7 @@ const _DELOAD_PCT=(typeof DELOAD_LOAD_FACTOR==='number')?Math.round((1-DELOAD_LO
 // reescrito el plan a alguien y el coach se enteraría de casualidad — que es justo lo que v434
 // dejó escrito: quien recibe el cambio tiene que saber POR QUÉ su plan cambió.
 function renderLevelHealCard(c){
+  detailSummaryLater(); // v707 · el Resumen y las marcas leen lo que esta tarjeta decide
   const el=document.getElementById('d-levelheal'); if(!el)return;
   el.innerHTML='';
   const h=c&&c.levelHealed;
@@ -3273,6 +3284,7 @@ function dismissLevelHeal(cid){
 }
 
 function renderDeloadPanel(c){
+  detailSummaryLater(); // v707 · el Resumen y las marcas leen lo que esta tarjeta decide
   const el=document.getElementById('d-deload'); if(!el)return;
   el.innerHTML='';
   if(!c||typeof deloadState!=='function')return;
@@ -3386,6 +3398,7 @@ function endDeloadFor(cid){
 }
 
 function renderShockCard(c){
+  detailSummaryLater(); // v707 · el Resumen y las marcas leen lo que esta tarjeta decide
   const el=document.getElementById('d-shock'); if(!el)return;
   el.innerHTML='';el.style.display='none';CUR.shock=null;
   if(typeof shockTargets!=='function'||typeof shockPlan!=='function'||!c)return;
