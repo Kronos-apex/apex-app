@@ -78,6 +78,8 @@ const barra = await ev(`(()=>{ const seg=document.querySelector('#d-tabs .dt-seg
   return [...document.querySelectorAll('#d-tabs .dt-tab')].map(b=>{ const r=b.getBoundingClientRect(); const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
     return {t:b.dataset.t, dentro:r.left>=seg.left-0.5&&r.right<=seg.right+0.5&&r.right<=innerWidth, alto:Math.round(r.height), toca:el===b||b.contains(el)}; }); })()`);
 A.ok(barra.length === 5 && barra.every(b => b.dentro), 'las cinco pestañas se ven enteras sin deslizar la barra', barra);
+const filas0 = await ev(`new Set([...document.querySelectorAll('#d-tabs .dt-tab')].map(b=>Math.round(b.getBoundingClientRect().top))).size`);
+A.ok(filas0 === 1, 'a letra normal las cinco van en UNA sola fila', filas0);
 A.ok(barra.every(b => b.toca && b.alto >= 36), 'las cinco miden ≥36 px y reciben el toque', barra);
 
 // ── 3. Cada pestaña enseña solo lo suyo (y lo suyo de verdad se ve) ──
@@ -179,14 +181,17 @@ for (const t of ['resumen', 'entreno', 'comida', 'cuerpo', 'pagos']) {
 }
 A.ok(desb.length === 0, 'ninguna pestaña se puede arrastrar de lado a 360 px', desb);
 
-// ── 9. Con «Muy grande» la barra se desliza y la elegida queda a la vista ──
+// ── 9. Con «Muy grande» la barra pasa a otra fila y las cinco se ven enteras (v709: deslizarla dejaba una
+//       pestaña asomando cortada y la persona no sabía que había más) ──
 await ev(`document.documentElement.setAttribute('data-fs','xl')`); await sleep(700);
 const zoom = await ev(`getComputedStyle(document.getElementById('p-detail')).zoom`);
 A.ok(Number(zoom) > 1.3, 'CONTROL: con «Muy grande» la ficha de verdad crece (si no, lo de abajo no prueba nada)', zoom);
 await ev(`detailTab('pagos')`); await sleep(500);
-const xl = await ev(`(()=>{ const seg=document.querySelector('#d-tabs .dt-seg'); const sr=seg.getBoundingClientRect(); const b=document.querySelector('#d-tabs .dt-tab[data-t="pagos"]').getBoundingClientRect();
-  return {desliza:seg.scrollWidth>seg.clientWidth, dentro:b.left>=sr.left-1&&b.right<=sr.right+1, scrollLeft:Math.round(seg.scrollLeft)}; })()`);
-A.ok(xl.desliza && xl.dentro && xl.scrollLeft > 0, 'con «Muy grande» la barra se desliza y «Pagos» queda entera a la vista', xl);
+const xl = await ev(`(()=>{ const seg=document.querySelector('#d-tabs .dt-seg'); const sr=seg.getBoundingClientRect();
+  const bs=[...document.querySelectorAll('#d-tabs .dt-tab')].map(b=>{ const r=b.getBoundingClientRect(); const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return {t:b.dataset.t, dentro:r.left>=sr.left-1&&r.right<=sr.right+1, toca:el===b||b.contains(el), top:Math.round(r.top)}; });
+  return {bs, desliza:seg.scrollWidth>seg.clientWidth+1, filas:new Set(bs.map(b=>b.top)).size}; })()`);
+A.ok(xl.bs.every(b => b.dentro && b.toca) && !xl.desliza && xl.filas >= 2, 'con «Muy grande» las cinco pestañas se ven enteras y se tocan, en dos filas', xl);
 await ev(`document.documentElement.removeAttribute('data-fs')`); await sleep(500);
 
 // ── 10. Lo que cazó el QA funcional (Lucas) ──

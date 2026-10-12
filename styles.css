@@ -679,7 +679,7 @@ html[data-theme="light"] .mta {
 .gx-sv{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}.gx-sv .u{font-size:10px;color:#10E0A0}
 .gx-sl{font-size:9px;color:rgba(255,255,255,.55);margin-top:3px}
 .gx-title{font-size:13px;font-weight:800;margin:4px 2px 10px}
-.gx-badges{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
+.gx-badges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}
 .gx-badge{background:var(--w);border:1px solid var(--br);border-radius:13px;padding:11px 5px;text-align:center}
 .gx-bic{width:38px;height:38px;margin:0 auto 6px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,rgba(16,224,160,.18),rgba(16,224,160,.06));border:1.5px solid rgba(16,224,160,.3)}
 .gx-bn{font-size:9px;font-weight:700;line-height:1.2;color:var(--t1)}
@@ -941,7 +941,7 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .sstat{text-align:center;border-radius:var(--rsm);padding:13px 4px}
 .sstat-g{background:var(--gl)} .sstat-y{background:var(--yll)} .sstat-b{background:var(--bll)}
 .sstat-n{font-size:28px;font-weight:800;line-height:1}
-.sstat-g .sstat-n{color:var(--g)} .sstat-y .sstat-n{color:var(--t1)} .sstat-b .sstat-n{color:var(--blt)}
+.sstat-g .sstat-n{color:var(--gt)} .sstat-y .sstat-n{color:var(--t1)} .sstat-b .sstat-n{color:var(--blt)}
 .sstat-l{font-size:10px;color:var(--t2);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:.3px}
 .streak-msg{font-size:13px;color:var(--t1);line-height:1.55;background:var(--bg);border-radius:var(--rsm);padding:11px 13px;margin-bottom:16px}
 .streak-msg b{color:var(--gt)}
@@ -988,7 +988,7 @@ body:has(#install-banner[style*="flex"]) .main{padding-bottom:64px}
 .adv-bal-bar{display:flex;height:30px;border-radius:9px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--br)}
 .adv-bal-seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;min-width:0;transition:width .4s ease}
 .adv-bal-seg.push{background:#2f7f5b}
-.adv-bal-seg.pull{background:#3a86c8}
+.adv-bal-seg.pull{background:#2c6aa0}
 .adv-bal-legend{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--t2);font-weight:600;margin-top:7px}
 .adv-bal-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:4px}
 .adv-bal-legend .dot.push{background:#3ba776}
@@ -2576,10 +2576,10 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
    Qué pestaña se ve lo decide el atributo del panel: los bloques no pelean por su style.display. */
 .dt-head{margin-bottom:10px}
 /* La barra es un control segmentado (la maqueta aprobada): a 360 px con letra normal caben las cinco;
-   con «Grande»/«Muy grande» no caben y se desliza (la elegida se trae a la vista). */
+   cuando no caben (letra grande, pantallas angostas) pasa a otra fila — v709: deslizarla dejaba una pestaña
+   asomando cortada («Lo…») y la persona no sabía que había más. */
 .dt-tabs{position:sticky;top:0;z-index:6;background:var(--bg);padding:6px 0 10px}
-.dt-seg{display:flex;gap:2px;padding:3px;border:1px solid var(--br2);border-radius:var(--r);background:var(--w);overflow-x:auto;scrollbar-width:none}
-.dt-seg::-webkit-scrollbar{display:none}
+.dt-seg{display:flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--br2);border-radius:var(--r);background:var(--w)}
 .dt-tab{flex:1 0 auto;position:relative;min-height:38px;padding:0 6px;border:0;border-radius:calc(var(--r) - 3px);background:none;color:var(--t2);font-family:inherit;font-size:12.5px;font-weight:800;white-space:nowrap;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
 .dt-tab[aria-selected="true"]{background:var(--g);color:white}
 .dt-tab:active{transform:scale(.97)}

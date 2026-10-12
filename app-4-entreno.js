@@ -4467,9 +4467,8 @@ function progTab(t,opts){
   const bar=document.getElementById('pg-tabs');
   if(bar){
     bar.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===t; b.setAttribute('aria-selected',on?'true':'false'); b.tabIndex=on?0:-1; });
-    const on=bar.querySelector('.dt-tab[aria-selected="true"]'), seg=bar.querySelector('.dt-seg')||bar;
-    if(on&&seg.scrollWidth>seg.clientWidth) requestAnimationFrame(()=>{ const r=on.getBoundingClientRect(), sr=seg.getBoundingClientRect(); seg.scrollLeft+=(r.left+r.width/2)-(sr.left+sr.width/2); });
   }
+  if(t==='historial'&&antes!==t&&CUR.clientId&&typeof renderVolChart==='function') renderVolChart((DB.history||{})[CUR.clientId]||[]);
   // Con la pantalla bajada, la pestaña nueva empieza arriba (la barra queda fija debajo de la cabecera).
   if(antes!==t&&!(opts&&opts.quieto)&&P.classList.contains('on')){
     const sc=P.closest('.cnbody'); if(sc&&sc.scrollTop>0) sc.scrollTop=0;

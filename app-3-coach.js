@@ -2030,10 +2030,6 @@ function detailTab(t,opts){
   const bar=document.getElementById('d-tabs');
   if(bar){
     bar.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===t; b.setAttribute('aria-selected',on?'true':'false'); b.tabIndex=on?0:-1; });
-    // Con letra grande las cinco no caben a lo ancho: la elegida se trae a la vista (como los
-    // filtros del selector de ejercicios, v705).
-    const on=bar.querySelector('.dt-tab[aria-selected="true"]'), seg=bar.querySelector('.dt-seg')||bar;
-    if(on&&seg.scrollWidth>seg.clientWidth) requestAnimationFrame(()=>{ const r=on.getBoundingClientRect(), sr=seg.getBoundingClientRect(); seg.scrollLeft+=(r.left+r.width/2)-(sr.left+sr.width/2); });
   }
   // Si la ficha estaba bajada, la pestaña nueva empieza arriba (justo bajo la cabecera): quedarse a
   // media altura enseñaría el final de otra cosa.

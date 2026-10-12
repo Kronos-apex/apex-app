@@ -24311,6 +24311,39 @@ test('🔒 v709 · Progreso pinta sus cuatro pestañas al abrirse, sin empujar h
   assert.ok(/<b>Resumen<\/b>[\s\S]{0,120}<b>Historial<\/b>[\s\S]{0,80}<b>Récords<\/b>[\s\S]{0,80}<b>Logros<\/b>/.test(extra), '🔴 la ayuda de Progreso no nombra sus pestañas');
   assert.ok(/<b>Toca una fila<\/b>/.test(extra) && !/Aquí están tus datos y tu <b>racha<\/b>/.test(extra), '🔴 la ayuda del Perfil no dice cómo está hoy');
 });
+test('🔒 v709 · QA: las tarjetas de progreso se abren y la barra de pestañas no esconde ninguna', () => {
+  const fs = require('fs'), path = require('path');
+  const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const i = login.indexOf('function renderExerciseProgressInto(');
+  const f = login.slice(i, login.indexOf('\nfunction ', i + 10));
+  // El JSON de los puntos (comillas dobles) dentro de un onclick="…" cortaba el atributo: ninguna tarjeta se abría.
+  assert.ok(!/JSON\.stringify\(pts\)/.test(f) && !/exprog-header"[^>]*onclick=/.test(f), '🔴 los puntos de la gráfica viajan dentro de un atributo onclick');
+  assert.ok(/_hdr\.onclick=_abrir;/.test(f), '🔴 el encabezado de la tarjeta no tiene manejador');
+  assert.ok(/const _abrir=\(\)=>\{ card\.classList\.toggle\('open'\);[\s\S]{0,200}drawExProgChart\(wrap,pts,color,unit\)/.test(f), '🔴 abrir la tarjeta no dibuja su gráfica');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const seg = (css.match(/\.dt-seg\{[^}]*\}/) || [''])[0];
+  assert.ok(/flex-wrap:wrap/.test(seg) && !/overflow-x/.test(seg), '🔴 con letra grande una pestaña queda asomando cortada (la barra se desliza en vez de pasar de fila)');
+  assert.ok(/\.gx-badges\{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/.test(css), '🔴 las medallas empujan la pantalla de lado con letra grande (1fr tiene por mínimo el min-content)');
+});
+test('🔒 v709 · QA: el volumen se redibuja al entrar a Historial, cerrar sesión olvida las pestañas y el Resumen se lee', () => {
+  const fs = require('fs'), path = require('path');
+  const ent = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const pt = ent.slice(ent.indexOf('function progTab('), ent.indexOf('function progTabKey('));
+  assert.ok(/if\(t==='historial'&&antes!==t&&CUR\.clientId&&typeof renderVolChart==='function'\) renderVolChart\(/.test(pt),
+    '🔴 la gráfica de volumen se queda con el ancho que tenía escondida (con letra grande sale chica)');
+  const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const lo = login.slice(login.indexOf('function logout(){'), login.indexOf('function logout(){') + 400);
+  assert.ok(/CUR\.progTab=undefined;/.test(lo) && /CUR\.detailTab=undefined;/.test(lo), '🔴 la siguiente cuenta hereda la pestaña que dejó la anterior');
+  // Contraste de los colores fijos del Resumen contra su texto blanco (no cambian con el tema).
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const lum = h => { const c = [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = h => 1.05 / (lum(h) + 0.05);
+  for (const k of ['push', 'pull']) {
+    const hex = (css.match(new RegExp('\\.adv-bal-seg\\.' + k + '\\{background:(#[0-9a-fA-F]{6})\\}')) || [])[1];
+    assert.ok(hex && ratio(hex) >= 4.5, '🔴 el porcentaje sobre la barra «' + k + '» no llega a 4,5:1 (' + hex + ')');
+  }
+  assert.ok(/\.sstat-g \.sstat-n\{color:var\(--gt\)\}/.test(css), '🔴 el número verde del Resumen usa el verde de fondo (2,4:1 en oscuro)');
+});
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

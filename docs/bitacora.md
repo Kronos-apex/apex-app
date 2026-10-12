@@ -17,8 +17,18 @@
   terminar un entreno): quien entraba directo a Progreso lo veía vacío o viejo. Ahora Progreso lo pinta al abrirse.
 - **Ayudas al día**: la de Progreso nombra sus pestañas y la del Perfil explica las filas (hablaba de una «racha»
   que no vive ahí).
-- **Verificación**: suite 1483 → **1485**; `_verify-progreso-pestanas` (nuevo); matriz `_sabotaje-v709`; de
-  `_verify-v314` se retiró la parte de las anclas (lo que vigilaba lo vigila el harness nuevo).
+- **Lo que cazó el QA (Julián y Lucas) y entró en este mismo lote**: (1) 🔴 **las tarjetas de «cómo avanza cada
+  ejercicio» NO SE ABRÍAN, y no desde v709: desde el primer commit** — el `onclick` metía el JSON de los puntos
+  (comillas dobles) dentro de un atributo entre comillas dobles y se cortaba; afectaba también al Perfil y a la
+  ficha del coach. El manejador se asigna ahora desde JS. (2) La gráfica de volumen se dibujaba con «Historial»
+  escondida y con «Muy grande» salía chica: se redibuja al entrar. (3) Con «Muy grande» la barra se deslizaba y
+  una pestaña asomaba cortada («Lo…»): pasa a otra fila — también en la ficha del coach. (4) Las medallas de
+  Logros empujaban la pantalla 11 px de lado con «Muy grande» (`minmax(0,1fr)`). (5) Dos textos del Resumen bajo
+  4,5:1 (el número verde en oscuro y el porcentaje sobre la barra azul). (6) Cerrar sesión olvida las pestañas.
+- **Verificación**: suite 1483 → **1487**; `_verify-progreso-pestanas` (nuevo, con abrir una tarjeta, «Muy
+  grande» y el contraste del Resumen); `_verify-ficha-pestanas` re-encuadrado a «las cinco enteras, en dos filas»;
+  matriz `_sabotaje-v709`; de `_verify-v314` se retiró la parte de las anclas (lo que vigilaba lo vigila el
+  harness nuevo).
 
 ## ⏮️ 2026-10-12 — v708: el Perfil del asesorado en filas
 

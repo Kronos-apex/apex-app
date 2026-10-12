@@ -126,6 +126,14 @@ A.ok(k1.tab === 'historial' && k1.foco === 'historial' && k2.tab === 'logros' &&
 await ev(`(()=>{ document.getElementById('cn-exprog-list').innerHTML=''; renderClientHistory('demo'); progTab('records'); })()`); await sleep(400);
 const exp = await ev(`document.querySelectorAll('#cn-exprog-list svg').length`);
 A.ok(exp > 0, 'abrir Progreso pinta el progreso por ejercicio (antes solo lo pintaba el Perfil)', exp);
+const abre = await ev(`(async()=>{ const card=document.querySelector('#cn-exprog-list .exprog-card'); if(!card) return {falta:true};
+  const h=card.querySelector('.exprog-header'); h.scrollIntoView({block:'center'}); await new Promise(r=>setTimeout(r,150));
+  const r=h.getBoundingClientRect(); const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); const toca=el===h||h.contains(el);
+  if(toca) h.click(); await new Promise(r=>setTimeout(r,250));
+  const svg=card.querySelector('[id$="_chart"] svg'); return {toca, abierta:card.classList.contains('open'), ancho:svg?Math.round(svg.getBoundingClientRect().width):0}; })()`);
+A.ok(abre.toca && abre.abierta && abre.ancho > 200, 'tocar una tarjeta de «Récords» la abre y dibuja su gráfica', abre);
+const cierra = await ev(`(()=>{ const card=document.querySelector('#cn-exprog-list .exprog-card'); card.querySelector('.exprog-header').click(); return card.classList.contains('open'); })()`);
+A.ok(cierra === false, 'tocarla otra vez la cierra', cierra);
 
 // ── 8. Una asesorada nueva no ve pestañas en blanco ──
 await ev(MONTAR(false)); await sleep(700);
@@ -148,20 +156,39 @@ for (const t of ['resumen', 'historial', 'records', 'logros']) {
 A.ok(lado.length === 0, 'ninguna pestaña se puede arrastrar de lado a 360 px', lado);
 await ev(`document.documentElement.setAttribute('data-fs','xl')`); await sleep(700);
 const zoom = await ev(`Number(getComputedStyle(document.getElementById('cn-history')).zoom)||1`);
+A.ok(zoom > 1.3, 'CONTROL: con «Muy grande» la pantalla de verdad crece (si no, lo de abajo no prueba nada)', zoom);
 await ev(`progTab('logros')`); await sleep(500);
-const xl = await ev(`(()=>{ const seg=document.querySelector('#pg-tabs .dt-seg'); const sr=seg.getBoundingClientRect(); const b=document.querySelector('#pg-tabs .dt-tab[data-t="logros"]').getBoundingClientRect();
-  return {dentro:b.left>=sr.left-1&&b.right<=sr.right+1}; })()`);
-A.ok(zoom > 1.3 && xl.dentro, 'con «Muy grande» la pantalla crece y «Logros» queda entera a la vista', { zoom, xl });
+const xl = await ev(`(()=>{ const seg=document.querySelector('#pg-tabs .dt-seg'); const sr=seg.getBoundingClientRect();
+  const bs=[...document.querySelectorAll('#pg-tabs .dt-tab')].map(b=>{ const r=b.getBoundingClientRect(); const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return {t:b.dataset.t, dentro:r.left>=sr.left-1&&r.right<=sr.right+1, toca:el===b||b.contains(el), top:Math.round(r.top)}; });
+  return {bs, desliza:seg.scrollWidth>seg.clientWidth+1, filas:new Set(bs.map(b=>b.top)).size}; })()`);
+A.ok(xl.bs.every(b => b.dentro && b.toca) && !xl.desliza, 'con «Muy grande» las cuatro pestañas se ven enteras y se tocan (ninguna asoma cortada)', xl);
+const ladoXl = [];
+for (const t of ['resumen', 'historial', 'records', 'logros']) {
+  await ev(`progTab('${t}')`); await sleep(300);
+  const w = await ev(`(()=>{ const sc=document.querySelector('#cn-history').closest('.cnbody'); return Math.max(document.documentElement.scrollWidth-innerWidth, sc.scrollWidth-sc.clientWidth); })()`);
+  if (w > 0) ladoXl.push({ t, w });
+}
+A.ok(ladoXl.length === 0, 'con «Muy grande» ninguna pestaña se arrastra de lado (las medallas de Logros caben)', ladoXl);
+await ev(`progTab('resumen')`); await sleep(250);
+await ev(`renderClientHistory('demo')`); await sleep(300);
+await tocar('#pg-tabs .dt-tab[data-t="historial"]'); await sleep(400);
+const vol = await ev(`(()=>{ const con=document.getElementById('vol-chart'); const svg=con&&con.querySelector('svg'); if(!svg) return {falta:true};
+  return {caja:con.offsetWidth, dibujo:Number((svg.getAttribute('viewBox')||'').split(' ')[2])||0}; })()`);
+A.ok(!vol.falta && vol.caja > 100 && Math.abs(vol.dibujo - Math.max(vol.caja, 200)) <= 2, 'la gráfica de volumen se dibuja con el ancho de su caja (piso 200) al entrar a «Historial» (no sale chica)', vol);
 await ev(`document.documentElement.removeAttribute('data-fs')`); await sleep(500);
 const CONTRASTE = `(()=>{ const rgb=s=>(String(s).match(/[\\d.]+/g)||[]).slice(0,3).map(Number);
   const L=c=>{const a=c.map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2];};
   const fondo=el=>{ while(el){ const b=getComputedStyle(el).backgroundColor; const m=String(b).match(/[\\d.]+/g); if(m&&(m.length<4||Number(m[3])>0.95)) return rgb(b); el=el.parentElement; } return [255,255,255]; };
   const r=el=>{ const a=L(rgb(getComputedStyle(el).color)), b=L(fondo(el)); return Math.round(((Math.max(a,b)+0.05)/(Math.min(a,b)+0.05))*100)/100; };
-  return {tab:r(document.querySelector('#pg-tabs .dt-tab[aria-selected="false"]')), sel:r(document.querySelector('#pg-tabs .dt-tab[aria-selected="true"]'))}; })()`;
+  const peor=[...document.querySelectorAll('.pg-sec[data-pt="resumen"] .sstat-n, .pg-sec[data-pt="resumen"] .sstat-l, .pg-sec[data-pt="resumen"] .adv-bal-seg')]
+    .filter(e=>e.getBoundingClientRect().height>0&&(e.textContent||'').trim()).map(e=>({c:e.className, t:(e.textContent||'').trim().slice(0,12), r:r(e)})).sort((a,b)=>a.r-b.r);
+  return {tab:r(document.querySelector('#pg-tabs .dt-tab[aria-selected="false"]')), sel:r(document.querySelector('#pg-tabs .dt-tab[aria-selected="true"]')), n:peor.length, peor:peor[0]}; })()`;
 for (const tema of ['light', 'dark']) {
-  await ev(`setTheme('${tema}')`); await sleep(400);
+  await ev(`setTheme('${tema}')`); await ev(`progTab('resumen')`); await sleep(400);
   const c = await ev(CONTRASTE);
   A.ok(c.tab >= 4.5 && c.sel >= 4.5, `tema ${tema}: las pestañas se leen (4,5:1)`, c);
+  A.ok(c.n >= 6 && c.peor.r >= 4.5, `tema ${tema}: los números, etiquetas y la barra del Resumen se leen (4,5:1)`, c);
 }
 
 salir(A, { chrome, srv });

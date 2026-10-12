@@ -507,6 +507,7 @@ async function saveNewPass(){
 }
 
 function logout(){
+  CUR.progTab=undefined; CUR.detailTab=undefined; CUR.detailTabFor=undefined; // v709 · la siguiente cuenta no hereda las pestañas
   // F5b: parar los timers del GUIADO al salir (el rest-banner clásico ya no existe).
   try{
     if(typeof GM!=='undefined'){
@@ -1220,11 +1221,7 @@ function renderExerciseProgressInto(con, clientId){
     card.className='exprog-card';
     card.id=cardId;
     card.innerHTML=`
-      <div class="exprog-header" onclick="document.getElementById('${cardId}').classList.toggle('open');
-        if(document.getElementById('${cardId}').classList.contains('open')){
-          const wrap=document.getElementById('${cardId}_chart');
-          if(wrap&&!wrap.dataset.drawn){wrap.dataset.drawn='1';drawExProgChart(wrap,${JSON.stringify(pts)},'${color}','${unit}');}
-        }">
+      <div class="exprog-header" role="button" tabindex="0">
         <div class="exprog-icon" style="background:${color}18;border:1px solid ${color}30">${muscleIcon(ex.muscle,20)}</div>
         <div style="flex:1;min-width:0">
           <div class="exprog-name">${esc(ex.name)}</div>
@@ -1246,6 +1243,11 @@ function renderExerciseProgressInto(con, clientId){
         </div>
       </div>`;
     con.appendChild(card);
+    // v709 · el manejador va por JS (QA Julián y Lucas): antes el JSON de los puntos iba dentro de un atributo
+    // entre comillas dobles y lo cortaba — ninguna tarjeta se abría, en Progreso, el Perfil ni la ficha del coach.
+    const _hdr=card.querySelector('.exprog-header');
+    const _abrir=()=>{ card.classList.toggle('open'); if(card.classList.contains('open')){ const wrap=document.getElementById(cardId+'_chart'); if(wrap&&!wrap.dataset.drawn){ wrap.dataset.drawn='1'; drawExProgChart(wrap,pts,color,unit); } } };
+    if(_hdr){ _hdr.onclick=_abrir; _hdr.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); _abrir(); } }; }
   });
   if(exList.length>3){
     const mb=document.createElement('button');
