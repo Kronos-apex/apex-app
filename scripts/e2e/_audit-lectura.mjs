@@ -18,7 +18,7 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { FIXTURE, TABS, PANELES } from './_fixture-12.mjs';
+import { FIXTURE, TABS, PANELES, abrirTab } from './_fixture-12.mjs';
 import { afirmador, salir } from './_afirma.mjs';
 const A = afirmador('lectura (contraste y letra grande)');
 const PORT = 8833, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-fase3';
@@ -151,7 +151,6 @@ const LETRA = sel => `(()=>{
   return {fuera, cortados, chicos, alto:Math.round(p.scrollHeight||0)};
 })()`;
 
-const abrirTab = i => `(()=>{const t=document.querySelectorAll('.cntab')[${i}]; t.click(); return true;})()`;
 const tema = t => ev(`(typeof setTheme==='function')&&setTheme('${t}')`);
 const fs = v => ev(`(()=>{ ${v ? `document.documentElement.setAttribute('data-fs','${v}')` : `document.documentElement.removeAttribute('data-fs')`}; return 1})()`);
 

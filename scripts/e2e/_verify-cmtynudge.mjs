@@ -157,9 +157,10 @@ check('N7 un apodo hostil se escapa (sin <img onerror> inyectado ni ejecución)'
 console.log('  setup(9, 3 peers) nav:', await ev(RESET(9, PEERS3))); await sleep(400);
 await ev(`(()=>{window.__rc=0;window.renderCommunity=()=>{window.__rc++;};})()`);
 await ev(`cmtyNudgeGo()`); await sleep(400);
-const n8 = await ev(`(()=>{const p=document.getElementById('cn-community');const tab=document.querySelector('.cntab[onclick*="cn-community"]');
+// v710: Comunidad salió de la barra y vive dentro de Progreso, así que la pestaña marcada es «Progreso».
+const n8 = await ev(`(()=>{const p=document.getElementById('cn-community');const tab=document.querySelector('.cntab[data-cn="cn-history"]');
   return {panel:!!(p&&p.classList.contains('on')),tab:!!(tab&&tab.classList.contains('on')),rc:window.__rc};})()`);
-check('N8 «Ver a mi gente» abre la pestaña Comunidad (panel + pestaña marcada + render)',
+check('N8 «Ver a mi gente» abre Comunidad (panel + «Progreso» marcada + render)',
   n8.panel && n8.tab && n8.rc >= 1, JSON.stringify(n8));
 
 // N9: la sonda pega a la red 1×/día — fresca no dispara, vieja sí.

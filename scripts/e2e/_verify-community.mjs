@@ -20,7 +20,8 @@ const send = (m, p = {}) => new Promise(res => { const i = id++; pend.set(i, { r
 const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }); return r.result?.value; };
 const waitFor = async (e, ms = 45000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(e)) return true; await sleep(400); } return false; };
 async function shot(n) {
-  await ev(`(()=>{const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent));if(t)t.click();})()`);
+  // v710: Comunidad salió de la barra; se entra por su puerta (Progreso › Resumen).
+  await ev(`cnOpenCommunity()`);
   await sleep(300);
   const h = await ev(`Math.max(document.getElementById('cn-community').scrollHeight+120, 844)`);
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: h, deviceScaleFactor: 2, mobile: true });

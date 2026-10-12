@@ -10008,7 +10008,7 @@ function communityInviteMsg(name, peers, url) {
   return saludo + cuantos +
     ' Puedes ver en qué van tus compañeros y darles ánimo.' +
     ' Se ve tu apodo y tu constancia — nunca tu peso, tus fotos ni tus kilos.' +
-    ' Si te suena, entra a AVI y toca la pestaña Comunidad: ' +
+    ' Si te suena, entra a AVI, abre Progreso y toca Comunidad: ' +
     ((typeof url === 'string' && url) ? url : CMTY_INVITE_URL);
 }
 

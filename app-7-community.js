@@ -2198,7 +2198,7 @@ async function cmtyMilestoneYes(m){
   // `CMTY.profile.show_milestones`, que en la pantalla de fin es null (no hay perfil cargado).
   const ok = await _cmtyPatch({ show_milestones: true });
   if(!ok){ if(el) el.innerHTML = '<div class="wf-push"><div class="wf-push-txt"><b>No se pudo activar</b>' +
-    'Inténtalo desde la pestaña Comunidad cuando tengas señal.</div></div>'; return; } // F10: sin marcar → se puede reintentar
+    'Inténtalo desde Comunidad (en Progreso) cuando tengas señal.</div></div>'; return; } // F10: sin marcar → se puede reintentar
   _cmtyAskedMark(m);
   if(!_cmtySealed()){
     try{ const cli = _cmtyClient(); if(cli) await cli.functions.invoke('refresh_snapshot', { body: { catchup: true } }); }
@@ -2214,8 +2214,9 @@ function cmtyMilestoneNo(m){
 }
 
 function cmtyNudgeGo(){
-  const tab = document.querySelector('.cntab[onclick*="cn-community"]');
-  if(typeof cnTab === 'function') cnTab('cn-community', tab || null);
+  // v710: Comunidad salió de la barra; se entra por la misma puerta que desde Progreso.
+  if(typeof cnOpenCommunity === 'function'){ cnOpenCommunity(); return; }
+  if(typeof cnTab === 'function') cnTab('cn-community', null);
 }
 function dismissCmtyNudge(){
   const days = (typeof CMTY_NUDGE_SNOOZE_DAYS !== 'undefined') ? CMTY_NUDGE_SNOOZE_DAYS : 30;

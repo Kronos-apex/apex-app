@@ -57,10 +57,14 @@ export const FIXTURE = `(()=>{try{
   return 'ok';
 }catch(e){return 'err:'+e.message+' | '+((e.stack||'').split('\\n')[1]||'');}})()`;
 
+// v710: cada superficie se abre por su PUERTA real (la barra dice qué pantalla abre en `data-cn`) y no por
+// la posición; Comunidad ya no está en la barra y se entra desde Progreso.
 export const TABS = [
-  ['a1-hoy', '#cn-today', 0], ['a2-rutinas', '#cn-routines', 1], ['a3-mensajes', '#cn-messages', 2],
-  ['a4-progreso', '#cn-history', 3], ['a5-perfil', '#cn-profile', 4], ['a6-comunidad', '#cn-community', 5]
+  ['a1-hoy', '#cn-today', 'cn-today'], ['a2-rutinas', '#cn-routines', 'cn-routines'], ['a3-mensajes', '#cn-messages', 'cn-messages'],
+  ['a4-progreso', '#cn-history', 'cn-history'], ['a5-perfil', '#cn-profile', 'cn-profile'], ['a6-comunidad', '#cn-community', 'cn-community']
 ];
+export const abrirTab = cn => `(()=>{ if('${cn}'==='cn-community'){ cnOpenCommunity(); return 'Comunidad'; }
+  const t=document.querySelector('.cntab[data-cn="${cn}"]'); t.click(); return t.textContent.trim(); })()`;
 
 export const PANELES = [
   ['c1-inicio', '#p-home', `gp('p-home',document.getElementById('sbi-home'),'Inicio');renderHome();`],

@@ -94,7 +94,7 @@ check('P2 al «Salir» no queda NADA de la cuenta anterior (ni perfil, ni DMs, n
 
 // ── PASO 3: entra ASTRID en la misma pestaña y abre Comunidad
 console.log('  3) entra Andrea:', await ev(ENTRAR(UID_ASTRID, 'Andrea', 'hola andrea')));
-await ev(`(()=>{ const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent)); if(t)t.click(); })()`); await sleep(1200);
+check('CONTROL: Comunidad se abre por su puerta (Progreso, v710)', await ev(`(()=>{ cnOpenCommunity(); return document.getElementById('cn-community').classList.contains('on'); })()`), ''); await sleep(1200);
 await ev(`cmtyGoView('settings')`); await sleep(600);
 const p3 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=(h.innerText||'').replace(/\\s+/g,' ');
   return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,loaded:CMTY.loaded,
@@ -117,7 +117,7 @@ check('🔴 P4 la caché de disco no debe conservar el perfil de la cuenta anter
 // OAuth, otra pestaña que cerró sesión). Aquí `renderCommunity()` NO recarga —corta por
 // `CMTY.loaded`— así que el candado síncrono de identidad es lo único que separa a las cuentas.
 console.log('  5) vuelve el coach SIN logout:', await ev(ENTRAR(UID_COACH, 'Andres', 'hola coach')));
-await ev(`(()=>{ const t=[...document.querySelectorAll('.cntab')].find(x=>/Comunidad/.test(x.textContent)); if(t)t.click(); })()`); await sleep(1400);
+check('CONTROL: Comunidad se vuelve a abrir por su puerta', await ev(`(()=>{ cnOpenCommunity(); return document.getElementById('cn-community').classList.contains('on'); })()`), ''); await sleep(1400);
 await ev(`cmtyGoView('settings')`); await sleep(600);
 const p5 = await ev(`(()=>{const h=document.getElementById('cn-community');const t=(h.innerText||'').replace(/\\s+/g,' ');
   return {uid:CMTY.uid,perfil:(CMTY.profile||{}).handle,saleAstrid:/Andrea/.test(t),saleElCoach:/Andres/.test(t),txt:t.slice(0,110)};})()`);
@@ -133,7 +133,7 @@ const p6 = await ev(`(()=>{const g=k=>{try{const v=JSON.parse(localStorage.getIt
     sondaGlobal:localStorage.getItem('ax_cmty_probe'), nudgeGlobal:localStorage.getItem('ax_cmtynudge')};})()`);
 check('🔴 P6 cada cuenta escribe en SU clave (y las globales del dispositivo quedaron muertas)',
   p6.global === null && p6.sondaGlobal === null && p6.nudgeGlobal === null &&
-  p6.coach === 'Andres' && p6.astrid === 'Andrea', JSON.stringify(p6));
+  p6.coach === 'Andres' && p6.andrea === 'Andrea', JSON.stringify(p6));
 
 check('Sin errores JS', jsErrors.length === 0, jsErrors.join(' | '));
 

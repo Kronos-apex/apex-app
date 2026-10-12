@@ -4,6 +4,32 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-12 — v710: la barra de cinco
+
+- **Origen**: lote 5 del estudio de organización (decisión del PO: Comunidad sale de la barra y se entra desde
+  Progreso). La barra tenía seis y a 360 px «Comunidad» ya llenaba todo su espacio; Comunidad está congelada
+  desde el 2-sep y nadie publica.
+- **Qué cambió**: la barra queda Hoy · Rutinas · Progreso · Mensajes · Perfil (Progreso al centro, como en la
+  maqueta). Comunidad se abre desde una fila «Tu gente › Comunidad» al final del Resumen de Progreso; mientras se
+  está ahí la barra marca «Progreso» y el atrás vuelve a Progreso. No se borró nada: es la misma pantalla. El aviso
+  «Ver a mi gente» de Hoy entra por la misma puerta. Novedad v710 (para todos) con Progreso en pestañas y dónde
+  quedó Comunidad; dos novedades viejas que describían el camino anterior se pulieron.
+- **Un defecto que el cambio iba a destapar**: la pestaña se buscaba por su POSICIÓN en dos sitios
+  (`_CNTAB_ORDER` y los accesos directos `?go=`), así que reordenar la barra habría marcado «Progreso» al abrir
+  Mensajes. Ahora cada pestaña dice qué abre (`data-cn`) y `cnTab` marca la de la pantalla abierta — también
+  cuando quien llama le pasa otra o ninguna (regla de v635).
+- **Lo que cazó el QA (Lucas, Julián y los harnesses)**: con letra grande y la píldora «Instalar app» a la vista,
+  lo último de cada pantalla quedaba bajo ella —ganaba el hueco de la píldora sola, 64 px— (regla de 160 px); el
+  título «Comunidad» se montaba sobre su descripción (va debajo, `.aj-sub`); todas las pantallas comparten un scroller
+  y cambiar de pestaña desde el final del Resumen aterrizaba a media pantalla (`cnTab` vuelve arriba al cambiar); en
+  Progreso la X de la píldora se quedaba con «7 días» desde v709 (Progreso entra en `_PILL_ZONAS`); la invitación del
+  coach y un aviso mandaban a «la pestaña Comunidad». De paso: tres harnesses ya rotos antes de v710
+  (`_repro-cmty-identity` por la seudonimización, `_verify-gyminvite` por la dirección vieja, `_fable-verif-v405` por
+  posición). ⚠️ Intento descartado: poner «Instalar app» en una línea bajaba su X sobre «7 días».
+- **Verificación**: suite 1487 → **1491**; `_verify-barra-cinco` (nuevo); matriz `_sabotaje-v710`; los harnesses
+  que abrían Comunidad tocando su pestaña (`_repro-cmty-identity`, `_verify-community`, `_verify-cmtynudge`, las
+  auditorías de las 12 superficies) entran ahora por su puerta y afirman que abrió.
+
 ## ⏮️ 2026-10-12 — v709: Progreso en pestañas
 
 - **Origen**: lote 4 del estudio de organización (decisión del PO). Progreso medía ~3,7 pantallas con nivel,

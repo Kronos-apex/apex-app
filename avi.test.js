@@ -24345,6 +24345,80 @@ test('🔒 v709 · QA: el volumen se redibuja al entrar a Historial, cerrar sesi
   assert.ok(/\.sstat-g \.sstat-n\{color:var\(--gt\)\}/.test(css), '🔴 el número verde del Resumen usa el verde de fondo (2,4:1 en oscuro)');
 });
 // ══════════════════════════════════════════════════════
+// v710 · LA BARRA DE CINCO (lote 5 del estudio de organización, decisión del PO)
+// ══════════════════════════════════════════════════════
+test('🔒 v710 · la barra del asesorado tiene cinco pestañas y Comunidad se entra desde Progreso', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const tabs = [...html.matchAll(/<div class="cntab(?: on)?"[^>]*?data-cn="([a-z-]+)"[^>]*onclick="cnTab\('([a-z-]+)'/g)];
+  assert.strictEqual((html.match(/<div class="cntab(?: on)?"/g) || []).length, 5, '🔴 la barra del asesorado no tiene cinco pestañas');
+  assert.deepStrictEqual(tabs.map(m => m[1]), ['cn-today', 'cn-routines', 'cn-history', 'cn-messages', 'cn-profile'], '🔴 la barra no va en el orden del estudio (Hoy · Rutinas · Progreso · Mensajes · Perfil)');
+  for (const m of tabs) assert.strictEqual(m[1], m[2], 'la pestaña ' + m[1] + ' abre otra pantalla (' + m[2] + ')');
+  assert.ok(!/onclick="cnTab\('cn-community'/.test(html), '🔴 Comunidad volvió a la barra');
+  assert.ok(html.includes('<div id="cn-community"'), '🔴 se borró la pantalla de Comunidad (salía de la barra, no de la app)');
+  const i = html.indexOf('<section class="pg-sec" data-pt="resumen"'), res = html.slice(i, html.indexOf('</section>', i));
+  assert.ok(/id="pg-cmty" onclick="cnOpenCommunity\(\)"/.test(res), '🔴 el Resumen de Progreso no tiene la puerta de Comunidad');
+  const ent = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(!/_CNTAB_ORDER/.test(ent) && !/querySelectorAll\('\.cntab'\)\[(?![01]\])/.test(ent), '🔴 una pestaña se vuelve a buscar por su posición (el orden de la barra cambió)');
+  assert.ok(/const CN_TAB_HOST=\{'cn-community':'cn-history'\};/.test(ent), '🔴 en Comunidad no queda marcada «Progreso», que es por donde se entra');
+  assert.ok(/function _cnTabEl\(id\)\{ return document\.querySelector\('\.cntab\[data-cn="'\+\(CN_TAB_HOST\[id\]\|\|id\)\+'"\]'\); \}/.test(ent), '🔴 la pestaña no se busca por su atributo');
+  const ct = ent.slice(ent.indexOf('function cnTab('), ent.indexOf('\n}', ent.indexOf('function cnTab(')));
+  assert.ok(/const _tabOn=_cnTabEl\(id\)\|\|el; if\(_tabOn\)_tabOn\.classList\.add\('on'\);/.test(ct) && !/if\(el\)el\.classList\.add\('on'\)/.test(ct),
+    '🔴 la pestaña marcada sale del botón que llamó y no de la pantalla abierta (regla de v635)');
+  const oc = ent.slice(ent.indexOf('function cnOpenCommunity('), ent.indexOf('\n}', ent.indexOf('function cnOpenCommunity(')));
+  assert.ok(/cnTab\('cn-community',_cnTabEl\('cn-community'\)\);/.test(oc), '🔴 la puerta de Comunidad no la abre');
+  const c7 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-7-community.js'), 'utf8'));
+  const ng = c7.slice(c7.indexOf('function cmtyNudgeGo('), c7.indexOf('\n}', c7.indexOf('function cmtyNudgeGo(')));
+  assert.ok(/cnOpenCommunity\(\)/.test(ng) && !/\.cntab\[onclick/.test(ng), '🔴 «Ver a mi gente» busca una pestaña que ya no existe');
+});
+test('🔒 v710 · las ayudas y la novedad dicen dónde quedó Comunidad', () => {
+  const fs = require('fs'), path = require('path');
+  const a6 = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8').replace(/\r/g, '');
+  const ay = k => { const i = a6.indexOf("'" + k + "': {"); return a6.slice(i, a6.indexOf('` },', i)); };
+  assert.ok(/<b>Comunidad<\/b>/.test(ay('cn-history')), '🔴 la ayuda de Progreso no dice que ahí está Comunidad');
+  assert.ok(/<b>Progreso<\/b>/.test(ay('cn-community')), '🔴 la ayuda de Comunidad no dice por dónde se entra');
+  const ini = a6.indexOf('const AVI_NEWS=[');
+  const AVI_NEWS = new Function(a6.slice(ini, a6.indexOf('\n];', ini) + 3) + '\nreturn AVI_NEWS;')();
+  const n = AVI_NEWS.find(x => x.v === 710);
+  assert.ok(n && !n.coach && !n.premium, '🔴 nadie se entera de que Comunidad se mudó (la novedad es para todos)');
+  assert.ok(/Progreso/.test(n.steps.join(' ')) && /Comunidad/.test(n.steps.join(' ')), 'la novedad dice cómo llegar a Comunidad');
+  for (const x of AVI_NEWS) {
+    const t = [x.t, x.d].concat(x.steps || []).join(' · ');
+    assert.ok(!/nueva pestaña "Comunidad"|baja hasta «Tus logros»/.test(t), 'la novedad v' + x.v + ' describe un camino que ya no existe');
+  }
+});
+test('🔒 v710 · QA: con letra grande la píldora «Instalar app» no tapa el final y la fila de Comunidad no se monta', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8').replace(/\r/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const ban = (html.match(/<div id="install-banner"[^>]*style="([^"]*)"/) || [])[1] || '';
+  assert.ok(ban.includes('bottom:84px'), 'CONTROL: la píldora sigue anclada a 84 px del borde (si no, el hueco de abajo se mide contra otra cosa)');
+  const m = css.match(/html\[data-fs="lg"\] body:has\(#install-banner\[style\*="flex"\]\) \.cnbody,\s*html\[data-fs="xl"\] body:has\(#install-banner\[style\*="flex"\]\) \.cnbody\{ padding-bottom:(\d+)px; \}/);
+  assert.ok(m, '🔴 con letra grande y la píldora a la vista, el hueco de abajo vuelve a ser el de la píldora sola (64 px) y lo último queda debajo');
+  const base = Number((css.match(/html\[data-fs="lg"\] \.cnbody, html\[data-fs="xl"\] \.cnbody\{ padding-bottom:(\d+)px; \}/) || [])[1]);
+  assert.ok(base > 0 && Number(m[1]) >= 84 + 62 + 10 && Number(m[1]) > base, 'el hueco cubre la píldora entera (84 px al borde + su alto + aire) y es mayor que el de la barra sola: ' + m[1] + ' / ' + base);
+  const fila = (html.match(/<button[^>]*id="pg-cmty"[\s\S]*?<\/button>/) || [''])[0];
+  assert.ok(/<span class="aj-lbl">Comunidad<span class="aj-sub">[^<]+<\/span><\/span>/.test(fila), '🔴 la descripción de la fila de Comunidad volvió a la derecha: con letra grande el título se monta encima');
+  assert.ok(!/class="aj-val"/.test(fila), 'la fila de Comunidad describe, no muestra un valor');
+  assert.ok(/\.aj-sub\{display:block;/.test(css), '🔴 la descripción no baja a su línea');
+});
+test('🔒 v710 · QA: cambiar de pantalla empieza arriba, la píldora se aparta en Progreso y nada manda a «la pestaña Comunidad»', () => {
+  const fs = require('fs'), path = require('path');
+  const ent = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const ct = ent.slice(ent.indexOf('function cnTab('), ent.indexOf('\n}', ent.indexOf('function cnTab(')));
+  assert.ok(/const _antes=document\.querySelector\('#s-client \.cnp\.on'\);/.test(ct.slice(0, 200)), 'cnTab mira qué pantalla había ANTES de cambiar');
+  assert.ok(/if\(!_antes\|\|_antes\.id!==id\)\{ const _sc=document\.getElementById\(id\)\.closest\('\.cnbody'\); if\(_sc\) _sc\.scrollTop=0; \}/.test(ct),
+    '🔴 al cambiar de pantalla no se vuelve arriba: quien baja al final de Progreso y toca otra pestaña aterriza a media pantalla');
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const z = (a6.match(/const _PILL_ZONAS='([^']+)'/) || [])[1] || '';
+  assert.ok(z.includes('#cn-messages.on'), 'CONTROL: la lista de zonas de la píldora se leyó');
+  assert.ok(z.split(',').includes('#cn-history.on'), '🔴 en Progreso la X de la píldora vuelve a quedarse con el toque de «7 días»');
+  assert.ok(!z.includes('#cn-profile') && !z.includes('#cn-community'), 'en Perfil y Comunidad la píldora se queda siempre (adopción)');
+  const todo = ['avi-core.js', 'app-7-community.js', 'app-4-entreno.js', 'app-6-extra.js'].map(f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'))).join('\n');
+  assert.ok(!/pestaña Comunidad/.test(todo), '🔴 un texto que lee una persona la manda a «la pestaña Comunidad», que ya no está en la barra');
+  assert.ok(/abre Progreso y toca Comunidad/.test(todo), 'la invitación del coach dice por dónde se entra');
+});
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

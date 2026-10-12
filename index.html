@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=709">
+<link rel="stylesheet" href="styles.css?v=710">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -927,6 +927,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <section class="pg-sec" data-pt="resumen" role="tabpanel" aria-label="Resumen">
         <div id="cn-streak"></div>
         <div id="cn-advstats"></div>
+        <!-- v710 · Comunidad ya no está en la barra de abajo: se entra desde aquí. Es la misma pantalla de siempre. -->
+        <div class="aj-grp">Tu gente</div>
+        <div class="aj-list">
+          <button type="button" class="aj-row" id="pg-cmty" onclick="cnOpenCommunity()"><span class="aj-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17.5 14.4a6 6 0 0 1 3.5 5.6"/></svg></span><span class="aj-lbl">Comunidad<span class="aj-sub">Amigos y tu gimnasio</span></span><span class="aj-chev" aria-hidden="true">›</span></button>
+        </div>
       </section>
       <!-- ── HISTORIAL: la gráfica de volumen y cada entreno ── -->
       <section class="pg-sec" data-pt="historial" role="tabpanel" aria-label="Historial">
@@ -1019,12 +1024,14 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     <div id="cn-community" class="cnp"></div>
   </div>
   <div class="cntabs">
-    <div class="cntab on" onclick="cnTab('cn-today',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M7 12h10"/><path d="M7 9v6"/><path d="M17 9v6"/><path d="M4.5 10.5v3"/><path d="M19.5 10.5v3"/></svg></div>Hoy</div>
-    <div class="cntab" onclick="cnTab('cn-routines',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M9 7h11"/><path d="M9 12h11"/><path d="M9 17h11"/><circle cx="4.5" cy="7" r="1.1"/><circle cx="4.5" cy="12" r="1.1"/><circle cx="4.5" cy="17" r="1.1"/></svg></div>Rutinas</div>
-    <div class="cntab" id="tab-msgs" onclick="cnTab('cn-messages',this);markMsgsRead()"><div class="ctico"><span class="cntab-badge" id="msg-badge"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-5.2A8 8 0 1 1 21 12z"/></svg></span></div>Mensajes</div>
-    <div class="cntab" onclick="cnTab('cn-history',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6"/><path d="M12 20.5v-11"/><path d="M17.5 20.5v-8"/></svg></div>Progreso</div>
-    <div class="cntab" onclick="cnTab('cn-profile',this)"><div class="ctico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></div>Perfil</div>
-    <div class="cntab" onclick="cnTab('cn-community',this)"><div class="ctico"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17.5 14.4a6 6 0 0 1 3.5 5.6"/></svg></div>Comunidad</div>
+    <!-- v710 · cinco pestañas (lote 5 del estudio de organización, decisión del PO): Comunidad salió de la barra
+         y se entra desde Progreso › Resumen. Cada pestaña dice qué pantalla abre (data-cn): la app la busca por eso,
+         nunca por su posición. -->
+    <div class="cntab on" data-cn="cn-today" onclick="cnTab('cn-today',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M7 12h10"/><path d="M7 9v6"/><path d="M17 9v6"/><path d="M4.5 10.5v3"/><path d="M19.5 10.5v3"/></svg></div>Hoy</div>
+    <div class="cntab" data-cn="cn-routines" onclick="cnTab('cn-routines',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M9 7h11"/><path d="M9 12h11"/><path d="M9 17h11"/><circle cx="4.5" cy="7" r="1.1"/><circle cx="4.5" cy="12" r="1.1"/><circle cx="4.5" cy="17" r="1.1"/></svg></div>Rutinas</div>
+    <div class="cntab" data-cn="cn-history" onclick="cnTab('cn-history',this)"><div class="ctico"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6"/><path d="M12 20.5v-11"/><path d="M17.5 20.5v-8"/></svg></div>Progreso</div>
+    <div class="cntab" id="tab-msgs" data-cn="cn-messages" onclick="cnTab('cn-messages',this);markMsgsRead()"><div class="ctico"><span class="cntab-badge" id="msg-badge"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-5.2A8 8 0 1 1 21 12z"/></svg></span></div>Mensajes</div>
+    <div class="cntab" data-cn="cn-profile" onclick="cnTab('cn-profile',this)"><div class="ctico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></div>Perfil</div>
   </div>
 </div>
 
@@ -1421,19 +1428,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=709"></script>
-<script src="muscle-map.js?v=709"></script>
-<script src="exercise-muscles.js?v=709"></script>
+<script src="avi-core.js?v=710"></script>
+<script src="muscle-map.js?v=710"></script>
+<script src="exercise-muscles.js?v=710"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=709"></script>
-<script src="app-2-login.js?v=709"></script>
-<script src="app-3-coach.js?v=709"></script>
-<script src="app-4-entreno.js?v=709"></script>
-<script src="app-5-salud.js?v=709"></script>
-<script src="app-6-extra.js?v=709"></script>
-<script src="app-7-community.js?v=709"></script>
+<script src="app-1-infra.js?v=710"></script>
+<script src="app-2-login.js?v=710"></script>
+<script src="app-3-coach.js?v=710"></script>
+<script src="app-4-entreno.js?v=710"></script>
+<script src="app-5-salud.js?v=710"></script>
+<script src="app-6-extra.js?v=710"></script>
+<script src="app-7-community.js?v=710"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

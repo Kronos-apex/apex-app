@@ -200,7 +200,7 @@ function initPWA(){
   // Se aparta SOLO si de verdad está encima de un control que se toca (regla pura
   // `pillStealsTap`, control por control) y SOLO en las pantallas que tienen controles ahí
   // abajo: «Hoy» (campos KG/REPS de cada serie), «Rutinas» («Hacer esta rutina ahora») y, desde
-  // F4 (2026-07-28), «Mensajes». En Progreso, Perfil y Comunidad se queda siempre: instalar la
+  // F4 (2026-07-28), «Mensajes», y desde v710 «Progreso». En Perfil y Comunidad se queda siempre: instalar la
   // app es el problema nº1 de adopción y no se sacrifica por precaución.
   // POR QUÉ ENTRÓ «Mensajes»: hasta F4 el compositor flotaba a media pantalla y la píldora no
   // lo alcanzaba nunca. Al bajarlo al pie —que es donde va el compositor de un chat— pasó a
@@ -208,9 +208,12 @@ function initPWA(){
   // encima del campo de escribir: tocar para escribirle al coach abría el instalador. Lo cazó
   // el hit-testing de `_verify-f4-chat`, no la vista. La premisa vieja dejó de ser cierta en
   // cuanto se movió el control: al mover algo a la zona de abajo, hay que revisar esta lista.
+  // POR QUÉ ENTRÓ «Progreso» (v710): v709 lo pasó a pestañas y los botones «7 días · 30 días» quedaron en la
+  // franja de la píldora al abrirlo — su X se quedaba con el toque (lo cazó `_audit-pantallas`). Es la misma regla:
+  // la píldora sigue ahí y solo se aparta mientras tapa un control.
   // Se engancha al SCROLL con requestAnimationFrame — nada de setInterval; si el navegador no
   // trae rAF no se hace nada y la píldora sigue como siempre (degradación silenciosa).
-  const _PILL_ZONAS='#cn-today.on,#cn-routines.on,#cn-messages.on';
+  const _PILL_ZONAS='#cn-today.on,#cn-routines.on,#cn-messages.on,#cn-history.on';
   let _pillTick=false;
   const _pillGuard=()=>{
     _pillTick=false;
@@ -2045,6 +2048,7 @@ const HELP_SECTIONS = {
   'cn-history': { emoji:'📊', title:'Tu "Historial" (progreso)', html:`
     Aquí ves cómo <b>avanzas con el tiempo</b>, en cuatro pestañas: <b>Resumen</b> (tu constancia y tus números),
     <b>Historial</b> (cada entreno), <b>Récords</b> (cómo avanza cada ejercicio) y <b>Logros</b> (tu nivel).
+    Al final del Resumen está <b>Comunidad</b>, tu gente.
     <ul style="margin:10px 0 0;padding-left:18px">
       <li style="margin-bottom:7px">Cada entrenamiento que completas queda <b>guardado</b> solo.</li>
       <li style="margin-bottom:7px">Con las semanas verás cómo subes de peso o repeticiones 📈</li>
@@ -2063,7 +2067,8 @@ const HELP_SECTIONS = {
   // que quien tocaba ❓ Ayuda parado aquí recibía la explicación del entreno. El fallback no da
   // error — por eso el candado de abajo, en avi.test.js, DERIVA las secciones de index.html.
   'cn-community': { emoji:'🤝', title:'La "Comunidad"', html:`
-    Aquí te encuentras con <b>otras personas que entrenan</b>, en tu gimnasio y fuera de él.
+    Aquí te encuentras con <b>otras personas que entrenan</b>, en tu gimnasio y fuera de él. Se abre desde
+    <b>Progreso</b>, al final del Resumen.
     <ul style="margin:10px 0 0;padding-left:18px">
       <li style="margin-bottom:7px"><b>Nadie te ve hasta que tú quieras.</b> Mientras no crees tu perfil aquí, no aparece nada tuyo.</li>
       <li style="margin-bottom:7px">Cuando lo crees, eliges tu <b>apodo</b> y tu foto. No tienes que poner tu nombre real.</li>
@@ -3264,6 +3269,11 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v710 — Lotes 4 y 5 del estudio de organización: Progreso en pestañas (v709) y la barra de cinco, con
+  // Comunidad dentro de Progreso (v710). Una sola entrada: lo que cambió es CÓMO se llega a las cosas.
+  // Sin público marcado: Progreso y Comunidad son de TODOS, también del tier libre.
+  {v:710, icon:'users', t:'Progreso, ordenado, y Comunidad dentro', d:'Progreso ahora va en pestañas: Resumen, Historial, Récords y Logros. Y la barra de abajo quedó con cinco: Comunidad sigue igual que siempre, ahora se abre desde Progreso.',
+   steps:['Toca «Progreso» en la barra de abajo','Arriba eliges qué ver: Resumen, Historial, Récords o Logros','Al final del Resumen, toca «Comunidad»']},
   // v704 — Pedido del PO: los ajustes salen del Perfil a su propia pantalla. Para TODOS los públicos.
   {v:704, icon:'sliders', t:'Los ajustes, en un solo lugar', d:'El tema, el tamaño del texto, el sonido del entreno y tu cuenta ahora están juntos en Ajustes. Tu Perfil queda solo con lo tuyo: tus datos y cómo vas.',
    steps:['Entra a «Perfil»','Toca «Ajustes», arriba a la derecha','Cada fila abre su pantalla y te dice lo que tienes elegido']},
@@ -3274,7 +3284,7 @@ const AVI_NEWS=[
   // v624 — La imagen del entreno dejo de caducar al tocar «Continuar». Sin publico marcado a
   // proposito: compartir un entreno guardado es de TODOS, tambien del tier libre.
   {v:639, icon:'medal', t:'Logros nuevos, y los puedes compartir', d:'Ahora hay 20 logros en 4 grupos, y los más importantes premian la constancia: semanas completas y meses seguidos. Cuando completas tu semana o ganas un logro, al terminar el entreno te ofrecemos una imagen para compartirlo.',
-   steps:['Abre «Progreso» y baja hasta «Tus logros»','Cada logro pendiente te dice cuánto te falta','Toca uno que ya ganaste para compartirlo como imagen']},
+   steps:['Abre «Progreso» y toca la pestaña «Logros»','Cada logro pendiente te dice cuánto te falta','Toca uno que ya ganaste para compartirlo como imagen']},
   {v:624, icon:'camera', t:'Comparte cualquier entreno, no solo el de hoy', d:'Antes la imagen de tu entreno solo existía en la pantalla de celebración: si tocabas «Continuar», la perdías. Ahora entras a cualquier entreno tuyo y la armas cuando quieras.',
    steps:['Abre la pestaña «Progreso» y toca el entreno que quieras compartir','Debajo del resumen, toca «Compartir este entreno»','La imagen sale con las cifras y los récords de ESE día']},
   // v597 — ESTA ENTRADA EXISTE PARA QUE LA FUNCIÓN TENGA A QUIÉN SERVIR. El cierre solo se
@@ -3327,7 +3337,7 @@ const AVI_NEWS=[
   {v:368, icon:'repeat', t:'¿Se te corrió un día?', d:'Si te faltó una rutina de esta semana, "Hoy" te lo recuerda y te deja recuperarla sin enredos.',
    steps:['En "Hoy" verás "Te quedó pendiente esta semana" si te saltaste una rutina','Toca "Entrenar hoy" para hacerla ahora — tu plan no se toca','O "Mover a hoy en mi plan" para reacomodar tus días de una vez']}, // coach:false → para todos
   {v:373, icon:'users', t:'Llegó la Comunidad', d:'Comparte tu constancia con amigos que tú elijas y motívense juntos. Es opcional y muy privado.',
-   steps:['Entra a la nueva pestaña "Comunidad"','Crea tu perfil (apodo + avatar) — nadie ve tu peso, fotos ni salud','Comparte tu código o pega el de un amigo, y véanse la racha con un ❤️']}, // coach:false → para todos
+   steps:['Entra a «Progreso» y, al final del Resumen, toca «Comunidad»','Crea tu perfil (apodo + avatar) — nadie ve tu peso, fotos ni salud','Comparte tu código o pega el de un amigo, y véanse la racha con un ❤️']}, // coach:false → para todos
   {v:382, icon:'clipboard', t:'Publica tus rutinas', d:'Ahora puedes compartir una rutina en tu muro de la Comunidad y ver las de la gente que sigues. Solo el nombre y los ejercicios — nunca tus pesos ni tu salud.',
    steps:['Entra a "Comunidad": el muro es lo primero que ves','Toca "Publicar una de mis rutinas" y elige cuál compartir','Dale ❤️ a las rutinas que te inspiren de quienes sigues']}, // coach:false → para todos
   {v:386, icon:'star', t:'Tus logros, celebrados', d:'Cuando cumplas semanas seguidas entrenando o subas de nivel, puede aparecer en el muro de tu gente para que te feliciten. Tú decides si lo enciendes.',

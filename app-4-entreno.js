@@ -206,8 +206,7 @@ function initClientView(client){
     }
   }
   if(_goId){
-    const _order=['cn-today','cn-routines','cn-messages','cn-history','cn-profile'];
-    const _tab=document.querySelectorAll('.cntab')[_order.indexOf(_goId)];
+    const _tab=_cnTabEl(_goId);
     if(_tab)setTimeout(()=>{ cnTab(_goId,_tab); if(_goId==='cn-messages')markMsgsRead(); },450);
   }
 }
@@ -241,11 +240,25 @@ function hideClientWelcome(){
   clearTimeout(window._cwTimer);
 }
 
-const _CNTAB_ORDER=['cn-today','cn-routines','cn-messages','cn-history','cn-profile'];
-function _cnTabEl(id){return document.querySelectorAll('.cntab')[_CNTAB_ORDER.indexOf(id)];}
+// v710 · la pestaña se busca por su atributo, nunca por su posición: el orden de la barra cambió (Progreso
+// antes que Mensajes) y Comunidad salió de ella. Mientras se está en Comunidad, la barra marca «Progreso»,
+// que es por donde se entra.
+const CN_TAB_HOST={'cn-community':'cn-history'};
+function _cnTabEl(id){ return document.querySelector('.cntab[data-cn="'+(CN_TAB_HOST[id]||id)+'"]'); }
+function cnOpenCommunity(){
+  cnTab('cn-community',_cnTabEl('cn-community'));
+}
 function cnTab(id,el,_silent){
+  const _antes=document.querySelector('#s-client .cnp.on');
   document.querySelectorAll('.cnp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.cntab').forEach(t=>t.classList.remove('on'));
-  document.getElementById(id).classList.add('on');if(el)el.classList.add('on');
+  document.getElementById(id).classList.add('on');
+  // v710 (QA Lucas) · todas las pantallas comparten UN scroller (.cnbody): sin esto, quien bajaba hasta el final
+  // del Resumen (donde ahora está Comunidad) y tocaba «Perfil» aterrizaba a media pantalla. Solo al CAMBIAR de
+  // pantalla: repintar la misma (el guiado, un ?go=) no la mueve.
+  if(!_antes||_antes.id!==id){ const _sc=document.getElementById(id).closest('.cnbody'); if(_sc) _sc.scrollTop=0; }
+  // v710 · la pestaña marcada sale de la pantalla abierta (regla de v635), no del botón que llamó: quien
+  // la pasaba por posición marcaba otra en cuanto la barra cambió de orden.
+  const _tabOn=_cnTabEl(id)||el; if(_tabOn)_tabOn.classList.add('on');
   // Botón atrás: registrar el salto de pestaña (solo navegación REAL hacia adelante).
   // _silent (lo usa el "undo" del stack) solo sincroniza la pestaña actual sin registrar.
   if(_silent){ AVINAV.curTab=id; }

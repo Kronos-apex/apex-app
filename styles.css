@@ -1854,6 +1854,13 @@ html[data-zoomw="scale"][data-fs="xl"] .cnp, html[data-zoomw="scale"][data-fs="x
 html[data-fs="lg"] .gm-body{ padding-bottom:86px; }
 html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
+/* v710 · con letra grande la barra va FIJA y la píldora «Instalar app» flota encima de ella: el hueco del final
+   tiene que cubrir las dos (84 px de la píldora al borde + su alto, 62 px medidos porque «Instalar app» parte en
+   dos líneas, + aire). Sin esto ganaba el hueco de la píldora (64 px, más específico) y lo último de cada pantalla
+   quedaba debajo de ambas — medido: la fila de Comunidad. La píldora NO se pone en una línea: su X baja y tapa
+   «7 días» de Progreso (lo cazó _audit-pantallas). */
+html[data-fs="lg"] body:has(#install-banner[style*="flex"]) .cnbody,
+html[data-fs="xl"] body:has(#install-banner[style*="flex"]) .cnbody{ padding-bottom:160px; }
 html[data-fs="lg"] .cntabs, html[data-fs="xl"] .cntabs{ position:fixed; left:0; right:0; bottom:0; z-index:200; }
 html[data-fs="lg"] .gm-footer, html[data-fs="xl"] .gm-footer{ position:fixed; left:0; right:0; bottom:0; z-index:720; }
 /* HABITACIONES (`.sroom`): el `zoom` va en el CONTENEDOR INTERNO, nunca en `.sroom`.
@@ -2547,6 +2554,9 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .aj-lbl{flex:1;min-width:0;font-size:15px;font-weight:700}
 .aj-val{font-size:13px;color:var(--t2);text-align:right;max-width:48%;overflow-wrap:anywhere}
 .aj-chev{font-size:20px;line-height:1;color:var(--t3)}
+/* v710 · una fila que DESCRIBE (no tiene un valor que mostrar) lo dice debajo del título: a la derecha, con
+   «Muy grande», el título de una palabra se montaba encima de la descripción (medido en la fila de Comunidad). */
+.aj-sub{display:block;font-size:13px;font-weight:500;line-height:1.35;color:var(--t2);margin-top:2px}
 .aj-build{font-size:11px;color:var(--t3);text-align:center;padding:22px 0 6px;letter-spacing:.4px}
 .aj-intro{font-size:13px;color:var(--t2);line-height:1.5;margin:2px 2px 12px}
 .aj-panel{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:14px}

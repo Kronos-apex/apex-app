@@ -21,7 +21,7 @@
 import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { FIXTURE, TABS, PANELES } from './_fixture-12.mjs';
+import { FIXTURE, TABS, PANELES, abrirTab } from './_fixture-12.mjs';
 const PORT = 8829, OUT = 'C:/Users/KRONOS/AppData/Local/Temp/avi-fase2';
 try { mkdirSync(OUT, { recursive: true }); } catch {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -174,7 +174,7 @@ await ev(`(()=>{const el=document.getElementById('data-ob'); if(el)el.classList.
   const ob=document.getElementById('onboarding'); if(ob)ob.style.display='none';})()`);
 await sleep(400);
 for (const [nombre, sel, i] of TABS) {
-  await auditar(nombre, sel, `(()=>{const t=document.querySelectorAll('.cntab')[${i}]; t.click(); return t.textContent.trim();})()`);
+  await auditar(nombre, sel, abrirTab(i));
 }
 
 // ══════════ 2) LOS 6 PANELES DEL COACH ══════════

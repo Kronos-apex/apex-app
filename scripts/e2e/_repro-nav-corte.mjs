@@ -2,8 +2,8 @@
 //
 // Se mide el DOM VIVO con el styles.css REAL, no se razona sobre la regla: `.cntab` es
 // flex:1, así que el ancho por pestaña depende del viewport y del número de pestañas, y
-// el texto se recorta sin dar ningún error. La barra del ASESORADO tiene 6 (Comunidad
-// llegó en v373) y la del COACH 5, así que hay que mirar las dos.
+// el texto se recorta sin dar ningún error. La barra del ASESORADO tuvo 6 (Comunidad llegó en v373;
+// v710 la dejó en 5) y la del COACH 5, así que hay que mirar las dos.
 //
 // El criterio es lo que sufre la persona: el texto no cabe en su celda (scrollWidth >
 // clientWidth) o se sale de la pantalla. Se barre en las tres tallas de letra, porque

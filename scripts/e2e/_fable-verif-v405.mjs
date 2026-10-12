@@ -86,8 +86,9 @@ const PILL_VIVA = `(()=>{
 // En «Hoy» (día de entreno) la píldora SE APARTA a propósito: ahí no se mide.
 // Se mide donde DEBE estar viva: Perfil, Progreso, Comunidad y el panel del coach.
 const vivaEn = [];
-for (const [nombre, idx] of [['Progreso', 3], ['Perfil', 4], ['Comunidad', 5]]) {
-  await ev(`(()=>{const t=document.querySelectorAll('.cntab')[${idx}]; t.click();})()`);
+// v710: la barra cambió de orden y Comunidad salió de ella; cada pantalla se abre por su puerta, no por posición.
+for (const [nombre, cn] of [['Progreso', 'cn-history'], ['Perfil', 'cn-profile'], ['Comunidad', 'cn-community']]) {
+  await ev(`(()=>{ if('${cn}'==='cn-community'){ cnOpenCommunity(); return; } document.querySelector('.cntab[data-cn="${cn}"]').click(); })()`);
   await sleep(700);
   await ev(`typeof window._aviPillGuard==='function' && (window._aviPillGuard(),1)`); await sleep(200);
   const r = await ev(PILL_VIVA);

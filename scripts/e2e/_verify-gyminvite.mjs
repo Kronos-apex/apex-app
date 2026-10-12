@@ -102,10 +102,11 @@ const g6 = await ev(`(()=>{const u=window.__opened||'';const m=decodeURIComponen
   return {url:u.split('?')[0],msg:m};})()`);
 check('G6 «Invitar» abre WhatsApp con el móvil normalizado a 57…', g6.url === 'https://wa.me/573009998877', JSON.stringify({ url: g6.url }));
 
-// G7: el mensaje es honesto, en texto plano y con el enlace de AVI.
+// G7: el mensaje es honesto, en texto plano y con el enlace de AVI (app.avientrena.com desde v663) y dice por
+// dónde se entra a Comunidad (v710: ya no está en la barra, se entra desde Progreso).
 check('G7 el mensaje dice qué se ve y qué NO, en texto plano y con el enlace',
   /^Hola Luisa 👋/.test(g6.msg) && /apodo y tu constancia/.test(g6.msg) && /nunca tu peso, tus fotos ni tus kilos/.test(g6.msg) &&
-  /kronos-apex\.github\.io\/apex-app/.test(g6.msg) && !/[<>]/.test(g6.msg), JSON.stringify({ msg: g6.msg.slice(0, 90) }));
+  /app\.avientrena\.com/.test(g6.msg) && /abre Progreso y toca Comunidad/.test(g6.msg) && !/[<>]/.test(g6.msg), JSON.stringify({ msg: g6.msg.slice(0, 90) }));
 
 // G7-bis: el conteo del mensaje sale de la realidad (3 con perfil), no de un número inventado.
 check('G7-bis el mensaje cuenta a los que YA están (3), sin inventar', /Ya somos 3 del gym/.test(g6.msg), JSON.stringify({ msg: g6.msg.slice(0, 60) }));
