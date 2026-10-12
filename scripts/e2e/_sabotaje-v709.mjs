@@ -46,7 +46,8 @@ const SABOTAJES = [
   ['suite', 'las medallas de Logros empujan la pantalla de lado (suite)', 'css', 'grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px', 'grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px'],
   ['nav', 'el número verde del Resumen no se lee en oscuro', 'css', '.sstat-g .sstat-n{color:var(--gt)}', '.sstat-g .sstat-n{color:var(--g)}'],
   ['suite', 'el número verde del Resumen no se lee en oscuro (suite)', 'css', '.sstat-g .sstat-n{color:var(--gt)}', '.sstat-g .sstat-n{color:var(--g)}'],
-  ['nav', 'el porcentaje sobre la barra azul no se lee', 'css', '.adv-bal-seg.pull{background:#2c6aa0}', '.adv-bal-seg.pull{background:#3a86c8}'],
+  // La barra empujar/jalar vive en la ventana de músculos, que este harness no abre (verificado: en el Resumen no
+  // hay `.adv-bal`). Su color es fijo e igual en los dos temas, así que la suite mide su contraste leyendo el CSS.
   ['suite', 'el porcentaje sobre la barra azul no se lee (suite)', 'css', '.adv-bal-seg.pull{background:#2c6aa0}', '.adv-bal-seg.pull{background:#3a86c8}'],
   ['suite', 'la siguiente cuenta hereda la pestaña de la anterior', 'e2', '  CUR.progTab=undefined; CUR.detailTab=undefined;', '  void 0; void 0;'],
   ['suite', 'la ayuda del Perfil vuelve a hablar de una racha que no está ahí', 'e6', '    Aquí está lo tuyo, en filas:', '    Aquí están tus datos y tu <b>racha</b> de entrenamientos. Aquí está lo tuyo, en filas:'],
