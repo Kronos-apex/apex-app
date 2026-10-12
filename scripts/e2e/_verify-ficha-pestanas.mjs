@@ -13,17 +13,19 @@ import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { afirmador, salir } from './_afirma.mjs';
+import { afirmador, salir, liberarPuerto, cuidarProcesos } from './_afirma.mjs';
 
 const A = afirmador('la ficha del asesorado en pestañas');
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = 8898, DP = 9408, APP = `http://localhost:${PORT}/`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+liberarPuerto(PORT); liberarPuerto(DP);   // un servidor huérfano de otra corrida no puede tomarle el puerto
 const srv = spawn('python', ['-m', 'http.server', String(PORT)], { cwd: ROOT });
 await sleep(1200);
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',
   ['--headless=new', '--disable-gpu', `--remote-debugging-port=${DP}`,
    '--user-data-dir=' + process.env.TEMP + '/fichapest-' + Date.now(), '--no-first-run', '--window-size=360,800', APP]);
+cuidarProcesos(chrome, srv);   // si el harness revienta, su servidor y su Chrome no quedan vivos
 async function fp() { for (let i = 0; i < 60; i++) { try { const t = await (await fetch(`http://localhost:${DP}/json/list`)).json(); const p = t.find(x => x.type === 'page' && x.url.includes('localhost')); if (p?.webSocketDebuggerUrl) return p; } catch {} await sleep(500); } throw new Error('no page'); }
 const page = await fp(); const ws = new WebSocket(page.webSocketDebuggerUrl, { maxPayload: 2e8 });
 let id = 1; const pend = new Map();

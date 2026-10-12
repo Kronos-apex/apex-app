@@ -17,6 +17,7 @@ const F = { core: join(ROOT, 'avi-core.js'), e2: join(ROOT, 'app-2-login.js'), e
   html: join(ROOT, 'index.html'), css: join(ROOT, 'styles.css') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 const SOLO_SUITE = process.argv.includes('--solo-suite');
+const SOLO_NAV = process.argv.includes('--solo-nav');
 const FILA = (process.argv.find(a => a.startsWith('--fila=')) || '').slice(7);
 
 const SABOTAJES = [
@@ -67,6 +68,7 @@ if (!preSuite || !preNav) {
 let muerden = 0, noAplican = 0, corridas = 0;
 for (const [capa, nombre, archivo, buscar0, poner0] of SABOTAJES) {
   if (SOLO_SUITE && capa !== 'suite') continue;
+  if (SOLO_NAV && capa !== 'nav') continue;
   if (FILA && !nombre.includes(FILA)) continue;
   corridas++;
   const src = orig[archivo];

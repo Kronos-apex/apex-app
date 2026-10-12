@@ -29,6 +29,26 @@ export function matarArbol(proc) {
   if (process.platform === 'win32') { try { execSync(`taskkill /PID ${proc.pid} /T /F`, { stdio: 'ignore' }); return; } catch {} }
   try { proc.kill(); } catch {}
 }
+// 🔴 Y un harness que REVIENTA (una excepción antes de llegar a `salir()`) también dejaba su servidor vivo:
+// bajo una matriz de sabotaje eso pasa en casi cada fila, y en Windows varios `python` comparten el puerto,
+// las peticiones caen en uno colgado y la app deja de cargar — medido el 12-oct: 26 huérfanos, y todas las
+// filas «nav» siguientes «mordían» en falso. Dos remedios: liberar el puerto ANTES de arrancar y limpiar el
+// árbol al salir pase lo que pase.
+export function liberarPuerto(port) {
+  if (process.platform !== 'win32' || !port) return;
+  try {
+    const out = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
+    const pids = new Set(out.split(/\r?\n/).filter(l => /LISTENING/.test(l) && new RegExp('[:.]' + port + '\\s').test(l))
+      .map(l => l.trim().split(/\s+/).pop()).filter(pid => pid && pid !== '0' && pid !== String(process.pid)));
+    for (const pid of pids) { try { execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' }); } catch {} }
+  } catch {}
+}
+export function cuidarProcesos(...procs) {
+  const fin = () => procs.forEach(matarArbol);
+  process.on('exit', fin);
+  process.on('uncaughtException', e => { console.error(e); process.exit(1); });
+  process.on('unhandledRejection', e => { console.error(e); process.exit(1); });
+}
 
 export function afirmador(nombre) {
   const A = { nombre, fallos: [], jsErrors: [] };
