@@ -1863,6 +1863,13 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // máquinas en su gimnasio, y con una referencia de verdad el generador sí las reproduce.
 // Es lo que ya decía el pipeline del catálogo: cada una de las 219 partía de una foto previa.
 ['e228','e229','e230','e241','e242','e243','e244','e245','e246','e247','e248','e249','e250','e251'].forEach(id=>EX_IMG_IDS.add(id));
+// v711 · 49 fotos de la repoblación (v547-v550) que el PO generó en Gemini y entregó DESORDENADAS: cada una se
+// identificó MIRÁNDOLA (a 450-600 px, no en miniatura — la lección de v498) contra la ficha del ejercicio. De 77 entraron
+// 54 (49 aquí + 5 versiones de mujer en EX_IMG_F); 23 se descartaron por mostrar otro ejercicio u otro aparato,
+// traer texto encima o no tener ejercicio pendiente. Cuatro van con foto de mujer como principal (e349, e369, e370, e375:
+// no hubo de hombre). Las no cuadradas se completaron con el color del fondo, sin recortar a nadie.
+// e362 (giro ruso en polea) se retiró tras la revisión independiente: codos doblados donde la ficha pide brazos estirados.
+['e240','e269','e295','e304','e305','e306','e307','e309','e311','e313','e318','e319','e323','e324','e326','e328','e329','e331','e332','e333','e334','e337','e339','e342','e347','e349','e350','e351','e353','e354','e357','e359','e360','e361','e363','e364','e365','e368','e369','e370','e372','e373','e374','e375','e376','e377','e378','e380','e381'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
@@ -2008,7 +2015,7 @@ const EX_COACHTIP={
 };
 // Fotos de ejercicio con versión MUJER (media/exercises/{id}_f.jpg). Gender-aware: la
 // asesorada ve la demo en mujer; coach/hombre ven el default. Se amplía conforme llegan fotos.
-const EX_IMG_F=new Set(['e1','e2','e3','e4','e5','e6','e7','e8','e9','e10','e11','e12','e13','e14','e15','e16','e17','e18','e19','e20','e22','e23','e24','e25','e26','e27','e28','e29','e30','e31','e33','e34','e35','e36','e37','e39','e40','e41','e42','e43','e44','e45','e46','e47','e48','e49','e50','e51','e52','e53','e54','e55','e56','e57','e58','e59','e60','e61','e62','e63','e64','e65','e66','e67','e68','e69','e70','e71','e72','e73','e74','e75','e76','e77','e78','e79','e80','e81','e82','e83','e84','e85','e86','e87','e89','e90','e91','e92','e93','e94','e95','e96','e97','e98','e99','e100','e101','e102','e103','e104','e105','e106','e107','e108','e109','e110','e111','e112','e113','e114','e115','e116','e117','e118','e119','e120','e121','e122','e123','e124','e125','e126','e127','e128','e129','e130','e132','e133','e134','e135','e136','e137','e138','e139','e140','e141','e142','e143','e144','e145','e146','e147','e148','e149','e150','e151','e152','e153','e154','e155','e156','e157','e158','e160','e161','e162','e163','e164','fb03','fb01','fb02','fb04']);
+const EX_IMG_F=new Set(['e1','e2','e3','e4','e5','e6','e7','e8','e9','e10','e11','e12','e13','e14','e15','e16','e17','e18','e19','e20','e22','e23','e24','e25','e26','e27','e28','e29','e30','e31','e33','e34','e35','e36','e37','e39','e40','e41','e42','e43','e44','e45','e46','e47','e48','e49','e50','e51','e52','e53','e54','e55','e56','e57','e58','e59','e60','e61','e62','e63','e64','e65','e66','e67','e68','e69','e70','e71','e72','e73','e74','e75','e76','e77','e78','e79','e80','e81','e82','e83','e84','e85','e86','e87','e89','e90','e91','e92','e93','e94','e95','e96','e97','e98','e99','e100','e101','e102','e103','e104','e105','e106','e107','e108','e109','e110','e111','e112','e113','e114','e115','e116','e117','e118','e119','e120','e121','e122','e123','e124','e125','e126','e127','e128','e129','e130','e132','e133','e134','e135','e136','e137','e138','e139','e140','e141','e142','e143','e144','e145','e146','e147','e148','e149','e150','e151','e152','e153','e154','e155','e156','e157','e158','e160','e161','e162','e163','e164','fb03','fb01','fb02','fb04','e328','e342','e347','e350','e359']);  // v711: + e328 e342 e347 e350 e359 (versión de mujer)
 // Sexo de quien mira: en vista del asesorado sigue su sexo; el coach ve el default.
 function _viewSex(){ if(CUR.loggedAs==='client'){ const c=DB.clients.find(x=>x.id===CUR.clientId); return (c&&c.sex)||''; } return ''; }
 // Fotos DESACTIVADAS por contenido incorrecto (auditoría 2026-06-09) → muestran el ícono

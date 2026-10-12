@@ -585,4 +585,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-10-12 — **v710 «la barra de cinco» en producción** · suite 1491. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*
+*Última actualización: 2026-10-12 — **v711 «54 fotos nuevas del catálogo» en producción** · suite 1491. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*

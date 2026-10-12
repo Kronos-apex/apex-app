@@ -4,6 +4,19 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-12 — v711: 54 fotos nuevas del catálogo
+
+- **Origen**: el PO generó en Gemini fotos para los ejercicios de la repoblación (v547-v550) que no tenían, y las
+  entregó con nombres automáticos y desordenadas («debes revisarlas tú»).
+- **Cómo**: hojas de 4 a 450 px y las dudosas a 600 px, cada foto contra la ficha (`como`) del ejercicio y con la regla
+  de v499 (si el nombre declara un aparato, la foto lo trae). Las no cuadradas se completaron con el color del fondo
+  en vez de recortarlas. Se registran en `EX_IMG_IDS` (lista v711) y las de mujer en `EX_IMG_F`.
+- **Resultado**: de 77, entraron 55; un revisor independiente (Sonnet, hojas con id y nombre) dio 54 OK y 1 dudosa,
+  e362 (codos doblados donde la ficha pide brazos estirados), retirada. Descartadas 23: barra flotando, sumo que no lo
+  es, texto encima de la foto, aparato distinto al del nombre (barra libre por multipower, rack por multipower,
+  kettlebell por mancuernas, banco por máquina), agarre pronado por neutro, mochila por chaleco y duplicadas.
+- **Verificación**: audit-catalog 0 BLOCK (sin foto: 142 → 93), suite 1491.
+
 ## ⏮️ 2026-10-12 — v710: la barra de cinco
 
 - **Origen**: lote 5 del estudio de organización (decisión del PO: Comunidad sale de la barra y se entra desde
