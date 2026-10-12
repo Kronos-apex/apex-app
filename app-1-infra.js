@@ -1870,6 +1870,10 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // no hubo de hombre). Las no cuadradas se completaron con el color del fondo, sin recortar a nadie.
 // e362 (giro ruso en polea) se retiró tras la revisión independiente: codos doblados donde la ficha pide brazos estirados.
 ['e240','e269','e295','e304','e305','e306','e307','e309','e311','e313','e318','e319','e323','e324','e326','e328','e329','e331','e332','e333','e334','e337','e339','e342','e347','e349','e350','e351','e353','e354','e357','e359','e360','e361','e363','e364','e365','e368','e369','e370','e372','e373','e374','e375','e376','e377','e378','e380','e381'].forEach(id=>EX_IMG_IDS.add(id));
+// v712 · 13 fotos más de la estación de poleas (el PO las hizo con el prompt de «foto de referencia»: Gemini edita una
+// foto real y conserva la ejecución). De 17 entraron 13; fuera: un gesto ambiguo, un duplicado y una patada en polea BAJA
+// rotulada polea alta, y e297 (no se distingue el agarre supino). e362 vuelve, ahora con los brazos estirados como pide su ficha.
+['e256','e257','e258','e259','e261','e262','e298','e299','e300','e301','e315','e316','e362'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.

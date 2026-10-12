@@ -4,6 +4,17 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-12 — v712: 13 fotos más de poleas
+
+- El PO generó 17 con el prompt nuevo «con foto de referencia» de la página de fotos pendientes (le pide a Gemini
+  EDITAR una foto real: conservar posición, agarre y aparato; cambiar solo persona y fondo). La ejecución salió fiel.
+- Entraron 13. Fuera: un gesto ambiguo, un duplicado de e257 con otro piso, una patada en polea BAJA para un ejercicio
+  de polea alta, y e297 (la revisión independiente la marcó dudosa: a tamaño completo no se distingue el agarre supino).
+  e362 vuelve con los brazos estirados (la de v711 se había retirado por lo contrario).
+- Detalle para la próxima tanda: el logo salió «AVi» y la cara cambia entre fotos; el prompt de referencia de la página
+  ya pide la misma persona y AVI en mayúsculas.
+- audit-catalog 0 BLOCK (sin foto: 93 → 80), suite 1491.
+
 ## ⏮️ 2026-10-12 — v711: 54 fotos nuevas del catálogo
 
 - **Origen**: el PO generó en Gemini fotos para los ejercicios de la repoblación (v547-v550) que no tenían, y las
