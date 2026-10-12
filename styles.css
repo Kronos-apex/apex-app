@@ -2611,3 +2611,9 @@ button.dt-tile:active{transform:scale(.97)}
 .dt-rev .dt-k+.dt-rev-row{border-top:0;margin-top:2px}
 .dt-go{flex-shrink:0;color:var(--gt);font-size:12px;font-weight:800;white-space:nowrap}
 .dt-rev-nada{font-size:13px;color:var(--t2);padding:8px 0 10px}
+/* v708 · El Perfil en filas (lote 3 del estudio de organización). Las filas son las de Ajustes (.aj-row);
+   dentro de la pantalla de una fila sobra el título de la tarjeta (lo dice la barra), no sus botones. */
+#pfroom-body .ch .ctitle{display:none}
+#pfroom-body .ch{justify-content:flex-end}
+#pfroom-body .ch:not(:has(button)){display:none}
+.pf-bloq .aj-val{color:var(--t2);font-style:italic}

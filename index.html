@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=707">
+<link rel="stylesheet" href="styles.css?v=708">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -945,38 +945,28 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div class="profhero" id="cn-prof-card"></div>
       <div id="cn-profile-upsell"></div>
       <div id="cn-payment-card" style="margin-bottom:12px"></div>
+      <!-- v708 · EL PERFIL EN FILAS (lote 3 del estudio de organización, decisión del PO): cada fila dice su
+           dato y abre su pantalla (#perfil-room), como Ajustes. Las pinta renderProfileRows. -->
+      <div class="aj-list" id="cn-prof-rows" style="margin-bottom:12px"></div>
       <div id="cn-referido"></div>
-
-      <!-- Datos del asesorado (identidad) — lidera el perfil (reorden v334) -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="clipboard">📋</span> Mis datos</div></div>
-        <div class="cb" id="cn-prof-data" style="display:flex;flex-direction:column;gap:9px"></div>
-      </div>
-
-      <!-- Personal records (se oculta hasta tener récords) -->
-      <div class="card" style="margin-bottom:12px" id="cn-pr-card">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="trophy">🏆</span> Mis récords personales</div></div>
-        <div class="cb" id="cn-pr-list">
-          <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords</div>
+      <!-- Las seis secciones viven GUARDADAS aquí: al tocar su fila se MUDAN a #perfil-room y vuelven la
+           siguiente vez que se abre otra. Conservan sus ids: cada renderizador las sigue encontrando. -->
+      <div id="prof-guardado" hidden>
+        <div class="card" data-pf="datos" style="margin-bottom:12px" id="cn-datos-card">
+          <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="clipboard">📋</span> Mis datos</div></div>
+          <div class="cb" id="cn-prof-data" style="display:flex;flex-direction:column;gap:9px"></div>
         </div>
-      </div>
-
-      <!-- Plan nutricional cliente (se oculta hasta que el coach lo asigna) -->
-      <div class="card" style="margin-bottom:12px" id="cn-nut-card">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="apple">🥗</span> Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()"><span class="t-ic plain" data-ic="phone" data-ic-size="13">📲</span> WhatsApp</button></div></div>
-        <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
-      </div>
-
-      <!-- Seguimiento personal: peso/medidas/fotos. Colapsado por defecto (progressive
-           disclosure) para no abrumar al asesorado nuevo. Se auto-abre si ya hay datos. -->
-      <div id="tt-toggle" class="prof-collapse" onclick="toggleTrackingTools()">
-        <div class="pc-ic"><span class="t-ic" data-ic="trend" data-ic-size="20">📈</span></div>
-        <div class="pc-tx"><div class="pc-t">Mi seguimiento personal</div><div class="pc-s">Peso, medidas y fotos · opcional</div></div>
-        <span id="tt-chev" class="pc-chev">▼</span>
-      </div>
-      <div id="tt-body" style="display:none">
-        <!-- Body weight tracker -->
-        <div class="card" style="margin-bottom:12px">
+        <div class="card" data-pf="records" style="margin-bottom:12px" id="cn-pr-card">
+          <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="trophy">🏆</span> Mis récords personales</div></div>
+          <div class="cb" id="cn-pr-list">
+            <div style="color:var(--t3);font-size:13px;text-align:center;padding:12px 0">Completa sesiones para ver tus récords</div>
+          </div>
+        </div>
+        <div class="card" data-pf="comida" style="margin-bottom:12px" id="cn-nut-card">
+          <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="apple">🥗</span> Mi plan nutricional</div><div style="display:flex;gap:6px"><button class="btn bp bsm" id="cn-nut-edit" style="display:none" onclick="openNutModal()"><span class="t-ic plain" data-ic="pencil" data-ic-size="13">✏️</span> Editar</button><button class="btn bg bsm" onclick="shareNutWhatsapp()"><span class="t-ic plain" data-ic="phone" data-ic-size="13">📲</span> WhatsApp</button></div></div>
+          <div class="cb" id="cn-nut-body" style="font-size:13px;color:var(--t2);line-height:1.7">Tu coach no ha asignado un plan todavía.</div>
+        </div>
+        <div class="card" data-pf="peso" style="margin-bottom:12px" id="cn-bw-card">
           <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="scale">⚖️</span> Mi peso corporal</div></div>
           <div class="cb">
             <div class="wlog-add">
@@ -990,8 +980,7 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
             <div id="bw-list" style="max-height:180px;overflow-y:auto;overflow-x:hidden;padding-right:14px;margin-top:6px"></div>
           </div>
         </div>
-        <!-- Medidas corporales cliente -->
-        <div class="card" style="margin-bottom:12px">
+        <div class="card" data-pf="medidas" style="margin-bottom:12px" id="cn-med-card">
           <div class="ch">
             <div class="ctitle"><span class="t-ic" data-ic="ruler">📏</span> Mis medidas</div>
             <button class="btn bp bsm" onclick="openMedModal()">+ Registrar</button>
@@ -1001,8 +990,7 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
             <div id="cn-med-list" style="font-size:13px;color:var(--t2)">Aún no hay medidas. La primera vez que las anotas, puedes ver cómo cambian con el tiempo.</div>
           </div>
         </div>
-        <!-- Fotos de progreso -->
-        <div class="card" style="margin-bottom:12px">
+        <div class="card" data-pf="fotos" style="margin-bottom:12px" id="cn-photos-card">
           <div class="ch">
             <div class="ctitle"><span class="t-ic" data-ic="camera">📸</span> Fotos de progreso</div>
             <button class="btn bp bsm" onclick="openPhotosModal()"><span class="t-ic plain" data-ic="camera" data-ic-size="13">📷</span> Subir</button>
@@ -1420,19 +1408,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=707"></script>
-<script src="muscle-map.js?v=707"></script>
-<script src="exercise-muscles.js?v=707"></script>
+<script src="avi-core.js?v=708"></script>
+<script src="muscle-map.js?v=708"></script>
+<script src="exercise-muscles.js?v=708"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=707"></script>
-<script src="app-2-login.js?v=707"></script>
-<script src="app-3-coach.js?v=707"></script>
-<script src="app-4-entreno.js?v=707"></script>
-<script src="app-5-salud.js?v=707"></script>
-<script src="app-6-extra.js?v=707"></script>
-<script src="app-7-community.js?v=707"></script>
+<script src="app-1-infra.js?v=708"></script>
+<script src="app-2-login.js?v=708"></script>
+<script src="app-3-coach.js?v=708"></script>
+<script src="app-4-entreno.js?v=708"></script>
+<script src="app-5-salud.js?v=708"></script>
+<script src="app-6-extra.js?v=708"></script>
+<script src="app-7-community.js?v=708"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1931,6 +1919,14 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
      (#ajustes-sub-room). Los controles conservan sus ids y atributos: setTheme, setTextSize,
      renderSoundSettings, renderGoogleLink, renderAccountActions y saveSettings los siguen
      encontrando donde estén. -->
+<!-- v708 · LA PANTALLA DE CADA FILA DEL PERFIL. Se le muda adentro la sección que se abre (perfilAbrir). -->
+<div id="perfil-room" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">&lsaquo; Perfil</button>
+    <span class="sroom-bar-t" id="pfroom-t">Perfil</span>
+  </div>
+  <div class="sroom-body" id="pfroom-body"></div>
+</div>
 <div id="ajustes-room" class="sroom">
   <div class="sroom-bar">
     <button class="sroom-back" onclick="history.back()">&lsaquo; Volver</button>

@@ -4,6 +4,26 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-12 — v708: el Perfil del asesorado en filas
+
+- **Origen**: lote 3 del estudio de organización (decisión del PO, «dale con las tres»). El Perfil medía 4,3
+  pantallas con el plan de comida (722 px) y el seguimiento (1.307 px) completos dentro.
+- **Qué cambió**: cabecera, los avisos de su plan y **seis filas** con su dato —las mismas de Ajustes—: Mis datos
+  (edad y estatura: objetivo, nivel, días y peso ya están en la cabecera), Mis récords, Mi plan de alimentación
+  (sin cifra de calorías: el número del día se mueve con el entreno y otro número aquí reabriría v435), Mi peso,
+  Mis medidas («Hace 3 semanas», días de calendario) y Mis fotos. Con el plan vencido la fila dice lo mismo que
+  el candado de su tarjeta (`planLockExit`); el peso no lleva candado. «Recomienda AVI» queda debajo. Cada fila
+  abre su pantalla con «‹ Perfil» y el atrás de siempre; la sección se MUDA ahí y conserva sus ids, así que
+  ningún renderizador cambió. Lo que se registra dentro se ve en la fila al volver.
+- **Medido**: el Perfil de una asesorada con todo (récords, pesadas, medidas, fotos y plan) pasa a **794 px a
+  360×800, una pantalla**.
+- **Verificación**: suite 1480 → **1483**; `_verify-perfil-filas` (nuevo); matriz `_sabotaje-v708`; el candado de
+  «nadie cuenta lápidas» se re-encuadró a `renderProfileRows`, que es el lector nuevo.
+- **Radar (no es de este lote, medido en v707)**: hoy, lunes 12-oct, es festivo (Día de la Raza) y la app no
+  programa entreno en festivo (v515): los harnesses que montan el entreno de HOY fallan (`_verify-deload` D2d/D2e,
+  `_verify-f5a`, `_verify-coach` A1/A2). `_shot-profile`, `_verify-referido` (montaje) y `_verify-v668` («no
+  arrancó») fallan igual en v707.
+
 ## ⏮️ 2026-10-11 — v707: la ficha del asesorado en pestañas
 
 - **Origen**: lote 2 del estudio de organización, que el PO aprobó entero («dale con las tres, en el orden que

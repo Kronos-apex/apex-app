@@ -12580,8 +12580,52 @@ function detailSummary(client, sessions, now, flags) {
   revisar.forEach(r => { marcas[r.tab] = true; });
   return { semana, plan, revisar, marcas };
 }
+// ── EL PERFIL EN FILAS (v708, lote 3 del estudio de organización) ──────────────────────────────────
+// Decisión del PO (11-oct-2026): el Perfil del asesorado medía 4,3 pantallas con el plan de comida y el
+// seguimiento completos dentro. Pasa a cabecera + seis filas —como Ajustes (v704)—; cada fila dice su dato y
+// abre su pantalla. PURA: la vista le pasa lo que ya contó con los lectores de siempre (vivas, sin lápidas).
+const PROFILE_SECS = ['datos', 'records', 'comida', 'peso', 'medidas', 'fotos'];
+// Lo que dice una fila con candado sale de la MISMA regla que el candado de su tarjeta (`planLockExit`):
+// la fila y lo que abre no se pueden contradecir.
+const PROFILE_LOCK_TXT = { 'renovar-pro': 'Al renovar tu AVI PRO', 'coach-chat': 'Al renovar tu plan', coach: 'Con el coaching', opciones: 'Con AVI PRO o un coach' };
+function _pfHace(ts, nowTs) {
+  const d = Math.round((localDayStart(nowTs) - localDayStart(ts)) / 86400000);   // días de CALENDARIO (v707)
+  if (!isFinite(d) || d < 0) return '';
+  if (d === 0) return 'hoy';
+  if (d === 1) return 'ayer';
+  if (d < 14) return 'hace ' + d + ' días';
+  return 'hace ' + Math.round(d / 7) + ' semanas';
+}
+// d: { bloqueo: salida de planLockExit o null, records, tienePlan, tieneCoach, pesoKg, medTs, fotos }
+// 🔒 La fila del plan de comida NO lleva cifra de calorías: el número del día se mueve con el entreno, y
+// un segundo número aquí reabriría la contradicción entre pantallas que cerró v435.
+function profileRowsModel(client, d, now) {
+  const c = client || {}, x = d || {};
+  const nowTs = now != null ? new Date(now).getTime() : Date.now();
+  const lock = x.bloqueo ? (PROFILE_LOCK_TXT[x.bloqueo] || PROFILE_LOCK_TXT.opciones) : '';
+  const cuenta = v => Math.max(0, parseInt(v, 10) || 0);
+  // «Mis datos» dice lo que la cabecera NO dice: objetivo, nivel, días y peso ya van en sus etiquetas
+  // (mirarlo con datos: repetirlos ocupaba tres líneas).
+  const edad = parseInt(c.age, 10), talla = parseFloat(c.height);
+  const datos = [edad > 0 ? edad + ' años' : '', talla > 0 ? Math.round(talla) + ' cm' : ''].filter(Boolean).join(' · ');
+  const rec = cuenta(x.records), fot = cuenta(x.fotos), kg = parseFloat(x.pesoKg);
+  const medTs = Number(x.medTs) > 0 ? Number(x.medTs) : 0;
+  const hace = medTs ? _pfHace(medTs, nowTs) : '';
+  return [
+    { sec: 'datos', label: 'Mis datos', valor: datos || 'Completa tu perfil' },
+    { sec: 'records', label: 'Mis récords', bloqueado: !!lock,
+      valor: lock || (rec ? (rec === 1 ? '1 récord' : rec + ' récords') : 'Todavía ninguno') },
+    { sec: 'comida', label: 'Mi plan de alimentación', bloqueado: !!lock,
+      valor: lock || (x.tienePlan ? 'Armado por tu coach' : (x.tieneCoach ? 'Tu coach aún no lo arma' : 'Calcula el tuyo')) },
+    { sec: 'peso', label: 'Mi peso', valor: kg > 0 ? String(Math.round(kg * 10) / 10).replace('.', ',') + ' kg' : 'Sin registrar' },
+    { sec: 'medidas', label: 'Mis medidas', bloqueado: !!lock, valor: lock || (hace ? hace.charAt(0).toUpperCase() + hace.slice(1) : 'Sin registrar') },
+    { sec: 'fotos', label: 'Mis fotos de progreso', bloqueado: !!lock,
+      valor: lock || (fot ? (fot === 1 ? '1 foto' : fot + ' fotos') : 'Sin fotos') },
+  ];
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    PROFILE_SECS, PROFILE_LOCK_TXT, profileRowsModel,
     DETAIL_TABS, detailTabValid, detailSummary,
     SOUND_MODES, SOUND_DEFAULT, SOUND_TONES, SOUND_TONE_IDS, soundPrefNormalize, soundToggleMute, soundWithMode,
     THEME_LABEL, FS_LABEL, soundSummary, SETTINGS_PLAN_NAME, settingsPlanSummary,

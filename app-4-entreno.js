@@ -525,7 +525,7 @@ function renderClientProfile(client){
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
   renderAccountActions(client);
-  applyProfileDisclosure(client.id);
+  renderProfileRows(client);   // v708 · va al final: cuenta lo que los renderizadores de arriba ya cargaron
 }
 
 // (F5a 2026-07-06: el interruptor guiada/clásica y el flag ax_ui_guided se RETIRARON —
@@ -852,37 +852,61 @@ function gxShareWeek(){
 // Progressive disclosure del Perfil: para un asesorado nuevo, oculta las tarjetas de
 // solo-lectura vacías (récords, nutrición sin asignar) y deja el seguimiento
 // personal (peso/medidas/fotos) colapsado. Se revela solo cuando hay contenido real.
-function applyProfileDisclosure(clientId){
-  const show=(id,cond)=>{const el=document.getElementById(id);if(el)el.style.display=cond?'':'none';};
-  const hist=(DB.history||{})[clientId]||[];
-  const prs=(DB.prs||{})[clientId]||{};
-  const nut=(DB.nutrition||{})[clientId];
-  const hasNut=!!(nut&&(nut.kcal||nut.plan||nut.examples));
-  // 🔴 v617: y el PESO igual, desde v614. Este lector ya tenía el aviso escrito dos líneas abajo
-  //    para las medidas y aun así el peso entró crudo — la lección de v566 estaba AQUÍ MISMO.
-  const bw=(typeof bwLive==='function')?bwLive((DB.bodyweight||{})[clientId]||[]):((DB.bodyweight||{})[clientId]||[]);
-  // 🔴 `medLive`, no el largo crudo: desde v566 borrar una medida deja una LAPIDA
-  //    dentro de esta misma coleccion. Contandolas, quien borra su unica toma se queda
-  //    con «Mi seguimiento personal» desplegado ensenando su propio estado vacio.
-  const med=(typeof medLive==='function')?medLive((DB.medidas||{})[clientId]||[]):((DB.medidas||{})[clientId]||[]);
-  const ph=(typeof photoLive==='function')?photoLive((DB.photos||{})[clientId]||[]):((DB.photos||{})[clientId]||[]);
-  show('cn-pr-card', Object.keys(prs).length>0);
-  // Nutrición: visible si el coach asignó plan O si es Premium (ahí vive la calculadora
-  // automática de calorías/macros para el self-serve sin coach). El modo libre no la ve.
-  const _nutClient=(DB.clients||[]).find(x=>x.id===clientId);
-  show('cn-nut-card', hasNut || (_nutClient && !premiumLocked(_nutClient)));
-  // Seguimiento personal: abierto si ya hay datos; colapsado si está todo vacío.
-  const ttBody=document.getElementById('tt-body'), ttChev=document.getElementById('tt-chev');
-  const hasTracking=bw.length||med.length||ph.length;
-  if(ttBody){ttBody.style.display=hasTracking?'block':'none';}
-  if(ttChev){ttChev.style.transform=hasTracking?'rotate(180deg)':'rotate(0deg)';}
+// ── EL PERFIL EN FILAS (v708, lote 3 del estudio de organización) ───────────────────────────────────
+// Decisión del PO (11-oct-2026). Reemplaza a `applyProfileDisclosure` (que escondía tarjetas vacías y
+// desplegaba «Mi seguimiento personal»): ahora cada sección es una fila que dice su dato y abre su pantalla.
+// 🔒 Las colecciones con lápidas se cuentan VIVAS (bwLive/medLive/photoLive): una lápida no es una toma
+//    (Julián QA v566, ampliado en v617). El candado de la suite vigila ESTE lector.
+const _PF_TITULO={datos:'Mis datos',records:'Mis récords',comida:'Mi plan de alimentación',peso:'Mi peso',medidas:'Mis medidas',fotos:'Mis fotos de progreso'};
+const _PF_IC={datos:['clipboard','📋'],records:['trophy','🏆'],comida:['apple','🥗'],peso:['scale','⚖️'],medidas:['ruler','📏'],fotos:['camera','📸']};
+function renderProfileRows(client){
+  const el=document.getElementById('cn-prof-rows'); if(!el||!client)return;
+  if(typeof profileRowsModel!=='function'){ el.innerHTML=''; return; }
+  const id=client.id;
+  const bw=(typeof bwLive==='function')?bwLive((DB.bodyweight||{})[id]||[]):[];
+  const med=(typeof medLive==='function')?medLive((DB.medidas||{})[id]||[]):[];
+  const ph=(typeof photoLive==='function')?photoLive((DB.photos||{})[id]||[]):[];
+  let medTs=0; med.forEach(e=>{ const t=Date.parse(e&&e.date); if(t>medTs) medTs=t; });
+  const prs=(DB.prs||{})[id]||{};
+  const nut=(DB.nutrition||{})[id];
+  const filas=profileRowsModel(client,{
+    bloqueo:premiumLocked(client)?((typeof planLockExit==='function')?planLockExit(client):'opciones'):null,
+    records:Object.values(prs).filter(p=>p&&typeof p==='object').length,
+    tienePlan:(typeof _hasCoachNutPlan==='function')?_hasCoachNutPlan(nut):!!(nut&&(nut.kcal||nut.plan)),
+    tieneCoach:(typeof clientHasCoach==='function')?clientHasCoach(client):false,
+    pesoKg:bw.length?bw[0].kg:client.weight,
+    medTs, fotos:ph.length},Date.now());
+  const I=typeof aviIcon==='function';
+  el.innerHTML=filas.map(f=>{
+    const ic=_PF_IC[f.sec]||['clipboard','·'];
+    return `<button type="button" class="aj-row${f.bloqueado?' pf-bloq':''}" data-pf-row="${f.sec}" onclick="perfilAbrir('${f.sec}')">`+
+      `<span class="aj-ic">${I?aviIcon(ic[0],16):ic[1]}</span><span class="aj-lbl">${esc(f.label)}</span>`+
+      `<span class="aj-val">${esc(f.valor)}</span><span class="aj-chev" aria-hidden="true">›</span></button>`;
+  }).join('');
 }
-function toggleTrackingTools(){
-  const body=document.getElementById('tt-body'), chev=document.getElementById('tt-chev');
-  if(!body)return;
-  const open=body.style.display==='none';
-  body.style.display=open?'block':'none';
-  if(chev)chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
+// Abre la pantalla de una fila: la sección guardada se MUDA a la habitación (conserva sus ids, así que cada
+// renderizador la sigue encontrando). La que estuviera de antes vuelve primero a su sitio.
+function perfilAbrir(sec){
+  const room=document.getElementById('perfil-room'), body=document.getElementById('pfroom-body');
+  if(!room||!body||!_PF_TITULO[sec]) return;
+  _perfilDevolver();
+  const card=document.querySelector('#prof-guardado [data-pf="'+sec+'"]'); if(!card) return;
+  body.appendChild(card);
+  const t=document.getElementById('pfroom-t'); if(t) t.textContent=_PF_TITULO[sec];
+  body.scrollTop=0;
+  if(typeof _roomFront==='function') _roomFront(room); else room.classList.add('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+}
+function _perfilDevolver(){
+  const g=document.getElementById('prof-guardado'), b=document.getElementById('pfroom-body'); if(!g||!b) return;
+  [...b.children].forEach(n=>{ if(n.dataset&&n.dataset.pf) g.appendChild(n); });
+}
+// Al cerrar, la sección se queda en la habitación (ya oculta) hasta la próxima: devolverla aquí la borraría
+// a mitad de la animación de salida. Las filas se repintan: lo que se acaba de registrar ya cuenta.
+function closePerfilRoom(){
+  const r=document.getElementById('perfil-room'); if(r) r.classList.remove('on');
+  if(typeof _syncRoomBodyClass==='function') _syncRoomBodyClass();
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId); if(c) renderProfileRows(c);
 }
 
 // TODAY

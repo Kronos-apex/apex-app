@@ -5203,8 +5203,10 @@ test('🔒 nadie cuenta lapidas como tomas (Julian QA, v566)', () => {
   const fs = require('fs'), path = require('path');
   const lee = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
   const entreno = lee('app-4-entreno.js');
-  const i = entreno.indexOf('function applyProfileDisclosure');
-  assert.ok(i > 0, 'se movio applyProfileDisclosure');
+  // v708: el Perfil pasó a filas y quien cuenta ahora es `renderProfileRows` (reemplazó a
+  // applyProfileDisclosure). La propiedad es la misma: se cuentan las VIVAS.
+  const i = entreno.indexOf('function renderProfileRows');
+  assert.ok(i > 0, 'se movio renderProfileRows');
   const cuerpo = entreno.slice(i, entreno.indexOf('\n}', i));
   assert.ok(/medLive\(/.test(cuerpo),
     'la tarjeta de seguimiento cuenta el arreglo crudo: una lapida no es una toma');
@@ -24168,6 +24170,73 @@ test('🔒 v707 · entrar a la ficha abre el Resumen; re-pintarla deja al coach 
     '🔴 la notificación de un mensaje lleva a los mensajes sin abrir el Resumen');
 });
 
+// ══════════════════════════════════════════════════════
+// v708 · EL PERFIL DEL ASESORADO EN FILAS (lote 3 del estudio de organización, decisión del PO)
+// ══════════════════════════════════════════════════════
+const _V708_NOW = new Date(2026, 9, 12, 10).getTime();
+test('🔒 v708 · cada fila del Perfil dice su dato, sin repetir la cabecera ni inventar nada', () => {
+  const c = { goal: 'Recomposición', level: 'Intermedio', days: 4, age: 29, height: 164 };
+  const f = core.profileRowsModel(c, { records: 24, tienePlan: true, tieneCoach: true, pesoKg: 61.4, medTs: new Date(2026, 8, 21, 18).getTime(), fotos: 3 }, _V708_NOW);
+  assert.deepStrictEqual(f.map(x => x.sec), core.PROFILE_SECS, 'las seis filas, en el orden del estudio');
+  const v = Object.fromEntries(f.map(x => [x.sec, x.valor]));
+  assert.strictEqual(v.datos, '29 años · 164 cm', 'Mis datos dice lo que la cabecera NO dice (objetivo, nivel y días ya van en ella)');
+  assert.strictEqual(v.records, '24 récords');
+  assert.strictEqual(v.comida, 'Armado por tu coach', '🔴 la fila del plan no lleva cifra de calorías (el número del día se mueve: v435)');
+  assert.strictEqual(v.peso, '61,4 kg');
+  assert.strictEqual(v.medidas, 'Hace 3 semanas', 'días de calendario, como el Resumen del coach');
+  assert.strictEqual(v.fotos, '3 fotos');
+  // Vacíos: se dice que falta, nunca un cero inventado.
+  const e = Object.fromEntries(core.profileRowsModel({}, {}, _V708_NOW).map(x => [x.sec, x.valor]));
+  assert.deepStrictEqual(e, { datos: 'Completa tu perfil', records: 'Todavía ninguno', comida: 'Calcula el tuyo', peso: 'Sin registrar', medidas: 'Sin registrar', fotos: 'Sin fotos' });
+  assert.strictEqual(core.profileRowsModel({}, { tieneCoach: true }, _V708_NOW)[2].valor, 'Tu coach aún no lo arma');
+  assert.strictEqual(core.profileRowsModel({}, { records: 1, fotos: 1, medTs: new Date(2026, 9, 11, 22).getTime() }, _V708_NOW)
+    .map(x => x.valor).slice(1).join('|'), '1 récord|Calcula el tuyo|Sin registrar|Ayer|1 foto', 'anoche fue «Ayer», no «Hoy»');
+});
+test('🔒 v708 · con candado, la fila dice lo mismo que el candado de su tarjeta (planLockExit) y el peso no lleva', () => {
+  for (const [salida, txt] of Object.entries(core.PROFILE_LOCK_TXT)) {
+    const f = core.profileRowsModel({ age: 30 }, { bloqueo: salida, records: 9, tienePlan: true, pesoKg: 70, fotos: 2 }, _V708_NOW);
+    const v = Object.fromEntries(f.map(x => [x.sec, x]));
+    for (const s of ['records', 'comida', 'medidas', 'fotos']) {
+      assert.strictEqual(v[s].valor, txt, '🔴 ' + s + ' con candado «' + salida + '» dice otra cosa');
+      assert.strictEqual(v[s].bloqueado, true);
+    }
+    assert.strictEqual(v.peso.valor, '70 kg', 'el peso no lleva candado (su tarjeta tampoco)');
+    assert.strictEqual(v.datos.valor, '30 años');
+  }
+  // Las cuatro salidas de planLockExit tienen su texto (una nueva sin texto caería al genérico en silencio).
+  const fs = require('fs'), path = require('path');
+  const core707 = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  const fn = core707.slice(core707.indexOf('function planLockExit('), core707.indexOf('\n}', core707.indexOf('function planLockExit(')));
+  // Se leen TODAS las cadenas de las líneas con `return` (dos salidas van en un ternario).
+  const salidas = [...new Set(fn.split('\n').filter(l => /\breturn\b/.test(l)).flatMap(l => [...l.slice(l.indexOf('return')).matchAll(/'([a-z-]+)'/g)].map(m => m[1])))];
+  assert.ok(salidas.length >= 4, 'CONTROL: se leyeron las salidas de planLockExit (' + salidas.join(',') + ')');
+  for (const x of salidas) assert.ok(core.PROFILE_LOCK_TXT[x], '🔴 planLockExit devuelve «' + x + '» y la fila no tiene su texto');
+});
+test('🔒 v708 · el Perfil enseña filas y cada sección abre su pantalla; el atrás la cierra', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const i = html.indexOf('<div id="cn-profile"'), f = html.indexOf('<div id="cn-community"', i);
+  const perfil = html.slice(i, f);
+  assert.ok(/<div class="aj-list" id="cn-prof-rows"/.test(perfil), '🔴 el Perfil perdió sus filas');
+  const g = perfil.indexOf('<div id="prof-guardado" hidden>');
+  assert.ok(g > 0, '🔴 las secciones ya no están guardadas: se verían completas en el Perfil');
+  const guardado = perfil.slice(g);
+  const secs = [...guardado.matchAll(/data-pf="([a-z]+)"/g)].map(m => m[1]);
+  assert.deepStrictEqual(secs, core.PROFILE_SECS, 'una sección guardada por fila, en el mismo orden');
+  for (const id of ['cn-prof-data', 'cn-pr-list', 'cn-nut-body', 'bw-list', 'bw-kg', 'cn-med-list', 'cn-photos-grid'])
+    assert.ok(guardado.includes('id="' + id + '"'), '🔴 #' + id + ' quedó fuera de su sección');
+  assert.ok(!/id="tt-body"|toggleTrackingTools/.test(html), 'el desplegable «Mi seguimiento personal» ya no existe');
+  assert.ok(/<div id="perfil-room" class="sroom">[\s\S]*?id="pfroom-body"/.test(html), '🔴 falta la pantalla de las filas');
+  const entreno = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/renderProfileRows\(client\);\s*\/\/ v708/.test(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')), '🔴 el Perfil no pinta sus filas');
+  const pa = entreno.slice(entreno.indexOf('function perfilAbrir('), entreno.indexOf('function _perfilDevolver('));
+  assert.ok(/_perfilDevolver\(\);/.test(pa) && /body\.appendChild\(card\);/.test(pa) && /_roomFront\(room\)/.test(pa), '🔴 abrir una fila no muda su sección a la pantalla (con su capa de historial)');
+  const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.ok(/const pfr=document\.getElementById\('perfil-room'\);\s*\n\s*if\(pfr&&pfr\.classList\.contains\('on'\)\)\{if\(typeof closePerfilRoom==='function'\)closePerfilRoom\(\)/.test(login),
+    '🔴 el atrás no cierra la pantalla de una fila del Perfil');
+  const iPu = login.indexOf("getElementById('premium-upsell')"), iPf = login.indexOf("getElementById('perfil-room')");
+  assert.ok(iPu > 0 && iPf > iPu, '🔴 el atrás cerraría la pantalla de la fila por DEBAJO del candado abierto desde ella');
+});
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

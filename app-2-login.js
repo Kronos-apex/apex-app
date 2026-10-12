@@ -1794,6 +1794,10 @@ function _aviCloseTopOverlay(){
   if(qwr&&qwr.classList.contains('on')){closeQuickRoom();return true;}
   const pu=document.getElementById('premium-upsell');
   if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
+  // v708 · la pantalla de una fila del Perfil: debajo de lo que se abre desde ella (un récord, el plan en
+  // grande, el candado de un plan).
+  const pfr=document.getElementById('perfil-room');
+  if(pfr&&pfr.classList.contains('on')){if(typeof closePerfilRoom==='function')closePerfilRoom();else pfr.classList.remove('on');return true;}
   const luo=document.getElementById('level-up');
   if(luo&&luo.classList.contains('on')){closeLevelUp();return true;}
   const wfo=document.getElementById('workout-finish');
