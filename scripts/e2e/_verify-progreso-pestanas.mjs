@@ -50,7 +50,8 @@ const MONTAR = conDatos => `(()=>{try{
   const hace=n=>new Date(Date.now()-n*86400000).toISOString();
   const ses=k=>({id:'s'+k,sessionId:'s'+k,routineId:'r1',routineName:'Pierna',date:hace(k*3+1),finishedAt:hace(k*3+1),doneSets:6,totalSets:6,duration:3000,totalVol:4000+(12-k)*80,
     exercises:[{id:'e14',name:'Hip Thrust con Barra',track:'peso_reps',sets:[1,2,3].map(()=>({kg:String(80+(12-k)*2.5),reps:'10',done:true}))},
-               {id:'e1',name:'Press de Banca',track:'peso_reps',sets:[1,2,3].map(()=>({kg:String(30+(12-k)),reps:'8',done:true}))}]});
+               {id:'e1',name:'Press de Banca',track:'peso_reps',sets:[1,2,3].map(()=>({kg:String(30+(12-k)),reps:'8',done:true}))},
+               {id:'e5',name:'Remo con Barra',track:'peso_reps',sets:[1,2,3].map(()=>({kg:String(35+(12-k)),reps:'8',done:true}))}]});
   DB.clients=[{id:'demo',name:'Mariana Prueba',sex:'F',goal:'Recomposición',level:'Intermedio',days:3,age:29,height:164,weight:61,
     payments:[{date:hace(10),dueDate:new Date(Date.now()+20*86400000).toISOString(),amount:150000}],routines:[],habits:{water:{},steps:{}}}];
   DB.history={demo:${conDatos ? '[0,1,2,3,4,5,6,7,8,9,10,11].map(ses)' : '[]'}};

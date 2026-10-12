@@ -22,7 +22,8 @@ const SABOTAJES = [
   ['nav', 'sin la regla base, las cuatro pestañas se ven a la vez (se ve)', 'css', '#cn-history .pg-sec{display:none}', '#cn-history .pg-sec{display:block}'],
   ['suite', '«Logros» no se puede ver', 'css', ',#cn-history[data-ptab="logros"] .pg-sec[data-pt="logros"]{display:block}', '{display:block}'],
   ['nav', '«Logros» no se puede ver (se ve)', 'css', ',#cn-history[data-ptab="logros"] .pg-sec[data-pt="logros"]{display:block}', '{display:block}'],
-  ['suite', 'la gráfica de volumen sale de su pestaña', 'html', '      <section class="pg-sec" data-pt="historial" role="tabpanel" aria-label="Historial">\n', '      </section><section class="pg-sec" data-pt="historial" role="tabpanel" aria-label="Historial">\n'],
+  // El sabotaje viejo añadía un </section> suelto y no movía nada (salió verde): ahora la gráfica de verdad sale de su pestaña.
+  ['suite', 'la gráfica de volumen sale de su pestaña', 'html', '<section class="pg-sec" data-pt="historial" role="tabpanel" aria-label="Historial">\n        <div class="vchart-wrap" id="vol-chart-wrap"', '<div class="vchart-wrap" id="vol-chart-wrap"></div><section class="pg-sec" data-pt="historial" role="tabpanel" aria-label="Historial">\n        <div class="vchart-wrap" id="vol-chart-wrap-x"'],
   ['suite', '«Récords» vuelve a depender de haber abierto el Perfil', 'e4', "  if(typeof renderClientExProgress==='function') renderClientExProgress(clientId);\n  _progSync();", '  _progSync();'],
   ['nav', '«Récords» vuelve a depender de haber abierto el Perfil (se ve)', 'e4', "  if(typeof renderClientExProgress==='function') renderClientExProgress(clientId);\n  _progSync();", '  _progSync();'],
   ['nav', 'la pestaña no se recuerda al volver', 'e4', "  progTab(CUR.progTab||'resumen',{quieto:true});", "  progTab('resumen',{quieto:true});"],
