@@ -249,7 +249,7 @@ html[data-theme="light"] .mta {
 /* Elementos tappables que NO son <button> nativo (div/span con onclick): sin esto, en
    el WebView de Android el toque sobre su texto dispara el menú de selección ("buscar en
    Google…") y se traga el clic. Mismo fix que .sbi, aplicado a toda la "chrome" tocable. */
-.cntab,.cbnav-item,.sbout,.cli,.sescard-h,.prof-collapse,.gloss-term,.wu-ex-row,.pex-row,.nutri-card,.profrm,.rp,.back{
+.cntab,.cbnav-item,.sbout,.cli,.sescard-h,.gloss-term,.wu-ex-row,.pex-row,.nutri-card,.profrm,.rp,.back{
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .sbuser{display:flex;align-items:center;gap:9px;padding:8px}
 .av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:white;flex-shrink:0}
@@ -649,12 +649,6 @@ html[data-theme="light"] .mta {
 /* ══ PERFIL → seguimiento premium (scoped, no afecta al coach) ══ */
 #cn-profile .card{border-radius:16px}
 #cn-profile .ctitle{font-family:'Anton',sans-serif;font-size:12px;font-weight:400;letter-spacing:1px;text-transform:uppercase;color:var(--gt)}
-.prof-collapse{display:flex;align-items:center;gap:12px;border:1px solid var(--br2);border-left:3px solid var(--g);border-radius:16px;padding:14px 16px;margin-bottom:12px;cursor:pointer;background:linear-gradient(100deg,var(--gl),var(--w) 62%)}
-.prof-collapse .pc-ic{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;font-size:18px;background:var(--w);border:1px solid var(--br2)}
-.prof-collapse .pc-tx{flex:1}
-.prof-collapse .pc-t{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.5px;color:var(--t1)}
-.prof-collapse .pc-s{font-size:11px;color:var(--t3);margin-top:2px}
-.prof-collapse .pc-chev{font-size:12px;color:var(--gt);transition:transform .25s}
 /* ══ Descanso del guiado MINIMIZADO a banner (pedido Camilo 2026-07-06) ══ */
 .gm-rest-hint{margin-top:14px;font-size:12px;color:rgba(255,255,255,.55);text-align:center;padding:0 20px}
 .gm-rest-overlay.gm-hold .gm-rest-hint{display:none} /* en isométrico no se minimiza — cancelar es explícito */
@@ -2617,3 +2611,4 @@ button.dt-tile:active{transform:scale(.97)}
 #pfroom-body .ch{justify-content:flex-end}
 #pfroom-body .ch:not(:has(button)){display:none}
 .pf-bloq .aj-val{color:var(--t2);font-style:italic}
+.pf-cerrada .ch button{display:none}

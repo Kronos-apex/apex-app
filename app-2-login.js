@@ -1750,6 +1750,9 @@ function _aviCloseTopOverlay(){
   // dejaba la imagen ampliada huérfana (el fix original era de apex-v105).
   const lb=document.getElementById('ex-lightbox');
   if(lb&&lb.classList.contains('on')){closeExImg();return true;}
+  // v708 · el visor de una foto de progreso va ENCIMA de todo (z 9999): se cierra antes que su pantalla.
+  const pv=document.getElementById('ph-visor');
+  if(pv){pv.remove();return true;}
   // La ficha de ejercicio (técnica/video) puede abrirse ENCIMA de una habitación (su z se
   // sube por encima de la habitación al abrirla), así que se cierra ANTES que las habitaciones.
   const exdTop=document.getElementById('exdetail-bg');

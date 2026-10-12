@@ -122,6 +122,47 @@ A.ok(/Tus récords/.test(cand) && cand.length > 10, 'y al abrir una, se ve su ca
 await ev(`history.back()`); await sleep(400);
 await ev(MONTAR(null)); await sleep(500);
 
+// ── 5b. Lo que cazó el QA: el candado DENTRO de una pantalla funciona, y no hay acciones junto a él ──
+const tocarCentro = sel => ev(`(()=>{ const b=document.querySelector(${JSON.stringify(sel)}); if(!b) return {falta:true}; b.scrollIntoView({block:'center'}); const r=b.getBoundingClientRect();
+  const el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); const ok=el===b||b.contains(el); if(ok) b.click(); return {ok}; })()`);
+// a) AVI FREE: «Ver cómo desbloquearlo» abre la ventana de venta ENCIMA de la pantalla.
+await ev(`(()=>{ const c=DB.clients[0]; c.tier='libre'; c.payments=[]; renderClientProfile(c); perfilAbrir('records'); })()`); await sleep(500);
+const accLibre = await ev(`[...document.querySelectorAll('#pfroom-body .ch button')].filter(b=>b.getBoundingClientRect().height>0).length`);
+const tq = await tocarCentro('#cn-pr-list button'); await sleep(450);
+const up = await ev(`(()=>{ const u=document.getElementById('premium-upsell'); const r=u.getBoundingClientRect(); const el=document.elementFromPoint(innerWidth/2,innerHeight/2); return {on:u.classList.contains('on'), encima:u.contains(el)}; })()`);
+A.ok(tq.ok && up.on && up.encima, 'con AVI FREE, el botón del candado de «Mis récords» abre la ventana de venta ENCIMA de la pantalla', { tq, up });
+await ev(`history.back()`); await sleep(450);
+const tras = await ev(`({upsell:document.getElementById('premium-upsell').classList.contains('on'), sala:document.getElementById('perfil-room').classList.contains('on')})`);
+A.ok(!tras.upsell && tras.sala, 'el atrás cierra la ventana de venta y deja «Mis récords»', tras);
+await ev(`history.back()`); await sleep(400);
+// b) Con candado, la cabecera no ofrece acciones (Subir / + Registrar / WhatsApp), y subir una foto no se deja.
+let accs = {};
+for (const sec of ['comida', 'medidas', 'fotos']) { await ev(`perfilAbrir('${sec}')`); await sleep(350);
+  accs[sec] = await ev(`[...document.querySelectorAll('#pfroom-body .ch button')].filter(b=>b.getBoundingClientRect().height>0).map(b=>b.textContent.trim())`);
+  await ev(`history.back()`); await sleep(350); }
+A.ok(accLibre === 0 && Object.values(accs).every(a => a.length === 0), 'con candado, ninguna pantalla ofrece «Subir», «+ Registrar» ni «WhatsApp» junto al candado', accs);
+const fotosAntes = await ev(`(DB.photos.demo||[]).length`);
+await ev(`openPhotosModal()`); await sleep(300);
+A.ok(!(await ev(`document.getElementById('m-photos').classList.contains('on')`)), 'y subir una foto con la cuenta bloqueada no abre nada (el candado va en la acción)', fotosAntes);
+// c) Plan con coach vencido: «Hablar con mi coach» cierra la pantalla y lleva a Mensajes.
+await ev(`(()=>{ const c=DB.clients[0]; delete c.tier; c.payments=[{date:new Date(Date.now()-60*86400000).toISOString(),dueDate:new Date(Date.now()-30*86400000).toISOString(),amount:150000}]; renderClientProfile(c); perfilAbrir('fotos'); })()`); await sleep(500);
+const chat = await tocarCentro('#cn-photos-grid button'); await sleep(700);
+const enChat = await ev(`({sala:document.getElementById('perfil-room').classList.contains('on'), mensajes:document.getElementById('cn-messages').classList.contains('on')})`);
+A.ok(chat.ok && !enChat.sala && enChat.mensajes, 'con el plan vencido, «Hablar con mi coach» cierra la pantalla y lleva a Mensajes', { chat, enChat });
+await ev(MONTAR(null)); await sleep(500);
+// d) El visor de una foto: el atrás lo cierra a ÉL y deja «Mis fotos».
+await ev(`perfilAbrir('fotos')`); await sleep(400);
+await ev(`viewPhoto('p2','demo')`); await sleep(400);
+const visorAntes = await ev(`!!document.getElementById('ph-visor')`);
+await ev(`history.back()`); await sleep(500);
+const visor = await ev(`({visor:!!document.getElementById('ph-visor'), sala:document.getElementById('perfil-room').classList.contains('on')})`);
+A.ok(visorAntes && !visor.visor && visor.sala, 'con una foto ampliada, el atrás cierra la foto y deja «Mis fotos»', visor);
+await ev(`history.back()`); await sleep(400);
+// e) Sin edad ni estatura, «Mis datos» dice lo que falta (no manda a completar algo que esa pantalla no deja).
+await ev(`(()=>{ const c=DB.clients[0]; delete c.age; delete c.height; renderClientProfile(c); })()`); await sleep(300);
+A.ok((await ev(`document.querySelector('#cn-prof-rows [data-pf-row="datos"] .aj-val').textContent`)) === 'Sin edad ni estatura', '«Mis datos» sin edad ni estatura dice lo que falta');
+await ev(MONTAR(null)); await sleep(500);
+
 // ── 6. «Muy grande» y los dos temas ──
 await ev(`document.documentElement.setAttribute('data-fs','xl')`); await sleep(700);
 await ev(`perfilAbrir('peso')`); await sleep(600);

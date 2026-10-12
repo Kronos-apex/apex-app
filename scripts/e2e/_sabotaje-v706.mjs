@@ -49,7 +49,7 @@ const SABOTAJES = [
   ['suite', 'un botón ya pintado abre el plan aunque hoy esté bloqueado', 'e5', 'b.onclick=()=>{ if(_bloqueada())return; ', 'b.onclick=()=>{ '],
   ['nav', 'con «Muy grande» el rótulo vuelve a salirse del botón', 'css', 'white-space:normal;text-align:left;line-height:1.3}', 'line-height:1.3}'],
   ['nav', 'la ficha vuelve a decir «Lo que ve» de alguien que no lo ve', 'e5', '${_noLoVe?', '${false?'],
-  ['nav', 'el aviso vuelve a decir «aquí abajo» (sin sentido en la notificación)', 'e5', 'Lo ves en tu Perfil, en «Mi plan nutricional».', 'Tócalo aquí abajo para verlo.'],
+  ['nav', 'el aviso vuelve a decir «aquí abajo» (sin sentido en la notificación)', 'e5', 'Lo ves en tu Perfil, en «Mi plan de alimentación».', 'Tócalo aquí abajo para verlo.'],
 ];
 
 const correr = capa => {

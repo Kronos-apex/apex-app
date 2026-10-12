@@ -17,6 +17,18 @@
 //   al final:              salir(A, { chrome, srv, out: OUT });   // exit 1 si algo falló
 
 import { statSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+
+// 🔴 En Windows `proc.kill()` mata solo el proceso que se lanzó: `python -m http.server` es un lanzador que
+// arranca OTRO python, y ese hijo queda vivo con el puerto tomado. Medido el 12-oct-2026: 14 servidores
+// huérfanos en el 8899 (uno por corrida) y 30 más en otros puertos. El siguiente harness no podía levantar su
+// servidor, la app no arrancaba y una matriz de sabotaje contaba «MUERDE» en filas que no probaron nada.
+// Se mata el ÁRBOL.
+export function matarArbol(proc) {
+  if (!proc || !proc.pid) return;
+  if (process.platform === 'win32') { try { execSync(`taskkill /PID ${proc.pid} /T /F`, { stdio: 'ignore' }); return; } catch {} }
+  try { proc.kill(); } catch {}
+}
 
 export function afirmador(nombre) {
   const A = { nombre, fallos: [], jsErrors: [] };
@@ -88,7 +100,7 @@ export function salir(A, { chrome, srv, out } = {}) {
     ? `\n❌ ${A.nombre}: ${A.fallos.length} fallo(s) — ${A.fallos.join(' · ')}`
     : `\n✅ ${A.nombre} OK`);
   if (out) console.log('  capturas en:', out);
-  try { chrome && chrome.kill(); } catch {}
-  try { srv && srv.kill(); } catch {}
+  matarArbol(chrome);
+  matarArbol(srv);
   process.exit(A.fallos.length ? 1 : 0);
 }

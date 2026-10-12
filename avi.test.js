@@ -6193,8 +6193,12 @@ test('el candado premium le da al VENCIDO una salida que existe (v564)', () => {
   // que conoce el TERCER público (AVI PRO). Lo que v564 protegía sigue igual: el vencido CON coach
   // sale al chat, y el botón del chat lleva al chat.
   assert.ok(/planLockExit\(c\)/.test(cuerpo), 'el candado no le pregunta a planLockExit');
-  assert.ok(/'coach-chat':_b\("cnTab\('cn-messages',document\.getElementById\('tab-msgs'\)\)",'Hablar con mi coach'\)/.test(cuerpo),
+  // v708: el botón pasa por `_lockAlChat`, que primero cierra la pantalla abierta (el candado puede vivir
+  // dentro de una fila del Perfil) y después va al chat. La propiedad no cambia: el vencido con coach sale al chat.
+  assert.ok(/'coach-chat':_b\('_lockAlChat\(\)','Hablar con mi coach'\)/.test(cuerpo),
     'al vencido con coach no se le ofrece su chat');
+  const lac = src.slice(src.indexOf('function _lockAlChat('), src.indexOf('\nfunction ', src.indexOf('function _lockAlChat(') + 10));
+  assert.ok(/cnTab\('cn-messages',document\.getElementById\('tab-msgs'\)\)/.test(lac), 'el botón del chat ya no lleva al chat');
   // Control de discriminación: el usuario LIBRE sigue teniendo su invitación.
   assert.ok(/'opciones':_b\('showPremiumUpsell\(\)'/.test(cuerpo), 'se perdió la invitación del usuario libre');
 });
@@ -23821,9 +23825,12 @@ test('🔒 v704 · un botón de tema o de letra que se desmarca vuelve a SU esti
 test('🔒 v704 · una ventana que se abre sobre una habitación queda ENCIMA (QA: «Eliminar mi cuenta» salía detrás de Ajustes)', () => {
   const fs = require('fs'), path = require('path');
   const a4 = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8').replace(/\r/g, '');
-  const i = a4.indexOf('function om(id){');
-  assert.ok(i > 0, 'no encontré om()');
-  const src = a4.slice(i, a4.indexOf('\n}', i) + 2);
+  // v708: om() delega la subida en `_alzarSobreSalas` (también la usa la ventana de venta): se ejecutan JUNTAS.
+  const i = a4.indexOf('function _alzarSobreSalas(m){');
+  assert.ok(i > 0 && a4.indexOf('function om(id){') > i, 'no encontré _alzarSobreSalas + om()');
+  const iom = a4.indexOf('function om(id){');
+  const src = a4.slice(i, a4.indexOf('\n}', iom) + 2);
+  assert.ok(/_alzarSobreSalas\(m\);\s*\n\s*m\.classList\.add\('on'\);/.test(src), '🔴 om() ya no sube la ventana');
   // Se EJECUTA la om() real contra un DOM mínimo: z de la CSS en `_z`, el en línea en `style.zIndex`.
   const nodo = (z, on) => ({ _z: z, style: { zIndex: '' }, classList: { c: new Set(on ? ['on'] : []), add(x) { this.c.add(x); }, contains(x) { return this.c.has(x); } } });
   const correr = (modal, salas) => {
@@ -24187,12 +24194,24 @@ test('🔒 v708 · cada fila del Perfil dice su dato, sin repetir la cabecera ni
   assert.strictEqual(v.fotos, '3 fotos');
   // Vacíos: se dice que falta, nunca un cero inventado.
   const e = Object.fromEntries(core.profileRowsModel({}, {}, _V708_NOW).map(x => [x.sec, x.valor]));
-  assert.deepStrictEqual(e, { datos: 'Completa tu perfil', records: 'Todavía ninguno', comida: 'Calcula el tuyo', peso: 'Sin registrar', medidas: 'Sin registrar', fotos: 'Sin fotos' });
+  assert.deepStrictEqual(e, { datos: 'Sin edad ni estatura', records: 'Todavía ninguno', comida: 'Calcula el tuyo', peso: 'Sin registrar', medidas: 'Sin registrar', fotos: 'Sin fotos' });
   assert.strictEqual(core.profileRowsModel({}, { tieneCoach: true }, _V708_NOW)[2].valor, 'Tu coach aún no lo arma');
   assert.strictEqual(core.profileRowsModel({}, { records: 1, fotos: 1, medTs: new Date(2026, 9, 11, 22).getTime() }, _V708_NOW)
     .map(x => x.valor).slice(1).join('|'), '1 récord|Calcula el tuyo|Sin registrar|Ayer|1 foto', 'anoche fue «Ayer», no «Hoy»');
 });
 test('🔒 v708 · con candado, la fila dice lo mismo que el candado de su tarjeta (planLockExit) y el peso no lleva', () => {
+  // Oráculo INDEPENDIENTE (la matriz cazó que comparar contra la propia tabla no prueba nada): lo que dice el
+  // candado de la tarjeta (`premiumLockHTML`, en app-3) y lo que tiene que decir la fila, por palabras clave.
+  const fsx = require('fs'), pathx = require('path');
+  const coachSrc = fsx.readFileSync(pathx.join(__dirname, 'app-3-coach.js'), 'utf8');
+  const lockFn = coachSrc.slice(coachSrc.indexOf('function premiumLockHTML('), coachSrc.indexOf('\n}', coachSrc.indexOf('function premiumLockHTML(')));
+  const CLAVE = { 'renovar-pro': [/renov.*AVI PRO/i, /renueves tu <b>AVI PRO/], 'coach-chat': [/renov.*plan/i, /renueves tu plan/],
+    coach: [/coaching/i, /<b>coaching<\/b>/], opciones: [/AVI PRO.*coach/i, /<b>AVI PRO<\/b> o con un coach/] };
+  for (const [salida, [enFila, enCandado]] of Object.entries(CLAVE)) {
+    assert.ok(enCandado.test(lockFn), 'CONTROL: el candado de la tarjeta dice lo esperado para «' + salida + '»');
+    const txt = core.profileRowsModel({}, { bloqueo: salida }, _V708_NOW)[1].valor;
+    assert.ok(enFila.test(txt), '🔴 con candado «' + salida + '» la fila dice «' + txt + '», que no es lo que dice su candado');
+  }
   for (const [salida, txt] of Object.entries(core.PROFILE_LOCK_TXT)) {
     const f = core.profileRowsModel({ age: 30 }, { bloqueo: salida, records: 9, tienePlan: true, pesoKg: 70, fotos: 2 }, _V708_NOW);
     const v = Object.fromEntries(f.map(x => [x.sec, x]));
@@ -24234,6 +24253,19 @@ test('🔒 v708 · el Perfil enseña filas y cada sección abre su pantalla; el 
   const login = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
   assert.ok(/const pfr=document\.getElementById\('perfil-room'\);\s*\n\s*if\(pfr&&pfr\.classList\.contains\('on'\)\)\{if\(typeof closePerfilRoom==='function'\)closePerfilRoom\(\)/.test(login),
     '🔴 el atrás no cierra la pantalla de una fila del Perfil');
+  // QA v708: la ventana de venta sube por encima de la pantalla; con candado no hay acciones junto a él; subir
+  // una foto bloqueada no se deja; el visor de una foto tiene su capa de historial.
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const spu = ent.slice(ent.indexOf('function showPremiumUpsell('), ent.indexOf('function _puState('));
+  assert.ok(/_alzarSobreSalas\(_pu\); _pu\.classList\.add\('on'\);/.test(spu), '🔴 la ventana de venta se abre DEBAJO de la pantalla de la fila');
+  assert.ok(/card\.classList\.toggle\('pf-cerrada',!!f\.bloqueado\)/.test(entreno), '🔴 la sección bloqueada no se marca');
+  assert.ok(/\.pf-cerrada \.ch button\{display:none\}/.test(fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8')), '🔴 con candado se ofrecen acciones junto a él');
+  const salud = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8'));
+  const opm = salud.slice(salud.indexOf('function openPhotosModal('), salud.indexOf('\n}', salud.indexOf('function openPhotosModal(')));
+  assert.ok(/premiumLocked\(_c\)\)\{[^}]*return;/.test(opm), '🔴 con la cuenta bloqueada se pueden subir fotos');
+  const vp = salud.slice(salud.indexOf('function viewPhoto('), salud.indexOf('\n}', salud.indexOf('function viewPhoto(')));
+  assert.ok(/overlay\.id='ph-visor'/.test(vp) && /navOpenLayer\(\)/.test(vp), '🔴 el visor de la foto no tiene su capa de historial');
+  assert.ok(/const pv=document\.getElementById\('ph-visor'\);\s*\n\s*if\(pv\)\{pv\.remove\(\);return true;\}/.test(login), '🔴 el atrás no cierra el visor de la foto');
   const iPu = login.indexOf("getElementById('premium-upsell')"), iPf = login.indexOf("getElementById('perfil-room')");
   assert.ok(iPu > 0 && iPf > iPu, '🔴 el atrás cerraría la pantalla de la fila por DEBAJO del candado abierto desde ella');
 });

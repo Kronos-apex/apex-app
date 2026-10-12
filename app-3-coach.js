@@ -1892,6 +1892,11 @@ function renderCoachUpsell(c){
 // 🔴 v696 (R18) — Y TIENE UN TERCER PÚBLICO: AVI PRO, la app sin coach. A él el candado le decía
 // «Disponible con un coach (Premium)» y, vencido, «Hablar con mi coach» — un chat que un PRO nunca
 // tuvo, así que el botón lo devolvía al mismo candado. La salida la decide `planLockExit` (avi-core).
+function _lockAlChat(){
+  const ir=()=>{ if(typeof cnTab==='function') cnTab('cn-messages',document.getElementById('tab-msgs')); };
+  const salas=document.querySelectorAll('.sroom.on').length;
+  if(salas===1&&typeof AVINAV!=='undefined'&&AVINAV.layers>0){ history.back(); setTimeout(ir,60); } else ir();
+}
 function premiumLockHTML(title,desc){
   const c=(typeof _curClient==='function')?_curClient():null;
   const salida=(typeof planLockExit==='function')?planLockExit(c):'opciones';   // guard caché vieja
@@ -1904,7 +1909,7 @@ function premiumLockHTML(title,desc){
   const _b=(on,txt)=>`<button onclick="${on}" style="padding:10px 18px;background:#10E0A0;color:#06231a;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">${txt}</button>`;
   const accion={
     'renovar-pro':_b("abrirPlanWhatsApp('renovar-pro')",'Renovar mi AVI PRO'),
-    'coach-chat':_b("cnTab('cn-messages',document.getElementById('tab-msgs'))",'Hablar con mi coach'),
+    'coach-chat':_b('_lockAlChat()','Hablar con mi coach'),
     'coach':_b('showPremiumUpsell()','Ver el coaching →'),
     'opciones':_b('showPremiumUpsell()','Ver cómo desbloquearlo →'),
   }[salida];

@@ -126,7 +126,7 @@ await ev(`document.querySelector('#cn-msg-thread button.mact').click()`); await 
 const rm = await ev(`_spy.room.slice()`);
 A.ok(Array.isArray(rm) && rm[0] === 'c1', 'tocarlo abre SU plan de alimentación', rm);
 const txt = await ev(`(DB.msgs.c1||[]).find(m=>m.act==='nutplan').text`);
-A.ok(/Mi plan nutricional/.test(txt) && !/aquí abajo/.test(txt), 'el texto del aviso se entiende también en la notificación (dice dónde está, no «aquí abajo»)', txt);
+A.ok(/Mi plan de alimentación/.test(txt) && !/aquí abajo/.test(txt), 'el texto del aviso se entiende también en la notificación (dice dónde está, no «aquí abajo»)', txt);
 // QA de v706 (Lucas): con «Muy grande» el rótulo del botón se salía del botón (white-space:nowrap).
 await ev(`setTextSize('xl')`); await sleep(700); await ev(`renderClientMsgs('c1')`); await sleep(200);
 const xl = await ev(`(()=>{ const b=document.querySelector('#cn-msg-thread button.mact'); const th=document.getElementById('cn-msg-thread');

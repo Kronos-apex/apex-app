@@ -12612,7 +12612,7 @@ function profileRowsModel(client, d, now) {
   const medTs = Number(x.medTs) > 0 ? Number(x.medTs) : 0;
   const hace = medTs ? _pfHace(medTs, nowTs) : '';
   return [
-    { sec: 'datos', label: 'Mis datos', valor: datos || 'Completa tu perfil' },
+    { sec: 'datos', label: 'Mis datos', valor: datos || 'Sin edad ni estatura' },
     { sec: 'records', label: 'Mis récords', bloqueado: !!lock,
       valor: lock || (rec ? (rec === 1 ? '1 récord' : rec + ' récords') : 'Todavía ninguno') },
     { sec: 'comida', label: 'Mi plan de alimentación', bloqueado: !!lock,

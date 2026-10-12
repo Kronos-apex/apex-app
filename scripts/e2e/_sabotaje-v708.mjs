@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const F = { core: join(ROOT, 'avi-core.js'), e2: join(ROOT, 'app-2-login.js'), e4: join(ROOT, 'app-4-entreno.js'),
+const F = { core: join(ROOT, 'avi-core.js'), e2: join(ROOT, 'app-2-login.js'), e3: join(ROOT, 'app-3-coach.js'), e4: join(ROOT, 'app-4-entreno.js'), e5: join(ROOT, 'app-5-salud.js'),
   html: join(ROOT, 'index.html'), css: join(ROOT, 'styles.css') };
 const escribir = (ruta, txt) => { writeFileSync(ruta + '.tmp', txt); renameSync(ruta + '.tmp', ruta); };
 const SOLO_SUITE = process.argv.includes('--solo-suite');
@@ -39,6 +39,16 @@ const SABOTAJES = [
   ['suite', 'el atrás no cierra la pantalla de la fila', 'e2', "  if(pfr&&pfr.classList.contains('on')){if(typeof closePerfilRoom==='function')closePerfilRoom();else pfr.classList.remove('on');return true;}", '  void pfr;'],
   ['nav', 'el atrás no cierra la pantalla de la fila (se ve)', 'e2', "  if(pfr&&pfr.classList.contains('on')){if(typeof closePerfilRoom==='function')closePerfilRoom();else pfr.classList.remove('on');return true;}", '  void pfr;'],
   ['nav', 'la pantalla de la fila no lleva su título', 'e4', "  const t=document.getElementById('pfroom-t'); if(t) t.textContent=_PF_TITULO[sec];", '  void 0;'],
+  // ── Lo que cazó el QA (Julián y Lucas) ──
+  ['nav', 'la ventana de venta vuelve a abrirse DEBAJO de la pantalla (QA)', 'e4', "const _pu=document.getElementById('premium-upsell'); _alzarSobreSalas(_pu); _pu.classList.add('on');", "const _pu=document.getElementById('premium-upsell'); _pu.classList.add('on');"],
+  ['suite', 'la ventana de venta vuelve a abrirse DEBAJO de la pantalla, suite (QA)', 'e4', "const _pu=document.getElementById('premium-upsell'); _alzarSobreSalas(_pu); _pu.classList.add('on');", "const _pu=document.getElementById('premium-upsell'); _pu.classList.add('on');"],
+  ['nav', '«Hablar con mi coach» cambia la pestaña DEBAJO de la pantalla (QA)', 'e3', "  if(salas===1&&typeof AVINAV!=='undefined'&&AVINAV.layers>0){ history.back(); setTimeout(ir,60); } else ir();", '  ir();'],
+  ['nav', 'con candado vuelven las acciones junto a él (QA)', 'css', '.pf-cerrada .ch button{display:none}', '.pf-cerrada .ch button{}'],
+  ['suite', 'con candado vuelven las acciones junto a él, suite (QA)', 'css', '.pf-cerrada .ch button{display:none}', '.pf-cerrada .ch button{}'],
+  ['nav', 'subir una foto con la cuenta bloqueada vuelve a dejarse (QA)', 'e5', "if(_c&&typeof premiumLocked==='function'&&premiumLocked(_c)){ if(typeof toast==='function') toast('Las fotos de progreso vienen con tu plan'); return; }", 'void 0;'],
+  ['nav', 'el atrás vuelve a cerrar la pantalla debajo de la foto ampliada (QA)', 'e2', "  if(pv){pv.remove();return true;}", '  void pv;'],
+  ['suite', 'el visor de la foto pierde su capa de historial (QA)', 'e5', "  if(typeof navOpenLayer==='function') navOpenLayer();   // v708 · el atrás cierra el visor", "  // v708 · el atrás cierra el visor"],
+  ['nav', '«Mis datos» vuelve a mandar a completar algo que no se puede (QA)', 'core', "valor: datos || 'Sin edad ni estatura' }", "valor: datos || 'Completa tu perfil' }"],
 ];
 
 const correr = capa => {
@@ -47,6 +57,13 @@ const correr = capa => {
 };
 
 const orig = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, readFileSync(p, 'utf8')]));
+// 🔴 El control va PRIMERO (lección v707/v708): si el harness o la suite ya salen rojos SIN sabotaje, cada fila
+// «mordería» en falso. Se detiene sin dar ningún veredicto.
+const preSuite = correr('suite'), preNav = SOLO_SUITE || correr('nav');
+if (!preSuite || !preNav) {
+  console.log(`🔴 CONTROL PREVIO ROJO (suite ${preSuite ? 'verde' : 'ROJA'} · harness ${preNav ? 'verde' : 'ROJO'}): sin sabotaje ya falla — no se corre ninguna fila.`);
+  process.exit(1);
+}
 let muerden = 0, noAplican = 0, corridas = 0;
 for (const [capa, nombre, archivo, buscar0, poner0] of SABOTAJES) {
   if (SOLO_SUITE && capa !== 'suite') continue;

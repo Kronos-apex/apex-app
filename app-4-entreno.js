@@ -876,6 +876,8 @@ function renderProfileRows(client){
     tieneCoach:(typeof clientHasCoach==='function')?clientHasCoach(client):false,
     pesoKg:bw.length?bw[0].kg:client.weight,
     medTs, fotos:ph.length},Date.now());
+  // La sección bloqueada se marca: su cabecera esconde las acciones (el candado es lo único que se ofrece).
+  filas.forEach(f=>{ const card=document.querySelector('[data-pf="'+f.sec+'"]'); if(card) card.classList.toggle('pf-cerrada',!!f.bloqueado); });
   const I=typeof aviIcon==='function';
   el.innerHTML=filas.map(f=>{
     const ic=_PF_IC[f.sec]||['clipboard','·'];
@@ -3552,7 +3554,7 @@ function showPremiumUpsell(){
   if(_s)_s.textContent=ops.includes('pro')?'Desbloquea la app entera, o súmale un coach que te arme el plan.'
     :'Ya tienes la app entera. Con un coach, además, te arma el plan y te responde en el chat.';
   _puState(!!c.wantsCoach);
-  document.getElementById('premium-upsell').classList.add('on');
+  const _pu=document.getElementById('premium-upsell'); _alzarSobreSalas(_pu); _pu.classList.add('on');
   document.body.style.overflow='hidden';
 }
 function _puState(sent){
@@ -4963,13 +4965,20 @@ function openBackup(){
 // `_roomFront`) quedaba DETRÁS de ella: «Eliminar mi cuenta», desde Ajustes, no mostraba nada (QA Lucas y
 // Julián). Se sube por encima de la habitación más alta que esté abierta; sin habitaciones manda su CSS
 // (y una ventana con z propio más alto, como la del HIIT, lo conserva).
-function om(id){
-  const m=document.getElementById(id);
+// Sube un elemento por encima de la habitación más alta abierta (sin habitaciones, deja su CSS). Es la regla
+// de v704 para las ventanas `.mdbg`, y v708 la extendió a la ventana de venta (`#premium-upsell`), que no pasa
+// por om(): abierta desde el candado de una fila del Perfil quedaba DEBAJO y el botón parecía muerto (QA).
+function _alzarSobreSalas(m){
+  if(!m) return;
   m.style.zIndex='';
   const base=parseInt(getComputedStyle(m).zIndex)||0;
   const salas=[...document.querySelectorAll('.sroom.on')].map(e=>parseInt(getComputedStyle(e).zIndex)||0);
   const tope=salas.length?Math.max(...salas):0;
   if(tope>=base) m.style.zIndex=String(tope+10);
+}
+function om(id){
+  const m=document.getElementById(id);
+  _alzarSobreSalas(m);
   m.classList.add('on');
 }
 function cm(id){document.getElementById(id).classList.remove('on')}

@@ -17,8 +17,21 @@
   ningún renderizador cambió. Lo que se registra dentro se ve en la fila al volver.
 - **Medido**: el Perfil de una asesorada con todo (récords, pesadas, medidas, fotos y plan) pasa a **794 px a
   360×800, una pantalla**.
-- **Verificación**: suite 1480 → **1483**; `_verify-perfil-filas` (nuevo); matriz `_sabotaje-v708`; el candado de
-  «nadie cuenta lápidas» se re-encuadró a `renderProfileRows`, que es el lector nuevo.
+- **QA (Julián 🔴 y Lucas 🔴 por lo mismo) → corregido antes de producción**: dentro de la pantalla de una fila, el
+  botón del candado abría la ventana de venta DEBAJO de la pantalla (parecía muerto) y «Hablar con mi coach»
+  cambiaba la pestaña por debajo — la clase de v704 con una ventana que no pasa por `om()`; ahora la subida es una
+  regla (`_alzarSobreSalas`) que usan las dos, y el chat cierra antes la pantalla (`_lockAlChat`). Con candado,
+  la cabecera ofrecía «Subir» (que **guardaba la foto** con la cuenta bloqueada), «+ Registrar» (muerto) y
+  «WhatsApp»: se esconden y la subida se bloquea también en la acción. «Completa tu perfil» llevaba a una pantalla
+  sin nada que completar (ahora «Sin edad ni estatura»); el atrás con una foto ampliada cerraba la pantalla de
+  debajo (el visor tiene su capa); el aviso del plan nombra «Mi plan de alimentación». CSS muerto fuera.
+- **Lo que cazó la matriz en MIS candados**: el test «la fila dice lo mismo que su candado» comparaba contra la
+  misma tabla de la que sale la fila (oráculo circular); ahora lee `premiumLockHTML`. Y **14 servidores huérfanos
+  en el puerto 8899** (en Windows `proc.kill()` mata el lanzador de python y deja vivo al hijo): la app no arrancaba
+  en la copia de la matriz y las filas «nav» mordían en falso. `salir()` mata el ÁRBOL (`taskkill /T`) y el
+  corredor de la matriz corre el control PRIMERO y se detiene si sale rojo.
+- **Verificación**: suite 1480 → **1483**; `_verify-perfil-filas` (nuevo, con los botones del candado tocados de
+  verdad); matriz `_sabotaje-v708`; el candado de «nadie cuenta lápidas» se re-encuadró a `renderProfileRows`.
 - **Radar (no es de este lote, medido en v707)**: hoy, lunes 12-oct, es festivo (Día de la Raza) y la app no
   programa entreno en festivo (v515): los harnesses que montan el entreno de HOY fallan (`_verify-deload` D2d/D2e,
   `_verify-f5a`, `_verify-coach` A1/A2). `_shot-profile`, `_verify-referido` (montaje) y `_verify-v668` («no

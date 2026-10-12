@@ -917,7 +917,7 @@ function nutNotifyInApp(cid){
   if(typeof openCoachChat!=='function'||typeof sendCoachChatMsg!=='function'){ toast('No se pudo abrir el chat'); return; }
   openCoachChat(cid);
   const ta=document.getElementById('cchat-in'); if(!ta) return;
-  ta.value='Te dejé tu plan de alimentación al día 🍽️ Lo ves en tu Perfil, en «Mi plan nutricional».';
+  ta.value='Te dejé tu plan de alimentación al día 🍽️ Lo ves en tu Perfil, en «Mi plan de alimentación».';
   _cchatAct='nutplan';
   sendCoachChatMsg();
 }
@@ -1614,6 +1614,10 @@ async function deletePhotoFromStorage(photoId,url){
 // ══════════════ FOTOS DE PROGRESO ══════════════
 
 function openPhotosModal(){
+  // 🔒 v708 · el candado va en la ACCIÓN, no solo en la pantalla (v566): con la cuenta bloqueada, «Subir»
+  // guardaba la foto igual (lo midió Lucas: de 2 a 3 fotos).
+  const _c=(typeof _curClient==='function')?_curClient():null;
+  if(_c&&typeof premiumLocked==='function'&&premiumLocked(_c)){ if(typeof toast==='function') toast('Las fotos de progreso vienen con tu plan'); return; }
   const input=document.getElementById('photo-input');
   if(input)input.value='';
   const lbl=document.getElementById('photo-label');
@@ -1805,28 +1809,31 @@ function viewPhoto(photoId,clientId,soloLectura){
   const cid=clientId||CUR.clientId;if(!cid)return;
   const _vivas=(typeof photoLive==='function')?photoLive((DB.photos||{})[cid]||[]):((DB.photos||{})[cid]||[]);
   const photo=_vivas.find(p=>p.id===photoId);if(!photo)return;
-  const overlay=document.createElement('div');
+  const overlay=document.createElement('div'); overlay.id='ph-visor';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML=`
     ${_photoImgHtml(photo,cid,'max-width:100%;max-height:72vh;border-radius:var(--r);object-fit:contain','Foto de progreso ampliada')}
     <div style="color:white;font-size:14px;font-weight:700;margin-top:12px">${esc(photo.label)}</div>
     <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">${new Date(photo.date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button onclick="this.closest('div').parentElement.remove()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
+      <button onclick="_phVisorCerrar()" style="padding:10px 24px;border-radius:20px;border:2px solid rgba(255,255,255,.4);background:transparent;color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Cerrar</button>
       ${soloLectura?'':`<button id="ph-del-btn" onclick="_photoAskDelete(this,'${esc(photoId)}','${esc(cid)}')" style="padding:10px 24px;border-radius:20px;border:none;background:var(--rd);color:white;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Eliminar</button>`}
     </div>`;
-  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  overlay.onclick=e=>{if(e.target===overlay)_phVisorCerrar();};
   document.body.appendChild(overlay);
+  if(typeof navOpenLayer==='function') navOpenLayer();   // v708 · el atrás cierra el visor, no lo de debajo
   hydratePrivatePhotos(overlay);
 }
 
 // 🔒 Dos pasos, en el propio botón. Sin `confirm()` (bloquea el hilo y en la PWA se lo come
 //    el navegador, regla de la casa) y sin modal encima de un overlay a pantalla completa.
 //    El primer toque avisa que no hay vuelta atrás; el segundo borra.
+function _phVisorQuitar(){ const v=document.getElementById('ph-visor'); if(v) v.remove(); }
+function _phVisorCerrar(){ if(typeof navCloseLayer==='function') navCloseLayer(_phVisorQuitar); else _phVisorQuitar(); }
 function _photoAskDelete(btn,photoId,cid){
   if(btn.dataset.armed==='1'){
     deletePhoto(photoId,cid);
-    const ov=btn.closest('div'); if(ov&&ov.parentElement)ov.parentElement.remove();
+    _phVisorCerrar();
     return;
   }
   btn.dataset.armed='1';
