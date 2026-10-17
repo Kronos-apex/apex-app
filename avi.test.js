@@ -24419,6 +24419,57 @@ test('🔒 v710 · QA: cambiar de pantalla empieza arriba, la píldora se aparta
   assert.ok(/abre Progreso y toca Comunidad/.test(todo), 'la invitación del coach dice por dónde se entra');
 });
 // ══════════════════════════════════════════════════════
+// v713 · EL «⚠️ 1 SIN GUARDAR» QUE NO SE IBA NUNCA (reporte del PO, 17-oct)
+// Al crear un asesorado, `sv('ax_c')` escribía su ficha con el id PROVISIONAL de `uid()` antes de que
+// la cuenta existiera. `user_id` es uuid: el servidor responde 400 siempre, la escritura caía a la cola
+// y el reintento leía el 400 como «sin conexión» → clavado desde el 14-oct, sin salida. No se perdió
+// nada (la ficha subió con la cuenta un segundo después), pero se perdía la señal.
+// ══════════════════════════════════════════════════════
+test('🔒 v713 · una ficha con id PROVISIONAL no se escribe ni se encola', () => {
+  const src = sinComentarios(_srcApp1());
+  const i = src.indexOf('async function _persistCoachWrite(');
+  const cuerpo = src.slice(i, src.indexOf('function canCloudWrite(', i));
+  assert.ok(i > 0 && cuerpo.length > 1000, 'CONTROL: se recortó _persistCoachWrite');
+  const bucles = cuerpo.split(/for\(const c of _sp2?\.clients\)\{/).slice(1);
+  assert.strictEqual(bucles.length, 2, 'CONTROL: _persistCoachWrite tiene sus dos bucles de asesorados');
+  bucles.forEach((b, n) => {
+    const salto = b.indexOf("if(typeof _isAuthId==='function'&&!_isAuthId(id))continue;");
+    const escribe = b.indexOf('UD.updateClientRow(');
+    assert.ok(escribe > 0, `CONTROL: el bucle ${n + 1} escribe la fila del asesorado`);
+    assert.ok(salto > 0, `🔴 el bucle ${n + 1} vuelve a escribir fichas sin cuenta: el servidor responde 400 y el pendiente no se va nunca`);
+    assert.ok(salto < escribe, `🔴 en el bucle ${n + 1} el salto llega DESPUÉS de escribir`);
+  });
+});
+
+test('🔒 v713 · preguntar por un id PROVISIONAL responde «no está» sin ir a la nube, y el aviso dice por qué', () => {
+  const src = sinComentarios(_srcApp1());
+  const i = src.indexOf('async readClientCol(');
+  const cuerpo = src.slice(i, src.indexOf('async readPrTombs(', i));
+  assert.ok(i > 0 && cuerpo.length > 100, 'CONTROL: se recortó readClientCol');
+  const atajo = cuerpo.indexOf("if(typeof _isAuthId==='function'&&clientId&&!_isAuthId(clientId))return {estado:'ausente',row:null};");
+  const pregunta = cuerpo.indexOf(".from('user_data')");
+  assert.ok(pregunta > 0, 'CONTROL: readClientCol pregunta a user_data');
+  assert.ok(atajo > 0, "🔴 un id provisional vuelve a ir a la nube: el 400 cae como 'mudo' y el aviso dice «sin conexión» para siempre");
+  assert.ok(atajo < pregunta, '🔴 el atajo llega después de preguntar');
+  // 'ausente' es lo que la cola convierte en algo que el coach PUEDE soltar (v612); 'mudo' lo deja clavado.
+  const e = { col: 'ax_c', id: 'mabc12xyz7provisional', val: {}, ts: 1 };
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'ausente' }), 'huerfana');
+  assert.strictEqual(core.coachQueueVerdict(e, { estado: 'mudo' }), 'mudo', 'CONTROL: con «mudo» se queda en la cola');
+  // `_isAuthId` es quien decide: un uuid real pasa, el id de `uid()` no.
+  const a3 = sinComentarios(_srcApp3());
+  const def = (a3.match(/function _isAuthId\(id\)\{[^\n]*\}/) || [])[0];
+  assert.ok(def, 'CONTROL: encontré _isAuthId');
+  const _isAuthId = new Function('return ' + def)();
+  assert.strictEqual(_isAuthId('0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'), true, 'CONTROL: un uuid es cuenta real');
+  assert.strictEqual(_isAuthId('mabc12xyz7provisional'), false, 'el id de uid() es provisional');
+  // Y al soltarlo no se le dice «ya no está en tu lista» de alguien que ve ahí mismo.
+  const cr = a3.slice(a3.indexOf('async function coachSyncRetry('), a3.indexOf('function _hydrateCoachFromRows('));
+  assert.ok(cr.length > 300, 'CONTROL: se recortó coachSyncRetry');
+  assert.ok(cr.includes("uno.huerfana?(_isAuthId(uno.id)?'ya no está en tu lista':'era de antes de crear su cuenta y ya no hace falta')"),
+    '🔴 el aviso vuelve a decir «ya no está en tu lista» de un asesorado que sigue en su lista');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

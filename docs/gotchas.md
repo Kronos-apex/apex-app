@@ -678,6 +678,16 @@ no distingue «se borró» de «la RLS me la esconde»: da igual para la decisi�
 💡 Y el síntoma de la clase entera: **una bandeja que no se puede vaciar es una bandeja muerta**
 (v474) — pero cuando está montada encima de una señal de seguridad, además la mata. (v612)
 
+- 🔴 **UNA COLA QUE GUARDA UN ID QUE TODAVÍA PUEDE CAMBIAR QUEDA APUNTANDO AL VIEJO — y si el viejo es inescribible,
+el reintento es para siempre.** Al crear un asesorado, `sv('ax_c')` corre ANTES de `_provisionClientAccount`, así que
+la ficha se intentaba escribir con el id PROVISIONAL de `uid()`; `user_id` es uuid → 400 → a la cola. La cuenta se
+creaba un segundo después y la ficha subía con su uuid, pero el pendiente seguía con el id viejo, y el 400 caía como
+`'mudo'` («sin conexión»), que es lo único que la v612 no deja descartar. Aviso clavado tres días (reporte del PO,
+17-oct). **Reglas: (1) lo que se SABE sin preguntar no se pregunta: un id que no es uuid no puede tener fila, así que
+es `'ausente'`, no `'mudo'`; (2) un 4xx de forma (22P02) no es «sin red» — no lo metas en el mismo saco que un fallo
+de conexión; (3) no se encola lo que nunca va a poder escribirse: el filtro va ANTES de escribir, no en el reintento.**
+Se encontró leyendo los registros de Supabase (`edge_logs`: el mismo `GET 400` en cada apertura del panel), no el código. (v713)
+
 - 🔴 **UN DERECHO QUE NO CADUCA CON UNA PUERTA QUE SÍ ES UN DERECHO QUE NO EXISTE.**
 `painCanCorrect` deja abierta la única corrección de un reporte de dolor **hasta que se usa** — no
 tiene ventana de tiempo— y el botón «Me equivoqué al responder» vivía **solo dentro de la pantalla

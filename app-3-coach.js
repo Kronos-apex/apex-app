@@ -1163,7 +1163,9 @@ async function coachSyncRetry(){
   if(r.orphan||r.held){
     const hu=_cwqRead().filter(_cwqDescartable);
     if(hu.length){
-      const uno=hu[0], porque=uno.huerfana?'ya no está en tu lista':'en la nube hay algo más nuevo';
+      // v713 · el huérfano de un id provisional NO es alguien que salió de su lista: es lo que quedó de
+      //    antes de crear su cuenta. Decirle «ya no está en tu lista» sobre alguien que ve ahí mismo, no.
+      const uno=hu[0], porque=uno.huerfana?(_isAuthId(uno.id)?'ya no está en tu lista':'era de antes de crear su cuenta y ya no hace falta'):'en la nube hay algo más nuevo';
       const q=hu.length===1?('El cambio de '+(uno.name||'un asesorado')+' ('+_cwqLabel(uno.col)+') no se puede guardar: '+porque)
         :(hu.length+' cambios viejos no se pueden guardar ('+hu.map(x=>_cwqCorto(x.name)).join(', ')+')');
       toast('🕓 '+q+'. Toca otra vez para descartar'+(hu.length===1?'lo':'los')+'.');

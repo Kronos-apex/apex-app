@@ -4,6 +4,20 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-17 — v713: el «⚠️ 1 sin guardar» de un alta ya no se queda clavado
+
+- **Reporte del PO** (captura del panel, 17-oct): «Me aparece que falta subir algo». La pastilla llevaba ahí desde el 14-oct.
+- **Causa, leída en los registros de Supabase**: el 14-oct a las 22:24 UTC creó un asesorado. `saveClient` hace `sv('ax_c')`
+  ANTES de `_provisionClientAccount`, así que `_persistCoachWrite` intentó escribir la ficha con el id provisional de `uid()`
+  (`mv8ogll1…`). `user_id` es uuid: `PATCH 400 (22P02)` → `_cwqAdd`. Un segundo después la cuenta se creó (200) y la ficha
+  subió con su uuid. El pendiente quedó apuntando al id viejo y cada reintento leía el 400 como `'mudo'` («sin conexión»):
+  sin salida, porque solo lo huérfano o retenido se puede descartar. **No se perdió ningún dato; se perdía la señal.**
+- **Arreglo**: (1) los dos bucles de `_persistCoachWrite` saltan los ids que no son de cuenta (`_isAuthId`); su ficha sube
+  con la cuenta o espera en `_addPending`. (2) `UD.readClientCol` responde `'ausente'` a un id provisional sin ir a la nube
+  → `coachQueueVerdict` lo da por huérfano → el pendiente que ya está en su teléfono se suelta con dos toques. (3) El aviso
+  dice «era de antes de crear su cuenta y ya no hace falta», no «ya no está en tu lista» de alguien que está en su lista.
+- Verificado: 2 tests nuevos (suite 1491 → 1493) y matriz de sabotaje 4/4 (cada una de las tres piezas y el mensaje).
+
 ## ⏮️ 2026-10-12 — v712: 13 fotos más de poleas
 
 - El PO generó 17 con el prompt nuevo «con foto de referencia» de la página de fotos pendientes (le pide a Gemini

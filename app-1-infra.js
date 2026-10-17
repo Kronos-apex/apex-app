@@ -680,6 +680,11 @@ const UD={
   // nada — solo a dejar de reintentar y avisar. La decisión vive en `coachQueueVerdict`.
   async readClientCol(clientId,cols){
     try{
+      // v713 · Un id PROVISIONAL (uid(), sin cuenta) no puede tener fila: `user_id` es uuid y PostgREST
+      //    responde 400, que aquí caía como 'mudo' («sin conexión») y dejaba el pendiente clavado para
+      //    siempre. Sin preguntar ya se SABE que no está: 'ausente' → la cola lo marca huérfano y el coach
+      //    lo puede soltar con dos toques (v612).
+      if(typeof _isAuthId==='function'&&clientId&&!_isAuthId(clientId))return {estado:'ausente',row:null};
       const c=AUTH.client(); if(!c||!clientId)return {estado:'mudo',row:null};
       const {data,error}=await c.from('user_data').select(cols+',updated_at').eq('user_id',clientId).maybeSingle();
       if(error){warn('UD.readClientCol:',error.message);return {estado:'mudo',row:null};}
@@ -1628,6 +1633,11 @@ async function _persistCoachWrite(k,v){
     }
     for(const c of _sp.clients){
       const id=c.id; if(!id)continue;
+      // v713 · Una ficha con id PROVISIONAL (uid(), todavía sin cuenta) no tiene fila en la nube: `user_id`
+      //    es uuid y el servidor responde 400 siempre. Intentarlo dejaba en la cola un pendiente que NUNCA
+      //    sube: el «⚠️ 1 sin guardar» clavado tras un alta del 14-oct (reporte del PO, 17-oct). Su ficha
+      //    sube entera con la cuenta (`_provisionClientAccount`) o espera en `_addPending` si no hubo red.
+      if(typeof _isAuthId==='function'&&!_isAuthId(id))continue;
       const val=_coachClientJSON(c), sk='ax_c:'+id;
       if(_coachSnap[sk]===val)continue; // ese cliente no cambió
       const row=clientToRow(c,{});
@@ -1672,6 +1682,8 @@ async function _persistCoachWrite(k,v){
   }
   for(const c of _sp2.clients){
     const id=c.id; if(!id)continue;
+    // v713 · mismo motivo que en `ax_c`: sin cuenta no hay fila donde escribir.
+    if(typeof _isAuthId==='function'&&!_isAuthId(id))continue;
     const slice0=v&&v[id]; if(slice0===undefined)continue;
     const val0=JSON.stringify(slice0), sk=k+':'+id;
     if(_coachSnap[sk]===val0)continue;
