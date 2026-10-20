@@ -24539,6 +24539,41 @@ test('🔒 v715 · con letra grande la fila de la serie recorta relleno, no núm
     '🔴 con letra grande las casillas de una fila vuelven a arrancar a distinta altura');
 });
 
+test('🔒 v716 · con letra grande ninguna cifra se parte ni se corta (rutina, detalle, récords, nutrición, coach)', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const regla = sel => { const i = css.indexOf(sel + '{'); return i < 0 ? '' : css.slice(i + sel.length + 1, css.indexOf('}', i)); };
+  const grande = sel => { const m = css.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')); return m ? m[1] : ''; };
+  // La tarjeta de cifra: la columna mide al menos su cifra, y la cifra NO se parte («4.80 / 0 kg», «$1.800.0 / 00»).
+  assert.ok(/grid-template-columns:repeat\(3,minmax\(min-content,1fr\)\)/.test(regla('.sroom-stats')), '🔴 la tarjeta de cifra volvió a columnas 1fr a secas: «$1.800.000» se parte con letra normal');
+  const v = regla('.sroom-stat-v');
+  assert.ok(/white-space:nowrap/.test(v) && !/break-word|break-all|anywhere/.test(v), '🔴 la cifra de la tarjeta se puede volver a partir («4.80 / 0 kg» se lee 4,80)');
+  const stats = grande('html[data-fs="lg"] .sroom-stat, html[data-fs="xl"] .sroom-stat');
+  assert.ok(/flex:1 1 calc\(\(100% - 9px\) \/ 2\)/.test(stats) && /min-width:min-content/.test(stats)
+    && /display:flex; flex-wrap:wrap;/.test(grande('html[data-fs="lg"] .sroom-stats, html[data-fs="xl"] .sroom-stats')),
+    '🔴 con letra grande las tarjetas de cifra ya no van de a dos ni bajan enteras');
+  // La rutina abierta y la sala de rutina: la cifra baja a su renglón, con la sangría POR DENTRO (un margin se suma al 100%).
+  assert.ok(/flex-wrap:wrap;/.test(grande('html[data-fs="lg"] .exrow, html[data-fs="xl"] .exrow')), '🔴 con letra grande la fila del ejercicio ya no parte en dos renglones');
+  const sets = grande('html[data-fs="lg"] .exsets, html[data-fs="xl"] .exsets');
+  assert.ok(/flex-basis:100%;/.test(sets) && /padding-left:58px;/.test(sets) && /margin-left:0;/.test(sets), '🔴 la cifra del ejercicio ya no baja bajo el nombre (o su sangría volvió a margin y se sale 58 px)');
+  // Mis récords: con «Muy grande» las cifras bajan bajo el nombre.
+  const rec = grande('html[data-fs="xl"] .pr-row>div:last-child');
+  assert.ok(/flex-wrap:wrap;/.test(grande('html[data-fs="xl"] .pr-row')) && /flex-basis:100%;/.test(rec) && /padding-left:48px;/.test(rec) && !/margin-left/.test(rec),
+    '🔴 en Mis récords las cifras ya no bajan con «Muy grande» («Sentadi / lla»)');
+  // Nutrición: la cifra va en clase y baja a 18 px con «Muy grande».
+  assert.ok(/font-size:22px/.test(regla('.nutri-v')) && /font-size:18px;/.test(grande('html[data-fs="xl"] .nutri-v')), '🔴 «3.050» de nutrición vuelve a perder el último 0 con «Muy grande»');
+  const salud = fs.readFileSync(path.join(__dirname, 'app-5-salud.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const tile = salud.slice(salud.indexOf('const tile=(bg,col,ic,val,lab,info)=>'), salud.indexOf('const _st=['));
+  assert.ok(tile.includes('class="nutri-v"') && !/font-size:22px/.test(tile), '🔴 la cifra de la tarjeta de nutrición volvió a ir en línea: ninguna regla la puede ajustar');
+  // La cabecera de una sala: la cifra que no cabe al lado del ícono baja bajo él.
+  assert.ok(/flex-wrap:wrap;/.test(grande('html[data-fs="lg"] .sroom-hero, html[data-fs="xl"] .sroom-hero'))
+    && /min-width:min-content;/.test(grande('html[data-fs="lg"] .sroom-hero-txt, html[data-fs="xl"] .sroom-hero-txt')), '🔴 la cabecera de «Ingresos del mes» vuelve a perder el último 0');
+  // La píldora del coach parte en dos renglones: en una caja inline-flex el «…» no se dibuja.
+  const pill = regla('.cli-pill');
+  assert.ok(/display:inline-flex/.test(pill) && /white-space:normal/.test(pill) && !/white-space:nowrap/.test(pill) && !/text-overflow:ellipsis/.test(pill),
+    '🔴 la píldora del coach vuelve a cortarse en seco («Mensaje sin respon»)');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -661,7 +661,7 @@ function openNutritionRoom(clientId){
   // el filo con `--nc`. Antes «Comidas» iba con `--t1`: el filo habría salido NEGRO y, peor, la
   // fila de tarjetas pintaba azul/NEGRO/coral debajo de una barra de macros azul/ámbar/coral —
   // una leyenda que no coincidía con su propia gráfica.
-  const tile=(bg,col,ic,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:13px 4px 12px">${info?'<span class="nutri-i">ⓘ</span>':''}<div class="nutri-ic">${typeof aviIcon==='function'?aviIcon(ic,17):''}</div><div style="font-size:22px;font-weight:800;color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
+  const tile=(bg,col,ic,val,lab,info)=>`<div class="nutri-card"${info?` onclick="openNutriInfo('${info}')"`:''} style="--nc:var(${col});text-align:center;background:var(${bg});border-radius:var(--r);padding:13px 4px 12px">${info?'<span class="nutri-i">ⓘ</span>':''}<div class="nutri-ic">${typeof aviIcon==='function'?aviIcon(ic,17):''}</div><div class="nutri-v" style="color:var(${col})">${esc(String(val))}</div><div style="font-size:11px;color:var(--t2);font-weight:600">${esc(lab)}</div></div>`;
   const _st=[
     tile('--gl','--gt','flame',d.kcal?fmtMiles(d.kcal):'—','CALORÍAS / DÍA','kcal'),
     d.water?tile('--bll','--blt','droplet',d.water,'VASOS DE AGUA','water'):null,

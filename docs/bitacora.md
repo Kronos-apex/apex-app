@@ -4,6 +4,36 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-20 — v716: con letra grande ninguna cifra se parte ni se corta
+
+- **Pedido del PO** («Revisa qué más tenemos por ese estilo» tras v715 → «Arreglalos»). Recorrido NUEVO
+  `_audit-letra-recortes` (sonda compartida `_sonda-recortes`): 360/390 px × normal/grande/muy grande, mide casilla que no
+  cabe, texto visible a medias, palabra o número partido, textos montados y lo que se sale. Encontró cinco, todos con
+  «Muy grande» a 360: la rutina abierta (al nombre le quedaban 68 px → una palabra por renglón, y «4×12 series × reps» se
+  salía de la tarjeta), el detalle del entreno («4.80 / 0 kg»: `word-break:break-word` en `.sroom-stat-v`), Mis récords
+  («Sentadi / lla»: la línea del 1RM se llevaba el ancho), las calorías de nutrición («3.050» a 22 px en 59 px) y la
+  píldora del coach («Mensaje sin respon»: en una caja `inline-flex` el `text-overflow:ellipsis` NO dibuja el «…»).
+- **Al cerrar la clase aparecieron dos más**: la misma tarjeta de cifra partía «$1.800.000» de «Ingresos del mes» **con
+  letra NORMAL** a 360 y 390 px, y la cabecera de esa sala perdía el último 0 con «Muy grande».
+- **Arreglo (CSS + una clase en la tarjeta de nutrición)**: la tarjeta de cifra mide al menos su cifra
+  (`minmax(min-content,1fr)` + `nowrap`) y con letra grande va de a dos y la que no cabe baja entera · la cifra del
+  ejercicio y las del récord bajan a su renglón bajo el nombre (desde «Grande» el ejercicio: un HIIT ya no cabía) ·
+  `.nutri-v` 22 → 18 px con «Muy grande» · la cabecera de la sala baja su texto bajo el ícono si no cabe · la píldora
+  parte en dos renglones.
+- **Cazado antes de publicar**: la primera versión ponía la sangría con `margin-left` junto a `flex-basis:100%` y la
+  caja vacía se salía 58 px de la sala de rutina — lo vio `_repro-sroom-fs`, no el candado nuevo (la sonda mira TEXTO).
+  Ahora va con padding y el candado mide también CAJAS, con su control.
+- **Fixture**: `_fixture-12` traía `meals` como lista de objetos y la sala pintaba «[object Object]»; es el número en
+  texto ('4'), como lo escribe `#nut-meals`.
+- **Pruebas**: harness NUEVO `_verify-cortes-letra` 298/298 (9 superficies × 360/390 × tres tamaños: nada cortado ni
+  partido dentro del componente, ninguna caja fuera, la cifra entera en sus renglones; CONTROL con el CSS de antes →
+  ve los 8 cortes, y con la sangría en margin → ve la caja) · suite 1496 → 1497 · `_sabotaje-v716` ·
+  `_repro-sroom-fs` OK · `_verify-chips` OK · `_verify-inicio-coach` 11/11 · `_walk-room` OK · `_audit-pantallas` y
+  `_audit-lectura` OK con el fixture corregido.
+- **Sin medir todavía**: las ventanas del coach desde «elegir ejercicio» (la corrida del recorrido se murió ahí: el
+  Chrome invisible llegó a 4 GB con el picker de 374 ejercicios). Menores vistos y NO tocados: pistas (placeholder)
+  cortadas en buscadores y formularios del coach, selects largos, las 4 pestañas de Progreso en dos renglones.
+
 ## ⏮️ 2026-10-19 — v715: con letra grande las casillas de la serie ya no cortan los números
 
 - **Visto al cerrar v714 y pedido por el PO** («Arreglalo»): con «Muy grande» (`data-fs="xl"`) a 360 px el guiado

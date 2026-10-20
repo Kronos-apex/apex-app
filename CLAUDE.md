@@ -585,4 +585,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-10-19 — **v715 «con letra grande las casillas de la serie ya no cortan los números» en producción** · suite 1496. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*
+*Última actualización: 2026-10-20 — **v716 «con letra grande ninguna cifra se parte ni se corta» en producción** · suite 1497. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*

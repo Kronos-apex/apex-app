@@ -45,7 +45,9 @@ export const FIXTURE = `(()=>{try{
   DB.msgs={cA:[{from:'coach',text:'¡Buen trabajo hoy Sebastián!',date:new Date(Date.now()-5*3.6e6).toISOString()},
                {from:'client',text:'Gracias coach, me sentí fuerte 💪',date:new Date(Date.now()-3*3.6e6).toISOString()}],
            cB:[{from:'client',text:'Coach, me dolió un poco la rodilla en la sentadilla',date:new Date(Date.now()-2*3.6e6).toISOString()}]};
-  DB.nutrition={cA:{water:8,kcal:2600,prot:160,carb:280,fat:80,meals:[{name:'Desayuno',items:'Huevos, avena, fruta'},{name:'Almuerzo',items:'Pollo, arroz, ensalada'}]}};
+  // «meals» es el NÚMERO de comidas al día, en texto (lo escribe el select #nut-meals). Hasta el 19-oct era una
+  // lista de objetos y la sala de nutrición pintaba «[object Object]» en Comidas: un defecto del fixture, no de la app.
+  DB.nutrition={cA:{water:8,kcal:2600,prot:160,carb:280,fat:80,meals:'4'}};
   DB.medidas={cA:[{date:_dk(0),cintura:82,pecho:100,brazo:36}]};
   DB.templates=[{id:'t1',name:'Full Body Principiante',tag:'Principiante',restSec:90,note:'Primeras 3 semanas.',
                  exercises:[ex('e1','Sentadilla','piernas','Cuádriceps y glúteo','Compuesto',3,'12')]},
