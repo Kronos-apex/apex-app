@@ -22,7 +22,7 @@ const SABOTAJES = [
   ['la cifra de nutrición vuelve a ir en línea', 'salud', '<div class="nutri-v" style="color:var(${col})">', '<div style="font-size:22px;font-weight:800;color:var(${col})">'],
   ['la cabecera de la sala deja de bajar bajo el ícono', 'css', '.sroom-hero{ flex-wrap:wrap; }', '.sroom-hero{ }'],
   ['el texto de la cabecera vuelve a encogerse a cero', 'css', '.sroom-hero-txt{ flex:1 1 0; min-width:min-content; }', '.sroom-hero-txt{ flex:1 1 0; }'],
-  ['la píldora del coach vuelve a cortarse en seco', 'css', 'white-space:normal;text-wrap:balance}', 'white-space:nowrap;text-overflow:ellipsis}'],
+  ['la píldora del coach vuelve a cortarse en seco', 'css', 'max-width:100%;overflow:hidden;white-space:normal;text-wrap:balance}', 'max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}'],
 ];
 
 const orig = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, readFileSync(p, 'utf8')]));
