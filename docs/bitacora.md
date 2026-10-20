@@ -4,6 +4,25 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-19 — v715: con letra grande las casillas de la serie ya no cortan los números
+
+- **Visto al cerrar v714 y pedido por el PO** («Arreglalo»): con «Muy grande» (`data-fs="xl"`) a 360 px el guiado
+  mostraba «120» como «12». Medido en el guiado real, texto útil de la casilla del peso: normal 63 px · grande 36 ·
+  **muy grande 11** (un «102.5» necesita 43). Con «Grande» ya se cortaban los decimales de tres cifras.
+- **Causa**: el zoom de letra grande (1,18 / 1,40) agranda también lo FIJO de la fila (círculo 32, chulo 38, tres
+  huecos de 8, rellenos de 12 en la fila y 18 en la tarjeta, 10 a cada lado DENTRO de la casilla): a 360 px con
+  ×1,40 la fila tiene 161 px y lo fijo se comía 150. Las casillas son las únicas que encogen.
+- **Arreglo (solo CSS)**: la casilla centra su número y no necesita 10 px a los lados → 3 px (en todos los tamaños) ·
+  con grande y muy grande la fila pasa a 28 px de círculo, huecos de 6 y relleno de 8 · con muy grande la tarjeta
+  baja a 12 px de relleno, el chulo a 34 (48 en pantalla) y la casilla a 15 px de letra (21 en pantalla) · con letra
+  grande las casillas de una fila arrancan a la misma altura («KG · CALENT.» se parte en dos y bajaba REPS).
+  Resultado: muy grande 360 px → 42 px útiles («102.5» a 15 px mide 40,5); grande 59; normal 77.
+- **Pruebas**: harness NUEVO `_verify-casillas-letra` 69/69 (360 y 390 px × normal/grande/muy grande × dos temas:
+  ninguna casilla corta su número —«102.5», «~120», dos cifras de reps, calentamiento y plancha—, filas dentro de la
+  pantalla, chulo y casilla ≥36 px, mismas alturas; su CONTROL vuelve a poner el CSS viejo y SÍ ve el corte y el
+  desnivel) · suite 1495 → 1496 (fija las reglas) · `_sabotaje-v715` · `_guiado-suite` TODO OK · `_shot-trained` OK ·
+  `_verify-barra-rir` 115/115.
+
 ## ⏮️ 2026-10-19 — v714: la casilla del peso dice KG y debajo el total con la barra
 
 - **Pedido del PO** (captura del guiado, 19-oct): «en el espacio de kilos aparece discos… para los usuarios puede ser confuso».

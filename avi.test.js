@@ -24519,6 +24519,27 @@ test('🔒 v714 · en el guiado: KG siempre, total solo con la barra ELEGIDA, y 
 });
 
 // ══════════════════════════════════════════════════════
+// v715 · LAS CASILLAS DE LA SERIE CON LETRA GRANDE (a 360 px con «Muy grande», «120» se veía «12»)
+// La prueba de verdad es `_verify-casillas-letra.mjs` (mide el texto contra el hueco en 360/390 × 3 tamaños);
+// esto fija las reglas para que la suite (y CI) se ponga roja si alguien las devuelve.
+// ══════════════════════════════════════════════════════
+test('🔒 v715 · con letra grande la fila de la serie recorta relleno, no números', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const regla = sel => { const i = css.indexOf(sel + '{'); return i < 0 ? null : css.slice(i + sel.length + 1, css.indexOf('}', i)); };
+  assert.ok(/padding:8px 3px;/.test(regla('.gm-sinput') || ''), '🔴 la casilla volvió a 10 px de relleno a los lados (se come el número)');
+  const fila = (css.match(/html\[data-fs="lg"\] \.gm-set-row, html\[data-fs="xl"\] \.gm-set-row\{([^}]*)\}/) || [])[1] || '';
+  assert.ok(/grid-template-columns:28px 1fr 1fr auto;/.test(fila) && /column-gap:6px;/.test(fila) && /padding-left:8px;/.test(fila) && /padding-right:8px;/.test(fila),
+    '🔴 con letra grande la fila volvió a sus rellenos de tamaño normal');
+  assert.ok(/html\[data-fs="xl"\] \.gm-ex-card\{ padding-left:12px; padding-right:12px; \}/.test(css), '🔴 la tarjeta del ejercicio volvió a 18 px con «Muy grande»');
+  assert.ok(/html\[data-fs="xl"\] \.gm-sinput\{ font-size:15px; \}/.test(css), '🔴 la casilla volvió a 16 px con «Muy grande»');
+  const chk = css.match(/html\[data-fs="xl"\] \.gm-set-row \.gm-check\{ width:(\d+)px; height:(\d+)px; \}/);
+  assert.ok(chk && +chk[1] === 34, '🔴 el chulo volvió a 38 px con «Muy grande»');
+  assert.ok(Math.min(+chk[1], +chk[2]) * 1.40 >= 36, 'el chulo tiene que seguir tocándose (≥36 px en pantalla)');
+  assert.ok(/html\[data-fs="lg"\] \.gm-set-row>div:not\(\.gm-set-num\), html\[data-fs="xl"\] \.gm-set-row>div:not\(\.gm-set-num\)\{ align-self:start; \}/.test(css),
+    '🔴 con letra grande las casillas de una fila vuelven a arrancar a distinta altura');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

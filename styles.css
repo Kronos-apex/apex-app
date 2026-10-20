@@ -1701,7 +1701,7 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-set-num{width:28px;height:28px;border-radius:50%;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--t3);transition:background var(--dur) var(--ease-out),color var(--dur) var(--ease-out)}
 .gm-set-row.active-set .gm-set-num{background:var(--g);color:white}
 .gm-set-row.set-done .gm-set-num{background:var(--g);color:white}
-.gm-sinput{background:var(--w);border:1.5px solid var(--br2);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:16px;font-weight:700;color:var(--t1);text-align:center;width:100%;-moz-appearance:textfield}
+.gm-sinput{background:var(--w);border:1.5px solid var(--br2);border-radius:8px;padding:8px 3px;font-family:inherit;font-size:16px;font-weight:700;color:var(--t1);text-align:center;width:100%;-moz-appearance:textfield}
 .gm-sinput::-webkit-outer-spin-button,.gm-sinput::-webkit-inner-spin-button{-webkit-appearance:none}
 .gm-sinput:focus{outline:none;border-color:var(--g2)}
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
@@ -1858,6 +1858,16 @@ html[data-zoomw="scale"][data-fs="lg"] .cnp, html[data-zoomw="scale"][data-fs="l
 html[data-zoomw="scale"][data-fs="xl"] .cnp, html[data-zoomw="scale"][data-fs="xl"] #s-coach .panel, html[data-zoomw="scale"][data-fs="xl"] .gm-body{ width:calc(100%/1.40); transform-origin:left top; }
 html[data-fs="lg"] .gm-body{ padding-bottom:86px; }
 html[data-fs="xl"] .gm-body{ padding-bottom:96px; }
+/* v715 · LAS CASILLAS DE LA SERIE CON LETRA GRANDE. El zoom agranda también los rellenos fijos de la fila
+   (círculo, chulo, huecos, márgenes de la tarjeta), y a 360 px con «Muy grande» al peso le quedaban 11 px:
+   «120» se veía «12». Medido en el guiado real: normal 63 · grande 36 · muy grande 11 px de texto útil.
+   Se recorta el relleno, no la letra (en «Muy grande» la casilla baja a 15 px, que siguen siendo 21 en pantalla). */
+html[data-fs="lg"] .gm-set-row, html[data-fs="xl"] .gm-set-row{ grid-template-columns:28px 1fr 1fr auto; column-gap:6px; padding-left:8px; padding-right:8px; }
+html[data-fs="xl"] .gm-ex-card{ padding-left:12px; padding-right:12px; }
+html[data-fs="xl"] .gm-sinput{ font-size:15px; }
+html[data-fs="xl"] .gm-set-row .gm-check{ width:34px; height:34px; }
+/* y las casillas de una misma fila arrancan a la misma altura: «KG · CALENT.» se parte en dos líneas y bajaba REPS */
+html[data-fs="lg"] .gm-set-row>div:not(.gm-set-num), html[data-fs="xl"] .gm-set-row>div:not(.gm-set-num){ align-self:start; }
 html[data-fs="lg"] .cnbody, html[data-fs="xl"] .cnbody{ padding-bottom:74px; }
 /* v710 · con letra grande la barra va FIJA y la píldora «Instalar app» flota encima de ella: el hueco del final
    tiene que cubrir las dos (84 px de la píldora al borde + su alto, 62 px medidos porque «Instalar app» parte en
