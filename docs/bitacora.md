@@ -4,6 +4,26 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-19 — v714: la casilla del peso dice KG y debajo el total con la barra
+
+- **Pedido del PO** (captura del guiado, 19-oct): «en el espacio de kilos aparece discos… para los usuarios puede ser confuso».
+  «60 DISCOS» se lee como sesenta discos. Le mostré tres opciones con capturas REALES del guiado
+  (claude.ai/artifact/WLPJ4nej5FHEdezk5DrYwR: A «KG» + aviso arriba · B «KG SIN BARRA» · C «KG» + total) y **eligió la C**.
+- **Qué cambió** (se sigue anotando SOLO los discos: el historial no se toca, plan de v681 intacto):
+  la casilla dice **KG** como en todo lo demás · debajo, con la barra ELEGIDA, «75 kg con barra» (`barTotalLabel`, PURA en
+  avi-core: acepta la coma decimal, '' sin número o sin barra) · se reescribe al teclear (`gmBarTotal`, sin repintar: no se
+  pierde el foco) · sin barra elegida NO hay total (la línea de arriba se la está preguntando, v695) · las dos casillas se
+  alinean arriba (`.gm-scell-top`) para que REPS no baje · la línea dice «Barra de N kg · anota todos los discos» («todos»
+  es de Sofía, 28-sep: el total de discos, no los de un lado). La barra y si la eligió se calculan UNA vez por ejercicio y
+  se le pasan a `gmBarLine` (antes la línea la calculaba sola; con el total habrían sido tres cálculos del historial por toque).
+- **Pruebas**: suite 1493 → 1495 (el candado DISCOS de v681 se reemplazó por el de v714 —cambio de especificación del PO—
+  y el regex de v695 sigue la nueva firma de `gmBarLine` con su intención intacta) · `_sabotaje-v714` · `_verify-barra-rir`
+  115/115 en los dos temas: el total al teclear, al repintar, con decimales, vacío sin hueco, con letra grande (se parte en
+  líneas sin salirse), contraste 10,7:1, y los controles (sentadilla sin elegir y polea sin barra: sin total).
+- Sin entrada en AVI_NEWS: el rótulo se explica solo.
+- ⚠️ Visto de paso, NO es de este cambio: con letra grande (`data-fs="xl"`) a 360 px las casillas del guiado ya cortaban
+  los números («120» se ve «12»), con o sin total. Va al radar.
+
 ## ⏮️ 2026-10-17 — v713: el «⚠️ 1 sin guardar» de un alta ya no se queda clavado
 
 - **Reporte del PO** (captura del panel, 17-oct): «Me aparece que falta subir algo». La pastilla llevaba ahí desde el 14-oct.

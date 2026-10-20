@@ -92,6 +92,20 @@ const MEDIR = `(()=>{
   return { ancho: innerWidth, e0: ex(0), e1: ex(1), e2: ex(2), e3: ex(3), guiado: !!document.getElementById('gm-ex-0') };
 })()`;
 
+// 🔴 El fondo se COMPONE capa por capa con su transparencia: tomar el primer fondo no transparente (v714: subió aquí, fuera del bucle; la casilla del peso lo usa antes que las reps en reserva)
+//    leía el rgba(255,255,255,.10) de un botón del descanso como blanco sólido y daba ratio 1 (defecto
+//    de la sonda, no de la app — la clase de [[avi-sondas-falsos-positivos]]).
+const CONTRASTE = `const col=s=>{const m=(s.match(/[\\d.]+/g)||[]).map(Number);return {r:m[0],g:m[1],b:m[2],a:m.length>3?m[3]:1};};
+  const efectivo=el=>{ const capas=[]; for(let n=el;n;n=n.parentElement){ const c=col(getComputedStyle(n).backgroundColor); if(c.a>0){capas.push(c); if(c.a>=1) break;} }
+    let f={r:255,g:255,b:255}; for(let i=capas.length-1;i>=0;i--){ const c=capas[i]; f={r:c.r*c.a+f.r*(1-c.a),g:c.g*c.a+f.g*(1-c.a),b:c.b*c.a+f.b*(1-c.a)}; } return [f.r,f.g,f.b]; };
+  const lum=c=>{const a=c.map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*a[0]+.7152*a[1]+.0722*a[2];};
+  const opac=el=>{ let o=1; for(let n=el;n;n=n.parentElement){ const v=parseFloat(getComputedStyle(n).opacity); if(!isNaN(v)) o*=v; } return o; };
+  const ratio=el=>{const t=col(getComputedStyle(el).color);const f=efectivo(el);
+    // el TEXTO también puede ser translúcido, y la opacidad de un ANCESTRO lo destiñe (una tarjeta «hecha» va al 60 %)
+    const ta=t.a*opac(el);
+    const tc=[t.r*ta+f[0]*(1-ta),t.g*ta+f[1]*(1-ta),t.b*ta+f[2]*(1-ta)];
+    const x=lum(tc),y=lum(f);return +((Math.max(x,y)+.05)/(Math.min(x,y)+.05)).toFixed(2);};`;
+
 for (const tema of ['claro', 'oscuro']) {
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: tema === 'oscuro' ? 'dark' : 'light' }] });
   const m = await ev(MONTAR(tema));
@@ -110,7 +124,42 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: la pregunta se lee (≥4,5:1)`, r.e1.qRatio >= 4.5, String(r.e1.qRatio));
   check(`${tema}: CONTROL · el hip thrust, con barra ya elegida (15), NO pregunta`, r.e0.pregunta === null, String(r.e0.pregunta));
   check(`${tema}: CONTROL · el curl en polea NO lleva línea de barra`, r.e3.linea === null, String(r.e3.linea));
-  check(`${tema}: con barra la casilla dice DISCOS`, r.e0.casilla === 'DISCOS' && r.e1.casilla === 'DISCOS', r.e0.casilla + '/' + r.e1.casilla);
+  // v714 (el PO, 19-oct): «DISCOS» confundía → la casilla dice KG y debajo va el total con la barra elegida.
+  check(`${tema}: con barra la casilla dice KG (ya no DISCOS)`, r.e0.casilla === 'KG' && r.e1.casilla === 'KG', r.e0.casilla + '/' + r.e1.casilla);
+  const TOT = valor => ev(`(()=>{ ${CONTRASTE}
+    const row=document.getElementById('gm-set-0-0'); row.scrollIntoView({block:'center'});
+    const kg=row.querySelector('[data-field="kg"]'), reps=row.querySelector('[data-field="reps"]');
+    if(${JSON.stringify(valor)}!==null){ kg.value=${JSON.stringify(valor)}; kg.dispatchEvent(new Event('input',{bubbles:true})); }
+    const t=kg.parentElement.querySelector('.gm-bar-total'), rt=t&&t.getBoundingClientRect(), rc=kg.parentElement.getBoundingClientRect();
+    return { texto:t?t.textContent:null, alto:rt?Math.round(rt.height):-1, ratio:t&&t.textContent?ratio(t):0,
+      topKg:Math.round(kg.getBoundingClientRect().top), topReps:Math.round(reps.getBoundingClientRect().top),
+      dentro:rt?(rt.left>=rc.left-1&&rt.right<=rc.right+1):false, der:rt?Math.round(rt.right):0,
+      guardado:localStorage.getItem('log_rb1_0_0_kg') }; })()`);
+  let t = await TOT('120');
+  check(`${tema}: hip thrust (barra elegida 15): «120» → «135 kg con barra» al teclear`, t.texto === '135 kg con barra' && t.guardado === '120', JSON.stringify(t));
+  check(`${tema}: el total se lee (≥4,5:1), cabe en su casilla y REPS no baja`, t.ratio >= 4.5 && t.dentro && t.der <= r.ancho && Math.abs(t.topKg - t.topReps) <= 1, JSON.stringify(t));
+  const tVista = await ev(`(()=>{ const e=document.querySelector('#gm-ex-0 .gm-bar'); e.scrollIntoView({block:'start'}); window.scrollBy(0,-60);
+    const a=e.getBoundingClientRect(), b=document.getElementById('gm-set-0-1').getBoundingClientRect(); return a.top>=0 && b.bottom<=innerHeight; })()`);
+  await sleep(300);
+  check(`${tema}: CONTROL · la captura del total tiene la línea y las series en vista`, tVista === true, String(tVista));
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/barra-total-${tema}.png`, Buffer.from(s.data, 'base64')));
+  await ev(`(()=>{ gmRender(); return 1; })()`); await sleep(300);
+  t = await TOT(null);
+  check(`${tema}: al repintar el guiado el total sigue (sale de lo anotado)`, t.texto === '135 kg con barra', JSON.stringify(t));
+  t = await TOT('62.5');
+  check(`${tema}: decimales con coma: «62.5» → «77,5 kg con barra»`, t.texto === '77,5 kg con barra' && t.dentro, JSON.stringify(t));
+  // Letra grande (data-fs xl): el total puede partirse en dos líneas, pero no se sale de su casilla.
+  await ev(`(()=>{ document.documentElement.setAttribute('data-fs','xl'); return 1; })()`); await sleep(300);
+  t = await TOT('135');
+  check(`${tema}: con letra grande el total no se sale de su casilla y REPS no baja`, t.texto === '150 kg con barra' && t.dentro && Math.abs(t.topKg - t.topReps) <= 1, JSON.stringify(t));
+  await send('Page.captureScreenshot', { format: 'png' }).then(s => writeFileSync(`${OUT}/barra-total-xl-${tema}.png`, Buffer.from(s.data, 'base64')));
+  await ev(`(()=>{ document.documentElement.removeAttribute('data-fs'); return 1; })()`); await sleep(300);
+  t = await TOT('');
+  check(`${tema}: casilla vacía → sin total y sin hueco`, t.texto === '' && t.alto === 0, JSON.stringify(t));
+  const otros = await ev(`(()=>({ sentadilla:document.querySelectorAll('#gm-ex-1 .gm-bar-total').length, polea:document.querySelectorAll('#gm-ex-3 .gm-bar-total').length,
+    poleaKg:(document.querySelector('#gm-set-3-0 [data-field="kg"]')||{}).parentElement?.querySelector('.gm-sinput-label')?.textContent }))()`);
+  check(`${tema}: sin barra elegida (la sentadilla pregunta) NO hay total`, otros.sentadilla === 0, JSON.stringify(otros));
+  check(`${tema}: CONTROL · el curl en polea dice KG y no lleva total`, otros.polea === 0 && otros.poleaKg === 'KG', JSON.stringify(otros));
   check(`${tema}: CONTROL · sin barra la casilla sigue diciendo KG`, r.e3.casilla === 'KG', String(r.e3.casilla));
   check(`${tema}: la línea se toca (≥36 px) y cabe a 360`, r.e0.lineaAlto >= 36 && r.e0.lineaDer <= r.ancho, `${r.e0.lineaAlto}px · der ${r.e0.lineaDer}`);
   check(`${tema}: la línea se lee (≥4,5:1)`, r.e0.lineaRatio >= 4.5, String(r.e0.lineaRatio));
@@ -182,19 +231,6 @@ for (const tema of ['claro', 'oscuro']) {
   check(`${tema}: CONTROL · sin barra el 1RM no cambia ni dice «con barra»`, /≈ 40 kg · 1RM est\.</.test(pr.polea), (pr.polea.match(/≈[^<]*/) || [''])[0]);
 
   // ─── v682 · LAS REPS EN RESERVA ───
-  // 🔴 El fondo se COMPONE capa por capa con su transparencia: tomar el primer fondo no transparente
-  //    leía el rgba(255,255,255,.10) de un botón del descanso como blanco sólido y daba ratio 1 (defecto
-  //    de la sonda, no de la app — la clase de [[avi-sondas-falsos-positivos]]).
-  const CONTRASTE = `const col=s=>{const m=(s.match(/[\\d.]+/g)||[]).map(Number);return {r:m[0],g:m[1],b:m[2],a:m.length>3?m[3]:1};};
-    const efectivo=el=>{ const capas=[]; for(let n=el;n;n=n.parentElement){ const c=col(getComputedStyle(n).backgroundColor); if(c.a>0){capas.push(c); if(c.a>=1) break;} }
-      let f={r:255,g:255,b:255}; for(let i=capas.length-1;i>=0;i--){ const c=capas[i]; f={r:c.r*c.a+f.r*(1-c.a),g:c.g*c.a+f.g*(1-c.a),b:c.b*c.a+f.b*(1-c.a)}; } return [f.r,f.g,f.b]; };
-    const lum=c=>{const a=c.map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*a[0]+.7152*a[1]+.0722*a[2];};
-    const opac=el=>{ let o=1; for(let n=el;n;n=n.parentElement){ const v=parseFloat(getComputedStyle(n).opacity); if(!isNaN(v)) o*=v; } return o; };
-    const ratio=el=>{const t=col(getComputedStyle(el).color);const f=efectivo(el);
-      // el TEXTO también puede ser translúcido, y la opacidad de un ANCESTRO lo destiñe (una tarjeta «hecha» va al 60 %)
-      const ta=t.a*opac(el);
-      const tc=[t.r*ta+f[0]*(1-ta),t.g*ta+f[1]*(1-ta),t.b*ta+f[2]*(1-ta)];
-      const x=lum(tc),y=lum(f);return +((Math.max(x,y)+.05)/(Math.min(x,y)+.05)).toFixed(2);};`;
   const marcar = si => ev(`(()=>{ const row=document.getElementById('gm-set-0-${si}'); row.querySelector('[data-field="kg"]').value='120';
     row.querySelector('[data-field="reps"]').value='10'; document.getElementById('gm-chk-0-${si}').click();
     const b=document.getElementById('gm-rest-rir'); const ov=document.getElementById('gm-rest-overlay');

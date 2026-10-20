@@ -889,8 +889,11 @@ function gmRender(){
     }
     // v681 · LA BARRA. Se anotan los discos y la app suma la barra (docs/plan-barra-rir.md). Una
     // línea que dice cuál asume, y «Cambiar» abre las opciones de ESE ejercicio (la hexagonal pesa 25).
-    if(gmTrack==='peso_reps'&&typeof sessionBarKg==='function'&&barDefaultKg(ex)!=null){
-      setsEl.appendChild(gmBarLine(ei,ex));
+    // v714 · la barra y si la ELIGIÓ se calculan una vez: las usan la línea y el total de cada serie.
+    const gmBar=(gmTrack==='peso_reps'&&typeof sessionBarKg==='function'&&barDefaultKg(ex)!=null)?sessionBarKg(GM.routine,ei,ex):null;
+    const gmBarOk=gmBar!=null&&((typeof sessionBarConfirmed==='function')?sessionBarConfirmed(GM.routine,ei,ex,gmBar):true);
+    if(gmBar!=null){
+      setsEl.appendChild(gmBarLine(ei,ex,gmBar,gmBarOk));
     }
     // 🔥 Sets de calentamiento (aproximación) — solo peso: ENCABEZADO con Mostrar/Ocultar
     // (paridad con la clásica buildWarmupSection) + la fila cuando está visible. Antes el guiado
@@ -917,7 +920,7 @@ function gmRender(){
       row.id = `gm-set-${ei}-${si}`;
       row.innerHTML = `
         <div class="gm-set-num" id="gm-snum-${ei}-${si}">${done?'✓':si+1}</div>
-        ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug, gmLastre)}
+        ${gmSetCellsHTML(gmTrack, ex, ei, si, done, gmSug, gmLastre, gmBarOk?gmBar:null)}
         <button class="gm-check${done?' checked':''}" id="gm-chk-${ei}-${si}" aria-label="Marcar serie ${si+1} como hecha"
           onclick="gmToggleSet(${ei},${si},${stepIdx})">${done?'✓':'○'}</button>`;
       if(gmTrack==='tiempo'){
@@ -1127,15 +1130,15 @@ function gmSaltoResp(ei,r){
 
 // v681 · la línea de la barra de UN ejercicio (y sus opciones, si están abiertas). `GM.barOpen`
 // vive en memoria y no en el DOM: el guiado repinta entero con cada toque.
-function gmBarLine(ei,ex){
-  const bk=sessionBarKg(GM.routine,ei,ex);
+function gmBarLine(ei,ex,bkIn,okIn){
+  const bk=bkIn!==undefined?bkIn:sessionBarKg(GM.routine,ei,ex);
   const open=GM.barOpen===ei;
   const el=document.createElement('div');
   el.className='gm-bar';
   // v695 · Si todavía no ELIGIÓ la barra de este ejercicio (ni hoy ni en un entreno anterior), se le pregunta
   //   UNA vez, con las opciones a la vista y ninguna marcada: sin la elección el 1RM no le suma la barra
   //   (decisión del PO sobre R17 A2) y casi nadie abre «Cambiar». Un toque y queda para los próximos días.
-  const elegida=(typeof sessionBarConfirmed==='function')?sessionBarConfirmed(GM.routine,ei,ex,bk):true;
+  const elegida=okIn!==undefined?okIn:((typeof sessionBarConfirmed==='function')?sessionBarConfirmed(GM.routine,ei,ex,bk):true);
   if(!elegida){
     el.classList.add('gm-bar-ask');
     el.innerHTML=`<div class="gm-bar-q" id="gm-bar-q-${ei}">¿Con qué barra lo haces?<span>Se suma a los discos que anotas.</span></div>`
@@ -1145,14 +1148,19 @@ function gmBarLine(ei,ex){
     return el;
   }
   // Sofía (28-sep): «todos» dice que se anota el TOTAL de discos, no los de un lado (un error de mitad
-  // del peso que nadie notaría).
-  const txt=bk>0?`Barra de ${bk} kg · se suma a todos los discos`:'Sin barra · solo cuentan los discos';
+  // del peso que nadie notaría). v714: la casilla ya dice KG, así que esta línea dice QUÉ se anota.
+  const txt=bk>0?`Barra de ${bk} kg · anota todos los discos`:'Sin barra · solo cuentan los discos';
   el.innerHTML=`<button type="button" class="gm-bar-btn" aria-expanded="${open}" aria-controls="gm-bar-opts-${ei}"><span>${txt}</span><span class="gm-bar-edit">${open?'Listo':'Cambiar'}</span></button>`
     +(open?`<div class="gm-bar-opts" id="gm-bar-opts-${ei}" role="group" aria-label="¿Cuánto pesa la barra?">`
       +barChoices(ex).map(k=>`<button type="button" class="gm-bar-opt${k===bk?' on':''}" aria-pressed="${k===bk}" onclick="gmPickBar(${ei},${k})">${k>0?k+' kg':'Sin barra'}</button>`).join('')
       +`</div>`:'');
   el.querySelector('.gm-bar-btn').onclick=()=>{ GM.barOpen=open?null:ei; _gmKeepAnchor('gm-ex-'+ei,gmRender); };
   return el;
+}
+// v714 · el total con barra se reescribe al teclear, sin repintar el guiado (repintar le quitaría el foco).
+function gmBarTotal(inp){
+  const sub=inp&&inp.parentElement&&inp.parentElement.querySelector('.gm-bar-total');
+  if(sub&&typeof barTotalLabel==='function') sub.textContent=barTotalLabel(inp.value,inp.dataset.bar);
 }
 function gmPickBar(ei,kg){
   const ex=GM.exercises[ei]; if(!ex) return;
@@ -1315,16 +1323,18 @@ function repsSanityHint(rid, ei, si, el){
 
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
-function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
+function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
   const ro=done?'readonly':'';
   // v611: el rótulo de la casilla de repeticiones lo dice el ejercicio, no la modalidad — el
   // granjero cuenta PASOS. Una sola fuente (`repsUnitOf`) para las tres ramas que la pintan.
   const RL=(typeof repsUnitOf==='function'?repsUnitOf(ex):'reps').toUpperCase();
   const g=f=>getLog(GM.routine.id,ei,si,f);
-  const cell=(f,attrs,ph,val,label,span)=>`<div${span?' style="grid-column:2/4"':''}>
-    <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}
-      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si},this)"`:(f==='reps'?` onchange="repsSanityHint('${GM.routine.id}',${ei},${si},this)"`:'')}>
-    <div class="gm-sinput-label">${label}</div></div>`;
+  // v714 · `B` (solo peso con barra ELEGIDA): la casilla del peso lleva debajo el total con la barra y
+  // las dos casillas se alinean arriba, para que REPS no baje cuando aparece esa línea.
+  const cell=(f,attrs,ph,val,label,span,B)=>`<div${span?' style="grid-column:2/4"':''}${B?' class="gm-scell-top"':''}>
+    <input class="gm-sinput" data-field="${f}" inputmode="${(f==='kg'||f==='dist')?'decimal':'numeric'}" ${attrs} placeholder="${ph}" value="${val}" ${ro}${B&&B.bar!=null?` data-bar="${B.bar}"`:''}
+      oninput="setLog('${GM.routine.id}',${ei},${si},'${f}',this.value)${B&&B.bar!=null?';gmBarTotal(this)':''}"${f==='kg'?` onchange="kgSanityHint('${GM.routine.id}',${ei},${si},this)"`:(f==='reps'?` onchange="repsSanityHint('${GM.routine.id}',${ei},${si},this)"`:'')}>
+    <div class="gm-sinput-label">${label}</div>${B&&B.bar!=null?`<div class="gm-bar-total">${esc(barTotalLabel(val,B.bar))}</div>`:''}</div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.
   if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
@@ -1332,9 +1342,12 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre){
   if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
     +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
   if(track==='cardio') return cell('min','type="number" min="0"','min',g('min')||ex.reps,'MIN',false)+cell('dist','type="number" min="0" step="0.1"','km',g('dist'),'KM',false);
-  // v681: con barra, lo que se escribe son los DISCOS — la casilla lo dice.
-  const KL=(typeof barDefaultKg==='function'&&barDefaultKg(ex)!=null)?'DISCOS':'KG';
-  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),KL,false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
+  // v681: con barra se escriben los DISCOS. v714 (el PO, 19-oct: el rótulo «DISCOS» confundía; eligió la
+  // opción C): la casilla dice KG como en todo lo demás y debajo va el total con la barra — «60» con barra
+  // de 15 → «75 kg con barra». Si se le coló la barra al número, el total le sale raro y se da cuenta.
+  // Sin barra elegida no hay total: la línea de arriba se la está preguntando.
+  const B=(barSum!=null&&typeof barTotalLabel==='function')?{bar:barSum}:null;
+  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false,B)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false,B&&{});
 }
 
 // Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.

@@ -4195,8 +4195,11 @@ test('🔒 v695 · el entreno PREGUNTA la barra una vez cuando no la ha elegido,
   const src = require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8').replace(/\r/g, '');
   const i = src.indexOf('function gmBarLine('); assert.ok(i > 0, 'gmBarLine desapareció');
   const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
-  assert.ok(/const elegida=\(typeof sessionBarConfirmed==='function'\)\?sessionBarConfirmed\(GM\.routine,ei,ex,bk\):true;/.test(cuerpo),
+  // (v714: quien la llama le pasa la barra y si la eligió ya calculadas —`gmBarOk`, la misma
+  //  sessionBarConfirmed, candado en el test de v714—; sin ellas la calcula aquí, como antes)
+  assert.ok(/const elegida=okIn!==undefined\?okIn:\(\(typeof sessionBarConfirmed==='function'\)\?sessionBarConfirmed\(GM\.routine,ei,ex,bk\):true\);/.test(cuerpo),
     '🔴 la línea de la barra dejó de preguntar si la persona ya la eligió');
+  assert.ok(/gmBarLine\(ei,ex,gmBar,gmBarOk\)/.test(src), '🔴 la línea recibe una barra «elegida» que no salió de sessionBarConfirmed');
   const iAsk = cuerpo.indexOf('if(!elegida){'), iLinea = cuerpo.indexOf('Barra de ${bk} kg');
   assert.ok(iAsk > 0 && iLinea > iAsk, 'la pregunta tiene que ir ANTES de la línea de siempre');
   const ask = cuerpo.slice(iAsk, iLinea);
@@ -22540,8 +22543,8 @@ test('🔒 v681 · el cableado: la barra viaja, se guarda con el entreno y entra
   // …y NO toca el volumen (un salto falso en la gráfica el día del cambio).
   const prog = e4.slice(e4.indexOf('function updateClientProgress('), e4.indexOf('\nfunction ', e4.indexOf('function updateClientProgress(') + 10));
   assert.ok(!/_bar|sessionBarKg/.test(prog), '🔴 la barra entró al volumen');
-  // En vivo: la casilla dice DISCOS y cambiar la barra re-guarda SIN volver a celebrar.
-  assert.ok(/barDefaultKg\(ex\)!=null\)\?'DISCOS':'KG'/.test(e6), 'la casilla no dice DISCOS con barra');
+  // En vivo: cambiar la barra re-guarda SIN volver a celebrar. (Hasta v713 la casilla decía DISCOS; desde
+  // v714 dice KG con el total debajo, decisión del PO — su candado es el test de v714.)
   const pick = e6.slice(e6.indexOf('function gmPickBar('), e6.indexOf('\nfunction ', e6.indexOf('function gmPickBar(') + 10));
   assert.ok(/resaveSessionPartial\(GM\.routine\)/.test(pick) && !/updateClientProgress/.test(pick),
     '🔴 cambiar la barra con todo marcado volvería a disparar el cierre');
@@ -24467,6 +24470,52 @@ test('🔒 v713 · preguntar por un id PROVISIONAL responde «no está» sin ir 
   assert.ok(cr.length > 300, 'CONTROL: se recortó coachSyncRetry');
   assert.ok(cr.includes("uno.huerfana?(_isAuthId(uno.id)?'ya no está en tu lista':'era de antes de crear su cuenta y ya no hace falta')"),
     '🔴 el aviso vuelve a decir «ya no está en tu lista» de un asesorado que sigue en su lista');
+});
+
+// ══════════════════════════════════════════════════════
+// v714 · LA CASILLA DEL PESO DICE KG Y DEBAJO EL TOTAL CON LA BARRA (opción C del PO, 19-oct)
+// ══════════════════════════════════════════════════════
+test('🔴 v714 · el total con barra: discos + barra elegida, con coma decimal, y nada si no hay qué sumar', () => {
+  const { barTotalLabel } = core;
+  assert.strictEqual(barTotalLabel('60', 15), '75 kg con barra');
+  assert.strictEqual(barTotalLabel(60, '15'), '75 kg con barra', 'la barra puede venir como texto (data-bar)');
+  assert.strictEqual(barTotalLabel('62.5', 15), '77,5 kg con barra');
+  assert.strictEqual(barTotalLabel('62,5', 15), '77,5 kg con barra', '🔴 el teclado con coma decimal no suma');
+  assert.strictEqual(barTotalLabel('0', 20), '20 kg con barra', 'la barra vacía (0 de discos) también es un peso');
+  assert.strictEqual(barTotalLabel('1000', 20), '1.020 kg con barra');
+  // Nada que sumar → nada (la línea vacía no ocupa lugar).
+  for (const [kg, bar] of [['', 15], ['   ', 15], [null, 15], ['abc', 15], ['-5', 15], ['60', 0], ['60', null], ['60', 99], [true, 15]]) {
+    assert.strictEqual(barTotalLabel(kg, bar), '', JSON.stringify([kg, bar]));
+  }
+});
+
+test('🔒 v714 · en el guiado: KG siempre, total solo con la barra ELEGIDA, y se reescribe al teclear', () => {
+  const e6 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const cells = e6.slice(e6.indexOf('function gmSetCellsHTML('), e6.indexOf('\nfunction ', e6.indexOf('function gmSetCellsHTML(') + 10));
+  assert.ok(cells.length > 500, 'CONTROL: se recortó gmSetCellsHTML');
+  assert.ok(!/DISCOS/.test(e6), '🔴 la casilla vuelve a decir DISCOS');
+  assert.ok(/cell\('kg','type="number" step="0\.5" min="0"',[^\n]*,g\('kg'\),'KG',false,B\)/.test(cells), '🔴 la casilla del peso con barra no dice KG o no lleva el total');
+  assert.ok(/<div class="gm-bar-total">\$\{esc\(barTotalLabel\(val,B\.bar\)\)\}<\/div>/.test(cells), '🔴 el total no se pinta debajo de la casilla (o sin esc)');
+  assert.ok(/;gmBarTotal\(this\)/.test(cells), '🔴 el total no se reescribe al teclear');
+  // El total solo con la barra ELEGIDA: sin elegir, la línea de arriba se la está preguntando.
+  assert.ok(/gmSetCellsHTML\(gmTrack, ex, ei, si, done, gmSug, gmLastre, gmBarOk\?gmBar:null\)/.test(e6),
+    '🔴 el total sale con una barra que la persona no eligió');
+  assert.ok(/const gmBarOk=gmBar!=null&&\(\(typeof sessionBarConfirmed==='function'\)\?sessionBarConfirmed\(GM\.routine,ei,ex,gmBar\):true\);/.test(e6),
+    'CONTROL: gmBarOk es la barra confirmada');
+  // La línea dice qué se anota (Sofía, 28-sep: TODOS los discos, no los de un lado).
+  assert.ok(e6.includes('`Barra de ${bk} kg · anota todos los discos`'), '🔴 la línea de la barra ya no dice qué se anota');
+  const tot = e6.slice(e6.indexOf('function gmBarTotal('), e6.indexOf('\nfunction ', e6.indexOf('function gmBarTotal(') + 10));
+  assert.ok(/sub\.textContent=barTotalLabel\(inp\.value,inp\.dataset\.bar\)/.test(tot), '🔴 gmBarTotal no reescribe con lo tecleado');
+  // Ejecutar las celdas de verdad: con barra elegida (15) y 60 anotados → KG + «75 kg con barra»; sin barra → KG solo.
+  const fnSrc = (e6.match(/function gmSetCellsHTML\([\s\S]*?\n\}/) || [])[0];
+  assert.ok(fnSrc, 'CONTROL: encontré gmSetCellsHTML');
+  const mk = new Function('GM', 'getLog', 'esc', 'barTotalLabel', 'repsUnitOf', 'return (' + fnSrc + ')');
+  const pinta = mk({ routine: { id: 'r1' } }, (r, ei, si, f) => (f === 'kg' ? '60' : '10'), s => String(s), core.barTotalLabel, () => 'reps');
+  const conBarra = pinta('peso_reps', { reps: '10' }, 0, 0, false, null, false, 15);
+  assert.ok(/>KG</.test(conBarra) && /<div class="gm-bar-total">75 kg con barra<\/div>/.test(conBarra) && /data-bar="15"/.test(conBarra), conBarra);
+  assert.strictEqual((conBarra.match(/class="gm-scell-top"/g) || []).length, 2, 'las dos casillas se alinean arriba');
+  const sinBarra = pinta('peso_reps', { reps: '10' }, 0, 0, false, null, false, null);
+  assert.ok(/>KG</.test(sinBarra) && !/gm-bar-total|gm-scell-top|data-bar/.test(sinBarra), 'CONTROL: sin barra elegida, solo KG');
 });
 
 // ══════════════════════════════════════════════════════

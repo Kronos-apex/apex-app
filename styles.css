@@ -1706,6 +1706,11 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .gm-sinput:focus{outline:none;border-color:var(--g2)}
 .gm-sinput[readonly]{background:transparent;border-color:transparent;color:var(--t2)}
 .gm-sinput-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;margin-top:2px}
+/* v714 · debajo de KG, el total con la barra («75 kg con barra»); vacío no ocupa lugar. Las dos casillas
+   se alinean arriba para que REPS no baje cuando aparece. */
+.gm-set-row>.gm-scell-top{align-self:start}
+.gm-bar-total{font-size:10.5px;font-weight:700;line-height:1.25;color:var(--gt);text-align:center;margin-top:1px;text-wrap:balance;font-variant-numeric:tabular-nums}
+.gm-bar-total:empty{display:none}
 /* v681 · la barra: una línea que dice cuál se suma, y sus opciones (≥36px, tokens en los dos temas) */
 /* v685 · «Cargas»: una tarjeta abierta puede traer 40+ filas, cada una con la silueta anatómica en SVG. Las que
    están fuera de la pantalla no se dibujan hasta acercarse (medido: abrir la de 42 costaba ~350 ms con CPU ×4). */

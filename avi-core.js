@@ -1502,6 +1502,20 @@ function _barNum(v) {
   const n = Number(v);
   return isFinite(n) && n >= 0 && n <= 50 ? n : null;
 }
+// v714 · Lo que dice debajo de la casilla del peso: los discos anotados MÁS la barra elegida
+// («60» con barra de 15 → «75 kg con barra»). Pedido del PO el 19-oct: el rótulo «DISCOS» confundía;
+// eligió que la casilla diga KG como en todo lo demás y que el total se vea al escribir. PURA.
+// '' cuando no hay qué sumar: sin barra (o de 0), o sin un número anotado. Acepta la coma decimal.
+function barTotalLabel(kg, bar) {
+  const b = _barNum(bar);
+  if (b == null || b <= 0) return '';
+  if (kg == null || typeof kg === 'boolean') return '';
+  const s = String(kg).trim();
+  if (!s) return '';   // Number('') es 0: sin esto, la casilla VACÍA diría «20 kg con barra»
+  const n = Number(s.replace(',', '.'));
+  if (!isFinite(n) || n < 0) return '';
+  return fmtMiles(n + b) + ' kg con barra';
+}
 // ¿Qué barra usa ESTA persona en ESTE ejercicio? PURA. La última `bar` que dejó anotada en su
 // historial para ese ejercicio —por IDENTIDAD, no por nombre (v585: un ejercicio renombrado es el
 // mismo)—; si nunca la anotó, la del catálogo. `null` si el ejercicio no lleva barra.
@@ -12958,6 +12972,7 @@ if (typeof module !== 'undefined' && module.exports) {
     BAR_DEFAULTS,
     barDefaultKg,
     barChoices,
+    barTotalLabel,
     exerciseBarKg,
     barConfirmed,
     recordBarKg,

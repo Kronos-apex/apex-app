@@ -585,4 +585,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-10-17 — **v713 «el aviso de un alta ya no se queda clavado» en producción** · suite 1493. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*
+*Última actualización: 2026-10-19 — **v714 «la casilla del peso dice KG y debajo el total con la barra» en producción** · suite 1495. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*
