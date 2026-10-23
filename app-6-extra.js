@@ -1353,6 +1353,8 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
 // Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.
 function gmLogRow(ei, si){
   const ex=GM.exercises[ei];
+  // v717 · el cardio no tiene fila por serie: sus casillas viven en su tarjeta (gmRenderCardio).
+  if(exTrack(ex)==='cardio'){ gmLogCardio(ei, null); return; }
   const row=document.getElementById(`gm-set-${ei}-${si}`);
   if(!row) return;
   const inps=row.querySelectorAll('.gm-sinput[data-field]');
@@ -1362,6 +1364,17 @@ function gmLogRow(ei, si){
     setLog(GM.routine.id, ei, si, inp.dataset.field, v);
     inp.readOnly=true;
   });
+}
+// v717 · anota los minutos del cardio al cerrarlo (antes solo al teclear: la casilla mostraba el
+// último o el objetivo y el historial guardaba vacío). `secsRan` = lo que corrió el cronómetro;
+// null = se cerró con «✓ Completar» y vale lo que dice la casilla. Regla en `cardioLoggedMin`.
+function gmLogCardio(ei, secsRan){
+  const ex=GM.exercises[ei], rid=GM.routine.id;
+  const inp=document.getElementById(`gm-cardio-min-${ei}`);
+  const min=cardioLoggedMin(secsRan, inp&&inp.value, ex&&ex.reps);
+  if(min!=null) setLog(rid, ei, 0, 'min', String(min));
+  const km=document.getElementById(`gm-cardio-km-${ei}`);
+  if(km&&km.value) setLog(rid, ei, 0, 'dist', km.value);
 }
 
 // Cronómetro de isométrico en el guiado: cuenta regresiva en el overlay y, al
@@ -1570,6 +1583,7 @@ function gmCardioTimer(ei, mins, sets){
       if(typeof alertVibrate==='function') alertVibrate([300,120,300]);
       toast('🚴 ¡Cardio completado! Quedó registrado.');
       a11ySay('Cardio completado. Quedó registrado.');
+      gmLogCardio(ei, GM.restTotal); // v717 · lo que corrió, con los +15 s
       for(let s=0;s<sets;s++) setDone(GM.routine.id,ei,s,true);
       gmAfterHiit(ei); // sincroniza progreso, avanza y refresca (cierre genérico de bloque)
     }

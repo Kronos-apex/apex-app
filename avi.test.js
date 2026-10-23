@@ -24575,6 +24575,43 @@ test('🔒 v716 · con letra grande ninguna cifra se parte ni se corta (rutina, 
 });
 
 // ══════════════════════════════════════════════════════
+// v717 · EL CARDIO ANOTA SUS MINUTOS AUNQUE NADIE LOS TECLEE
+// ══════════════════════════════════════════════════════
+// Medido el 23-oct-2026: 37 de 99 series de cardio cerradas (12 personas) quedaron con los minutos
+// VACÍOS en el historial. La casilla mostraba el último registro o el objetivo, pero solo se
+// anotaba al teclear; quien tocaba ▶ Empezar tal cual terminaba con «Cardio: 0 min».
+
+test('v717 · cardio con cronómetro: manda lo que CORRIÓ (con los +15 s), en minutos con un decimal', () => {
+  assert.strictEqual(core.cardioLoggedMin(1200, '', 20), 20);
+  assert.strictEqual(core.cardioLoggedMin(1230, '20', 20), 20.5);
+  // Lo que corrió le gana a la casilla: el +15 s se suma al cronómetro, no a la casilla.
+  assert.strictEqual(core.cardioLoggedMin(1800, '20', 20), 30);
+});
+
+test('v717 · cardio sin cronómetro: vale la casilla y, vacía, el objetivo; nada válido → null', () => {
+  assert.strictEqual(core.cardioLoggedMin(null, '25', 20), 25);
+  assert.strictEqual(core.cardioLoggedMin(null, '', 20), 20);
+  assert.strictEqual(core.cardioLoggedMin(undefined, '', '30'), 30);
+  // 🔒 CONTROL: no se inventan minutos donde no hay ningún dato.
+  assert.strictEqual(core.cardioLoggedMin(0, 'abc', ''), null);
+  assert.strictEqual(core.cardioLoggedMin(null, '-5', 0), null);
+});
+
+test('🔒 v717 · CABLEADO: el cronómetro y «✓ Completar» anotan los minutos del cardio ANTES de marcarlo', () => {
+  const fs = require('fs'), path = require('path');
+  const extra = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const timer = extra.slice(extra.indexOf('function gmCardioTimer('), extra.indexOf('function gmUpdateProgress('));
+  const iLog = timer.indexOf('gmLogCardio(ei, GM.restTotal)'), iDone = timer.indexOf('setDone(GM.routine.id,ei,s,true)');
+  assert.ok(iLog > 0 && iDone > iLog, '🔴 el cronómetro del cardio vuelve a marcarlo sin anotar los minutos que corrió');
+  const fila = extra.slice(extra.indexOf('function gmLogRow('), extra.indexOf('function gmLogCardio('));
+  assert.ok(/if\(exTrack\(ex\)==='cardio'\)\{ gmLogCardio\(ei, null\); return; \}/.test(fila),
+    '🔴 «✓ Completar» de un cardio vuelve a buscar una fila que el cardio no tiene y no anota nada');
+  const fn = extra.slice(extra.indexOf('function gmLogCardio('), extra.indexOf('function _gmEndHoldUI('));
+  assert.ok(/cardioLoggedMin\(secsRan, inp&&inp\.value, ex&&ex\.reps\)/.test(fn) && /setLog\(rid, ei, 0, 'min', String\(min\)\)/.test(fn),
+    '🔴 gmLogCardio dejó de pasar por la regla pura o de escribir el minuto');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

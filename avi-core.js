@@ -5079,6 +5079,23 @@ function clampQwHiit(cfg, def) {
   };
 }
 
+// ── Los minutos que quedan anotados al cerrar un cardio (v717) ──
+// 🔴 La casilla de MINUTOS del cardio en el guiado muestra el último registro o el objetivo, pero
+// solo se anotaba al TECLEAR: quien tocaba ▶ Empezar con lo que ya decía la casilla terminaba el
+// cardio con el cronómetro y el historial guardaba los minutos VACÍOS. Medido el 23-oct-2026: 37
+// de 99 series de cardio cerradas, de 12 personas. Orden de la verdad: lo que CORRIÓ el
+// cronómetro (con los +15 s que se le sumaron) → lo que dice la casilla → el objetivo de la
+// rutina. Nada válido → null: no se inventan minutos. Un decimal (20,5 tras dos +15 s).
+function cardioLoggedMin(secsRan, typed, target) {
+  const s = Number(secsRan);
+  if (Number.isFinite(s) && s > 0) return Math.round(s / 6) / 10;
+  for (const v of [typed, target]) {
+    const n = parseFloat(v);
+    if (Number.isFinite(n) && n > 0) return Math.round(n * 10) / 10;
+  }
+  return null;
+}
+
 // ── Novedades de la app (v302): qué mostrarle al asesorado — puro, testeable ──
 // Devuelve las entradas MÁS NUEVAS que la última versión vista (seenV), de la más
 // reciente a la más vieja, tope 3 (una tarjeta digerible; lo viejo ya no es noticia).
@@ -13280,6 +13297,7 @@ if (typeof module !== 'undefined' && module.exports) {
     stripFixtureSessions,
     WATER_GLASS_ML,
     clampQwHiit,
+    cardioLoggedMin,
     newsToShow,
     habitDayKey,
     waterGoalGlasses,

@@ -4,6 +4,20 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-23 — v717: el cardio anota sus minutos aunque nadie los teclee
+
+- **Cómo apareció**: armando el cardio continuo de los entrenamientos rápidos (pedido del PO, v718) se midió el historial:
+  **37 de 99 series de cardio cerradas, de 12 personas, guardaban los minutos VACÍOS** (desde el 7-jul). La casilla
+  MINUTOS de la tarjeta del cardio en el guiado muestra el último registro o el objetivo, pero solo se anotaba con
+  `oninput`: quien tocaba ▶ Empezar tal cual terminaba con el cronómetro y el historial decía «Cardio: 0 min». Lo mismo
+  por «✓ Completar»: `gmLogRow` buscaba una fila `gm-set-*` que el cardio no tiene y salía sin anotar.
+- **Arreglo**: regla pura `cardioLoggedMin(secsRan, typed, target)` en avi-core (lo que corrió el cronómetro, con los
+  +15 s → la casilla → el objetivo; nada válido → null, no se inventan minutos) y `gmLogCardio` en el guiado, que la
+  llaman el final del cronómetro (antes de marcar) y `gmLogRow` para el cardio. Los km siguen siendo opcionales.
+- **No se reparan** las 37 series viejas: no hay forma honesta de saber cuántos minutos hizo cada una.
+- QA: suite 1497 → 1500, `_sabotaje-v717` (5 filas), y el harness del cardio rápido (v718) cierra un cardio sin teclear
+  y lee el minuto en el historial.
+
 ## ⏮️ 2026-10-20 — v716: con letra grande ninguna cifra se parte ni se corta
 
 - **Pedido del PO** («Revisa qué más tenemos por ese estilo» tras v715 → «Arreglalos»). Recorrido NUEVO
