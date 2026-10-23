@@ -3296,7 +3296,12 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
-  // v710 — Lotes 4 y 5 del estudio de organización: Progreso en pestañas (v709) y la barra de cinco, con
+  // v718 — Pedido del PO: en los entrenamientos rápidos solo había intervalos y nadie podía caminar o montar
+  // bici 20-30 min seguidos. Sin público marcado: los rápidos son de TODOS, también del tier libre.
+  {v:718, icon:'heart', t:'Cardio a tu ritmo', d:'Si hoy solo quieres caminar, montar bici, elíptica o escaladora, ya puedes: eliges dónde, pones tus minutos y la app te lleva el tiempo. Cuenta en tu historial y en tu racha.',
+   steps:['En «Hoy», toca «¿Hoy quieres algo distinto?»','Toca «Cardio a tu ritmo» y elige dónde lo vas a hacer','Pon tus minutos y toca ▶ Empezar: te avisamos al terminar'],
+   cta:{label:'Elegir mi cardio',run:'ntGoCardio'}},
+  // v710 —Lotes 4 y 5 del estudio de organización: Progreso en pestañas (v709) y la barra de cinco, con
   // Comunidad dentro de Progreso (v710). Una sola entrada: lo que cambió es CÓMO se llega a las cosas.
   // Sin público marcado: Progreso y Comunidad son de TODOS, también del tier libre.
   {v:710, icon:'users', t:'Progreso, ordenado, y Comunidad dentro', d:'Progreso ahora va en pestañas: Resumen, Historial, Récords y Logros. Y la barra de abajo quedó con cinco: Comunidad sigue igual que siempre, ahora se abre desde Progreso.',
@@ -3381,6 +3386,8 @@ const _NEWS_SEEN_KEY='ax_news_seen';
 const _NT_ACTIONS={
   ntGoMsgs:()=>{ const tab=document.getElementById('tab-msgs');
     if(typeof cnTab==='function'&&tab){ cnTab('cn-messages',tab); if(typeof markMsgsRead==='function')markMsgsRead(); } },
+  // v718 · la biblioteca de rápidos y, encima, la ventana para elegir dónde hacer el cardio.
+  ntGoCardio:()=>{ if(typeof openQuickWorkouts!=='function')return; openQuickWorkouts(); if(typeof openQuickCardio==='function')openQuickCardio(); },
 };
 let _ntItems=[],_ntIdx=0,_ntRetry=null;
 // Punto de entrada (lo llama renderClientToday). Abre el tour si hay novedades sin ver.

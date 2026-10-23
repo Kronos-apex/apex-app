@@ -49,8 +49,10 @@ try {
   await sleep(500);
   let s = JSON.parse(await ev(`JSON.stringify((()=>{const room=document.getElementById('quickwo-room');
     const first=document.querySelector('#quickwo-body .qw-card .qw-card-nm');
-    return {roomOn:room.classList.contains('on'),first:(first||{}).textContent,cards:document.querySelectorAll('#quickwo-body .qw-card').length};})())`));
-  check('Q1 biblioteca abierta con "HIIT en Máquina" de primero (7 presets)', s.roomOn && /Máquina/.test(s.first||'') && s.cards === 7, JSON.stringify(s));
+    return {roomOn:room.classList.contains('on'),first:(first||{}).textContent,cards:document.querySelectorAll('#quickwo-body .qw-card').length,esperadas:QUICK_WORKOUTS.length,
+      hiit:[...document.querySelectorAll('#quickwo-body .qw-card .qw-card-nm')].some(e=>/HIIT en Máquina/.test(e.textContent))};})())`));
+  // v718: «Cardio a tu ritmo» pasó a ser la primera tarjeta; el HIIT sigue y el conteo sale de QUICK_WORKOUTS (no clavado).
+  check('Q1 biblioteca abierta con "HIIT en Máquina" entre todos los presets', s.roomOn && s.hiit && s.cards === s.esperadas, JSON.stringify(s));
 
   // Q2: tocar el preset HIIT abre el mini-modal PRELLENADO (10 rondas · 30s · 15s)
   await ev(`startQuickWorkout('qw_hiit_maquina')`);

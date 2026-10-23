@@ -24612,6 +24612,68 @@ test('🔒 v717 · CABLEADO: el cronómetro y «✓ Completar» anotan los minut
 });
 
 // ══════════════════════════════════════════════════════
+// v718 · «CARDIO A TU RITMO» EN LOS ENTRENAMIENTOS RÁPIDOS
+// ══════════════════════════════════════════════════════
+// Pedido del PO (23-oct-2026): en «¿Hoy quieres algo distinto?» solo había intervalos; quien quería caminar
+// o montar bici 20-30 min seguidos no podía (el HIIT en Máquina topa el trabajo en 180 s).
+
+test('v718 · cada opción de cardio es un cardio CONTINUO del catálogo real, con sus minutos', () => {
+  assert.ok(core.QUICK_CARDIO_OPTIONS.length >= 4, 'esperaba las opciones de cardio');
+  const ids = new Set();
+  for (const o of core.QUICK_CARDIO_OPTIONS) {
+    const cat = _LIB_REAL.find(e => e.id === o.id);
+    assert.ok(cat, `🔴 la opción «${o.label}» apunta a ${o.id}, que no está en el catálogo`);
+    assert.strictEqual(cat.type, 'Cardio', `🔴 «${o.label}» (${o.id}) no es cardio continuo: es ${cat.type}`);
+    const r = core.quickCardioRoutine(o.id, _LIB_REAL);
+    assert.strictEqual(r.id, 'qw_cardio_' + o.id);
+    assert.ok(r.quick && r.day === 'Libre' && r.exercises.length === 1);
+    const ex = r.exercises[0];
+    assert.strictEqual(ex.track, 'cardio');
+    assert.strictEqual(ex.sets, 1);
+    assert.strictEqual(ex.reps, parseInt(cat.reps), 'los minutos sugeridos son los del catálogo');
+    assert.strictEqual(core.exTrack(ex), 'cardio');
+    ids.add(r.id);
+  }
+  assert.strictEqual(ids.size, core.QUICK_CARDIO_OPTIONS.length, '🔴 dos actividades comparten id de rutina: sus minutos se mezclarían');
+  // Al menos una sirve SIN gimnasio (caminar afuera).
+  assert.ok(core.QUICK_CARDIO_OPTIONS.some(o => (_LIB_REAL.find(e => e.id === o.id).env || []).includes('parque')),
+    '🔴 todas las opciones de cardio piden gimnasio');
+});
+
+test('v718 · cardio rápido: no se deja torcer por el tipo del coach ni por un catálogo viejo', () => {
+  // El coach marcó la bici como HIIT en su copia: sigue saliendo continua, sin intervalos.
+  const torcido = [{ id: 'e64', name: 'Bicicleta Estática', type: 'HIIT', track: 'hiit', hiit: { work: 30, rest: 15 }, sets: 10, reps: 20 }];
+  const ex = core.quickCardioRoutine('e64', torcido).exercises[0];
+  assert.strictEqual(ex.track, 'cardio');
+  assert.strictEqual(ex.sets, 1);
+  assert.ok(!('hiit' in ex), 'el bloque de intervalos se coló en el cardio continuo');
+  // Una copia vieja de `ax_e` sin el ejercicio: sale con el nombre de la opción y 20 min, no en blanco.
+  const viejo = core.quickCardioRoutine('e375', []);
+  assert.strictEqual(viejo.exercises[0].name, 'Caminadora inclinada');
+  assert.strictEqual(viejo.exercises[0].reps, 20);
+  // 🔒 CONTROL: una opción que no existe no arma nada.
+  assert.strictEqual(core.quickCardioRoutine('e999', _LIB_REAL), null);
+  // La copia del catálogo no se toca.
+  assert.strictEqual(torcido[0].type, 'HIIT');
+});
+
+test('🔒 v718 · CABLEADO: la tarjeta abre las opciones y cada opción arranca su cardio', () => {
+  const fs = require('fs'), path = require('path');
+  const entreno = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const qw = entreno.slice(entreno.indexOf('const QUICK_WORKOUTS=['), entreno.indexOf('function buildQuickRoutine'));
+  assert.ok(/^const QUICK_WORKOUTS=\[\s*\{id:'qw_cardio'[^\n]*\n[^\n]*\n\s*cardio:true, items:\[\]\}/.test(qw),
+    '🔴 «Cardio a tu ritmo» ya no es la primera tarjeta de los entrenamientos rápidos');
+  const start = entreno.slice(entreno.indexOf('function startQuickWorkout('), entreno.indexOf('function qwStartConfigured('));
+  assert.ok(/if\(spec\.cardio\)\{ openQuickCardio\(\); return; \}/.test(start), '🔴 tocar la tarjeta del cardio ya no abre las opciones');
+  const go = entreno.slice(entreno.indexOf('function qwStartCardio('), entreno.indexOf('function _qwRun('));
+  assert.ok(/quickCardioRoutine\(exId,\(DB\.exercises\|\|\[\]\)\.concat\(typeof defaultExercises!=='undefined'\?defaultExercises:\[\]\)\)/.test(go)
+    && /_qwRun\(routine,routine\.name\)/.test(go), '🔴 la opción de cardio dejó de armarse con la regla pura o de arrancar');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="m-qwcardio"/.test(html) && /id="qwcardio-list"/.test(html), '🔴 se perdió la ventana de opciones del cardio');
+  assert.ok(/<small>Cardio, HIIT, abdomen, movilidad…<\/small>/.test(html), '🔴 la entrada de «Hoy» ya no dice que ahí hay cardio');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

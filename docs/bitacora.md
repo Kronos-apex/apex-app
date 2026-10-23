@@ -4,6 +4,29 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-23 — v718: «Cardio a tu ritmo» en los entrenamientos rápidos
+
+- **Pedido del PO**: «en "¿Hoy quieres algo distinto?" solo están tipos de cardio HIIT; una persona que quiera hacer
+  simplemente cardio en la bici o caminando no puede». **Medido**: «HIIT en Máquina» es el rápido más usado (105
+  sesiones, 10 personas) y su trabajo topa en 180 s (`clampQwHiit`), así que 20-30 min seguidos eran imposibles; ese
+  mismo día dos sesiones lo forzaron a «1 ronda, 3 min».
+- **Lo que ya existía y faltaba conectar**: el catálogo trae 18 cardios continuos (`type:'Cardio'`, reps = minutos) y el
+  guiado los sabe correr (casilla MINUTOS/KM + cronómetro, `gmRenderCardio`/`gmCardioTimer`). Faltaba la puerta.
+- **Qué entra**: tarjeta «Cardio a tu ritmo» de PRIMERA en la biblioteca (`qw_cardio`, «6 opciones») → ventana
+  `#m-qwcardio` «¿Dónde vas a hacer cardio?» con Caminar o trotar (e20, la única sin gimnasio) · Caminadora inclinada
+  (e375) · Bicicleta estática (e64) · Elíptica (e67) · Escaladora (e135) · Remo (e65). Cada opción arranca un bloque
+  de cardio continuo; los minutos se ponen en la tarjeta del guiado. Lógica pura en avi-core: `QUICK_CARDIO_OPTIONS` +
+  `quickCardioRoutine` (siempre `track:'cardio'` y 1 serie aunque el coach le haya cambiado el tipo; busca en la
+  biblioteca del teléfono y luego en el catálogo del código; opción inexistente → null). **Id de rutina por actividad**
+  (`qw_cardio_<id>`): la caminata recuerda sus 35 min y la escaladora no los hereda.
+- La píldora de «Hoy» dice «Cardio, HIIT, abdomen, movilidad…» · entrada de Novedades v718 con botón «Elegir mi
+  cardio» (`ntGoCardio`) · de paso, la etiqueta «1 ejercicios» del HIIT en Máquina dice «1 ejercicio».
+- **Cazado antes de publicar**: con «Muy grande» a 360 px «Caminadora» no cabía en su fila → con letra grande la fila
+  recorta relleno e ícono (nunca la letra). Lo vio el harness nuevo, que mide nombres cortados con su control.
+- QA: suite 1503 · `_verify-qw-cardio` 13/13 (clic real, atrás, minutos por actividad, CONTROL que apaga
+  `gmLogCardio`, claro/oscuro/«Muy grande») · `_verify-qwcfg` (Q1 ahora deriva el conteo de `QUICK_WORKOUTS`: el
+  orden cambió a propósito) · `_verify-news` · `_guiado-suite` · `_shot-trained` · `_sabotaje-v718`.
+
 ## ⏮️ 2026-10-23 — v717: el cardio anota sus minutos aunque nadie los teclee
 
 - **Cómo apareció**: armando el cardio continuo de los entrenamientos rápidos (pedido del PO, v718) se midió el historial:

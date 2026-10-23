@@ -1942,6 +1942,10 @@ function startRoutineNow(routineId){
 // Reusan el motor de "Hoy" vía renderClientToday(client, override). `track` explícito por
 // ítem porque exTrack manda 'Movilidad' a 'peso_reps' (pediría kg). Todo sin equipo.
 const QUICK_WORKOUTS=[
+  // v718 · cardio continuo: no trae ejercicios propios, abre la ventana de opciones (QUICK_CARDIO_OPTIONS, avi-core).
+  {id:'qw_cardio', emoji:'❤️', ic:'heart', name:'Cardio a tu ritmo', goal:'Cardio continuo', place:'Gym o afuera', dur:'tú eliges el tiempo',
+   desc:'Caminar, bici, elíptica o escaladora a un ritmo parejo, sin intervalos. Eliges dónde y cuántos minutos.',
+   cardio:true, items:[]},
   {id:'qw_hiit_maquina', emoji:'🚴', ic:'bike', name:'HIIT en Máquina', goal:'Cardio · HIIT', place:'Gym', dur:'~10 min',
    desc:'Bici estática, elíptica o trotadora: sprints fuertes con pausas suaves. Tú eliges las rondas.',
    items:[{id:'e74',sets:10,hiit:{work:30,rest:15}}]},
@@ -2000,7 +2004,7 @@ function openQuickWorkouts(){
         <span class="qw-card-nm">${esc(w.name)}</span>
         <span class="qw-card-meta">${esc(w.goal)} · ${esc(w.place)} · ${esc(w.dur)}</span>
         <span class="qw-card-desc">${esc(w.desc)}</span>
-        <span class="qw-card-tag">${(w.items||[]).length} ejercicios</span>
+        <span class="qw-card-tag">${w.cardio?QUICK_CARDIO_OPTIONS.length+' opciones':(w.items||[]).length+((w.items||[]).length===1?' ejercicio':' ejercicios')}</span>
       </span>
       <span class="qw-card-go">›</span>
     </button>`).join('')+`<div style="height:30px"></div>`;
@@ -2014,6 +2018,7 @@ function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r
 let _qwCfgSpec=null;
 function startQuickWorkout(id){
   const spec=QUICK_WORKOUTS.find(w=>w.id===id); if(!spec)return;
+  if(spec.cardio){ openQuickCardio(); return; }
   const hiitItem=(spec.items||[]).find(it=>it.hiit);
   if(hiitItem){
     _qwCfgSpec=spec;
@@ -2039,14 +2044,30 @@ function qwStartConfigured(){
   cm('m-qwcfg');
   _qwGo(spec,cfg);
 }
-function _qwGo(spec,cfg){
+// v718 · «Cardio a tu ritmo»: la ventana de opciones. Una por actividad; los minutos se eligen en la
+// tarjeta del cardio del guiado (recuerda los de la última vez por actividad).
+function openQuickCardio(){
+  const list=document.getElementById('qwcardio-list'); if(!list)return;
+  list.innerHTML=QUICK_CARDIO_OPTIONS.map(o=>`<button class="qwc-opt" onclick="qwStartCardio('${o.id}')">
+      <span class="qwc-opt-ic">${typeof aviIcon==='function'?aviIcon(o.ic,20):''}</span>
+      <span class="qwc-opt-tx"><b>${esc(o.label)}</b><small>${esc(o.sub)}</small></span>
+      <span class="qwc-opt-go">›</span>
+    </button>`).join('');
+  om('m-qwcardio');
+}
+function qwStartCardio(exId){
+  const routine=quickCardioRoutine(exId,(DB.exercises||[]).concat(typeof defaultExercises!=='undefined'?defaultExercises:[]));
+  cm('m-qwcardio');
+  if(routine)_qwRun(routine,routine.name);
+}
+function _qwGo(spec,cfg){ _qwRun(buildQuickRoutine(spec,cfg),spec.name); }
+function _qwRun(routine,nombre){
   const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
-  const routine=buildQuickRoutine(spec,cfg);
   // La entrada vive dentro de "Hoy", así que ya estamos en esa pestaña: NO usamos cnTab (su
   // manejo de historial chocaría con el history.back que cierra la biblioteca). Solo renderizamos
   // el extra como override y dejamos que history.back cierre la sala (consume su capa).
   const room=document.getElementById('quickwo-room');
-  const go=()=>{ renderClientToday(c,routine); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; toast('⚡ '+spec.name+' — ¡a darle!'); };
+  const go=()=>{ renderClientToday(c,routine); const t=document.getElementById('cn-today'); if(t)t.scrollTop=0; toast('⚡ '+nombre+' — ¡a darle!'); };
   if(room&&room.classList.contains('on')){ history.back(); setTimeout(go,70); } else go();
 }
 

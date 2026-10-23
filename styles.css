@@ -356,6 +356,19 @@ html[data-theme="light"] .mta {
 .qw-card-desc{font-size:12.5px;color:var(--t2);line-height:1.45}
 .qw-card-tag{align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--t3);background:var(--bg);border:1px solid var(--br);border-radius:20px;padding:2px 9px}
 .qw-card-go{font-size:22px;font-weight:700;color:var(--t3);flex-shrink:0;align-self:center}
+/* v718 · «Cardio a tu ritmo»: una fila por actividad en la ventana #m-qwcardio */
+.qwc-opt{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:8px;padding:9px 12px;border-radius:var(--r);border:1px solid var(--br);background:var(--w);color:var(--t1);transition:border-color .12s,transform .12s}
+.qwc-opt:hover{border-color:var(--g2)}
+.qwc-opt:active{transform:scale(.985)}
+.qwc-opt-ic{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--gl);border-radius:11px;color:var(--g2)}
+.qwc-opt-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.3}
+.qwc-opt-tx b{font-size:14.5px;font-weight:800;color:var(--t1)}
+.qwc-opt-tx small{font-size:12px;color:var(--t2)}
+.qwc-opt-go{font-size:20px;font-weight:700;color:var(--t3);flex-shrink:0}
+/* Con «Muy grande» a 360 px «Caminadora» no cabía: menos relleno y el ícono más chico, nunca la letra */
+html[data-fs="xl"] .qwc-opt{ gap:8px; padding-left:8px; padding-right:8px; }
+html[data-fs="xl"] .qwc-opt-ic{ width:30px; height:30px; }
+html[data-fs="xl"] .qwc-opt-go{ font-size:16px; }
 /* ── Hábitos de hoy (v300): 💧 agua — tarjeta compacta sobre el entreno ── */
 .hb-card{background:var(--w);border:1px solid var(--br);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;box-shadow:var(--sh)}
 .hb-row{display:flex;align-items:center;gap:10px}

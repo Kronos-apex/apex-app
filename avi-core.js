@@ -5096,6 +5096,36 @@ function cardioLoggedMin(secsRan, typed, target) {
   return null;
 }
 
+// ── CARDIO A TU RITMO (v718) ──
+// Pedido del PO (23-oct-2026): en «¿Hoy quieres algo distinto?» solo había intervalos, y quien quería
+// caminar o montar bici 20-30 minutos seguidos no podía: el HIIT en Máquina topa el trabajo en 180 s.
+// Medido ese día: es el rápido más usado (105 sesiones, 10 personas) y dos lo forzaron a 1 ronda de 3 min.
+// El cardio continuo ya existía en el catálogo y en el guiado (casilla de minutos + cronómetro); faltaba
+// la puerta. La persona elige DÓNDE; los minutos van en la tarjeta del guiado, que recuerda los de la
+// última vez POR actividad (id de rutina propio por opción → sus registros no se mezclan).
+const QUICK_CARDIO_OPTIONS = [
+  { id: 'e20',  label: 'Caminar o trotar',     sub: 'Afuera o en la caminadora',       ic: 'footprints' },
+  { id: 'e375', label: 'Caminadora inclinada', sub: 'Caminar en subida, sin correr',   ic: 'footprints' },
+  { id: 'e64',  label: 'Bicicleta estática',   sub: 'Sin impacto en las rodillas',     ic: 'bike' },
+  { id: 'e67',  label: 'Elíptica',             sub: 'Sin impacto, piernas y brazos',   ic: 'heart' },
+  { id: 'e135', label: 'Escaladora',           sub: 'Subir escalones a tu ritmo',      ic: 'heart' },
+  { id: 'e65',  label: 'Remo',                 sub: 'Piernas, espalda y brazos',       ic: 'heart' },
+];
+// Arma la rutina de un solo bloque de cardio continuo. `catalog` = la lista donde buscar el ejercicio
+// (la del dispositivo primero y el catálogo del código después: una copia vieja de `ax_e` puede no
+// tener los más nuevos). Siempre `track:'cardio'` y 1 serie, aunque el coach le haya cambiado el tipo.
+// Opción que no existe → null. Los minutos sugeridos son los del catálogo (20 si no trae).
+function quickCardioRoutine(optId, catalog) {
+  const opt = QUICK_CARDIO_OPTIONS.find(o => o.id === optId);
+  if (!opt) return null;
+  const base = (Array.isArray(catalog) ? catalog : []).find(e => e && e.id === optId)
+    || { id: optId, name: opt.label, muscle: 'cardio', type: 'Cardio' };
+  const min = parseInt(base.reps);
+  const ex = Object.assign({}, base, { sets: 1, reps: min > 0 ? min : 20, track: 'cardio' });
+  delete ex.hiit;
+  return { id: 'qw_cardio_' + optId, name: 'Cardio · ' + opt.label, day: 'Libre', quick: true, exercises: [ex] };
+}
+
 // ── Novedades de la app (v302): qué mostrarle al asesorado — puro, testeable ──
 // Devuelve las entradas MÁS NUEVAS que la última versión vista (seenV), de la más
 // reciente a la más vieja, tope 3 (una tarjeta digerible; lo viejo ya no es noticia).
@@ -13298,6 +13328,8 @@ if (typeof module !== 'undefined' && module.exports) {
     WATER_GLASS_ML,
     clampQwHiit,
     cardioLoggedMin,
+    QUICK_CARDIO_OPTIONS,
+    quickCardioRoutine,
     newsToShow,
     habitDayKey,
     waterGoalGlasses,
