@@ -872,14 +872,15 @@ function gmRender(){
     // Lastre (peso añadido) para peso corporal — paridad con la clásica (plan unificación P4).
     // Estado por ejercicio en lastre_<rid>_<ei> (compartido con la clásica: reusa lastreOn/
     // toggleLastre y las claves ya viajan en reorden vía _SK_EX).
-    const gmLastre = gmTrack==='reps' && lastreOn(GM.routine,ei);
+    // v719 · `lastreApplies`: la llanta cuenta en `reps` (volteos) pero no es peso corporal → sin lastre.
+    const gmLastre = lastreApplies(ex) && lastreOn(GM.routine,ei);
     if(gmTrack==='hiit'){
       gmRenderHiit(setsEl, ei, ex, steps.length);
     } else if(gmTrack==='cardio'){
       gmRenderCardio(setsEl, ei, ex, steps.length);
     } else {
     // Toggle "+ Lastre (peso añadido)" para peso corporal — una vez por ejercicio, antes de las series
-    if(gmTrack==='reps'){
+    if(lastreApplies(ex)){
       const tg=document.createElement('div');
       tg.className='gm-lastre-toggle';
       tg.style.cssText='text-align:right;margin:0 0 6px';

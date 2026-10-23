@@ -442,8 +442,16 @@ const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerz
 // abductor, cuello y tobillo — justo la que se le da a quien tiene esas zonas. El límite va solo al
 // principio para que siga cazando «saltos», «saltar» y «salto» (medido: las 8 del catálogo siguen
 // cayendo). ⚠️ Al escribir un término CORTO en estas listas, pregúntate de qué palabras es subcadena.
+// 🛞 v719 · VOLTEO DE LLANTA (Laura y Coach Pro, 23-oct-2026): cae en SIETE zonas por su mecanismo — lumbar
+// (carga pesada desde el suelo en bisagra, como `peso muerto`), rodilla (arranque en flexión profunda y empuje
+// con el muslo, como `clean`), codo (agarre supino bajo carga: el mecanismo descrito de rotura distal del bíceps),
+// muñeca (dedos en hiperextensión bajo la llanta y empuje con la muñeca extendida), hombro (empuje explosivo de
+// la carga), cuello (tracción pesada de trapecio, como `farmer`) y pecho (el pecho apoyado contra la llanta al
+// arrancar). 🔒 NO cae en aductor, abductor, tobillo ni isquios: sin base abierta, sin apoyo unilateral
+// sostenido, sin impacto, y la bisagra ya la cubre `lumbar`. El término va COMPLETO (`volteo de llanta`, no
+// `llanta` ni `volteo`): medido, en el catálogo solo lo contiene e382.
 const GEN_ZONE_EXCL = {
-  rodilla: /sentadilla|zancada|estocada|desplante|\bsalto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla/,
+  rodilla: /sentadilla|zancada|estocada|desplante|\bsalto|saltarin|pistol|bulgara|extension de cuadriceps|burpee|sprawl|thruster|lanzamiento|clean|man maker|sprint|rodillas altas|step ?-?up|escalon|subida con rodilla|volteo de llanta|tire flip/,
   // ⚠️ `buenos dias CON BARRA` y no a secas (Laura, auditoría 2026-08-08): a secas se llevaba
   // `e148 «Patrón de Bisagra (Buenos Días SIN PESO)»`, que es el ejercicio con el que se le enseña
   // a alguien con lumbalgia a moverse desde la cadera y no desde la columna. No es un caso de
@@ -452,8 +460,8 @@ const GEN_ZONE_EXCL = {
   // 🔒 `wai3` («Peso muerto con peso corporal») SIGUE fuera por id, y la razón no es el riesgo
   // sino el PROPÓSITO: es un ensayo del peso muerto justo antes de una sesión de la que el filtro
   // ya quitó todos los pesos muertos — no tiene beneficio que compense. `e148` sí lo tiene.
-  lumbar: /peso muerto|remo con barra|buenos dias con barra|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|\bsalto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero/,
-  hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra|paseo del camarero|camarero|colgarse/,
+  lumbar: /peso muerto|remo con barra|buenos dias con barra|hiperexten|sentadilla con barra|sentadilla frontal|sentadilla hack|sentadilla en smith|sentadilla sumo|crunch|russian twist|hollow|rueda abdominal|ab wheel|elevacion de piernas|oruga|superman|azote|pesa rusa|man maker|thruster|clean|push press|lanzamiento|militar con barra|\bsalto|saltarin|burpee|sprawl|sprint|caminata del granjero|farmer|paseo del camarero|camarero|volteo de llanta|tire flip/,
+  hombro: /tras ?nuca|trasnuca|fondos|press militar|press de hombro|arnold|pike|push press|thruster|clean|azote|man maker|sobre la cabeza|agarre amplio|pasa-?vallas|cuerdas de batalla|aperturas con mancuernas|aperturas declinadas|press de banca con barra|press inclinado con barra|press declinado con barra|paseo del camarero|camarero|colgarse|volteo de llanta|tire flip/,
   // 🔒 ADUCTOR — ANCHO en lateral/apertura/explosivo, ESTRECHO en sentadilla (solo `sumo`). El
   // mecanismo de lesión es el cambio de dirección y la base abierta, no la sentadilla: la
   // sentadilla estrecha, la prensa y el wall-sit son EL CAMINO DE VUELTA. Si `sentadilla` entrara
@@ -468,7 +476,7 @@ const GEN_ZONE_EXCL = {
   // ⚠️ `buenos dias con barra` y no `buenos dias`: el segundo se comía `e148 Patrón de Bisagra
   // (sin peso)`, que es la versión terapéutica. Igual `elevacion de piernas colgado` y no a secas,
   // que se comía `e132` (tumbado, cuello apoyado). Los dos los cazó Laura midiendo.
-  cuello: /encogimiento|press militar|press de hombro|arnold|push press|thruster|clean|sobre la cabeza|tras ?nuca|pike|dominada|chin ?-?up|colgarse|crunch|hollow|russian twist|elevacion de piernas colgado|rueda abdominal|ab wheel|peso muerto convencional|remo con barra|buenos dias con barra|hiperexten|caminata del granjero|farmer|paseo del camarero|camarero|cuerdas de batalla|azote|man maker|burpee|sprawl|\bsalto|saltarin|sprint|superman|nadador/,
+  cuello: /encogimiento|press militar|press de hombro|arnold|push press|thruster|clean|sobre la cabeza|tras ?nuca|pike|dominada|chin ?-?up|colgarse|crunch|hollow|russian twist|elevacion de piernas colgado|rueda abdominal|ab wheel|peso muerto convencional|remo con barra|buenos dias con barra|hiperexten|caminata del granjero|farmer|paseo del camarero|camarero|cuerdas de batalla|azote|man maker|burpee|sprawl|\bsalto|saltarin|sprint|superman|nadador|volteo de llanta|tire flip/,
   // 🔒 TOBILLO — ANCHO en impacto y carga en pie, ESTRECHO en movilidad. `e177` y `wt1` NO se
   // excluyen: son el tratamiento. La fase aguda la cubre el NIVEL del reporte, que para todo — el
   // regex codifica «qué agrava esta zona», el nivel codifica «cuánto movimiento se permite».
@@ -526,7 +534,7 @@ const GEN_ZONE_EXCL = {
   //    descripciones y no encontró ninguno que el nombre no delatara. El falso negativo de esta
   //    zona no es un ejercicio, es una VARIABLE (cuánto peso y con qué agarre), y por eso el texto
   //    de codo/muñeca lleva su línea propia.
-  codo: /extension de triceps|press frances|skull|trasnuca|tras ?nuca|fondos|diamante|flexion cerrada|banca agarre cerrado|curl de muneca|rotaciones de muneca|curl invertido|zottman|scott|predicador|colgarse|colgad|dominada|chin ?-?up|azote|cuerdas de batalla|clean|man maker|lanzamiento|burpee|sprawl|escaladores|mountain climber|toques? de hombro|plancha saltarina|plancha a flexion|caminata del oso|caminata del cangrejo|caminata del granjero|farmer|paseo del camarero|camarero/,
+  codo: /extension de triceps|press frances|skull|trasnuca|tras ?nuca|fondos|diamante|flexion cerrada|banca agarre cerrado|curl de muneca|rotaciones de muneca|curl invertido|zottman|scott|predicador|colgarse|colgad|dominada|chin ?-?up|azote|cuerdas de batalla|clean|man maker|lanzamiento|burpee|sprawl|escaladores|mountain climber|toques? de hombro|plancha saltarina|plancha a flexion|caminata del oso|caminata del cangrejo|caminata del granjero|farmer|paseo del camarero|camarero|volteo de llanta|tire flip/,
   // 🔒 MUÑECA — un agravador domina a todos: CARGAR PESO SOBRE LA MANO CON LA MUÑECA EN EXTENSIÓN
   // MÁXIMA (cadena cerrada). De ahí la familia de lagartijas, planchas de mano, gateos, burpees y
   // la rueda abdominal. Luego el trabajo directo de muñeca, y luego el agarre sostenido bajo
@@ -534,7 +542,7 @@ const GEN_ZONE_EXCL = {
   // futura). Se acepta que caiga toda la familia de lagartijas, incluidas `e77` en pared y `e78` en
   // rodillas: aquí, a diferencia del sit-to-stand, NO son insustituibles — un press en máquina o
   // unas aperturas en polea cargan el pecho con cero apoyo sobre la mano, y son mejor respuesta.
-  muneca: /flexiones|flexion cerrada|lagartija|push ?-?up|pike|plancha saltarina|plancha a flexion|toques? de hombro|caminata del oso|caminata del cangrejo|burpee|sprawl|escaladores|mountain climber|oruga|man maker|clean|azote|cuerdas de batalla|lanzamiento|colgarse|colgad|dominada|chin ?-?up|curl de muneca|rotaciones de muneca|curl invertido|zottman|caminata del granjero|farmer|paseo del camarero|camarero|fondos|rueda abdominal|ab wheel/,
+  muneca: /flexiones|flexion cerrada|lagartija|push ?-?up|pike|plancha saltarina|plancha a flexion|toques? de hombro|caminata del oso|caminata del cangrejo|burpee|sprawl|escaladores|mountain climber|oruga|man maker|clean|azote|cuerdas de batalla|lanzamiento|colgarse|colgad|dominada|chin ?-?up|curl de muneca|rotaciones de muneca|curl invertido|zottman|caminata del granjero|farmer|paseo del camarero|camarero|fondos|rueda abdominal|ab wheel|volteo de llanta|tire flip/,
   // 🔒 PECHO — Laura también rectifica aquí. Decía que excluir «borraría todo el patrón de empuje»
   // y que el dolor torácico que importa ya lo cubre la bandera roja. Las dos mitades eran flojas:
   // medido, esta lista deja 16 de 22 de pecho vivos y NO TOCA UN SOLO PRESS (borra el patrón de
@@ -551,7 +559,7 @@ const GEN_ZONE_EXCL = {
   //    posterior y de los seguros. Y `aperturas` en plural + `apertura de pecho`, nunca `apertura`
   //    a secas: se llevaría `wc3 Apertura de cadera` y `we3 Apertura de cadena posterior`.
   // Los presses se quedan TODOS y son 🟡 (rango corto, sin tocar el pecho): eso va en texto.
-  pecho: /aperturas|apertura de pecho|contractora|fondos|lanzamiento|azote/,
+  pecho: /aperturas|apertura de pecho|contractora|fondos|lanzamiento|azote|volteo de llanta|tire flip/,
 };
 // Ejercicios que el NOMBRE genuinamente no delata. En todo el dictamen es UN solo caso, y por eso
 // esto no es una lista paralela sino la excepción documentada: `e93 «Sentadilla con Banda de
@@ -2496,7 +2504,7 @@ const GEN_GYM_SUB_IDS = ['e219'];
 
 function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   const res = [];
-  if (minor) res.push(/sentadilla|peso muerto|militar con barra/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
+  if (minor) res.push(/sentadilla|peso muerto|militar con barra|volteo de llanta|tire flip/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
   if (avoidHighImpact) res.push(GEN_HIIMPACT_RE);
   if (place === 'gym') res.push(/banda|elastic|\bliga\b/); // gym completo: bandas no como principal
   // Las zonas van por `exerciseContraindicated`, la MISMA puerta que el 🔄 y la marca del coach:
@@ -11310,7 +11318,7 @@ function exTrack(ex) {
 // El mapa va por ID y no por un campo del ejercicio A PROPÓSITO: una rutina guarda una COPIA del
 // ejercicio y el coach le cambia el nombre al armarla (24 de 150 nombres en uso difieren del
 // catálogo, v546), y un récord se guarda bajo la clave `ex.id||ex.name`. El id es lo único estable.
-const REPS_UNIT_EX = { e136: 'pasos' };
+const REPS_UNIT_EX = { e136: 'pasos', e382: 'volteos' }; // v719 · la llanta cuenta VOLTEOS
 
 // Acepta el ejercicio (objeto) o directamente su id/clave de récord (string).
 function repsUnitOf(ex) {
@@ -11321,6 +11329,13 @@ function repsUnitOf(ex) {
   if (t === 'tiempo') return 'seg';
   if (t === 'hiit') return 'rondas';
   return REPS_UNIT_EX[ex.id] || 'reps';
+}
+
+// ¿Se le ofrece «+ Lastre (peso añadido)»? (v719) Solo al peso corporal que cuenta REPETICIONES. La llanta
+// cuenta en `reps` para que la progresión pida más volteos y no «sube 2,5 kg» a una llanta fija, pero no es
+// peso corporal: un lastre ahí no significa nada.
+function lastreApplies(ex) {
+  return exTrack(ex || {}) === 'reps' && repsUnitOf(ex) === 'reps';
 }
 
 // Valor del récord a partir de las series HECHAS (ya filtradas) según la modalidad:
@@ -13276,6 +13291,7 @@ if (typeof module !== 'undefined' && module.exports) {
     exTrack,
     repsUnitOf,
     REPS_UNIT_EX,
+    lastreApplies,
     prFromSets,
     isBetterPR,
     prsRemapRetired,

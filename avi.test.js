@@ -24674,6 +24674,99 @@ test('🔒 v718 · CABLEADO: la tarjeta abre las opciones y cada opción arranca
 });
 
 // ══════════════════════════════════════════════════════
+// v719 · EL VOLTEO DE LLANTA (TIRE FLIP) ENTRA AL CATÁLOGO
+// ══════════════════════════════════════════════════════
+// Pedido del PO (23-oct-2026). Revisión de Laura y Coach Pro el mismo día: nivel A, 3 × 5, solo lo asigna el
+// coach (muscle 'otro': ningún plan automático lo pide), cuenta VOLTEOS y cae en siete zonas de dolor.
+
+test('v719 · la llanta existe con su ficha completa: nivel A, 3 × 5, volteos, sin kilos', () => {
+  const ex = _LIB_REAL.find(e => e.id === 'e382');
+  assert.ok(ex, '🔴 no está el volteo de llanta en el catálogo');
+  assert.strictEqual(ex.name, 'Volteo de Llanta (Tire Flip)');
+  assert.strictEqual(ex.muscle, 'otro', '🔴 la llanta dejó de ser «otro»: el generador la metería en planes de gente sin llanta');
+  assert.strictEqual(ex.type, 'Funcional');
+  assert.strictEqual(core.exTrack(ex), 'reps', '🔴 la llanta volvió a pedir KG: la progresión le pediría «sube 2,5 kg» a una llanta fija');
+  assert.strictEqual(core.repsUnitOf(ex), 'volteos');
+  assert.strictEqual(core.repsUnitOf('e382'), 'volteos', 'el rótulo se resuelve también desde la clave del récord');
+  assert.strictEqual(core.exLevel(ex), 'A');
+  assert.deepStrictEqual([ex.sets, ex.reps], [3, 5]);
+  assert.deepStrictEqual(ex.env, ['gym', 'parque']);
+  assert.ok(ex.desc && ex.descSimple && ex.muscleLabel && ex.ytQuery, 'ficha incompleta');
+  // El ícono sale cuando no hay foto (hoy no la hay). 🛞 se pintó como un cuadro vacío en la captura del
+  // harness: es un emoji reciente. Uno que el catálogo ya usa es uno que ya se vio pintado en los teléfonos.
+  assert.ok(_LIB_REAL.some(e => e.id !== 'e382' && e.icon === ex.icon), '🔴 la llanta lleva un ícono que nadie más usa: probable cuadro vacío');
+  // Lo que Laura exigió que diga la ficha: los brazos no jalan, los dedos, y a quién no se le pone.
+  assert.ok(/NO jalan/.test(ex.desc) && /hipertensi[oó]n/i.test(ex.desc) && /embarazo/i.test(ex.desc), '🔴 la ficha del coach perdió las advertencias de Laura');
+  assert.ok(/sin jalar con los brazos/.test(ex.descSimple) && /dedos/.test(ex.descSimple), '🔴 el texto del asesorado perdió las advertencias de seguridad');
+  // Marca empírica: nada de credenciales en los textos.
+  assert.ok(!/licenciad|certificad|ciencia del deporte|especialista/i.test(ex.desc + ex.descSimple));
+  // 🔒 CONTROL: el término del filtro solo atrapa a la llanta en todo el catálogo.
+  const re = /volteo de llanta|tire flip/;
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  assert.deepStrictEqual(_LIB_REAL.filter(e => re.test(norm(e.name))).map(e => e.id), ['e382']);
+});
+
+test('v719 · la llanta cae en las siete zonas de Laura y en ninguna otra', () => {
+  const ex = _LIB_REAL.find(e => e.id === 'e382');
+  for (const z of ['lumbar', 'rodilla', 'codo', 'muneca', 'hombro', 'cuello', 'pecho'])
+    assert.ok(core.exerciseContraindicated(ex, [z], _LIB_REAL), `🔴 con dolor de ${z} se le dejaría la llanta`);
+  // 🔒 CONTROL (Laura): sin base abierta, sin apoyo unilateral sostenido, sin impacto; la bisagra la cubre lumbar.
+  for (const z of ['aductor', 'abductor', 'tobillo', 'isquios'])
+    assert.ok(!core.exerciseContraindicated(ex, [z], _LIB_REAL), `🔴 la llanta cae en ${z}: la regla quedó ANCHA`);
+  // Renombrada en la rutina, el filtro la sigue viendo por el nombre del catálogo.
+  assert.ok(core.exerciseContraindicated({ id: 'e382', name: 'Llanta' }, ['lumbar'], _LIB_REAL));
+  // 🔒 CONTROL: la bisagra SIN peso (e148) sigue viva para la espalda — el término nuevo no la toca.
+  assert.ok(!core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e148'), ['lumbar'], _LIB_REAL));
+});
+
+test('v719 · la llanta NUNCA entra sola a un plan automático (ni con nivel A ni en el parque)', () => {
+  const barrer = lib => {
+    let planes = 0, llantas = 0;
+    for (const goal of ['Ganar músculo', 'Perder grasa', 'Fuerza', 'Resistencia'])
+      for (const days of [3, 5]) for (const place of ['gym', 'parque']) for (const seed of [1, 7, 42]) {
+        const c = { id: 'v', name: 'P', sex: 'M', age: 30, weight: 80, height: 172, goal, level: 'Avanzado', days, place, notes: '' };
+        const out = core.generarRutinas(c, lib, { seed, now: '2026-10-23T12:00:00Z', idFn: () => 'r' });
+        if (!out || !out.routines) continue;
+        planes++;
+        out.routines.forEach(r => (r.exercises || []).forEach(e => { if (e.id === 'e382') llantas++; }));
+      }
+    return { planes, llantas };
+  };
+  const real = barrer(_LIB_REAL);
+  assert.ok(real.planes > 40, `esperaba decenas de planes, generé ${real.planes}`);
+  assert.strictEqual(real.llantas, 0, '🔴 el generador le puso la llanta a alguien que quizá no tiene una');
+  // 🔒 CONTROL de discriminación: la MISMA llanta marcada como espalda sí entra (medido: 24 de 48 planes).
+  // Si esto da 0, el barrido no mide nada y el cero de arriba no prueba que «otro» la proteja.
+  const comoEspalda = _LIB_REAL.map(e => e.id === 'e382' ? Object.assign({}, e, { muscle: 'espalda', type: 'Compuesto' }) : e);
+  assert.ok(barrer(comoEspalda).llantas > 0, 'el control no discrimina: el barrido no ve la llanta ni cuando debería');
+});
+
+test('v719 · a la llanta no se le ofrece «+ Lastre»; al peso corporal sí', () => {
+  const llanta = _LIB_REAL.find(e => e.id === 'e382');
+  assert.strictEqual(core.lastreApplies(llanta), false, '🔴 la llanta ofrece «+ Lastre (peso añadido)»');
+  // 🔒 CONTROL: una lagartija (peso corporal, cuenta reps) lo sigue ofreciendo; con pesas o cardio nunca.
+  const corporal = _LIB_REAL.find(e => core.exTrack(e) === 'reps' && e.id !== 'e382');
+  assert.ok(corporal && core.lastreApplies(corporal), 'el peso corporal perdió el lastre');
+  assert.strictEqual(core.lastreApplies(_LIB_REAL.find(e => e.id === 'e136')), false, 'el granjero va con pesas: sin lastre');
+  assert.strictEqual(core.lastreApplies(_LIB_REAL.find(e => e.id === 'e64')), false);
+  const fs = require('fs'), path = require('path');
+  const extra = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  assert.ok(/const gmLastre = lastreApplies\(ex\) && lastreOn\(GM\.routine,ei\);/.test(extra) && /if\(lastreApplies\(ex\)\)\{/.test(extra),
+    '🔴 el guiado volvió a ofrecer el lastre a todo lo que cuenta en reps');
+});
+
+test('v719 · menores de 16: la regla de carga axial también saca la llanta', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
+  const m = /if \(minor\) res\.push\(\/([^/]+)\/\);/.exec(src);
+  assert.ok(m, 'no encontré la regla de menores');
+  const re = new RegExp(m[1]);
+  assert.ok(re.test('volteo de llanta (tire flip)'), '🔴 un menor de 16 podría recibir la llanta');
+  // 🔒 CONTROL: la regla sigue cazando lo de siempre.
+  assert.ok(re.test('peso muerto convencional') && re.test('sentadilla con barra') && !re.test('plancha'));
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

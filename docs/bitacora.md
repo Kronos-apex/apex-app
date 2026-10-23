@@ -4,6 +4,27 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-23 — v719: el volteo de llanta (tire flip) entra al catálogo
+
+- **Pedido del PO**: «agregar el ejercicio de darle vueltas a una llanta como ejercicio funcional; averigua todo sobre el
+  volteo de neumático». Investigado (técnica: espalda neutra, empuja con piernas y cadera, los brazos no jalan; Keogh
+  2008 midió 2 × 6 con 232 kg; Hindle 2019: datos aún escasos; caso clínico IJSPT de rotura distal del bíceps en un
+  volteo) y revisado por **Laura y Coach Pro** antes de escribir: aprobado con ajustes (3 × 5 en vez de 4 × 6,
+  contraindicaciones en la ficha, dedos y espacio libre en el texto, ampliar la regla de menores).
+- **Ficha e382** `Volteo de Llanta (Tire Flip)`: `muscle:'otro'` (ningún slot del generador lo pide: solo lo asigna el
+  coach, porque no todo gimnasio tiene llanta — el barrido lo prueba con su control: como «espalda» entraría en 24 de 48
+  planes), `type:'Funcional'` + `track:'reps'` (cuenta VOLTEOS: la progresión pide más volteos y no «sube 2,5 kg» a una
+  llanta fija, y no hay 1RM estimado sin sentido), nivel A, 3 × 5, gym y parque, `MM_EX` y `EX_COACHTIP`.
+- **Filtros**: cae en lumbar, rodilla, codo, muñeca, hombro, cuello y pecho, cada una con su mecanismo en el código; NO en
+  aductor, abductor, tobillo ni isquios (control). Regla de menores de 16 ampliada. `REPS_UNIT_EX` e382 → «volteos».
+- **Lastre**: contar en `reps` le ofrecía «+ Lastre (peso añadido)», que es del peso corporal. `lastreApplies` (pura)
+  lo limita a lo que cuenta REPETICIONES; hoy solo cambia para la llanta.
+- **Cazado antes de publicar**: el ícono `🛞` salió como un cuadro vacío en la captura (emoji reciente); va `🏋️`, y la suite
+  exige un ícono que el catálogo ya use. Gotcha nuevo.
+- **Falta la foto** (la genera el PO; prompt agregado a `~/.avi/ref-ejercicios/revisar.html`). Catálogo 374 → 375.
+- QA: suite 1508 · `_verify-llanta` 9/9 (biblioteca vieja la recibe, VOLTEOS, sin KG ni lastre, CONTROL con dominadas,
+  claro/oscuro/«Muy grande») · `_sabotaje-v719` · audit-catalog: solo «sin foto».
+
 ## ⏮️ 2026-10-23 — v718: «Cardio a tu ritmo» en los entrenamientos rápidos
 
 - **Pedido del PO**: «en "¿Hoy quieres algo distinto?" solo están tipos de cardio HIIT; una persona que quiera hacer

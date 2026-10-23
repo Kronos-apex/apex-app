@@ -156,7 +156,7 @@ apex-app/
 - `#p-clients` — Lista de asesorados con búsqueda y estado de membresía.
 - `#p-detail` — Ficha del asesorado en 5 pestañas (v707): Resumen · Entreno · Comida · Cuerpo · Pagos (`detailTab`).
 - `#p-templates` — Plantillas de rutina.
-- `#p-exercises` — Biblioteca de 374 ejercicios (buscador, tandas de 30, gate de nivel en el generador).
+- `#p-exercises` — Biblioteca de 375 ejercicios (buscador, tandas de 30, gate de nivel en el generador).
 - `#p-msgs` — Bandeja de mensajes.
 
 ### Secciones del Asesorado (6 — la barra de abajo lleva 5 desde v710: Comunidad se entra desde Progreso)
@@ -180,7 +180,7 @@ apex-app/
 ```js
 DB = {
   clients: [],     // ax_c — asesorados
-  exercises: [],   // ax_e — 374 ejercicios precargados + custom
+  exercises: [],   // ax_e — 375 ejercicios precargados + custom
   msgs: {},        // ax_m — { clientId: [{from, text, date}] }
   history: {},     // ax_hist — { clientId: [hasta 365 sesiones] }
   prs: {},         // ax_pr — récords personales por ejercicio
