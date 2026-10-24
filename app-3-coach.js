@@ -3835,13 +3835,15 @@ function renderDetailRoutines(c){
     // habría sido una receta entera.
     const wu = exN ? buildWarmup(r.exercises,_limKeys,wuOptsFor(c,r)) : null;
     const _wuPropia=(Array.isArray(r.warmup)&&r.warmup.length)?r.warmup.map(id=>findWarmupEx(id)).filter(Boolean):[];
-    const _wupFila=e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`;
-    const _wupTit=(t,primero)=>`<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:${primero?'0':'8px'} 0 6px">${t}</div>`;
+    // v721 · sin emojis (el PO, 24-oct): numerado como lo ve la persona, y los títulos con el ícono de la marca.
+    const _wupFila=(e,n)=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)"><span style="display:inline-block;min-width:18px;font:700 11px 'JetBrains Mono',monospace;color:var(--gt)">${n}</span>${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`;
+    const _wupTit=(ic,t,primero)=>`<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:${primero?'0':'8px'} 0 6px"><span style="color:var(--g2);margin-right:5px">${_coIco(ic,12,'')}</span>${t}</div>`;
+    const _wupM=wu&&wu.general?2:1, _wupA=_wupM+(wu?wu.articulares.length:0);
     const _wupN=_wuPropia.length||(wu?(wu.general?1:0)+wu.articulares.length+wu.activaciones.length:0);
     const wuPreview = (wu&&_wupN) ? `
       <div style="margin-top:10px;background:var(--bg);border:1px solid var(--br);border-radius:var(--rsm);overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--br);cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.wupchev').style.transform=this.nextElementSibling.classList.contains('open')?'rotate(180deg)':'rotate(0deg)'">
-          <div style="font-size:12px;font-weight:700;color:var(--t2)">${wu.sessionEmoji} Calentamiento — ${_wuPropia.length?'tu lista':esc(wu.sessionLabel)}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--t2)"><span style="color:var(--g2);margin-right:5px">${_coIco('flame',13,'')}</span>Calentamiento — ${_wuPropia.length?'tu lista':esc(wu.sessionLabel)}</div>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:11px;color:var(--t3)">${_wupN} ejercicio${_wupN!==1?'s':''}</span>
             <span class="wupchev" style="font-size:10px;color:var(--t3);transition:transform .2s">▼</span>
@@ -3849,8 +3851,8 @@ function renderDetailRoutines(c){
         </div>
         <div class="wup-body">
           ${_wuPropia.length
-            ? _wuPropia.map(_wupFila).join('')
-            : `${wu.general?_wupTit('💓 Cardio suave',true)+_wupFila(wu.general):''}${wu.articulares.length?_wupTit('🦴 Movilidad articular',!wu.general)+wu.articulares.map(_wupFila).join(''):''}${wu.activaciones.length?_wupTit('⚡ Activación',!wu.general&&!wu.articulares.length)+wu.activaciones.map(_wupFila).join(''):''}`}
+            ? _wuPropia.map((e,i)=>_wupFila(e,i+1)).join('')
+            : `${wu.general?_wupTit('heart','Cardio suave',true)+_wupFila(wu.general,1):''}${wu.articulares.length?_wupTit('leaf','Movilidad articular',!wu.general)+wu.articulares.map((e,i)=>_wupFila(e,_wupM+i)).join(''):''}${wu.activaciones.length?_wupTit('bolt','Activación',!wu.general&&!wu.articulares.length)+wu.activaciones.map((e,i)=>_wupFila(e,_wupA+i)).join(''):''}`}
         </div>
       </div>` : '';
 
@@ -4132,8 +4134,9 @@ function renderRfWarmup(){
   const isCustom=!!CUR.routineWarmup;
   const lim=_rfWarmLim();
   const items=_effWarmIds().map(id=>findWarmupEx(id)).filter(Boolean);
-  const rows=items.map(ex=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg);border:1px solid var(--br);border-radius:9px;margin-bottom:6px">
-      <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
+  // v721 · numerado, sin emojis: es el orden en que la persona lo va a hacer.
+  const rows=items.map((ex,i)=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg);border:1px solid var(--br);border-radius:9px;margin-bottom:6px">
+      <span class="wu-ex-num" style="width:26px;height:26px;font-size:12px">${i+1}</span>
       <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
       <button onclick="rfWarmDel('${ex.id}')" title="Quitar" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0">✕</button>
     </div>`).join('');
@@ -4172,15 +4175,13 @@ function openWarmPicker(){
   const labels={general:'Cardio suave',hombros:'Hombro',cadera:'Cadera',rodillas:'Rodilla',tobillos:'Tobillo',munecas:'Muñeca',espalda:'Espalda / columna',activacion_superior:'Activación — tren superior',activacion_gluteo:'Activación — glúteo',activacion_inferior:'Activación — tren inferior',activacion_core:'Activación — core'};
   let html='';
   for(const area in WARMUP_LIBRARY){
-    // v721 · lo `retirada` sigue resolviendo en las listas que ya lo tienen, pero no se ofrece.
-    const pool=(WARMUP_LIBRARY[area]||[]).filter(ex=>!ex.retirada); if(!pool.length) continue;
+    const pool=WARMUP_LIBRARY[area]||[]; if(!pool.length) continue;
     html+=`<div style="font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin:10px 0 5px">${esc(labels[area]||area)}</div>`;
     // `data-wp`/`data-wptick`: los usa `_wpMarkUsed` para marcar lo recién agregado sin repintar.
     // 🔒 Lo que ya está puesto se distingue por el ✓ y por el fondo, NUNCA con `opacity` sobre la
     // letra (regla del repo desde v453): ahí sigue estando el nombre del movimiento, y si no se lee
     // el coach deja de saber qué tiene ya en la lista, que es justo lo que esa marca viene a decir.
     html+=pool.map(ex=>{const used=have.has(ex.id);return `<div data-wp="${ex.id}" ${used?'':`onclick="rfWarmAdd('${ex.id}')"`} style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--br);border-radius:9px;margin-bottom:5px;cursor:${used?'default':'pointer'};background:${used?'var(--bg)':'transparent'}">
-        <span style="font-size:16px;flex-shrink:0">${ex.icon}</span>
         <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
         <span data-wptick style="font-size:13px;font-weight:800;color:${used?'var(--g)':'var(--g2)'};flex-shrink:0">${used?'✓':'+'}</span>
       </div>`;}).join('');

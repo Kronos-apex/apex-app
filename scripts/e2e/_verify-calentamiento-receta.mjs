@@ -77,7 +77,7 @@ const MEDIR = `(()=>{
   const wrap=document.getElementById('wu-wrap');
   const filas=[...wrap.querySelectorAll('.wu-ex-row')].map(f=>({ id:(f.id||'').replace('wu-row-',''),
     nombre:(f.querySelector('.wu-ex-name')||{}).textContent||'', dosis:(f.querySelector('.wu-ex-reps')||{}).textContent||'',
-    hecho:(f.querySelector('.wu-check-btn')||{}).textContent==='✓' }));
+    hecho:(f.querySelector('.wu-check-btn')||{}).textContent==='✓', num:((f.querySelector('.wu-ex-num')||{}).textContent||'').trim() }));
   const titulos=[...wrap.querySelectorAll('.wu-section-title')];
   const vacios=titulos.filter(t=>!(t.nextElementSibling&&t.nextElementSibling.classList.contains('wu-ex-row'))).map(t=>t.textContent.trim());
   const b=document.getElementById('wu-caliente');
@@ -87,7 +87,8 @@ const MEDIR = `(()=>{
   return { filas, titulos:titulos.map(t=>t.textContent.trim().replace(/Ya vengo caliente$/,'').trim()), vacios,
     boton: bv?{ alto:Math.round(bv.height), ancho:Math.round(bv.width), color:getComputedStyle(b).color, texto:b.textContent.trim() }:null,
     progreso:(document.getElementById('wu-prog-num')||{}).textContent||'', insignia:(document.getElementById('wu-status-badge')||{}).textContent||'',
-    nota: nota?nota.textContent.trim():'', excesoPx:peor, cabecera:(wrap.querySelector('.wu-title')||{}).textContent||'' };
+    nota: nota?nota.textContent.trim():'', excesoPx:peor, cabecera:(wrap.querySelector('.wu-title')||{}).textContent||'',
+    emojis:(wrap.innerText.match(/\\p{Extended_Pictographic}/gu)||[]).join('') };
 })()`;
 
 async function pintar(nombre) {
@@ -154,6 +155,9 @@ for (const [tema, fs] of [['claro', ''], ['oscuro', ''], ['claro', 'xl']]) {
   A.ok(g.boton && /rgb/.test(g.boton.color) && !/rgba\(0, 0, 0, 0\)/.test(g.boton.color), `${tag}: el botón tiene tinta resuelta`, g.boton && g.boton.color);
   A.ok(/Sets de calentamiento/.test(g.nota), `${tag}: la línea dice dónde están las series de aproximación`, g.nota);
   A.ok(g.progreso === '0/7', `${tag}: el progreso cuenta los 7`, g.progreso);
+  // v721 · la opción C del PO: numerado y sin un solo emoji en la tarjeta («nos hace ver novatos»).
+  A.ok(g.filas.map(f => f.num).join(',') === '1,2,3,4,5,6,7', `${tag}: los movimientos van numerados del 1 al 7, corrido entre bloques`, g.filas.map(f => f.num).join(','));
+  A.ok(g.emojis === '', `${tag}: ni un emoji en la tarjeta`, g.emojis);
   A.ok(g.excesoPx <= 1, `${tag}: nada se sale a 360 px (exceso ${g.excesoPx}px)`, g.excesoPx);
   await foto(`1-gluteo-${tag}`);
 

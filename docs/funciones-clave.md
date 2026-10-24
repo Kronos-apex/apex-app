@@ -39,7 +39,8 @@
 - `wuRecipeCode(exercises, sex)` (avi-core, pura) — qué receta le toca a la sesión por sus MÚSCULOS (el código del generador no viaja en la rutina). GP_A/GP_B se decide por los compuestos.
 - `wuResolveRecipe(code, {lim, rot, place, impacto, sesPats, lookup})` (avi-core, pura) — devuelve ids: filtra contra la UNIÓN de zonas, rota solo los pares, no repite pieza, elige el cardio suave por lugar (`WU_GEN_BY_PLACE`) y aplica la regla 2 de v594 a la activación.
 - `buildWarmup(exercises, limKeys, opts)` (app-6) — busca las piezas en `WARMUP_LIBRARY` y devuelve `{general, articulares, activaciones, recipe, …}`. `opts` sale SIEMPRE de `wuOptsFor(cliente, rutinaGuardada)`: lo usan las tres pantallas que pintan el calentamiento (`renderWarmup`, el editor `_effWarmIds` y la vista previa de `renderDetailRoutines`).
-- `WARMUP_ZONE_EXCL_IDS` (avi-core) — la matriz de Laura, TODO por id. Una pieza `retirada:true` sigue resolviendo en las listas armadas a mano pero ni las recetas ni el selector del coach la ofrecen.
+- `WARMUP_ZONE_EXCL_IDS` (avi-core) — la matriz de Laura, TODO por id (un id que no existe en la biblioteca rompe el candado 3).
+- Sin emojis desde v721: las piezas no llevan `icon`; las cuatro pantallas numeran (`.wu-ex-num`) y los títulos usan `aviIcon`.
 - `wuYaCaliente(id)` (app-6) — «Ya vengo caliente»: marca el cardio suave (la misma marca que su ✓, `wuToggle`).
 - `renderClientHistory()` — historial + gráfica SVG de volumen
 - `exportRoutineAsImage()` — canvas con rutina exportable como PNG

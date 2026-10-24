@@ -2449,112 +2449,109 @@ const TRAINING_STYLES = [
 ];
 
 const WARMUP_LIBRARY = {
+  // 🔴 v721 · SIN EMOJIS (el PO, 24-oct: «esos stickers de animalitos y ladrillos nos hacen ver novatos»).
+  // Las piezas ya no llevan `icon`: la tarjeta numera los movimientos (es una secuencia) y los títulos usan
+  // los íconos de línea de la marca. Y fuera `wr1` círculos de rodilla, `we3` apertura de cadena posterior y
+  // `wa2` remo invertido (decisión del PO, 23 y 24-oct): sus listas a mano los pierden solos, porque un id
+  // que ya no está en la biblioteca no se pinta (v642).
 
   // ── CARDIO SUAVE (v721) ── el paso 1 de toda receta, que antes no existía. `WU_GEN_BY_PLACE`
   // elige cuál según dónde entrena la persona. Textos de Laura (`laura.md` §5.2): el ritmo es
   // «conversar» y cada uno trae su condición de parada.
   general:[
-    {id:'wg1',name:'Cardio suave en máquina',icon:'🚴',reps:'3-5 min',desc:'Bici o elíptica (o caminadora plana si no tienes molestia en rodillas ni tobillos), a un ritmo en que puedas conversar. El último minuto sube un poco, sin ahogarte. Si te mareas o te falta el aire, baja el ritmo.',ytQuery:'calentamiento cardio suave bicicleta estática'},
-    {id:'wg2',name:'Marcha en el lugar con brazos',icon:'🚶',reps:'3-5 min',desc:'Marcha con los brazos al ritmo. Las rodillas suben hasta la mitad del muslo, no más; pisa suave y sin saltar.',ytQuery:'marcha en el lugar calentamiento'},
-    {id:'wg3',name:'Caminata rápida',icon:'🌳',reps:'5 min',desc:'Camina a paso firme y con los brazos sueltos, en terreno plano (en banda, sin inclinación). Debes poder hablar entrecortado, no cantar.',ytQuery:'caminata rápida calentamiento'},
+    {id:'wg1',name:'Cardio suave en máquina',reps:'3-5 min',desc:'Bici o elíptica (o caminadora plana si no tienes molestia en rodillas ni tobillos), a un ritmo en que puedas conversar. El último minuto sube un poco, sin ahogarte. Si te mareas o te falta el aire, baja el ritmo.',ytQuery:'calentamiento cardio suave bicicleta estática'},
+    {id:'wg2',name:'Marcha en el lugar con brazos',reps:'3-5 min',desc:'Marcha con los brazos al ritmo. Las rodillas suben hasta la mitad del muslo, no más; pisa suave y sin saltar.',ytQuery:'marcha en el lugar calentamiento'},
+    {id:'wg3',name:'Caminata rápida',reps:'5 min',desc:'Camina a paso firme y con los brazos sueltos, en terreno plano (en banda, sin inclinación). Debes poder hablar entrecortado, no cantar.',ytQuery:'caminata rápida calentamiento'},
   ],
 
   // ── MOVILIDAD ARTICULAR ──
   hombros:[
-    {id:'wh1',name:'Círculos de hombro',icon:'🔄',reps:'10 c/lado',desc:'Brazos extendidos, traza círculos amplios hacia adelante y luego hacia atrás. Siente la articulación soltarse.',ytQuery:'círculos de hombro movilidad calentamiento'},
-    {id:'wh2',name:'Rotación de manguito rotador',icon:'↩️',reps:'15 c/lado',desc:'Codo doblado 90°, gira el antebrazo hacia arriba y hacia abajo sin mover el codo. Lento y controlado.',ytQuery:'rotación de manguito rotador ejercicio calentamiento'},
+    {id:'wh1',name:'Círculos de hombro',reps:'10 c/lado',desc:'Brazos extendidos, traza círculos amplios hacia adelante y luego hacia atrás. Siente la articulación soltarse.',ytQuery:'círculos de hombro movilidad calentamiento'},
+    {id:'wh2',name:'Rotación de manguito rotador',reps:'15 c/lado',desc:'Codo doblado 90°, gira el antebrazo hacia arriba y hacia abajo sin mover el codo. Lento y controlado.',ytQuery:'rotación de manguito rotador ejercicio calentamiento'},
     // v721 · Laura §5.3: «hasta sentir el pecho abrirse» invitaba a ir al final del rango.
-    {id:'wh3',name:'Apertura de pecho en pared',icon:'🧱',reps:'10 reps',desc:'Apoya el antebrazo en la pared a 90°. Gira el cuerpo alejándote solo hasta donde el pecho se estire suave, sin dolor en el hombro; mantén 2 s.',ytQuery:'estiramiento apertura de pecho en pared'},
+    {id:'wh3',name:'Apertura de pecho en pared',reps:'10 reps',desc:'Apoya el antebrazo en la pared a 90°. Gira el cuerpo alejándote solo hasta donde el pecho se estire suave, sin dolor en el hombro; mantén 2 s.',ytQuery:'estiramiento apertura de pecho en pared'},
     // 🔴 v720 · `wh4` «Rotación torácica sentado» salió por pedido del PO (23-oct): la rotación torácica
     // que se usa es la del suelo (`we2`, pool de espalda). Ninguna lista propia la tenía (0 de 12).
     // 🔴 v721 · `wh5` «Círculos de muñeca» salió: era un duplicado de `wm1` (0 listas propias la tenían).
-    {id:'wah2',name:'Deslizamiento en pared',icon:'⬆️',reps:'10',desc:'De pie con la espalda cerca de la pared y el mentón recogido, codos y manos pegados a ella en «W». Sube a «Y» y baja sin arquear la espalda baja. Llega solo hasta donde los brazos sigan pegados; si el hombro molesta, no lo hagas.',ytQuery:'wall slides deslizamiento en pared hombro'},
+    {id:'wah2',name:'Deslizamiento en pared',reps:'10',desc:'De pie con la espalda cerca de la pared y el mentón recogido, codos y manos pegados a ella en «W». Sube a «Y» y baja sin arquear la espalda baja. Llega solo hasta donde los brazos sigan pegados; si el hombro molesta, no lo hagas.',ytQuery:'wall slides deslizamiento en pared hombro'},
   ],
 
   cadera:[
-    {id:'wc1',name:'Círculos de cadera de pie',icon:'⭕',reps:'10 c/dirección',desc:'Pies separados al ancho de hombros, manos en la cadera. Traza círculos grandes con la pelvis como si movieras un hula-hoop.',ytQuery:'círculos de cadera de pie movilidad'},
+    {id:'wc1',name:'Círculos de cadera de pie',reps:'10 c/dirección',desc:'Pies separados al ancho de hombros, manos en la cadera. Traza círculos grandes con la pelvis como si movieras un hula-hoop.',ytQuery:'círculos de cadera de pie movilidad'},
     // Texto corregido por Laura (2026-08-02): «rota el torso» invitaba a girar DESDE LA CINTURA.
     // El giro es torácico y la pelvis queda quieta — así es tratamiento para un lumbar, no riesgo.
-    {id:'wc2',name:'Estocada con rotación',icon:'🔃',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, gira desde el pecho —la cadera y la pelvis quedan quietas— y lleva el brazo al techo hasta donde llegue sin dolor (o la mano en la nuca). Si la espalda baja se queja, gira menos.',ytQuery:'estocada con rotación torácica movilidad'},
+    {id:'wc2',name:'Estocada con rotación',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, gira desde el pecho —la cadera y la pelvis quedan quietas— y lleva el brazo al techo hasta donde llegue sin dolor (o la mano en la nuca). Si la espalda baja se queja, gira menos.',ytQuery:'estocada con rotación torácica movilidad'},
     // v721 · Laura §5.1: ya no es una inclinación sobre la pierna delantera (flexión lumbar con la
     // rodilla doblada a fondo y cargada) sino la transición activa que pidió Coach Pro.
-    {id:'wc3',name:'Apertura de cadera (90/90)',icon:'🦋',reps:'6 cambios',desc:'Sentado en el suelo, las dos rodillas dobladas a 90°, una delante y otra detrás, el tronco ERGUIDO. Sin apoyar las manos si puedes, gira las rodillas hacia el otro lado y cambia de posición. Despacio, sin dejar caer la rodilla hasta el suelo ni forzar. Si sientes tirón o dolor en la rodilla, la cadera o la ingle, detente.',ytQuery:'movilidad de cadera 90 90 transiciones'},
+    {id:'wc3',name:'Apertura de cadera (90/90)',reps:'6 cambios',desc:'Sentado en el suelo, las dos rodillas dobladas a 90°, una delante y otra detrás, el tronco ERGUIDO. Sin apoyar las manos si puedes, gira las rodillas hacia el otro lado y cambia de posición. Despacio, sin dejar caer la rodilla hasta el suelo ni forzar. Si sientes tirón o dolor en la rodilla, la cadera o la ingle, detente.',ytQuery:'movilidad de cadera 90 90 transiciones'},
     // v721 · Laura §5.1: sin «al frente y atrás» (la espalda baja se arquea al llevar la pierna atrás)
     // ni «lo más alto posible» (rota la pelvis). Hasta la cadera, con apoyo.
-    {id:'wc5',name:'Patada lateral de pie',icon:'↔️',reps:'12 c/lado',desc:'De pie, una mano apoyada en la pared y el tronco erguido. Lleva la pierna estirada hacia el lado hasta la altura de la cadera (no más), sin inclinar el cuerpo ni balancearte, y vuelve con control. Primero un lado, luego el otro.',ytQuery:'patada lateral de cadera glúteo medio de pie'},
+    {id:'wc5',name:'Patada lateral de pie',reps:'12 c/lado',desc:'De pie, una mano apoyada en la pared y el tronco erguido. Lleva la pierna estirada hacia el lado hasta la altura de la cadera (no más), sin inclinar el cuerpo ni balancearte, y vuelve con control. Primero un lado, luego el otro.',ytQuery:'patada lateral de cadera glúteo medio de pie'},
   ],
 
   rodillas:[
-    // 🔒 v721 · `retirada`: el PO la sacó del calentamiento (23-oct). Ya no la sugiere ninguna receta y
-    // el selector del coach no la ofrece, pero sigue en la biblioteca porque está en 11 de sus listas
-    // armadas a mano: borrarla las vaciaría en silencio. Quitarla de esas listas es decisión suya.
-    {id:'wr1',name:'Círculos de rodilla',icon:'🔵',reps:'10 c/dirección',retirada:true,desc:'Pies juntos y rodillas ligeramente dobladas, manos sobre las rodillas. Traza círculos con las rodillas. Luego cambia de dirección.',ytQuery:'círculos de rodilla calentamiento movilidad'},
-    {id:'wr2',name:'Sentadilla de movilidad lenta',icon:'⬇️',reps:'10 reps',desc:'Baja la sentadilla muy despacio (4 segundos bajando, 4 subiendo). Sin peso. El objetivo es movilidad, no fuerza.',ytQuery:'sentadilla profunda movilidad lenta sin peso'},
+    {id:'wr2',name:'Sentadilla de movilidad lenta',reps:'10 reps',desc:'Baja la sentadilla muy despacio (4 segundos bajando, 4 subiendo). Sin peso. El objetivo es movilidad, no fuerza.',ytQuery:'sentadilla profunda movilidad lenta sin peso'},
     // v721 · Laura §5.3: «hasta sentir el estiramiento» invitaba a ir al final del rango.
-    {id:'wr3',name:'Movilidad de isquiotibiales de pie',icon:'🦵',reps:'10 c/lado',desc:'De pie, extiende una pierna al frente apoyando el talón. Lleva la cadera atrás con la espalda larga, sin redondearla ni rebotar. Si hormiguea o tira, detente.',ytQuery:'movilidad de isquiotibiales de pie talón'},
+    {id:'wr3',name:'Movilidad de isquiotibiales de pie',reps:'10 c/lado',desc:'De pie, extiende una pierna al frente apoyando el talón. Lleva la cadera atrás con la espalda larga, sin redondearla ni rebotar. Si hormiguea o tira, detente.',ytQuery:'movilidad de isquiotibiales de pie talón'},
   ],
 
   tobillos:[
-    {id:'wt1',name:'Círculos de tobillo',icon:'🦶',reps:'10 c/dirección',desc:'Sentado o de pie, levanta un pie y traza círculos amplios con el tobillo. Lento y completo. Cambia dirección y luego repite con el otro pie.',ytQuery:'círculos de tobillo movilidad calentamiento'},
-    {id:'wt2',name:'Movilidad tobillo en pared',icon:'🧱',reps:'10 c/lado',desc:'De pie frente a la pared a unos 10 cm. Dobla la rodilla hacia adelante intentando tocar la pared sin levantar el talón; la rodilla va en línea con el segundo dedo del pie. Aumenta la distancia progresivamente.',ytQuery:'movilidad de tobillo en pared dorsiflexión'},
+    {id:'wt1',name:'Círculos de tobillo',reps:'10 c/dirección',desc:'Sentado o de pie, levanta un pie y traza círculos amplios con el tobillo. Lento y completo. Cambia dirección y luego repite con el otro pie.',ytQuery:'círculos de tobillo movilidad calentamiento'},
+    {id:'wt2',name:'Movilidad tobillo en pared',reps:'10 c/lado',desc:'De pie frente a la pared a unos 10 cm. Dobla la rodilla hacia adelante intentando tocar la pared sin levantar el talón; la rodilla va en línea con el segundo dedo del pie. Aumenta la distancia progresivamente.',ytQuery:'movilidad de tobillo en pared dorsiflexión'},
   ],
 
   munecas:[
-    {id:'wm1',name:'Círculos de muñeca',icon:'✋',reps:'10 c/dirección',desc:'Entrelaza los dedos y traza círculos amplios con ambas muñecas. Lento y completo en ambas direcciones.',ytQuery:'círculos de muñeca calentamiento'},
-    {id:'wm2',name:'Estiramiento extensor de muñeca',icon:'🤲',reps:'30 seg c/lado',desc:'Extiende el brazo al frente, dobla la muñeca hacia abajo, jala los dedos suavemente con la otra mano. Mantén 30 segundos.',ytQuery:'estiramiento extensor de muñeca antebrazo'},
-    {id:'wm3',name:'Estiramiento flexor de muñeca',icon:'🖐️',reps:'30 seg c/lado',desc:'Extiende el brazo, dobla la muñeca hacia arriba, jala los dedos hacia ti con la otra mano. Sientes el antebrazo interior.',ytQuery:'estiramiento flexor de muñeca antebrazo'},
+    {id:'wm1',name:'Círculos de muñeca',reps:'10 c/dirección',desc:'Entrelaza los dedos y traza círculos amplios con ambas muñecas. Lento y completo en ambas direcciones.',ytQuery:'círculos de muñeca calentamiento'},
+    {id:'wm2',name:'Estiramiento extensor de muñeca',reps:'30 seg c/lado',desc:'Extiende el brazo al frente, dobla la muñeca hacia abajo, jala los dedos suavemente con la otra mano. Mantén 30 segundos.',ytQuery:'estiramiento extensor de muñeca antebrazo'},
+    {id:'wm3',name:'Estiramiento flexor de muñeca',reps:'30 seg c/lado',desc:'Extiende el brazo, dobla la muñeca hacia arriba, jala los dedos hacia ti con la otra mano. Sientes el antebrazo interior.',ytQuery:'estiramiento flexor de muñeca antebrazo'},
   ],
 
   espalda:[
     // v721 · Laura §5.1: fuera «masajeando y descomprimiendo» (una promesa terapéutica falsa) y
     // «rueda sobre la columna». Solo para listas a mano: ninguna receta la usa.
-    {id:'we5',name:'Rollitos sobre colchoneta',icon:'🌀',reps:'8',desc:'Acostado boca arriba sobre una colchoneta gruesa, abraza las rodillas y balancéate unos centímetros adelante y atrás, sin llegar a apoyar el cuello. Lento. Si sientes dolor o presión en la espalda o el cuello, detente.',ytQuery:'rollitos sobre colchoneta descompresión espalda baja'},
-    {id:'we1',name:'Cat-Cow (Gato-Vaca)',icon:'🐱',reps:'10 reps',desc:'En cuatro patas. Alterna entre arquear la espalda hacia arriba (gato) y hundirla hacia abajo (vaca). 1 segundo en cada posición.',ytQuery:'ejercicio gato vaca cat cow movilidad columna'},
-    {id:'we2',name:'Rotación torácica en el suelo',icon:'🔄',reps:'8 c/lado',desc:'Acostado de lado con rodillas dobladas. Extiende los brazos al frente. Rota el brazo de arriba hacia atrás abriendo el pecho. La cadera no se mueve.',ytQuery:'rotación torácica en el suelo movilidad'},
-    // 🔒 v721 · `retirada` (decisión del PO, 23-oct): está en 4 de sus listas a mano. Ver `wr1`.
-    {id:'we3',name:'Apertura de cadena posterior',icon:'🙇',reps:'30 seg',retirada:true,desc:'De pie, pies separados. Dobla el cuerpo hacia adelante dejando caer los brazos y la cabeza. Relaja la espalda completamente. No fuerces.',ytQuery:'estiramiento cadena posterior de pie flexión'},
+    {id:'we5',name:'Rollitos sobre colchoneta',reps:'8',desc:'Acostado boca arriba sobre una colchoneta gruesa, abraza las rodillas y balancéate unos centímetros adelante y atrás, sin llegar a apoyar el cuello. Lento. Si sientes dolor o presión en la espalda o el cuello, detente.',ytQuery:'rollitos sobre colchoneta descompresión espalda baja'},
+    {id:'we1',name:'Cat-Cow (Gato-Vaca)',reps:'10 reps',desc:'En cuatro patas. Alterna entre arquear la espalda hacia arriba (gato) y hundirla hacia abajo (vaca). 1 segundo en cada posición.',ytQuery:'ejercicio gato vaca cat cow movilidad columna'},
+    {id:'we2',name:'Rotación torácica en el suelo',reps:'8 c/lado',desc:'Acostado de lado con rodillas dobladas. Extiende los brazos al frente. Rota el brazo de arriba hacia atrás abriendo el pecho. La cadera no se mueve.',ytQuery:'rotación torácica en el suelo movilidad'},
     // v721 · Laura §5.3: «los brazos no se doblan» pedía bloquear el codo. Y los dos rótulos estaban
     // al revés: bajar el pecho entre los hombros es juntar los omóplatos (retracción), empujar el
     // suelo es separarlos (protracción).
-    {id:'we4',name:'Plancha de hombros',icon:'🤸',reps:'10 reps',desc:'En posición de lagartija alta, con los codos estirados pero sin bloquearlos, el abdomen firme y la cadera en línea. Deja que el pecho baje entre los hombros juntando los omóplatos (retracción) y luego empuja el suelo para separarlos (protracción).',ytQuery:'protracción retracción escapular plancha tutorial'},
+    {id:'we4',name:'Plancha de hombros',reps:'10 reps',desc:'En posición de lagartija alta, con los codos estirados pero sin bloquearlos, el abdomen firme y la cadera en línea. Deja que el pecho baje entre los hombros juntando los omóplatos (retracción) y luego empuja el suelo para separarlos (protracción).',ytQuery:'protracción retracción escapular plancha tutorial'},
   ],
 
   // ── ACTIVACIÓN ──
   activacion_superior:[
     // v721 · Laura §5.3: Valery la usa inclinada; el texto da las tres alturas y la condición.
-    {id:'wa1',name:'Lagartija inclinada',icon:'💪',reps:'10–15 reps',desc:'Manos en una pared o un banco (cuanto más alto, más fácil) o en el suelo si ya es fácil. Cuerpo recto de cabeza a talones; baja el pecho al apoyo y sube. La espalda baja no se hunde.',ytQuery:'flexiones inclinadas en banco principiantes'},
-    {id:'wa3',name:'Band pull-apart / apertura con banda',icon:'↔️',reps:'15 reps',desc:'Sostén una banda o toalla con los brazos extendidos al frente. Jala los extremos hacia afuera hasta los lados, con los hombros lejos de las orejas. Aprieta la espalda alta.',ytQuery:'band pull apart apertura con banda tutorial'},
-    {id:'wa4',name:'Balanceo de brazos cruzados',icon:'🤸',reps:'15 reps',desc:'Balancéa los brazos abiertos y luego crúzalos frente al pecho. Alterna cuál brazo queda por encima. Calienta la articulación del hombro.',ytQuery:'balanceo de brazos calentamiento hombros'},
-    // 🔒 v721 · `retirada` (decisión del PO, 23-oct). Ninguna lista a mano la tiene.
-    {id:'wa2',name:'Remo invertido en barra baja',icon:'🔙',reps:'10 reps',retirada:true,desc:'Debajo de una barra baja, jala el pecho hacia la barra. Activa dorsal y bíceps sin carga extra. (Requiere barra baja — opcional.)',ytQuery:'remo invertido en barra baja tutorial'},
-    {id:'wa5',name:'Elevaciones en Y y T',icon:'🙌',reps:'8 de cada una',desc:'Boca abajo con la frente apoyada (en la colchoneta o con el pecho sobre un banco inclinado), sin peso. Con el cuello largo, levanta los brazos en Y y bájalos; luego en T, con los pulgares arriba. El pecho no se despega del apoyo. Si el hombro o el cuello molestan, no lo hagas.',ytQuery:'elevaciones Y T boca abajo hombro'},
-    {id:'wa6',name:'Colgado activo en barra',icon:'🧗',reps:'2 × 15-20 s',desc:'Cuélgate con las manos al ancho de los hombros y los brazos estirados. Baja los hombros lejos de las orejas sin doblar los codos y respira normal, sin aguantar el aire. Si no llegas, deja los pies apoyados en el suelo o en un banco. Suelta si el hombro, el codo o la mano molestan.',ytQuery:'colgado activo escapular en barra'},
+    {id:'wa1',name:'Lagartija inclinada',reps:'10–15 reps',desc:'Manos en una pared o un banco (cuanto más alto, más fácil) o en el suelo si ya es fácil. Cuerpo recto de cabeza a talones; baja el pecho al apoyo y sube. La espalda baja no se hunde.',ytQuery:'flexiones inclinadas en banco principiantes'},
+    {id:'wa3',name:'Band pull-apart / apertura con banda',reps:'15 reps',desc:'Sostén una banda o toalla con los brazos extendidos al frente. Jala los extremos hacia afuera hasta los lados, con los hombros lejos de las orejas. Aprieta la espalda alta.',ytQuery:'band pull apart apertura con banda tutorial'},
+    {id:'wa4',name:'Balanceo de brazos cruzados',reps:'15 reps',desc:'Balancéa los brazos abiertos y luego crúzalos frente al pecho. Alterna cuál brazo queda por encima. Calienta la articulación del hombro.',ytQuery:'balanceo de brazos calentamiento hombros'},
+    {id:'wa5',name:'Elevaciones en Y y T',reps:'8 de cada una',desc:'Boca abajo con la frente apoyada (en la colchoneta o con el pecho sobre un banco inclinado), sin peso. Con el cuello largo, levanta los brazos en Y y bájalos; luego en T, con los pulgares arriba. El pecho no se despega del apoyo. Si el hombro o el cuello molestan, no lo hagas.',ytQuery:'elevaciones Y T boca abajo hombro'},
+    {id:'wa6',name:'Colgado activo en barra',reps:'2 × 15-20 s',desc:'Cuélgate con las manos al ancho de los hombros y los brazos estirados. Baja los hombros lejos de las orejas sin doblar los codos y respira normal, sin aguantar el aire. Si no llegas, deja los pies apoyados en el suelo o en un banco. Suelta si el hombro, el codo o la mano molestan.',ytQuery:'colgado activo escapular en barra'},
     // Solo como alterna (Laura §2): es la única de espalda alta que sirve a la vez con hombro, cuello y muñeca.
-    {id:'wah1',name:'Jalón facial liviano con banda',icon:'🎯',reps:'12-15',desc:'Banda a la altura de la cara. Jala hacia la nariz abriendo los codos a los lados, con los hombros lejos de las orejas. Liviano: si la banda te hace subir los hombros, es demasiado dura.',ytQuery:'face pull con banda calentamiento'},
+    {id:'wah1',name:'Jalón facial liviano con banda',reps:'12-15',desc:'Banda a la altura de la cara. Jala hacia la nariz abriendo los codos a los lados, con los hombros lejos de las orejas. Liviano: si la banda te hace subir los hombros, es demasiado dura.',ytQuery:'face pull con banda calentamiento'},
   ],
 
   // v721 · LA ACTIVACIÓN DE GLÚTEO, que no existía: ningún día de glúteo la traía (Valery). El puente
   // pasa aquí desde `cadera`: en las recetas va como activación, no como movilidad.
   activacion_gluteo:[
-    {id:'wc4',name:'Puente de glúteo activación',icon:'🌉',reps:'15 reps',desc:'Acuéstate boca arriba, rodillas dobladas. Sube las caderas apretando el glúteo hasta que hombros, cadera y rodillas queden en línea recta, sin arquear la espalda baja. Aguanta 1 s arriba. Baja lento. Exhala al subir.',ytQuery:'puente de glúteo activación tutorial'},
-    {id:'wag1',name:'Almeja con banda',icon:'🐚',reps:'12 c/lado',desc:'Acuéstate de lado con la cabeza sobre el brazo o una almohada, las rodillas dobladas y la banda sobre ellas. Abre la rodilla de arriba sin que la cadera ruede hacia atrás. Despacio. Si duele la ingle o la cadera, detente.',ytQuery:'almeja con banda clamshell glúteo medio'},
-    {id:'wag2',name:'Caminata lateral con banda',icon:'🦀',reps:'10 pasos c/lado',desc:'Banda sobre las rodillas (nunca en los tobillos), rodillas apenas dobladas —un cuarto de sentadilla— y el tronco erguido. Da pasos cortos de lado manteniendo la tensión; las rodillas no se cierran ni se van hacia adentro.',ytQuery:'caminata lateral con banda glúteo'},
-    {id:'wag3',name:'Patada atrás en cuatro apoyos',icon:'🐾',reps:'10 c/lado',desc:'En cuatro apoyos, con una toalla doblada bajo las rodillas, lleva una pierna doblada hacia atrás y arriba apretando el glúteo, solo hasta que el muslo quede en línea con la espalda. La espalda no se arquea y la cadera no gira.',ytQuery:'patada de glúteo en cuatro apoyos'},
+    {id:'wc4',name:'Puente de glúteo activación',reps:'15 reps',desc:'Acuéstate boca arriba, rodillas dobladas. Sube las caderas apretando el glúteo hasta que hombros, cadera y rodillas queden en línea recta, sin arquear la espalda baja. Aguanta 1 s arriba. Baja lento. Exhala al subir.',ytQuery:'puente de glúteo activación tutorial'},
+    {id:'wag1',name:'Almeja con banda',reps:'12 c/lado',desc:'Acuéstate de lado con la cabeza sobre el brazo o una almohada, las rodillas dobladas y la banda sobre ellas. Abre la rodilla de arriba sin que la cadera ruede hacia atrás. Despacio. Si duele la ingle o la cadera, detente.',ytQuery:'almeja con banda clamshell glúteo medio'},
+    {id:'wag2',name:'Caminata lateral con banda',reps:'10 pasos c/lado',desc:'Banda sobre las rodillas (nunca en los tobillos), rodillas apenas dobladas —un cuarto de sentadilla— y el tronco erguido. Da pasos cortos de lado manteniendo la tensión; las rodillas no se cierran ni se van hacia adentro.',ytQuery:'caminata lateral con banda glúteo'},
+    {id:'wag3',name:'Patada atrás en cuatro apoyos',reps:'10 c/lado',desc:'En cuatro apoyos, con una toalla doblada bajo las rodillas, lleva una pierna doblada hacia atrás y arriba apretando el glúteo, solo hasta que el muslo quede en línea con la espalda. La espalda no se arquea y la cadera no gira.',ytQuery:'patada de glúteo en cuatro apoyos'},
   ],
 
   activacion_inferior:[
-    {id:'wai1',name:'Sentadilla con peso corporal',icon:'🏋️',reps:'15 reps',desc:'Sentadilla sin peso. Foco en profundidad y control. Prepara la rodilla, la cadera y el tobillo para la carga.',ytQuery:'sentadilla peso corporal técnica principiantes'},
-    {id:'wai2',name:'Desplante alterno',icon:'👣',reps:'10 c/lado',desc:'Zancadas alternas sin peso. Activa el cuádricep y el glúteo de manera controlada.',ytQuery:'desplantes zancadas peso corporal tutorial'},
-    {id:'wai3',name:'Peso muerto con peso corporal',icon:'🙆',reps:'10 reps',desc:'Inclinación de cadera sin barra, con las manos en los muslos. Practica la bisagra de cadera y activa el femoral.',ytQuery:'bisagra de cadera peso muerto sin peso técnica'},
-    {id:'wai4',name:'Elevación de talones bilateral',icon:'👟',reps:'15 reps',desc:'Sube de puntillas despacio y baja lento. Activa la pantorrilla y el tendón de Aquiles antes de la carga.',ytQuery:'elevación de talones pantorrilla de pie'},
+    {id:'wai1',name:'Sentadilla con peso corporal',reps:'15 reps',desc:'Sentadilla sin peso. Foco en profundidad y control. Prepara la rodilla, la cadera y el tobillo para la carga.',ytQuery:'sentadilla peso corporal técnica principiantes'},
+    {id:'wai2',name:'Desplante alterno',reps:'10 c/lado',desc:'Zancadas alternas sin peso. Activa el cuádricep y el glúteo de manera controlada.',ytQuery:'desplantes zancadas peso corporal tutorial'},
+    {id:'wai3',name:'Peso muerto con peso corporal',reps:'10 reps',desc:'Inclinación de cadera sin barra, con las manos en los muslos. Practica la bisagra de cadera y activa el femoral.',ytQuery:'bisagra de cadera peso muerto sin peso técnica'},
+    {id:'wai4',name:'Elevación de talones bilateral',reps:'15 reps',desc:'Sube de puntillas despacio y baja lento. Activa la pantorrilla y el tendón de Aquiles antes de la carga.',ytQuery:'elevación de talones pantorrilla de pie'},
   ],
 
   activacion_core:[
-    {id:'wac1',name:'Plancha isométrica corta',icon:'📏',reps:'3 × 20 seg',desc:'Plancha frontal en antebrazos. Aprieta abdomen, glúteo y quads al mismo tiempo. 20 segundos, 3 veces. Respira; no aguantes el aire.',ytQuery:'cómo hacer plancha abdominal correctamente'},
-    {id:'wac2',name:'Deadbug',icon:'🐛',reps:'8 c/lado',desc:'Acostado boca arriba, brazos al techo, rodillas 90°. Extiende el brazo derecho y la pierna izquierda al mismo tiempo. Espalda pegada al suelo. Si ves un bulto en el centro del abdomen, detente.',ytQuery:'dead bug ejercicio core tutorial'},
-    {id:'wac3',name:'Rotación de cadera tumbado',icon:'🔁',reps:'8 c/lado',desc:'Acostado, rodillas juntas al pecho. Deja caer ambas rodillas a un lado y vuelve al centro. Espalda pegada al suelo. Activa oblicuos.',ytQuery:'rotación de columna tumbado movilidad lumbar'},
-    {id:'wac4',name:'Perro de caza (bird dog)',icon:'🐕',reps:'8 c/lado',desc:'En cuatro apoyos (toalla bajo las rodillas; puños o antebrazos si la muñeca molesta), estira un brazo al frente hasta la altura del hombro y la pierna contraria hacia atrás hasta alinearla con el tronco, sin mover la cadera. 2 s arriba y vuelve. Cambia de lado.',ytQuery:'bird dog perro de caza ejercicio'},
-    {id:'wac5',name:'Respiración 360°',icon:'🌬️',reps:'5 respiraciones',desc:'Acuéstate boca arriba, rodillas dobladas, manos sobre las costillas. Inhala por la nariz: las costillas se abren a los lados y hacia atrás. Exhala largo por la boca soltando todo el aire. Sin forzar ni aguantar el aire.',ytQuery:'respiración 360 diafragmática costillas'},
+    {id:'wac1',name:'Plancha isométrica corta',reps:'3 × 20 seg',desc:'Plancha frontal en antebrazos. Aprieta abdomen, glúteo y quads al mismo tiempo. 20 segundos, 3 veces. Respira; no aguantes el aire.',ytQuery:'cómo hacer plancha abdominal correctamente'},
+    {id:'wac2',name:'Deadbug',reps:'8 c/lado',desc:'Acostado boca arriba, brazos al techo, rodillas 90°. Extiende el brazo derecho y la pierna izquierda al mismo tiempo. Espalda pegada al suelo. Si ves un bulto en el centro del abdomen, detente.',ytQuery:'dead bug ejercicio core tutorial'},
+    {id:'wac3',name:'Rotación de cadera tumbado',reps:'8 c/lado',desc:'Acostado, rodillas juntas al pecho. Deja caer ambas rodillas a un lado y vuelve al centro. Espalda pegada al suelo. Activa oblicuos.',ytQuery:'rotación de columna tumbado movilidad lumbar'},
+    {id:'wac4',name:'Perro de caza (bird dog)',reps:'8 c/lado',desc:'En cuatro apoyos (toalla bajo las rodillas; puños o antebrazos si la muñeca molesta), estira un brazo al frente hasta la altura del hombro y la pierna contraria hacia atrás hasta alinearla con el tronco, sin mover la cadera. 2 s arriba y vuelve. Cambia de lado.',ytQuery:'bird dog perro de caza ejercicio'},
+    {id:'wac5',name:'Respiración 360°',reps:'5 respiraciones',desc:'Acuéstate boca arriba, rodillas dobladas, manos sobre las costillas. Inhala por la nariz: las costillas se abren a los lados y hacia atrás. Exhala largo por la boca soltando todo el aire. Sin forzar ni aguantar el aire.',ytQuery:'respiración 360 diafragmática costillas'},
   ],
 };
 
@@ -2584,7 +2581,7 @@ function buildWarmup(exercises,limKeys,opts){
   const general=r.gen?pieza(r.gen):null;
   const articulares=r.mov.map(pieza).filter(Boolean);
   const activaciones=r.act.map(pieza).filter(Boolean);
-  return {sessionLabel:r.label,sessionEmoji:r.emoji,recipe:r.code,general,articulares,activaciones};
+  return {sessionLabel:r.label,recipe:r.code,general,articulares,activaciones};
 }
 // Lo que el motor necesita saber de la persona y del plan, en UN sitio: lo usan la pantalla donde
 // se entrena y el editor del coach, y si cada uno lo armara por su lado acabarían enseñando dos
@@ -2635,12 +2632,12 @@ function updateWarmupProgress(){
   document.getElementById('wu-prog-fill').style.width=pct+'%';
   const badge=document.getElementById('wu-status-badge');
   if(done===total&&total>0){
-    badge.textContent='✅ ¡Listo para entrenar!';
+    badge.textContent='¡Listo para entrenar!';
     badge.style.background='var(--gl)';
     badge.style.color='var(--gt)';
     badge.style.borderColor='var(--g)';
   } else {
-    badge.textContent='⚡ Calentar antes de empezar';
+    badge.textContent='Calentar antes de empezar';
     badge.style.background='var(--orl)';
     badge.style.color='var(--ort)';
     badge.style.borderColor='var(--or)';
@@ -2663,7 +2660,7 @@ function renderWarmup(exercises){
   // guardada (un entrenamiento rápido, una rutina elegida a mano), se usa la que se está entrenando.
   const _wuRutId=CUR.activeRoutine&&CUR.activeRoutine.id;
   const _wuGuardada=(_wuCli&&(_wuCli.routines||[]).find(r=>r&&r.id===_wuRutId))||CUR.activeRoutine;
-  const {sessionLabel,sessionEmoji,general,articulares,activaciones}=buildWarmup(exercises,_wuLim,wuOptsFor(_wuCli,_wuGuardada));
+  const {sessionLabel,general,articulares,activaciones}=buildWarmup(exercises,_wuLim,wuOptsFor(_wuCli,_wuGuardada));
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;
@@ -2702,19 +2699,24 @@ function renderWarmup(exercises){
   const _wuItems=custom||[...(general?[general]:[]),...articulares,...activaciones];
   const _wuZonasDe=(ex)=>(typeof warmupWarnZones==='function')?warmupWarnZones(ex,_wuLim):[];
   const _wuTxt=(z)=>(typeof warmupWarnText==='function')?warmupWarnText(z,true):'';
+  // v721 · el aviso lleva el ícono de alerta de la marca, no el emoji (el mismo del guiado, plan F4).
+  const _wuAlerta=_gmIco('alert',12,'⚠️');
   const _wuAvisoFila=(ex)=>{
     const z=_wuZonasDe(ex); const t=z.length?_wuTxt(z):'';
-    return t?`<div class="wu-ex-warn">⚠️ ${esc(t)}</div>`:'';
+    return t?`<div class="wu-ex-warn">${_wuAlerta} ${esc(t)}</div>`:'';
   };
   const _wuZonas=[];
   _wuItems.forEach(ex=>_wuZonasDe(ex).forEach(z=>{ if(_wuZonas.indexOf(z)<0)_wuZonas.push(z); }));
-  const _wuAvisoCab=(()=>{ const t=_wuZonas.length?_wuTxt(_wuZonas):''; return t?`<div class="wu-warn-head">⚠️ ${esc(t)}</div>`:''; })();
+  const _wuAvisoCab=(()=>{ const t=_wuZonas.length?_wuTxt(_wuZonas):''; return t?`<div class="wu-warn-head">${_wuAlerta} ${esc(t)}</div>`:''; })();
 
-  const exRow=(ex)=>{
+  // 🔴 v721 · NUMERADO, SIN EMOJIS (el PO eligió la opción C, 24-oct: «esos stickers de animalitos y
+  // ladrillos nos hacen ver novatos»). El número no es adorno: el calentamiento se hace EN ORDEN, así
+  // que dice por dónde va y qué sigue. Corre seguido entre bloques (cardio 1, movilidad 2-4…).
+  const exRow=(ex,n)=>{
     const d=rid&&wuIsDone(rid,ex.id); // estado persistido: queda marcado al salir y volver
     return `
     <div id="wu-row-${ex.id}" class="wu-ex-row" onclick="wuToggle('${ex.id}')" style="opacity:${d?'.5':'1'}">
-      <div class="wu-ex-icon">${ex.icon}</div>
+      <div class="wu-ex-num">${n}</div>
       <div class="wu-ex-info">
         <div class="wu-ex-name">${esc(ex.name)}</div>
         <div class="wu-ex-reps">${esc(ex.reps)}</div>
@@ -2729,7 +2731,12 @@ function renderWarmup(exercises){
   // cada tarjeta) — aquí no se duplica. v721 · pero es el paso 4 de la receta y llega oculto tras
   // un «Mostrar»: una línea al final dice dónde está, solo si la sesión trae algo con peso.
   const _wuAprox=(exercises||[]).some(e=>exTrack(e)==='peso_reps')
-    ?'<div class="wu-aprox-nota">🔥 Después, en tu primer ejercicio con peso, toca «Mostrar» en «Sets de calentamiento»: son tus series livianas antes de las de verdad.</div>':'';
+    ?`<div class="wu-aprox-nota"><span class="wu-ic">${_gmIco('flame',14,'')}</span> Después, en tu primer ejercicio con peso, toca «Mostrar» en «Sets de calentamiento»: son tus series livianas antes de las de verdad.</div>`:'';
+  // Los títulos de bloque con el ícono de línea de la marca: corazón el cardio, hoja la movilidad, rayo
+  // la activación (los mismos de la ventana de entrenamientos rápidos).
+  const _wuTit=(ic,txt)=>`<span class="wu-ic">${_gmIco(ic,13,'')}</span>${txt}`;
+  // Numeración corrida: el cardio es el 1 y cada bloque sigue donde terminó el anterior.
+  const _nMov=general?2:1, _nAct=_nMov+articulares.length;
   // v721 · EL CARDIO SUAVE, paso 1 de toda receta. «Ya vengo caliente» lo da por hecho a quien llegó
   // caminando o en bici: salta SOLO este bloque, nunca la movilidad ni la aproximación (Laura §4).
   // Es la misma marca que su ✓ (`wuToggle`), así que no hay un segundo estado que se pueda separar.
@@ -2741,8 +2748,8 @@ function renderWarmup(exercises){
     <div class="wu-card">
       <div class="wu-header" onclick="toggleWarmup()">
         <div>
-          <div class="wu-title">${sessionEmoji} Calentamiento — ${esc(sessionLabel)}</div>
-          <div id="wu-status-badge" class="wu-badge">⚡ Calentar antes de empezar</div>
+          <div class="wu-title"><span class="wu-ic">${_gmIco('flame',17,'')}</span>Calentamiento — ${esc(sessionLabel)}</div>
+          <div id="wu-status-badge" class="wu-badge">Calentar antes de empezar</div>
           ${_wuAvisoCab}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -2754,16 +2761,16 @@ function renderWarmup(exercises){
 
       <div id="wu-body" class="wu-body${_wuOpen?' open':''}">
         ${custom
-          ? custom.map(exRow).join('')
+          ? custom.map((ex,i)=>exRow(ex,i+1)).join('')
           // 🔒 v642 · Cada título se pinta SOLO si su lista trae algo. El filtro de lesiones vacía una
           // zona a propósito cuando todo lo suyo está contraindicado, y el título se pintaba igual:
           // medido, con lumbar + tobillo declarados un día de pierna o de glúteo deja «⚡ Activación
           // muscular» con CERO filas debajo. Hoy no le pasa a nadie (ninguna ficha declara esas dos),
           // y por eso mismo se cierra ahora: cuando le pase a alguien, nadie va a estar mirando.
-          : `${general?`<div class="wu-section-title wu-gen-title"><span>💓 Cardio suave</span>${_wuCaliente}</div>
-        ${exRow(general)}`:''}${articulares.length?`<div class="wu-section-title"${general?' style="margin-top:14px"':''}>🦴 Movilidad articular</div>
-        ${articulares.map(exRow).join('')}`:''}${activaciones.length?`<div class="wu-section-title"${(general||articulares.length)?' style="margin-top:14px"':''}>⚡ Activación muscular</div>
-        ${activaciones.map(exRow).join('')}`:''}`}
+          : `${general?`<div class="wu-section-title wu-gen-title"><span>${_wuTit('heart','Cardio suave')}</span>${_wuCaliente}</div>
+        ${exRow(general,1)}`:''}${articulares.length?`<div class="wu-section-title"${general?' style="margin-top:14px"':''}>${_wuTit('leaf','Movilidad articular')}</div>
+        ${articulares.map((ex,i)=>exRow(ex,_nMov+i)).join('')}`:''}${activaciones.length?`<div class="wu-section-title"${(general||articulares.length)?' style="margin-top:14px"':''}>${_wuTit('bolt','Activación muscular')}</div>
+        ${activaciones.map((ex,i)=>exRow(ex,_nAct+i)).join('')}`:''}`}
         ${_wuAprox}
       </div>
     </div>`;

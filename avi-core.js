@@ -877,11 +877,11 @@ function correctiveFor(limKeys, lib, place, opts) {
 //    cápsula y el manguito, y la Y-T boca abajo es el nadador de la regla de cuello.
 //  · ✱ `wa6`, `wac4`, `wag3` en MUÑECA y ✱ `wa6` en CODO: agarre colgado, y cuadrupedia con la muñeca
 //    en extensión máxima (el texto de `wac4` ofrece puños, pero el filtro no puede leer eso).
-// 🔒 `we3` y `wa2` SIGUEN en sus listas aunque salieron de las recetas: están `retirada` y todavía
-//    viven en listas armadas a mano. Laura las quita de aquí cuando esas listas se migren.
+// 🔒 `we3` y `wa2` salieron de la biblioteca (decisión del PO, 24-oct) y con ellas de estas listas: un id
+//    que no existe es una protección que no protege (candado 3 de Laura).
 // 🔒 `wg1` y `wg2` no entran en NINGUNA lista (su candado 5): el bloque general existe siempre.
 const WARMUP_ZONE_EXCL_IDS = {
-  lumbar: ['we3', 'we5', 'wai3', 'wac3', 'wc3', 'wr3'],
+  lumbar: ['we5', 'wai3', 'wac3', 'wc3', 'wr3'],
   rodilla: ['wr2', 'wai1', 'wai2', 'wc3', 'wc2'],
   // v644 · `we4` plancha de hombros y `wa1` lagartija: CIERRE EN CADENA, el peso del cuerpo sobre el
   // hombro y el manguito cargado en la posición baja — el mismo mecanismo por el que `we4` ya salía
@@ -890,7 +890,7 @@ const WARMUP_ZONE_EXCL_IDS = {
   aductor: ['wc2', 'wc3', 'wc5', 'wai2', 'wag1', 'wag2'],
   abductor: ['wc2', 'wc3', 'wc5', 'wai2', 'wag1', 'wag2'],
   // v644 · `we5` rollitos: rodar el peso del tronco mete carga axial VARIABLE sobre las cervicales.
-  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1', 'we5', 'wa5', 'wa6'],
+  cuello: ['we4', 'wa1', 'wac1', 'we5', 'wa5', 'wa6'],
   // v644 · `wr2` sentadilla de movilidad lenta: dorsiflexión BAJO CARGA, el mismo patrón por el que
   // su hermana `wai1` ya estaba fuera de esta zona.
   tobillo: ['wai1', 'wai2', 'wai4', 'wt2', 'wr2', 'wc2', 'wag2'],
@@ -3668,32 +3668,32 @@ function wuTake(pool, n, rot) {
 // 🔒 Los cortes del PO (24-oct, sobre la página que vio): GP_A sin `wr2` y GP_B sin el par 90/90 o
 //    estocada, para que los días de glúteo queden en 7 movimientos con el cardio.
 const WU_RECIPES = {
-  EMPUJE:         { label: 'Empuje', emoji: '💪', gen: { min: 3 },
+  EMPUJE:         { label: 'Empuje', gen: { min: 3 },
                     mov: [['wh1'], ['wh3', 'wh2'], ['wm1']], act: [['wa3'], ['we4', 'wah1']] },
-  TRACCION:       { label: 'Tirón', emoji: '💪', gen: { min: 3 },
+  TRACCION:       { label: 'Tirón', gen: { min: 3 },
                     mov: [['we2'], ['wh1']], act: [['wa6', 'wah1'], [['wa3', 'wa5'], 'wa3']] },
-  PIERNA:         { label: 'Pierna', emoji: '🦵', gen: { min: 4, maq: 'bici' },
+  PIERNA:         { label: 'Pierna', gen: { min: 4, maq: 'bici' },
                     mov: [['wt2', 'wt1'], ['wc2', 'wc1'], [['wc3', 'wr3'], 'wc1']], act: [['wc4'], [['wc5', 'wag2'], 'wag3']] },
-  TREN_SUP:       { label: 'Tren superior', emoji: '💪', gen: { min: 3 },
+  TREN_SUP:       { label: 'Tren superior', gen: { min: 3 },
                     mov: [['wh1'], ['we2'], ['wh3', 'wh2']], act: [['wa3'], ['we4', 'wah1']] },
-  HOMBROS_BRAZOS: { label: 'Hombros y brazos', emoji: '💪', gen: { min: 3 },
+  HOMBROS_BRAZOS: { label: 'Hombros y brazos', gen: { min: 3 },
                     mov: [['wh1'], ['wh2'], ['wm1']], act: [['wa3'], [['wa5', 'wah1']]] },
-  CARDIO_CORE:    { label: 'Cardio y core', emoji: '🔥', gen: { min: 3 },
+  CARDIO_CORE:    { label: 'Cardio y core', gen: { min: 3 },
                     mov: [['wc1'], ['we1', 'we2']], act: [['wac2', 'wac5']], imp: { en: 'mov', huecos: [['wt1'], ['wai4']] } },
-  FULL_BODY:      { label: 'Cuerpo completo', emoji: '⚡', gen: { min: 4 },
+  FULL_BODY:      { label: 'Cuerpo completo', gen: { min: 4 },
                     mov: [['wc2', 'wc1'], ['wt2', 'wt1'], ['wh1']], act: [['wc4'], ['wa3']] },
-  GP_A:           { label: 'Glúteo y pierna', emoji: '🦵', gen: { min: 5 },
+  GP_A:           { label: 'Glúteo y pierna', gen: { min: 5 },
                     mov: [['wt2', 'wt1'], ['wc2', 'wc1'], ['wc3', 'wc1']], act: [['wc4'], ['wag1', 'wag3'], ['wag2', 'wag3']],
                     reps: { wc4: '15 · 2 s arriba' } },
-  GP_B:           { label: 'Glúteo y pierna', emoji: '🦵', gen: { min: 5 },
+  GP_B:           { label: 'Glúteo y pierna', gen: { min: 5 },
                     mov: [['wt2', 'wt1'], ['wr3'], ['wc5']], act: [['wc4'], ['wai3'], ['wag3', 'wag1']] },
-  TREN_SUP_F:     { label: 'Tren superior', emoji: '💪', gen: { min: 4, maq: 'elíptica' },
+  TREN_SUP_F:     { label: 'Tren superior', gen: { min: 4, maq: 'elíptica' },
                     mov: [['wh1'], ['we2'], ['wah2', 'wh2']], act: [['wa3'], ['wh2'], ['wa1', 'wah1']] },
-  EMP_BRAZOS:     { label: 'Empuje y brazos', emoji: '💪', gen: { min: 3 },
+  EMP_BRAZOS:     { label: 'Empuje y brazos', gen: { min: 3 },
                     mov: [['wh1'], ['wh3', 'wh2'], ['wm1']], act: [['wa3'], ['wh2']] },
   // 🔒 `wac2` NO va primero en el día de core de mujer (Laura §3.2): la app todavía no lee postparto
   //    ni diástasis, y la respiración y el perro de caza sirven a las dos. `we5` no entra en ninguna.
-  CORE_CARDIO:    { label: 'Core y cardio', emoji: '🔥', gen: { min: 3 },
+  CORE_CARDIO:    { label: 'Core y cardio', gen: { min: 3 },
                     mov: [['we1', 'we2'], ['we2'], ['wc1']], act: [['wac5'], ['wac4', 'wac2']], imp: { en: 'act', huecos: [['wt2', 'wt1'], ['wai4']] } },
 };
 // El cardio suave según DÓNDE entrena. 🔒 `wg2` cierra toda cadena del general: Laura lo dejó sin
@@ -3792,7 +3792,7 @@ function wuResolveRecipe(code, opts) {
     const extra = resolver(rec.imp.huecos, rec.imp.en === 'act');
     (rec.imp.en === 'act' ? act : mov).push(...extra);
   }
-  return { code: WU_RECIPES[code] ? code : 'FULL_BODY', label: rec.label, emoji: rec.emoji, gen, mov, act };
+  return { code: WU_RECIPES[code] ? code : 'FULL_BODY', label: rec.label, gen, mov, act };
 }
 
 // ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────

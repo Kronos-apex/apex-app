@@ -1983,17 +1983,18 @@ test('🔴 wac3 fuera del lumbar, wc2 dentro (2.º veredicto de Laura, 2026-08-0
 });
 
 test('la marca del selector manual nombra SOLO las zonas que esa persona declaró', () => {
-  const we3 = { id: 'we3', name: 'Apertura de cadena posterior' };
+  // v721 · el ejemplo era `we3`, que el PO sacó de la biblioteca: `wr3` cae en lumbar por id (Laura, 23-oct).
+  const wr3 = { id: 'wr3', name: 'Movilidad de isquiotibiales de pie' };
   const lum = parseLimitations('dolor lumbar').keys;
-  assert.deepStrictEqual(core.warmupWarnZones(we3, lum), ['zona lumbar']);
-  assert.strictEqual(core.warmupWarnText(core.warmupWarnZones(we3, lum), false), 'Ojo con su zona lumbar');
+  assert.deepStrictEqual(core.warmupWarnZones(wr3, lum), ['zona lumbar']);
+  assert.strictEqual(core.warmupWarnText(core.warmupWarnZones(wr3, lum), false), 'Ojo con su zona lumbar');
   assert.strictEqual(core.warmupWarnText(['zona lumbar', 'rodilla'], false), 'Ojo con su zona lumbar y rodilla');
   assert.strictEqual(core.warmupWarnText(['zona lumbar'], true), 'Ojo con tu zona lumbar', 'el coach editando lo PROPIO');
   // Sin limitación declarada NO hay marca: una señal que sale siempre deja de ser señal.
-  assert.deepStrictEqual(core.warmupWarnZones(we3, []), []);
+  assert.deepStrictEqual(core.warmupWarnZones(wr3, []), []);
   assert.strictEqual(core.warmupWarnText([], false), '');
   // Una limitación GENÉRICA (sin zona con reglas) tampoco inventa una marca.
-  assert.deepStrictEqual(core.warmupWarnZones(we3, parseLimitations('cirugía reciente').keys), []);
+  assert.deepStrictEqual(core.warmupWarnZones(wr3, parseLimitations('cirugía reciente').keys), []);
   // Y un calentamiento seguro nunca se marca.
   assert.deepStrictEqual(core.warmupWarnZones({ id: 'we1', name: 'Cat-Cow (Gato-Vaca)' }, lum), []);
 });
@@ -24943,13 +24944,11 @@ test('🔴 v721 · candado 3 de Laura: ningún id huérfano en las listas ni en 
     assert.ok(lib[id], `WARMUP_ZONE_EXCL_IDS apunta a «${id}», que no existe en la biblioteca`));
   Object.keys(core.WU_RECIPES).forEach(code => _wuIdsDeReceta(code).forEach(id => {
     assert.ok(lib[id], `la receta ${code} nombra «${id}», que no existe en la biblioteca`);
-    // 🔒 Lo retirado por el PO sigue resolviendo en sus listas a mano, pero ninguna receta lo sirve.
-    assert.ok(!lib[id].retirada, `🔴 la receta ${code} sirve «${id}», que el PO retiró`);
   }));
-  // Las tres que retiró el PO siguen en la biblioteca (sus listas a mano las nombran) y marcadas.
-  ['wr1', 'we3', 'wa2'].forEach(id => assert.ok(lib[id] && lib[id].retirada, `«${id}» tiene que seguir en la biblioteca y marcada como retirada`));
-  // `wg4` (cuerda) y `wf1` (gusano) no entran hasta que la app lea postparto, osteopenia y presión (Laura §3).
-  ['wg4', 'wf1', 'wh4', 'wh5'].forEach(id => assert.ok(!lib[id], `🔴 «${id}» volvió a la biblioteca sin el dictamen que lo permite`));
+  // `wg4` (cuerda) y `wf1` (gusano) no entran hasta que la app lea postparto, osteopenia y presión (Laura §3);
+  // `wr1`, `we3` y `wa2` los sacó el PO (23 y 24-oct), y con ellos salen de sus listas a mano (v642: un id que
+  // ya no existe no se pinta).
+  ['wg4', 'wf1', 'wh4', 'wh5', 'wr1', 'we3', 'wa2'].forEach(id => assert.ok(!lib[id], `🔴 «${id}» volvió a la biblioteca`));
 });
 
 test('🔴 v721 · candado 4 de Laura: con varias zonas a la vez el hueco queda VACÍO, nunca se cae al grupo', () => {
@@ -25050,11 +25049,18 @@ test('🔴 v721 · «Ya vengo caliente», la línea de la aproximación y lo ret
   // La aproximación solo se nombra si la sesión trae algo con peso.
   assert.ok(/_wuAprox=\(exercises\|\|\[\]\)\.some\(e=>exTrack\(e\)==='peso_reps'\)/.test(cuerpo), 'la línea de la aproximación sale aunque no haya nada con peso');
   assert.ok(/\$\{_wuAprox\}/.test(cuerpo), 'la línea de la aproximación no se pinta');
-  // Lo retirado no se ofrece en el selector del coach, pero sigue resolviendo en sus listas a mano.
-  const k = a3.indexOf('function openWarmPicker(');
-  assert.ok(/filter\(ex=>!ex\.retirada\)/.test(a3.slice(k, a3.indexOf('\nfunction ', k + 10))), '🔴 el selector vuelve a ofrecer lo que el PO retiró');
+  // 🔴 SIN EMOJIS (el PO eligió la opción C, 24-oct): cada fila lleva su NÚMERO, corrido entre bloques, y
+  //    ninguna de las cuatro pantallas del calentamiento vuelve a pintar el ícono de la pieza.
+  assert.ok(/<div class=\"wu-ex-num\">\$\{n\}<\/div>/.test(cuerpo) && !/ex\.icon/.test(cuerpo), '🔴 la tarjeta volvió a pintar el emoji de la pieza en vez de su número');
+  assert.ok(/_nAct=_nMov\+articulares\.length/.test(cuerpo), '🔴 la numeración se reinicia en cada bloque: el calentamiento es UNA secuencia');
+  ['function renderRfWarmup(', 'function openWarmPicker(', 'function renderDetailRoutines('].forEach(f => {
+    const k = a3.indexOf(f);
+    assert.ok(k > 0 && !/\$\{e?x?\.icon\}/.test(a3.slice(k, a3.indexOf('\nfunction ', k + 10))), `🔴 ${f}…) volvió a pintar el emoji de la pieza`);
+  });
+  assert.ok(/\.wu-ex-num\{[^}]*var\(--gl\)[^}]*var\(--gt\)/.test(css), 'el número no lleva los tokens de la marca (se perdería en un tema)');
+  // Las tres que sacó el PO ya no resuelven: sus listas a mano las pierden solas.
   const { findWarmupEx } = _wuMotor();
-  assert.ok(findWarmupEx('wr1') && findWarmupEx('we3'), '🔴 lo retirado dejó de resolver: las listas a mano del PO se vaciarían en silencio');
+  assert.ok(!findWarmupEx('wr1') && !findWarmupEx('we3') && !findWarmupEx('wa2'), '🔴 volvió una pieza que el PO sacó');
 });
 
 test('v721 · los textos del calentamiento siguen la regla de Laura (§5)', () => {
@@ -25062,7 +25068,8 @@ test('v721 · los textos del calentamiento siguen la regla de Laura (§5)', () =
   const { WARMUP_LIBRARY, findWarmupEx } = _wuMotor();
   Object.values(WARMUP_LIBRARY).flat().filter(e => !e.retirada).forEach(e => {
     assert.ok(!/lo m[aá]s alto posible|hasta sentir|\brelaja/i.test(e.desc), `🔴 «${e.id} ${e.name}» invita a ir al final del rango`);
-    assert.ok(e.desc && e.reps && e.icon && e.ytQuery, `«${e.id}» sin texto, dosis, ícono o video`);
+    assert.ok(e.desc && e.reps && e.ytQuery, `«${e.id}» sin texto, dosis o video`);
+    assert.ok(!('icon' in e), `🔴 «${e.id}» volvió a traer un emoji: la tarjeta numera, no pinta stickers (el PO, 24-oct)`);
   });
   assert.match(findWarmupEx('wa6').desc, /sin aguantar el aire/);
   assert.match(findWarmupEx('wac1').desc, /no aguantes el aire/);

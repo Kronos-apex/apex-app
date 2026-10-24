@@ -44,7 +44,8 @@ A.ok(/function renderWarmup\(/.test(TRAMO) && /function buildWarmup\(/.test(TRAM
 // La lista manual del PO (creada el 10-sep) y su dolor activo del 14-sep: muslo por detrás,
 // nivel 3, bandera roja R5 → zonas lumbar + isquios. `we5` y `wai3` son los dos que su propio
 // filtro le quitaría, y son los que tiene que ver marcados.
-const LISTA_PO = ['wh1','wh2','wc1','wc2','wr1','wr2','wt1','wt2','wm1','wm2','we5','we1','wa1','wai3'];
+// v721 · sin `wr1` (círculos de rodilla): el PO la sacó de la biblioteca y con eso de sus listas a mano.
+const LISTA_PO = ['wh1','wh2','wc1','wc2','wr2','wt1','wt2','wm1','wm2','we5','we1','wa1','wai3'];
 // 🔴 v721 · La fecha va RELATIVA a hoy (hace 2 días). Era la real del PO, el 14-sep, y un reporte de dolor
 // vence a los 14 días: desde el 28-sep la persona de prueba ya no declaraba nada y este harness caía en
 // ocho comprobaciones sin que la app tuviera un solo defecto (R2.3: un dato que envejece no es un dato).
@@ -154,7 +155,7 @@ for (const tema of ['claro', 'oscuro']) {
   // da un rojo a mil líneas del origen en vez de decir qué pasó (lección de v579).
   A.ok(m1 && m1.ok, `${tema}: el caso de la lista manual se pinta sin lanzar`, (m1 && m1.err) || m1);
   if (!m1 || !m1.ok) break;
-  A.ok(m1.filas.length === LISTA_PO.length, `${tema}: se pintan los 14 movimientos de su lista`, m1.filas.length);
+  A.ok(m1.filas.length === LISTA_PO.length, `${tema}: se pintan los 13 movimientos de su lista`, m1.filas.length);
   const marcadas = m1.filas.filter(f => f.aviso);
   A.ok(marcadas.length === 2 && marcadas.every(f => ['we5', 'wai3'].includes(f.id)),
     `${tema}: SOLO we5 y wai3 llevan aviso (los dos que su filtro le quitaría)`, marcadas.map(f => f.id + ':' + f.aviso));

@@ -1668,7 +1668,10 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wu-aprox-nota{font-size:11.5px;color:var(--t2);background:var(--bg);border-radius:var(--rsm);padding:9px 11px;margin-top:12px;line-height:1.5}
 .wu-ex-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);cursor:pointer;transition:opacity .2s}
 .wu-ex-row:last-of-type{border-bottom:none}
-.wu-ex-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
+/* v721 · el número del movimiento reemplaza al emoji (opción C del PO, 24-oct): el calentamiento va en
+   orden. Tinta --gt sobre --gl, los mismos tokens de los chips de la marca, legibles en los dos temas. */
+.wu-ex-num{width:30px;height:30px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;flex-shrink:0;font:700 13px/1 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.wu-ic{display:inline-flex;vertical-align:-2px;margin-right:6px;color:var(--g2)}
 .wu-ex-info{flex:1}
 .wu-ex-name{font-size:13px;font-weight:700;color:var(--t1)}
 .wu-ex-reps{font-size:11px;color:var(--t3);margin-top:1px}

@@ -39,9 +39,7 @@ Fuente: `docs/calentamiento-2026-10-23/` (Coach Pro, Valery, consolidado y el di
   aislamiento 1 al 50 % solo si es el primero de su músculo, peso corporal ninguna; tope 3 ejercicios y ~6 series;
   base al 90 % si el último registro tiene >4 semanas o hubo dolor en 14 días (**que lo confirme Andrés Hyp**). Toca el
   guiado (zona caliente): hoy es UNA fila `w0` al 50 %. El candado 6 de Laura va con esta versión.
-- **Decisión del PO pendiente:** sus 12 listas armadas a mano tienen `wr1` (círculos de rodilla) en 11 y `we3` (apertura
-  de cadena posterior) en 4. Las dos están `retirada` desde v721: siguen funcionando donde están, pero no se ofrecen.
-  Si decide quitarlas, se migra cada lista (sugerido: `wr1` → quitar, `we3` → `we1`) y Laura las saca de sus listas.
+- ✅ **Decidido (24-oct):** `wr1` y `we3` salieron del todo (con `wa2`); sus listas a mano las pierden solas.
 
 ### ✅ Hecho (resumen ejecutivo)
 - **v1.0–v1.3** (2025 – mayo 2026): base PWA single-file + Supabase sync, push VAPID, mensajes coach↔asesorado, pagos/membresía, nutrición con macros, analytics, dark mode, hardening XSS, gates QA.

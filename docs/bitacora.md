@@ -49,6 +49,15 @@
   `_verify-news` TODO OK · `_guiado-suite` TODO OK · `_shot-trained` TODO OK · `_test-coach-back` TODO OK. Las
   matrices viejas `_sabotaje-v642/v644/calentamiento` apuntan al motor viejo: su cobertura vigente es la de v721.
   Regla de v594 n.º 1 (no repetir un patrón) sale del motor y queda en la suite sobre TODAS las recetas (gotcha).
+- **El mismo día, antes de publicar (2.º commit):** el PO vio las capturas y pidió dos cosas. (1) «esos stickers de
+  animalitos y ladrillos nos hacen ver novatos»: le mostré 3 opciones dibujadas sobre la tarjeta real
+  (claude.ai/artifact/Ae3ALMdjGfFyeRifMJrnon) y eligió la **C, numerado**: cada movimiento lleva su número corrido
+  (el calentamiento es una secuencia), los títulos y la cabecera usan los íconos de línea de la marca (heart, leaf,
+  bolt, flame, alert) y ninguna de las CUATRO pantallas del calentamiento pinta ya un emoji (tarjeta, vista previa de
+  la ficha, lista del editor y selector). Las piezas pierden su `icon` y las recetas su `emoji`. Es la fase que el
+  plan de íconos de julio había dejado fuera. (2) «quitan círculo y apertura cadena posterior»: `wr1`, `we3` y `wa2`
+  salen de la biblioteca y de las listas de Laura; sus 11 y 4 listas a mano las pierden solas porque un id que no
+  existe no se pinta (v642), sin tocar datos en la nube. El concepto `retirada` desapareció con ellas.
 - Novedades: entrada v721 en AVI_NEWS (el cambio se VE: un bloque nuevo y piezas distintas). **PENDIENTE
   re-verificación de Fable.**
 
