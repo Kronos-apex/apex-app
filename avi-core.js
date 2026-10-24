@@ -859,27 +859,49 @@ function correctiveFor(limKeys, lib, place, opts) {
 // de ser suficiente y dictó las seis casillas que faltaban (las de abajo van marcadas «v644»).
 // `wa4` «Balanceo de brazos cruzados» quedó 🟡 en hombro (posición provocadora solo en impingement
 // agudo): NO entra, porque un 🟡 no cambia la conducta y una regla ancha también hace daño (v424).
+// 🔴 v721 · CUARTA RONDA DE LAURA (`docs/calentamiento-2026-10-23/laura.md` §1), con las recetas por
+// sesión. Cambiar el mecanismo caducó su barrido de v644, y midiendo encontró que los nombres de las
+// piezas NUEVAS esquivan casi todas las reglas («almeja» no dice `clamshell`, «caminata lateral» no
+// dice `paso lateral`, «colgado» no dice `colgarse`). Por eso desde aquí TODO va por id, también lo
+// que hoy caía solo por el nombre (`wc2` en rodilla, `wh3` en pecho, `wa1` en muñeca): basta renombrar
+// una pieza para que el filtro deje de protegerla sin que nada lo note. Las casillas nuevas (✱):
+//  · ✱ `wc3`, `wr3` en LUMBAR: ahora son FIJAS en los días de glúteo, y la clave junta hernia, disco y
+//    ciática — el isquio de pie con el tronco al frente es la postura de tensión neural, y el 90/90
+//    sentado mete flexión lumbar sostenida con rotación de cadera. Las dos tienen alterna segura.
+//  · ✱ `wc2`, `wag2` en TOBILLO: dorsiflexión del pie de delante bajo el peso del cuerpo, y paso lateral
+//    con apoyo unilateral y banda (la regla del entreno ya quita `paso lateral` por eso).
+//  · ✱ `wag1`, `wag2` en ADUCTOR y ABDUCTOR: la almeja es el clamshell; la caminata lateral sostiene la
+//    pelvis sobre una pierna.
+//  · ✱ `wa5`, `wa6`, `wah2` en HOMBRO y ✱ `wa5`, `wa6` en CUELLO: la Y es brazo arriba en el arco de
+//    60-120°, el deslizamiento cruza el mismo arco con fricción, el colgado pone todo el peso en la
+//    cápsula y el manguito, y la Y-T boca abajo es el nadador de la regla de cuello.
+//  · ✱ `wa6`, `wac4`, `wag3` en MUÑECA y ✱ `wa6` en CODO: agarre colgado, y cuadrupedia con la muñeca
+//    en extensión máxima (el texto de `wac4` ofrece puños, pero el filtro no puede leer eso).
+// 🔒 `we3` y `wa2` SIGUEN en sus listas aunque salieron de las recetas: están `retirada` y todavía
+//    viven en listas armadas a mano. Laura las quita de aquí cuando esas listas se migren.
+// 🔒 `wg1` y `wg2` no entran en NINGUNA lista (su candado 5): el bloque general existe siempre.
 const WARMUP_ZONE_EXCL_IDS = {
-  lumbar: ['we3', 'we5', 'wai3', 'wac3'],
-  rodilla: ['wr2', 'wai1', 'wai2', 'wc3'],
+  lumbar: ['we3', 'we5', 'wai3', 'wac3', 'wc3', 'wr3'],
+  rodilla: ['wr2', 'wai1', 'wai2', 'wc3', 'wc2'],
   // v644 · `we4` plancha de hombros y `wa1` lagartija: CIERRE EN CADENA, el peso del cuerpo sobre el
   // hombro y el manguito cargado en la posición baja — el mismo mecanismo por el que `we4` ya salía
   // de cuello y de muñeca, que nadie había mirado para el hombro.
-  hombro: ['wh3', 'we4', 'wa1'],
-  aductor: ['wc2', 'wc3', 'wc5', 'wai2'],
-  abductor: ['wc2', 'wc3', 'wc5', 'wai2'],
+  hombro: ['wh3', 'we4', 'wa1', 'wa5', 'wa6', 'wah2'],
+  aductor: ['wc2', 'wc3', 'wc5', 'wai2', 'wag1', 'wag2'],
+  abductor: ['wc2', 'wc3', 'wc5', 'wai2', 'wag1', 'wag2'],
   // v644 · `we5` rollitos: rodar el peso del tronco mete carga axial VARIABLE sobre las cervicales.
-  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1', 'we5'],
+  cuello: ['we3', 'we4', 'wa1', 'wa2', 'wac1', 'we5', 'wa5', 'wa6'],
   // v644 · `wr2` sentadilla de movilidad lenta: dorsiflexión BAJO CARGA, el mismo patrón por el que
   // su hermana `wai1` ya estaba fuera de esta zona.
-  tobillo: ['wai1', 'wai2', 'wai4', 'wt2', 'wr2'],
-  // 🔒 `we4 «Plancha de hombros»` habla del hombro en el nombre y su descripción dice «en
-  // posición de lagartija alta… los brazos no se doblan»: es peso corporal completo sobre las
-  // muñecas en extensión máxima con el codo bloqueado. El arquetipo del gesto que hay que
-  // quitar, escondido bajo un nombre de escápula, y EN EL CALENTAMIENTO.
+  tobillo: ['wai1', 'wai2', 'wai4', 'wt2', 'wr2', 'wc2', 'wag2'],
+  // 🔒 `we4 «Plancha de hombros»` habla del hombro en el nombre y es peso corporal completo sobre las
+  // muñecas en extensión máxima. El arquetipo del gesto que hay que quitar, escondido bajo un nombre
+  // de escápula, y EN EL CALENTAMIENTO.
   // v644 · `we1` Cat-Cow: cuadrupedia con la muñeca en extensión máxima, el mismo mecanismo que ya
   // excluye la plancha y la lagartija.
-  muneca: ['we4', 'we1'],
+  muneca: ['we4', 'we1', 'wa1', 'wa6', 'wac4', 'wag3'],
+  codo: ['wa6'],
+  pecho: ['wh3'],
 };
 // Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
 // Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
@@ -3621,6 +3643,156 @@ function wuTake(pool, n, rot) {
   const out = [];
   for (let i = 0; i < k; i++) out.push(p[(r + i) % p.length]);
   return out;
+}
+
+// ── EL CALENTAMIENTO POR RECETA (v721, 24-oct-2026) ─────────────────────────────────────
+// 🔴 EL MOTOR VIEJO ELEGÍA POR MÚSCULO: sumaba los grupos de la rutina y tomaba dos piezas de cada
+// zona. Por eso los dos días de glúteo (GP_A y GP_B) recibían casi el mismo calentamiento y NINGUNO
+// traía activación de glúteo: el grupo de activación inferior era sentadilla, desplante, bisagra y
+// talones. Lo midieron Coach Pro y Valery el 23-oct (`docs/calentamiento-2026-10-23/`) y el PO aprobó
+// el reemplazo el 24-oct («me gusta el nuevo método de calentamiento, vamos a probarlo»): UNA RECETA
+// FIJA POR TIPO DE SESIÓN, en cuatro pasos — cardio suave, movilidad del día, activación y las series
+// de aproximación de cada ejercicio, que ya existían.
+//
+// ⚕️ LAS CADENAS SON DE LAURA (dictamen vinculante, `laura.md` §2), no un detalle de implementación:
+//  · cada hueco es una CADENA ORDENADA escrita a mano: si la primera pieza cae por la zona de la
+//    persona entra la siguiente, y si ninguna sirve el hueco queda VACÍO. **Jamás** se cae a
+//    «cualquier pieza del grupo»: un calentamiento de menos no hace daño, uno contraindicado sí;
+//  · la cadena se evalúa contra la UNIÓN de las zonas declaradas, y una pieza ya puesta no se repite;
+//  · el par `[A, B]` al frente de una cadena es lo ÚNICO que mueve el desplazamiento de v644 (el que
+//    sale del plan guardado): el resto de la receta es fija. «Fija» no es «inmune»: el filtro corre
+//    igual sobre ella, y con tobillo declarado un día de pierna pierde sus dos fijas.
+// 🔒 Cambiar el mecanismo CADUCA el dictamen que lo cubría (lección de v644). Estas recetas están
+//    barridas por Laura contra las 11 zonas; el test recorre recetas × zonas solo, pero una pieza
+//    NUEVA en una cadena necesita su casilla en la matriz de ella antes de entrar.
+// 🔒 Los cortes del PO (24-oct, sobre la página que vio): GP_A sin `wr2` y GP_B sin el par 90/90 o
+//    estocada, para que los días de glúteo queden en 7 movimientos con el cardio.
+const WU_RECIPES = {
+  EMPUJE:         { label: 'Empuje', emoji: '💪', gen: { min: 3 },
+                    mov: [['wh1'], ['wh3', 'wh2'], ['wm1']], act: [['wa3'], ['we4', 'wah1']] },
+  TRACCION:       { label: 'Tirón', emoji: '💪', gen: { min: 3 },
+                    mov: [['we2'], ['wh1']], act: [['wa6', 'wah1'], [['wa3', 'wa5'], 'wa3']] },
+  PIERNA:         { label: 'Pierna', emoji: '🦵', gen: { min: 4, maq: 'bici' },
+                    mov: [['wt2', 'wt1'], ['wc2', 'wc1'], [['wc3', 'wr3'], 'wc1']], act: [['wc4'], [['wc5', 'wag2'], 'wag3']] },
+  TREN_SUP:       { label: 'Tren superior', emoji: '💪', gen: { min: 3 },
+                    mov: [['wh1'], ['we2'], ['wh3', 'wh2']], act: [['wa3'], ['we4', 'wah1']] },
+  HOMBROS_BRAZOS: { label: 'Hombros y brazos', emoji: '💪', gen: { min: 3 },
+                    mov: [['wh1'], ['wh2'], ['wm1']], act: [['wa3'], [['wa5', 'wah1']]] },
+  CARDIO_CORE:    { label: 'Cardio y core', emoji: '🔥', gen: { min: 3 },
+                    mov: [['wc1'], ['we1', 'we2']], act: [['wac2', 'wac5']], imp: { en: 'mov', huecos: [['wt1'], ['wai4']] } },
+  FULL_BODY:      { label: 'Cuerpo completo', emoji: '⚡', gen: { min: 4 },
+                    mov: [['wc2', 'wc1'], ['wt2', 'wt1'], ['wh1']], act: [['wc4'], ['wa3']] },
+  GP_A:           { label: 'Glúteo y pierna', emoji: '🦵', gen: { min: 5 },
+                    mov: [['wt2', 'wt1'], ['wc2', 'wc1'], ['wc3', 'wc1']], act: [['wc4'], ['wag1', 'wag3'], ['wag2', 'wag3']],
+                    reps: { wc4: '15 · 2 s arriba' } },
+  GP_B:           { label: 'Glúteo y pierna', emoji: '🦵', gen: { min: 5 },
+                    mov: [['wt2', 'wt1'], ['wr3'], ['wc5']], act: [['wc4'], ['wai3'], ['wag3', 'wag1']] },
+  TREN_SUP_F:     { label: 'Tren superior', emoji: '💪', gen: { min: 4, maq: 'elíptica' },
+                    mov: [['wh1'], ['we2'], ['wah2', 'wh2']], act: [['wa3'], ['wh2'], ['wa1', 'wah1']] },
+  EMP_BRAZOS:     { label: 'Empuje y brazos', emoji: '💪', gen: { min: 3 },
+                    mov: [['wh1'], ['wh3', 'wh2'], ['wm1']], act: [['wa3'], ['wh2']] },
+  // 🔒 `wac2` NO va primero en el día de core de mujer (Laura §3.2): la app todavía no lee postparto
+  //    ni diástasis, y la respiración y el perro de caza sirven a las dos. `we5` no entra en ninguna.
+  CORE_CARDIO:    { label: 'Core y cardio', emoji: '🔥', gen: { min: 3 },
+                    mov: [['we1', 'we2'], ['we2'], ['wc1']], act: [['wac5'], ['wac4', 'wac2']], imp: { en: 'act', huecos: [['wt2', 'wt1'], ['wai4']] } },
+};
+// El cardio suave según DÓNDE entrena. 🔒 `wg2` cierra toda cadena del general: Laura lo dejó sin
+// exclusión en ninguna zona, así que el bloque general existe siempre (su candado 5).
+const WU_GEN_BY_PLACE = { gym: 'wg1', parque: 'wg3', casa: 'wg2', corporal: 'wg2' };
+// Saltos o trote en la sesión → el día de core y cardio suma tobillo y talones (Coach Pro y Valery).
+// Mismo criterio que `GEN_HIIMPACT_RE` más trote y carrera; `\bsalt` y no `salt` (v547: «asalto»).
+const WU_IMPACT_RE = /\bsalt|jump|burpee|pliometr|plyo|sprint|skipping|\btrot|\bcorr(er|ida|iendo)\b|carrera|rodillas altas/;
+function wuSessionImpact(exercises) {
+  return (Array.isArray(exercises) ? exercises : []).some(e => !!e && WU_IMPACT_RE.test(_norm(e.name)));
+}
+
+// Qué receta le toca a una sesión, por los músculos de sus ejercicios. PURA.
+// 🔒 Por MÚSCULOS y no por el nombre de la rutina: el código del generador (GP_A, EMPUJE…) no viaja en
+//    la rutina, y la que arma el coach a mano lleva el nombre que él quiso.
+// 🔒 GP_A (glúteo: almeja, caminata con banda) contra GP_B (pierna y bisagra: isquios, patada atrás) lo
+//    decide el músculo con MÁS ejercicios; si empatan, el PRIMERO de tren inferior, que es con el que
+//    arranca en frío. Las dos plantillas del generador traen 3 y 3, así que ahí decide el primero (el
+//    hip thrust en A, la sentadilla o el rumano en B). Una regla por compuestos que probé primero salió
+//    VERDE en la matriz: no decidía nada que esta no decida, y se quitó.
+// 🔒 Sin sexo declarado cae a las de Coach Pro, que son las generales (igual que el generador).
+const _WU_UPPER = ['pecho', 'espalda', 'hombros', 'biceps', 'triceps'];
+const _WU_LOWER = ['piernas', 'gluteo'];
+function wuRecipeCode(exercises, sex) {
+  const exs = (Array.isArray(exercises) ? exercises : []).filter(Boolean);
+  const n = {};
+  exs.forEach(e => { const m = e.muscle || 'otro'; n[m] = (n[m] || 0) + 1; });
+  const has = m => (n[m] || 0) > 0;
+  const upper = _WU_UPPER.some(has), lower = _WU_LOWER.some(has);
+  const mujer = sex === 'F';
+  if (upper && lower) return 'FULL_BODY';
+  if (lower) {
+    if (!mujer) return 'PIERNA';
+    const dt = (n.gluteo || 0) - (n.piernas || 0);
+    if (dt) return dt > 0 ? 'GP_A' : 'GP_B';
+    const primero = exs.find(e => _WU_LOWER.indexOf(e.muscle) >= 0);
+    return primero && primero.muscle === 'piernas' ? 'GP_B' : 'GP_A';
+  }
+  if (upper) {
+    const p = has('pecho'), e = has('espalda');
+    if (p && e) return mujer ? 'TREN_SUP_F' : 'TREN_SUP';
+    if (e) return 'TRACCION';
+    if (p) return mujer ? 'EMP_BRAZOS' : 'EMPUJE';
+    return mujer ? 'EMP_BRAZOS' : 'HOMBROS_BRAZOS';
+  }
+  if (has('core') || has('cardio')) return mujer ? 'CORE_CARDIO' : 'CARDIO_CORE';
+  return 'FULL_BODY';
+}
+
+// Resuelve una receta para una persona. PURA: `lookup(id)` devuelve la pieza de la biblioteca (vive
+// en app-6) y todo lo demás llega por parámetro. Devuelve ids, nunca piezas: quien pinta las busca.
+//   opts.lim      zonas declaradas (`limitationsFor(...).keys`); se filtra contra su UNIÓN
+//   opts.rot      desplazamiento del plan guardado (`wuRotForRoutine`); solo mueve los pares
+//   opts.place    gym | casa | corporal | parque → qué cardio suave
+//   opts.impacto  la sesión trae saltos o trote (`wuSessionImpact`)
+//   opts.sesPats  patrones del primer ejercicio si va SIN carga (`wuSessionPatterns`, regla 2 de v594)
+// 🔒 Las dos reglas del PO de v594 siguen vivas. La 1 (el calentamiento no repite un patrón dentro de
+//    sí mismo) la cumplen las recetas POR CONSTRUCCIÓN y la vigila el test que las recorre todas: un
+//    filtro aquí escondería en silencio una receta mal escrita, que es un error de quien la escribe.
+//    La 2 sí vive aquí, porque depende de la sesión: la ACTIVACIÓN no repite el primer ejercicio
+//    cuando ese va sin carga (con carga, la versión sin peso es una aproximación y se queda).
+function wuResolveRecipe(code, opts) {
+  const o = opts || {};
+  const rec = WU_RECIPES[code] || WU_RECIPES.FULL_BODY;
+  const lookup = typeof o.lookup === 'function' ? o.lookup : () => null;
+  const lim = Array.isArray(o.lim) && o.lim.length ? o.lim : null;
+  const sesPats = new Set(Array.isArray(o.sesPats) ? o.sesPats : []);
+  const usados = new Set();
+  const repsDe = id => (rec.reps && rec.reps[id]) || null;
+  const tomar = (cands, esAct) => {
+    for (const id of cands) {
+      if (usados.has(id)) continue;
+      const p = lookup(id);
+      if (!p) continue;
+      if (lim && warmupContraindicated(p, lim)) continue;
+      if (esAct && sesPats.has(wuMovePattern(p.name))) continue;
+      usados.add(id);
+      return id;
+    }
+    return null;
+  };
+  const resolver = (huecos, esAct) => {
+    const out = [];
+    (huecos || []).forEach(h => {
+      const cands = Array.isArray(h[0]) ? wuTake(h[0], h[0].length, o.rot).concat(h.slice(1)) : h.slice();
+      const id = tomar(cands, esAct);
+      if (id) out.push({ id, reps: repsDe(id) });
+    });
+    return out;
+  };
+  const genId = tomar([WU_GEN_BY_PLACE[o.place] || 'wg1', 'wg2'], false);
+  const gen = genId ? { id: genId, reps: rec.gen.min + ' min' + (genId === 'wg1' && rec.gen.maq ? ' · ' + rec.gen.maq : '') } : null;
+  const mov = resolver(rec.mov, false);
+  const act = resolver(rec.act, true);
+  if (o.impacto && rec.imp) {
+    const extra = resolver(rec.imp.huecos, rec.imp.en === 'act');
+    (rec.imp.en === 'act' ? act : mov).push(...extra);
+  }
+  return { code: WU_RECIPES[code] ? code : 'FULL_BODY', label: rec.label, emoji: rec.emoji, gen, mov, act };
 }
 
 // ── EL MISMO CERO DE MÁS, PERO EN LAS REPETICIONES (v593) ──────────────────────────────
@@ -13318,6 +13490,12 @@ if (typeof module !== 'undefined' && module.exports) {
     wuRotForRoutine,
     wuTake,
     wuSessionPatterns,
+    WU_RECIPES,
+    WU_GEN_BY_PLACE,
+    wuSessionImpact,
+    wuRecipeCode,
+    wuResolveRecipe,
+    GEN_SPLITS,
     mergeCoachMsgs,
     ROUTINE_PROMISES,
     routinePromiseGap,

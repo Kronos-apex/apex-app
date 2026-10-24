@@ -1907,38 +1907,59 @@ test('🔴 lumbar: se van las sentadillas CON BARRA, se quedan las terapéuticas
     .forEach(n => assert.ok(!cae(core.GEN_ZONE_EXCL.hombro, n), `"${n}" es de la columna segura de hombro`));
 });
 
+// v721 · UNA sola forma de montar el MOTOR REAL del calentamiento para las pruebas. Cada test recortaba
+// app-6 a su manera y le inyectaba las globales que usaba ESE motor; al pasar a recetas, los nueve
+// recortes quedaron midiendo un archivo que ya no tiene esa forma. Es la lección de v594: una función
+// extraída sin sus globales mide la versión VIEJA y dice «no cambió nada». Aquí las globales son las
+// funciones REALES de avi-core, y el recorte se AFIRMA antes de usarlo.
+function _wuMotor() {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY = {');
+  const fin = src.indexOf('\nfunction wuKey(');
+  const f0 = src.indexOf('function findWarmupEx(');
+  assert.ok(ini > 0 && fin > ini && f0 > 0, 'CONTROL · no encontré la biblioteca y el motor del calentamiento en app-6-extra.js');
+  const find = src.slice(f0, src.indexOf('\n}', f0) + 2);
+  const deps = ['warmupContraindicated', 'exTrack', 'wuMovePattern', 'wuSessionPatterns', 'wuTake',
+                'wuRecipeCode', 'wuResolveRecipe', 'wuSessionImpact', 'wuRotForRoutine'];
+  deps.forEach(d => assert.strictEqual(typeof core[d], 'function', `CONTROL · avi-core no exporta ${d}`));
+  // 🔒 El separador es un SALTO DE LÍNEA, no un `;`: el trozo puede terminar en un comentario `//` (v594).
+  const m = new Function(...deps, src.slice(ini, fin) + '\n' + find + '\nreturn {WARMUP_LIBRARY, buildWarmup, wuOptsFor, findWarmupEx};')(
+    ...deps.map(d => core[d]));
+  assert.strictEqual(typeof m.buildWarmup, 'function', 'CONTROL · la extracción no devolvió el motor');
+  return m;
+}
+// Todo lo que el motor entrega, en orden: cardio suave, movilidad, activación.
+const _wuIds = w => [w.general, ...w.articulares, ...w.activaciones].filter(Boolean).map(e => e.id);
+
 test('🔴 el CALENTAMIENTO también respeta la lesión (ejecutado, no leído)', () => {
   // El filtro limpiaba el entreno y dejaba el calentamiento intacto: a quien declaraba hernia se
   // le pedía «dobla el cuerpo hacia adelante y RELAJA la espalda completamente» (we3) antes de
   // entrenar. Este test EJECUTA el buildWarmup real de app-6-extra.js — un candado que sólo
   // MIRARA el código tendría los huecos que ya nos costaron el teléfono de v418.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const ini = src.indexOf('const WARMUP_LIBRARY');
-  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
-  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
-  const cierre = src.indexOf('\n}', fin);
-  const sandbox = new Function('warmupContraindicated',
-    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated);
-  const { WARMUP_LIBRARY, buildWarmup } = sandbox;
+  const { WARMUP_LIBRARY, buildWarmup } = _wuMotor();
+  const ids = _wuIds;
 
-  const rutina = [{ name: 'Plancha Frontal', muscle: 'core' }, { name: 'Jalón al Pecho', muscle: 'espalda' }];
-  const sinLim = buildWarmup(rutina, null);
-  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id);
-  assert.ok(ids(sinLim).includes('we5'), 'sin limitación el calentamiento sigue igual que siempre (we5 presente)');
+  // v721 · el día de pierna B de una mujer es el que trae isquios de pie y bisagra sin peso: las dos
+  // piezas de su receta que la zona lumbar tiene que quitar (Laura, 23-oct).
+  const rutina = [{ name: 'Peso Muerto Rumano con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' },
+                  { name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }];
+  const sinLim = buildWarmup(rutina, null, { sex: 'F' });
+  // CONTROL DE DISCRIMINACIÓN: sin limitación las dos están. Si no, lo de abajo aprobaría por casualidad.
+  assert.ok(ids(sinLim).includes('wr3') && ids(sinLim).includes('wai3'), 'sin limitación el día de pierna B trae wr3 y wai3');
 
   const lim = parseLimitations('Hernia discal L4-L5, dolor lumbar al flexionar').keys;
   assert.ok(lim.includes('lumbar'), 'la nota debe detectarse como lumbar');
-  const conLim = buildWarmup(rutina, lim);
-  ['we3', 'we5', 'wai3'].forEach(id =>
+  const conLim = buildWarmup(rutina, lim, { sex: 'F' });
+  ['we3', 'we5', 'wai3', 'wac3', 'wc3', 'wr3'].forEach(id =>
     assert.ok(!ids(conLim).includes(id), `${id} está contraindicado en lumbar y sigue en el calentamiento`));
   assert.ok(ids(conLim).length >= 2, 'el calentamiento no puede quedar vacío tras filtrar');
 
-  // La rodilla tiene su propia lista, y el nombre solo no delata a we3: por eso se filtra por id.
+  // La rodilla tiene su propia lista, y el nombre solo no delata a todas: por eso se filtra por id.
   const limR = parseLimitations('Operación de menisco en la rodilla').keys;
-  ['wr2', 'wai1', 'wai2'].forEach(id => assert.ok(
-    !ids(buildWarmup([{ name: 'Prensa de Pierna', muscle: 'piernas' }], limR)).includes(id),
-    `${id} está contraindicado en rodilla y sigue en el calentamiento`));
+  const piernaR = ids(buildWarmup([{ name: 'Prensa de Pierna', muscle: 'piernas' }], limR));
+  ['wr2', 'wai1', 'wai2', 'wc2', 'wc3'].forEach(id => assert.ok(
+    !piernaR.includes(id), `${id} está contraindicado en rodilla y sigue en el calentamiento`));
 
   // Y el catálogo de calentamiento no puede tener ids fantasma en la lista de exclusión.
   const todos = new Set(Object.keys(WARMUP_LIBRARY).flatMap(k => WARMUP_LIBRARY[k].map(e => e.id)));
@@ -18092,56 +18113,57 @@ test('🔒 CABLEADO v594: el calentamiento REAL deja de repetir el movimiento', 
   // única forma de afirmar el COMPORTAMIENTO y no la presencia de una línea.
   // 🔬 Sin inyectarlas, sus guardas `typeof x==='function'` dan false, el filtro no corre y el
   //    test mediría el comportamiento VIEJO creyendo medir el nuevo.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const trozo = src.slice(src.indexOf('const WARMUP_LIBRARY = {'),
-    src.indexOf('\nfunction ', src.indexOf('function buildWarmup(') + 10));
-  // 🔴 EL SALTO DE LINEA NO ES COSMETICO: el trozo TERMINA en una linea de comentario `//`,
-  //    asi que sin el, lo que se concatene queda DENTRO del comentario y no corre nunca. Con CRLF
-  //    el `\r` final hacia de terminador y lo tapaba; con LF —que es como lo sirve el checkout de CI—
-  //    `build` salia undefined. Los finales de linea de este repo NO son estables (v537).
-  const build = new Function('wuMovePattern,wuSessionPatterns,exTrack', trozo + '\n; return buildWarmup;')(
-    core.wuMovePattern, core.wuSessionPatterns, core.exTrack);
-  assert.strictEqual(typeof build, 'function',
-    'la extraccion de buildWarmup no devolvio una funcion: el recorte del archivo esta mal');
+  // v721 · con las recetas, el motor ya no junta dos grupos que se pisen; las dos reglas siguen
+  // vivas dentro de `wuResolveRecipe` y se prueban donde de verdad pueden morder.
+  const { buildWarmup: build } = _wuMotor();
   const pats = wu => [...(wu.articulares || []), ...(wu.activaciones || [])]
     .map(x => core.wuMovePattern(x.name)).filter(Boolean);
   const dup = l => l.length !== new Set(l).size;
 
-  // Día de pierna que arranca CON CARGA: no puede repetir patrón dentro del calentamiento…
-  const pierna = build([{ name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' },
-                        { name: 'Prensa', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }], null);
-  assert.ok(!dup(pats(pierna)), '🔴 volvió el calentamiento con dos sentadillas (o dos zancadas)');
-  // …y la activación NO se queda vacía: filtrar antes del corte hace que entre el siguiente.
-  assert.ok((pierna.activaciones || []).length >= 2, '🔴 el filtro dejó el calentamiento corto');
-  // 🔒 Y la MOVILIDAD conserva sus seis (2 por zona: cadera, rodillas, tobillos). Filtrar DESPUÉS
-  //    del corte en vez de antes se lleva una y nadie lo nota: el duplicado desaparece igual, pero
-  //    el calentamiento se queda corto. Sin esta cifra, ese sabotaje sale VERDE.
-  assert.strictEqual((pierna.articulares || []).length, 6,
-    '🔴 la movilidad se quedó corta: el filtro está corriendo DESPUÉS del recorte');
-  // 🔒 Y con carga, la sentadilla de activación SÍ puede seguir estando (regla 3 del PO).
+  // Regla 1: NINGUNA receta repite un patrón, en ningún sexo, lugar ni desplazamiento.
+  // Se recorre el motor entero en vez de un caso: una receta nueva mal escrita cae aquí sola.
+  const sesiones = [
+    [{ name: 'Press de Banca', muscle: 'pecho', type: 'Compuesto' }],
+    [{ name: 'Jalón al Pecho', muscle: 'espalda', type: 'Compuesto' }],
+    [{ name: 'Press de Banca', muscle: 'pecho' }, { name: 'Remo', muscle: 'espalda' }],
+    [{ name: 'Press Militar', muscle: 'hombros' }],
+    [{ name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }],
+    [{ name: 'Hip Thrust', muscle: 'gluteo', type: 'Compuesto', track: 'peso_reps' }],
+    [{ name: 'Plancha', muscle: 'core' }, { name: 'Burpees', muscle: 'cardio' }],
+    [{ name: 'Sentadilla', muscle: 'piernas' }, { name: 'Press', muscle: 'pecho' }],
+  ];
+  let vistas = 0;
+  sesiones.forEach(s => ['M', 'F'].forEach(sex => ['gym', 'casa', 'parque'].forEach(place => [0, 1].forEach(rot => {
+    const w = build(s, null, { sex, place, rot });
+    vistas++;
+    assert.ok(!dup(pats(w)), `🔴 la receta ${w.recipe} repite un movimiento dentro del calentamiento`);
+  }))));
+  assert.strictEqual(vistas, 96, 'CONTROL DE COBERTURA · no se recorrieron todas las combinaciones');
 
-  // Día que arranca con la MISMA sentadilla SIN carga: la activación no la repite.
-  const corporal = build([{ name: 'Sentadilla de Peso Corporal', muscle: 'piernas', type: 'Bodyweight', track: 'reps' },
-                          { name: 'Puente de Glúteo', muscle: 'gluteo', type: 'Bodyweight', track: 'reps' }], null);
-  assert.ok(!(corporal.activaciones || []).some(x => core.wuMovePattern(x.name) === 'sentadilla'),
-    '🔴 la activación repite el primer ejercicio de la sesión: es literalmente su primera serie');
-  assert.ok((corporal.activaciones || []).length >= 2, 'la activación se quedó sin nada que hacer');
-  // 🔒 La MOVILIDAD conserva la suya a propósito (tempo lento, preparación articular): el PO pidió
-  //    quitar la repetición, no el trabajo de movilidad.
-  assert.ok((corporal.articulares || []).some(x => core.wuMovePattern(x.name) === 'sentadilla'),
-    '🔴 se llevó por delante la movilidad, que no era lo que sobraba');
-
-  // 🔬 EL CASO QUE DE VERDAD PRUEBA LA REGLA 2, y costó un sabotaje verde encontrarlo: en la
-  //    sentadilla, la regla 1 ya la tapa —la movilidad mete su sentadilla ANTES y el patrón queda
-  //    marcado—, así que quitar la regla 2 no cambiaba nada y el sabotaje pasaba. Donde SOLO ella
-  //    actúa es en el EMPUJE: la movilidad de hombro no cubre ese patrón, así que una sesión que
-  //    arranca con lagartijas se llevaba «Flexión de pecho» como activación.
-  const empuje = build([{ name: 'Lagartijas (Push-up)', muscle: 'pecho', type: 'Bodyweight', track: 'reps' },
-                        { name: 'Remo Invertido', muscle: 'espalda', type: 'Bodyweight', track: 'reps' }], null);
-  assert.ok(!(empuje.activaciones || []).some(x => core.wuMovePattern(x.name) === 'empuje'),
+  // 🔬 Regla 2 donde SOLO ella actúa: el tren superior de mujer trae la lagartija inclinada como
+  //    activación. Si la sesión ARRANCA con lagartijas sin carga, esa activación es literalmente su
+  //    primera serie: no va, y entra su alterna de la cadena (`wa1 > wah1`, Laura).
+  const tren = s => build(s, null, { sex: 'F' });
+  const conLagartija = tren([{ name: 'Lagartijas (Push-up)', muscle: 'pecho', type: 'Bodyweight', track: 'reps' },
+                             { name: 'Remo con Mancuerna', muscle: 'espalda', type: 'Compuesto', track: 'peso_reps' }]);
+  assert.strictEqual(conLagartija.recipe, 'TREN_SUP_F', 'CONTROL · la sesión no cayó en el tren superior de mujer');
+  assert.ok(!conLagartija.activaciones.some(x => core.wuMovePattern(x.name) === 'empuje'),
     '🔴 la activación vuelve a mandar lagartijas a quien arranca la sesión con lagartijas');
-  assert.ok((empuje.activaciones || []).length >= 2, 'la activación de tren superior se quedó corta');
+  assert.ok(conLagartija.activaciones.some(x => x.id === 'wah1'), 'el hueco de la lagartija no recibió su alterna');
+  // CONTROL DE DISCRIMINACIÓN: arrancando con otra cosa, la lagartija SÍ va.
+  const conPress = tren([{ name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto', track: 'peso_reps' },
+                         { name: 'Remo con Mancuerna', muscle: 'espalda', type: 'Compuesto', track: 'peso_reps' }]);
+  assert.ok(conPress.activaciones.some(x => x.id === 'wa1'), 'sin lagartijas al arrancar, la lagartija de activación tiene que estar');
+
+  // 🔒 Regla 3: con CARGA el mismo patrón se queda — ahí la versión sin peso es una aproximación.
+  //    El día B de pierna trae la bisagra sin peso: arrancando con peso muerto rumano CON barra se
+  //    queda, y arrancando con la bisagra SIN peso se va (y su hueco queda vacío: no tiene alterna).
+  const diaB = primero => build([primero, { name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }],
+    null, { sex: 'F' }).activaciones.map(x => x.id);
+  assert.ok(diaB({ name: 'Peso Muerto Rumano con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }).includes('wai3'),
+    '🔴 con carga la bisagra sin peso es una aproximación legítima y se fue');
+  assert.ok(!diaB({ name: 'Patrón de Bisagra (Buenos Días sin peso)', muscle: 'piernas', type: 'Compuesto', track: 'reps' }).includes('wai3'),
+    '🔴 la activación repite el primer ejercicio de la sesión, que va sin carga');
 });
 
 // ══════════════════════════════════════════════════════
@@ -20640,36 +20662,33 @@ test('🔴 wc3 (90/90) fuera del calentamiento de quien declara RODILLA — dict
   // 2; con rodilla declarada, wc2 sale por el regex del ENTRENO («estocada») y wc3 hereda su
   // puesto. Se la estaban comiendo dos personas con la rodilla dañada (una operada).
   // Se EJECUTA buildWarmup de verdad: un candado que solo leyera el array no vería la promoción.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const ini = src.indexOf('const WARMUP_LIBRARY');
-  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
-  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
-  const cierre = src.indexOf('\n}', fin);
-  const { WARMUP_LIBRARY, buildWarmup } = new Function('warmupContraindicated',
-    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated);
-  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id);
+  // v721 · con las recetas la promoción ya no la hace un pool que se reordena: la hace la CADENA que
+  // escribió Laura. El riesgo es el mismo y se prueba igual, ejecutando el motor real.
+  const { buildWarmup } = _wuMotor();
+  const ids = _wuIds;
   const pierna = [{ name: 'Prensa de Pierna', muscle: 'piernas' }, { name: 'Sentadilla Goblet', muscle: 'piernas' }];
-
-  // CONTROL DE DISCRIMINACIÓN: sin limitación wc3 NO sale (gana wc2, que es el 2.º del pool). Si
-  // este assert cayera, el test de abajo aprobaría por casualidad y no por el arreglo.
-  const libre = ids(buildWarmup(pierna, null));
-  assert.ok(libre.includes('wc2'), 'sin limitación el par de cadera debe ser wc1+wc2 (si no, el pool cambió)');
-  assert.ok(!libre.includes('wc3'), 'sin limitación wc3 no debería aparecer: solo llega por promoción');
+  // El par del día de pierna es (90/90 | isquios de pie): con desplazamiento 0 sale el 90/90.
+  // CONTROL DE DISCRIMINACIÓN: sin limitación, wc3 y wc2 SÍ están. Si este assert cayera, el de abajo
+  // aprobaría por casualidad y no por el filtro.
+  const libre = ids(buildWarmup(pierna, null, { rot: 0 }));
+  assert.ok(libre.includes('wc3') && libre.includes('wc2'), 'sin limitación el día de pierna trae el 90/90 y la estocada');
 
   const limR = parseLimitations('Rodillas desgastadas, lesión de rodilla operada').keys;
   assert.ok(limR.includes('rodilla'), 'la nota real de estas dos personas debe leerse como rodilla');
-  const conR = ids(buildWarmup(pierna, limR));
-  assert.ok(!conR.includes('wc3'), '🔴 wc3 (90/90) sigue llegando a quien declara rodilla: flexión profunda + rotación tibiofemoral bajo el peso del tronco');
-  assert.ok(!conR.includes('wc2'), 'wc2 debe seguir fuera con rodilla (regex «estocada»)');
-  // Y lo que queda tiene que ser MEJOR, no solo distinto: wc4 (puente de glúteo) la aprobó Laura el
-  // 8-ago y además activa lo que van a usar ese día.
-  assert.ok(conR.includes('wc1') && conR.includes('wc4'), 'con wc3 fuera, el par de cadera debe quedar wc1+wc4 (los dos aprobados el 8-ago)');
-  assert.ok(conR.length >= 2, 'el calentamiento no puede quedar vacío tras filtrar');
-  // Ningún id fantasma: la lista de exclusión y el catálogo no se pueden separar.
-  const todos = new Set(Object.keys(WARMUP_LIBRARY).flatMap(k => WARMUP_LIBRARY[k].map(e => e.id)));
-  Object.values(core.WARMUP_ZONE_EXCL_IDS).flat().forEach(id =>
-    assert.ok(todos.has(id), `WARMUP_ZONE_EXCL_IDS apunta a "${id}", que no existe en WARMUP_LIBRARY`));
+  [0, 1, 2, 3].forEach(rot => {
+    const conR = ids(buildWarmup(pierna, limR, { rot }));
+    assert.ok(!conR.includes('wc3'), '🔴 wc3 (90/90) sigue llegando a quien declara rodilla: flexión profunda + rotación tibiofemoral bajo el peso del tronco');
+    assert.ok(!conR.includes('wc2'), 'wc2 debe seguir fuera con rodilla');
+    // Y lo que entra es lo que dictó Laura, no lo que quede: la estocada cede a los círculos de
+    // cadera y el par cede a los isquios de pie (`(wc3 | wr3) > wc1`).
+    assert.ok(conR.includes('wc1') && conR.includes('wr3'), 'con rodilla, la cadena del día de pierna debe dar wc1 y wr3');
+    assert.ok(conR.length >= 4, 'el calentamiento no puede quedar vacío tras filtrar');
+  });
+  // El día de glúteo A de mujer lleva el 90/90 FIJO: con rodilla cede a wc1, que ya usó la estocada,
+  // así que el hueco queda VACÍO — jamás se cae a «cualquier pieza de cadera» (Laura §2).
+  const gpa = buildWarmup([{ name: 'Hip Thrust con Barra', muscle: 'gluteo', type: 'Compuesto' }], limR, { sex: 'F' });
+  assert.strictEqual(gpa.recipe, 'GP_A', 'CONTROL · el día de glúteo no cayó en la receta A');
+  assert.deepStrictEqual(gpa.articulares.map(e => e.id), ['wt2', 'wc1'], '🔴 el hueco del 90/90 se llenó con algo que Laura no dictó');
 });
 
 test('🔴 el aviso «ojo con su zona» también en la pantalla donde se ENTRENA, no solo en el editor', () => {
@@ -20701,8 +20720,10 @@ test('🔴 el aviso «ojo con su zona» también en la pantalla donde se ENTRENA
   // 🔴 El primer intento de este assert (`/_wuItems\s*=\s*custom\s*\|\|/`) APROBÓ un sabotaje que
   // ponía `custom||[]` y dejaba muda la rama auto-derivada (las 118 rutinas de 124). Un candado que
   // solo comprueba el principio de la expresión no vigila la expresión: se nombran las DOS fuentes.
-  assert.ok(/_wuItems\s*=\s*custom\s*\|\|\s*\[\s*\.\.\.articulares\s*,\s*\.\.\.activaciones\s*\]/.test(cuerpo),
-    'el aviso no cubre las dos ramas (lista propia del coach y auto-derivada)');
+  // v721 · la rama auto-derivada suma el cardio suave: las TRES fuentes van nombradas, o un aviso que
+  // dejara fuera una de ellas aprobaría igual.
+  assert.ok(/_wuItems\s*=\s*custom\s*\|\|\s*\[\s*\.\.\.\(general\?\[general\]:\[\]\)\s*,\s*\.\.\.articulares\s*,\s*\.\.\.activaciones\s*\]/.test(cuerpo),
+    'el aviso no cubre las dos ramas (lista propia del coach y auto-derivada, con su cardio suave)');
   // Y un aviso sin estilo es un aviso invisible.
   const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
   assert.ok(/\.wu-ex-warn\{[^}]*var\(--ort\)/.test(css), '.wu-ex-warn sin tinta --ort: el aviso queda ilegible o invisible');
@@ -20767,8 +20788,12 @@ test('🔴 ningún título de sección se pinta sin ejercicios debajo, y una lis
   const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
   assert.ok(cuerpo.length > 800 && /wu-section-title/.test(cuerpo), 'CONTROL DE COBERTURA · el recorte de renderWarmup no trae su cuerpo');
   // Cada título va dentro de la guarda de SU lista (y no de la otra, que sería el mismo defecto).
-  assert.ok(/articulares\.length\?`<div class="wu-section-title">[^`]*Movilidad/.test(cuerpo),
+  // v721 · el título de Movilidad lleva su margen según haya cardio suave arriba: por eso `"[^`]*`
+  // y no `">` justo detrás de la clase.
+  assert.ok(/articulares\.length\?`<div class="wu-section-title"[^`]*Movilidad/.test(cuerpo),
     '🔴 el título de Movilidad se pinta sin comprobar que tenga ejercicios');
+  assert.ok(/general\?`<div class="wu-section-title wu-gen-title"[^`]*Cardio suave/.test(cuerpo),
+    '🔴 el título del cardio suave se pinta sin comprobar que haya cardio suave');
   assert.ok(/activaciones\.length\?`<div class="wu-section-title"[^`]*Activación/.test(cuerpo),
     '🔴 el título de Activación se pinta sin comprobar que tenga ejercicios');
   // Una lista propia sin ningún id vivo NO cuenta como lista propia, y sin nada que ofrecer no hay tarjeta.
@@ -20833,54 +20858,49 @@ test('🔴 el calentamiento sigue al PLAN, no al calendario (v644)', () => {
   assert.deepStrictEqual(core.wuTake([], 2, 7), [], 'un grupo vacío no puede lanzar');
   assert.deepStrictEqual(core.wuTake(pool, 9, 0), pool, 'pedir más de lo que hay no puede repetir ni lanzar');
 
-  // 🔒 LA PROPIEDAD QUE IMPORTA: ninguna pieza puede quedar muerta. Para cada grupo del catálogo,
-  // CADA pieza tiene que salir con algún desplazamiento — medido contra las 118 rutinas reales,
-  // esto lleva la cobertura de 20/34 a 34/34.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const ini = src.indexOf('const WARMUP_LIBRARY');
-  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
-  const { WARMUP_LIBRARY } = new Function('warmupContraindicated',
-    src.slice(ini, src.indexOf('\n}', fin) + 2) + '\nreturn {WARMUP_LIBRARY};')(core.warmupContraindicated);
-  const pools = Object.keys(WARMUP_LIBRARY);
-  assert.ok(pools.length >= 9, 'CONTROL DE COBERTURA · no se leyó la biblioteca real');
-  pools.forEach(area => {
-    const p = WARMUP_LIBRARY[area];
-    const vistos = new Set();
-    for (let rot = 0; rot < p.length; rot++) core.wuTake(p, 2, rot).forEach(e => vistos.add(e.id));
-    assert.strictEqual(vistos.size, p.length,
-      `🔴 en «${area}» hay piezas que no salen con ningún desplazamiento: ${p.filter(e => !vistos.has(e.id)).map(e => e.id)}`);
+  // 🔒 LA PROPIEDAD QUE IMPORTA: ninguna alterna puede quedar muerta. v644 lo afirmaba sobre los grupos
+  // del catálogo (34/34 piezas alcanzables). v721 · con recetas, lo único que rota son los PARES que
+  // declaró Laura, así que se afirma sobre ellos: en CADA par de CADA receta, los dos miembros salen con
+  // algún desplazamiento. Un par que siempre diera el mismo sería una pieza escrita para nadie.
+  let pares = 0;
+  Object.keys(core.WU_RECIPES).forEach(code => {
+    const rec = core.WU_RECIPES[code];
+    const huecos = [...rec.mov, ...rec.act, ...((rec.imp && rec.imp.huecos) || [])];
+    huecos.filter(h => Array.isArray(h[0])).forEach(h => {
+      pares++;
+      const salen = new Set([0, 1, 2, 3].map(rot => {
+        const r = core.wuResolveRecipe(code, { rot, impacto: true, lookup: id => ({ id, name: id }) });
+        return [...r.mov, ...r.act].map(s => s.id).find(id => h[0].indexOf(id) >= 0);
+      }));
+      h[0].forEach(id => assert.ok(salen.has(id), `🔴 en ${code} la alterna «${id}» no sale con ningún desplazamiento`));
+    });
   });
+  assert.ok(pares > 0, 'CONTROL DE COBERTURA · no se recorrieron los pares de las recetas');
 });
 
 test('🔴 el MOTOR usa el desplazamiento (no basta con que el cableado se lo pase)', () => {
   // 🔴 Los dos sabotajes que devolvían `pool.slice(0,2)` DENTRO de `buildWarmup` salieron VERDES:
   // los candados de al lado prueban `wuTake` y prueban que renderWarmup le pasa el desplazamiento,
   // pero ninguno probaba que el motor lo USE. Se ejecuta el motor real y se compara su SALIDA.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const ini = src.indexOf('const WARMUP_LIBRARY');
-  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
-  const { buildWarmup } = new Function('warmupContraindicated', 'exTrack', 'wuMovePattern', 'wuSessionPatterns', 'wuTake',
-    src.slice(ini, src.indexOf('\n}', fin) + 2) + '\nreturn {buildWarmup};')(
-    core.warmupContraindicated, core.exTrack, core.wuMovePattern, core.wuSessionPatterns, core.wuTake);
-  assert.strictEqual(typeof buildWarmup, 'function', 'CONTROL · no se extrajo buildWarmup del archivo real');
-  const rutina = [{ id: 'e1', name: 'Press de Banca con Barra', muscle: 'pecho', type: 'Compuesto' },
-                  { id: 'e2', name: 'Elevaciones Laterales', muscle: 'hombros', type: 'Aislamiento' }];
-  const ids = w => [...w.articulares, ...w.activaciones].map(e => e.id).join(',');
+  // v721 · con recetas, el desplazamiento solo mueve los PARES. El día de pierna tiene uno en la
+  // movilidad (90/90 | isquios) y otro en la activación (patada lateral | caminata con banda).
+  const { buildWarmup } = _wuMotor();
+  const rutina = [{ id: 'e1', name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' },
+                  { id: 'e2', name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }];
+  const ids = w => _wuIds(w).join(',');
   // 🔴 Las DOS mitades se afirman por SEPARADO: la primera versión comparaba la lista entera y los
   // dos sabotajes salieron VERDES, porque revertir solo la movilidad dejaba la activación rotando
   // y el resultado seguía cambiando. Un candado sobre la unión no vigila a ninguno de los dos.
   const mov = r => buildWarmup(rutina, null, { rot: r }).articulares.map(e => e.id).join(',');
   const act = r => buildWarmup(rutina, null, { rot: r }).activaciones.map(e => e.id).join(',');
   assert.ok(mov(0).length > 0 && act(0).length > 0, 'el motor no devolvió calentamiento');
-  assert.ok(mov(0) !== mov(1) || mov(0) !== mov(2),
-    '🔴 la MOVILIDAD devuelve lo mismo con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
-  assert.ok(act(0) !== act(1) || act(0) !== act(2),
-    '🔴 la ACTIVACIÓN devuelve lo mismo con cualquier desplazamiento: volvió a tomar siempre los dos primeros');
+  assert.notStrictEqual(mov(0), mov(1), '🔴 la MOVILIDAD devuelve lo mismo con cualquier desplazamiento: el par no rota');
+  assert.notStrictEqual(act(0), act(1), '🔴 la ACTIVACIÓN devuelve lo mismo con cualquier desplazamiento: el par no rota');
+  // 🔒 Y lo FIJO no se mueve: rotar solo cambia la pieza del par, nunca el tobillo ni la estocada.
+  [0, 1, 2].forEach(r => assert.ok(/^wt2,wc2,/.test(mov(r)), '🔴 el desplazamiento movió una pieza fija de la receta'));
   const r0 = ids(buildWarmup(rutina, null, { rot: 0 }));
   // 🔒 Y el control que mantiene válidos los dictámenes: sin desplazamiento, lo de siempre.
-  assert.strictEqual(ids(buildWarmup(rutina, null)), r0, '🔴 con desplazamiento 0 el motor ya no devuelve lo de siempre');
+  assert.strictEqual(ids(buildWarmup(rutina, null)), r0, '🔴 sin desplazamiento el motor ya no devuelve lo del desplazamiento 0');
 });
 
 test('🔴 tercera ronda de Laura: las 6 casillas que faltaban al dejar que cualquier pieza llegue a cualquiera', () => {
@@ -20914,16 +20934,22 @@ test('🔴 CABLEADO v644 · el desplazamiento sale de la rutina GUARDADA y nadie
   const i = a6.indexOf('function renderWarmup(');
   const cuerpo = a6.slice(i, a6.indexOf('\nfunction ', i + 10));
   assert.ok(cuerpo.length > 800, 'CONTROL DE COBERTURA · no se recortó renderWarmup');
-  assert.ok(/buildWarmup\(exercises,_wuLim,\{rot:_wuRot\}\)/.test(cuerpo), 'renderWarmup no le pasa el desplazamiento al motor');
+  // v721 · el desplazamiento viaja dentro de `wuOptsFor`, con el sexo y el lugar: una sola puerta para
+  //    las TRES pantallas que pintan el calentamiento (la de entrenar, el editor y la ficha del coach).
+  assert.ok(/buildWarmup\(exercises,_wuLim,wuOptsFor\(_wuCli,_wuGuardada\)\)/.test(cuerpo), 'renderWarmup no le pasa el plan guardado al motor');
+  const o = a6.indexOf('function wuOptsFor(');
+  assert.ok(o > 0 && /wuRotForRoutine\(rutina\)/.test(a6.slice(o, a6.indexOf('\n}', o))), 'wuOptsFor no deriva el desplazamiento de la rutina');
   // 🔒 La rutina de la que sale el desplazamiento es la GUARDADA, no `CUR.activeRoutine` — que ES la
   //    que ya adaptó el ánimo del día. Si saliera de esa, el calentamiento cambiaría con «hoy estoy
   //    cansada», que es rotar por día con otro nombre, y el PO lo descartó.
   assert.ok(/_wuGuardada=\(_wuCli&&\(_wuCli\.routines\|\|\[\]\)\.find/.test(cuerpo.replace(/\s/g, '')) ||
             /_wuCli\.routines\|\|\[\]\)\.find\(r=>r&&r\.id===_wuRutId\)/.test(cuerpo),
     '🔴 el desplazamiento no sale del plan guardado (saldría de la rutina ya adaptada por el ánimo)');
-  assert.ok(/wuRotForRoutine\(_wuGuardada\)/.test(cuerpo), 'renderWarmup no deriva el desplazamiento de la rutina');
-  assert.ok(/wuRotForRoutine\(\{exercises:CUR\.routineExs/.test(a3),
+  assert.ok(/wuOptsFor\(_c,\{exercises:CUR\.routineExs/.test(a3),
     'el editor del coach no usa el mismo desplazamiento que va a recibir la persona');
+  // 🔴 v721 · la TERCERA superficie, que v644 dejó fuera: la vista previa de la ficha del coach.
+  assert.ok(/buildWarmup\(r\.exercises,_limKeys,wuOptsFor\(c,r\)\)/.test(a3),
+    '🔴 la ficha del coach previsualiza un calentamiento distinto del que la persona va a hacer');
   // 🔒 LA DECISIÓN DEL PO, con candado: NADA de rotar por día. Si alguien vuelve a atar el
   //    calentamiento a una fecha, esto cae.
   [a6, a3, sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'))].forEach((f, n) => {
@@ -24773,32 +24799,278 @@ test('🔴 v720 · «Rotación torácica sentado» salió de TODOS los calentami
   // Se EJECUTA buildWarmup con su `wuTake` real y con todos los desplazamientos: sin rotación el pool de
   // hombros entrega solo sus dos primeras piezas, y `wh4` era la cuarta — un test sin `wuTake` aprobaría
   // aunque siguiera ahí.
-  const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
-  const ini = src.indexOf('const WARMUP_LIBRARY');
-  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
-  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
-  const cierre = src.indexOf('\n}', fin);
-  const { WARMUP_LIBRARY, buildWarmup } = new Function('warmupContraindicated,wuTake',
-    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated, core.wuTake);
+  // v721 · con recetas, se recorren TODAS (las 12, los dos sexos, los cuatro lugares, los dos
+  // desplazamientos y con impacto): la pieza no puede volver por ninguna puerta.
+  const { WARMUP_LIBRARY, buildWarmup } = _wuMotor();
   const piezas = Object.values(WARMUP_LIBRARY).flat();
   const esSentado = n => /rotaci[oó]n tor[aá]cica sentad/i.test(n || '');
   assert.ok(!piezas.some(e => e.id === 'wh4' || esSentado(e.name)), '🔴 volvió «Rotación torácica sentado» a la biblioteca del calentamiento');
   // CONTROL: la del suelo sigue en la biblioteca, con su nombre.
   const suelo = piezas.find(e => e.id === 'we2');
   assert.ok(suelo && suelo.name === 'Rotación torácica en el suelo', 'la rotación torácica en el suelo (we2) tiene que seguir existiendo');
-  const nombres = w => [...w.articulares, ...w.activaciones].map(e => e.name);
-  const pecho = [{ name: 'Press de Banca', muscle: 'pecho' }, { name: 'Aperturas en Polea', muscle: 'pecho' }];
-  const vistos = new Set();
-  for (let rot = 0; rot < 10; rot++) {
-    const w = buildWarmup(pecho, null, { rot });
-    assert.ok(!nombres(w).some(esSentado), `🔴 el calentamiento de pecho (desplazamiento ${rot}) volvió a pedir la rotación torácica sentado`);
-    assert.ok(w.articulares.length >= 4, 'la movilidad del día de pecho se quedó corta (hombros + muñecas, 2 de cada uno)');
-    nombres(w).forEach(n => vistos.add(n));
+  const sesiones = [
+    [{ name: 'Press de Banca', muscle: 'pecho' }], [{ name: 'Jalón', muscle: 'espalda' }],
+    [{ name: 'Press', muscle: 'pecho' }, { name: 'Remo', muscle: 'espalda' }], [{ name: 'Press Militar', muscle: 'hombros' }],
+    [{ name: 'Prensa', muscle: 'piernas' }], [{ name: 'Hip Thrust', muscle: 'gluteo', type: 'Compuesto' }],
+    [{ name: 'Plancha', muscle: 'core' }, { name: 'Saltar la cuerda', muscle: 'cardio' }],
+    [{ name: 'Prensa', muscle: 'piernas' }, { name: 'Press', muscle: 'pecho' }],
+  ];
+  const recetas = new Set(), vistos = new Set();
+  sesiones.forEach(s => ['M', 'F'].forEach(sex => ['gym', 'casa', 'corporal', 'parque'].forEach(place => [0, 1].forEach(rot => {
+    const w = buildWarmup(s, null, { sex, place, rot });
+    recetas.add(w.recipe);
+    _wuIds(w).forEach(id => vistos.add(id));
+    assert.ok(![w.general, ...w.articulares, ...w.activaciones].filter(Boolean).some(e => esSentado(e.name)),
+      `🔴 la receta ${w.recipe} volvió a pedir la rotación torácica sentado`);
+  }))));
+  // CONTROL DE COBERTURA: se pasó por todas las recetas y la rotación del suelo sí llega a alguien.
+  assert.strictEqual(recetas.size, Object.keys(core.WU_RECIPES).length, 'CONTROL · el recorrido no visitó todas las recetas');
+  assert.ok(vistos.has('we2'), 'CONTROL · ninguna receta entregó la rotación torácica en el suelo: el recorrido no está mirando');
+});
+
+// ══════════════════════════════════════════════════════
+// v721 · EL CALENTAMIENTO POR RECETA (24-oct-2026)
+// ══════════════════════════════════════════════════════
+// El PO aprobó el reemplazo («me gusta el nuevo método de calentamiento, vamos a probarlo») sobre la
+// propuesta de Coach Pro y Valery con el dictamen de Laura (`docs/calentamiento-2026-10-23/`). Laura
+// exigió siete candados antes de programarlo (§6); los seis que tocan esta entrega están aquí y el de
+// las series de aproximación va con ellas. Todos EJECUTAN el motor real (`_wuMotor`).
+
+// Las 11 zonas de su matriz y la clave del operado sin zona, que el filtro también recibe.
+const _WU_ZONAS = ['rodilla', 'lumbar', 'hombro', 'cuello', 'codo', 'muneca', 'pecho', 'tobillo', 'aductor', 'abductor', 'isquios'];
+// Las casillas ❌ de la matriz de Laura (§1), pieza por pieza. Lo que no está aquí es ✅ o 🟡, y un 🟡
+// NO excluye (v644: una regla ancha también hace daño).
+const _WU_MATRIZ_LAURA = {
+  wh3: ['hombro', 'pecho'], wc2: ['rodilla', 'tobillo', 'aductor', 'abductor'], wc3: ['rodilla', 'lumbar', 'aductor', 'abductor'],
+  wc5: ['aductor', 'abductor'], wr2: ['rodilla', 'tobillo'], wr3: ['lumbar'], wt2: ['tobillo'], we1: ['muneca'],
+  we4: ['hombro', 'cuello', 'muneca'], we5: ['lumbar', 'cuello'], wa1: ['hombro', 'cuello', 'muneca'],
+  wai1: ['rodilla', 'tobillo'], wai2: ['rodilla', 'tobillo', 'aductor', 'abductor'], wai3: ['lumbar'], wai4: ['tobillo'],
+  wac1: ['cuello'], wac3: ['lumbar'], wa5: ['hombro', 'cuello'], wa6: ['hombro', 'cuello', 'codo', 'muneca'],
+  wag1: ['aductor', 'abductor'], wag2: ['tobillo', 'aductor', 'abductor'], wag3: ['muneca'], wac4: ['muneca'], wah2: ['hombro'],
+};
+// Las sesiones que hacen caer el motor en cada receta, para recorrerlas todas.
+const _WU_SESIONES = [
+  [{ name: 'Press de Banca', muscle: 'pecho', type: 'Compuesto' }],
+  [{ name: 'Jalón al Pecho', muscle: 'espalda', type: 'Compuesto' }],
+  [{ name: 'Press de Banca', muscle: 'pecho' }, { name: 'Remo', muscle: 'espalda' }],
+  [{ name: 'Press Militar', muscle: 'hombros' }],
+  [{ name: 'Prensa de Pierna', muscle: 'piernas', type: 'Compuesto' }],
+  [{ name: 'Hip Thrust con Barra', muscle: 'gluteo', type: 'Compuesto' }],
+  [{ name: 'Plancha', muscle: 'core' }, { name: 'Saltar la cuerda', muscle: 'cardio' }],
+  [{ name: 'Prensa de Pierna', muscle: 'piernas' }, { name: 'Press de Banca', muscle: 'pecho' }],
+];
+// Todos los ids que una receta PUEDE entregar (sus cadenas, sus pares, su impacto y el cardio suave).
+const _wuIdsDeReceta = code => {
+  const rec = core.WU_RECIPES[code];
+  const ids = new Set(Object.values(core.WU_GEN_BY_PLACE).concat('wg2'));
+  [...rec.mov, ...rec.act, ...((rec.imp && rec.imp.huecos) || [])]
+    .forEach(h => h.forEach(x => (Array.isArray(x) ? x : [x]).forEach(id => ids.add(id))));
+  return ids;
+};
+
+test('🔴 v721 · cada día del generador recibe la receta que se diseñó para ESE día', () => {
+  // El código del split no viaja en la rutina: el motor lo deduce de los músculos. Si lo deduce mal,
+  // la mujer del día de glúteo B recibe el calentamiento del A (lo que pasaba con el motor viejo).
+  // Se generan los planes REALES con el catálogo real y se compara contra `GEN_SPLITS`.
+  const { buildWarmup } = _wuMotor();
+  let dias = 0;
+  for (const sex of ['F', 'M']) for (const days of [3, 4, 5]) for (const seed of [1, 7]) {
+    const c = { id: 'v', name: 'P', sex, age: 30, weight: 70, height: 168, goal: 'Ganar músculo', level: 'Intermedio', days, place: 'gym', notes: '' };
+    const out = core.generarRutinas(c, _LIB_REAL, { seed, now: '2026-10-24T12:00:00Z', idFn: () => 'r' });
+    const esperado = core.GEN_SPLITS[sex][days].map(k => (sex === 'F' && k === 'TREN_SUP') ? 'TREN_SUP_F' : k);
+    out.routines.forEach((r, i) => {
+      dias++;
+      assert.strictEqual(buildWarmup(r.exercises, null, { sex }).recipe, esperado[i],
+        `🔴 ${sex} ${days} días: el día «${r.name}» recibe la receta equivocada`);
+    });
   }
-  // CONTROL DE COBERTURA: el desplazamiento recorrió TODO el pool de hombros. Sin esto, un `wuTake` que no
-  // se inyectara dejaría ver solo las dos primeras piezas y el test aprobaría sin mirar la tercera ni la cuarta.
-  WARMUP_LIBRARY.hombros.forEach(e => assert.ok(vistos.has(e.name), `la rotación nunca entregó «${e.name}»: el test no está recorriendo el pool`));
+  assert.strictEqual(dias, 2 * 2 * (3 + 4 + 5), 'CONTROL DE COBERTURA · no se generaron todos los días');
+  // Rutinas armadas A MANO, donde el generador no decide: manda el músculo con más ejercicios aunque
+  // el primero sea del otro (la sesión es de glúteo aunque arranque con sentadilla), y si empatan, el
+  // primero de tren inferior, que es con el que se arranca en frío.
+  assert.strictEqual(core.wuRecipeCode([{ muscle: 'piernas' }, { muscle: 'gluteo' }, { muscle: 'gluteo' }], 'F'), 'GP_A',
+    '🔴 un día con más glúteo que pierna recibe la receta de pierna por su primer ejercicio');
+  assert.strictEqual(core.wuRecipeCode([{ muscle: 'gluteo' }, { muscle: 'piernas' }, { muscle: 'piernas' }], 'F'), 'GP_B',
+    '🔴 un día con más pierna que glúteo recibe la receta de glúteo por su primer ejercicio');
+  assert.strictEqual(core.wuRecipeCode([{ muscle: 'core' }, { muscle: 'piernas' }, { muscle: 'gluteo' }], 'F'), 'GP_B',
+    'en empate decide el primer ejercicio de tren inferior');
+  // Sin sexo declarado cae a las generales (las de Coach Pro), igual que el generador.
+  assert.strictEqual(core.wuRecipeCode([{ muscle: 'gluteo', type: 'Compuesto' }], ''), 'PIERNA');
+  // Un día solo de «otro» (la llanta, un circuito funcional) es cuerpo completo, nunca vacío.
+  assert.strictEqual(core.wuRecipeCode([{ muscle: 'otro' }], 'F'), 'FULL_BODY');
+  assert.strictEqual(core.wuRecipeCode([], 'M'), 'FULL_BODY');
+});
+
+test('🔴 v721 · candado 1 de Laura: ninguna receta entrega algo contraindicado, zona por zona y combinadas', () => {
+  const { buildWarmup, findWarmupEx } = _wuMotor();
+  const combos = [..._WU_ZONAS.map(z => [z]), ['rodilla', 'lumbar'], ['hombro', 'cuello'], ['aductor', 'tobillo'], ['generic']];
+  let entregas = 0;
+  combos.forEach(lim => _WU_SESIONES.forEach(s => ['M', 'F'].forEach(sex => ['gym', 'casa', 'parque'].forEach(place => [0, 1].forEach(rot => {
+    const w = buildWarmup(s, lim, { sex, place, rot });
+    _wuIds(w).forEach(id => {
+      entregas++;
+      assert.ok(!core.warmupContraindicated(findWarmupEx(id), lim),
+        `🔴 la receta ${w.recipe} le da «${id}» a quien declara ${lim.join(' + ')}`);
+    });
+  })))));
+  assert.ok(entregas > 5000, `CONTROL DE COBERTURA · solo se revisaron ${entregas} entregas`);
+});
+
+test('🔴 v721 · candado 2 de Laura: TODA casilla ❌ de su matriz cae POR ID, aunque la pieza se renombre', () => {
+  // «Almeja» no dice clamshell, «caminata lateral» no dice paso lateral, «colgado» no dice colgarse:
+  // con el nombre real esquivaban el filtro (lo midió Laura), y por eso dictó «todo por id». El
+  // sabotaje que ella pidió, hecho en cada casilla: cambiar el nombre a algo que no diga nada y ver que
+  // la pieza sigue cayendo. Una casilla que solo protege el nombre deja de proteger el día que alguien
+  // corrige una tilde.
+  let casillas = 0;
+  Object.keys(_WU_MATRIZ_LAURA).forEach(id => _WU_MATRIZ_LAURA[id].forEach(z => {
+    casillas++;
+    assert.ok(core.warmupContraindicated({ id, name: 'Movimiento' }, [z]),
+      `🔴 «${id}» renombrada deja de caer en ${z}: el filtro la protegía solo por el nombre`);
+  }));
+  assert.ok(casillas > 0, 'CONTROL DE COBERTURA · no se recorrió la matriz');
+  // CONTROL: el mismo nombre neutro con un id sin lista NO cae — si cayera, el filtro sería el nombre.
+  assert.ok(!core.warmupContraindicated({ id: 'wh1', name: 'Movimiento' }, _WU_ZONAS), 'CONTROL · un id libre cae: el candado no discrimina');
+});
+
+test('🔴 v721 · candado 3 de Laura: ningún id huérfano en las listas ni en las recetas', () => {
+  // Un id de exclusión que no existe es una protección que no protege; un id de receta que no existe es
+  // un hueco que se queda vacío sin que nadie lo sepa.
+  const { WARMUP_LIBRARY } = _wuMotor();
+  const lib = {};
+  Object.values(WARMUP_LIBRARY).flat().forEach(e => { assert.ok(!lib[e.id], `id repetido en la biblioteca: ${e.id}`); lib[e.id] = e; });
+  Object.values(core.WARMUP_ZONE_EXCL_IDS).flat().forEach(id =>
+    assert.ok(lib[id], `WARMUP_ZONE_EXCL_IDS apunta a «${id}», que no existe en la biblioteca`));
+  Object.keys(core.WU_RECIPES).forEach(code => _wuIdsDeReceta(code).forEach(id => {
+    assert.ok(lib[id], `la receta ${code} nombra «${id}», que no existe en la biblioteca`);
+    // 🔒 Lo retirado por el PO sigue resolviendo en sus listas a mano, pero ninguna receta lo sirve.
+    assert.ok(!lib[id].retirada, `🔴 la receta ${code} sirve «${id}», que el PO retiró`);
+  }));
+  // Las tres que retiró el PO siguen en la biblioteca (sus listas a mano las nombran) y marcadas.
+  ['wr1', 'we3', 'wa2'].forEach(id => assert.ok(lib[id] && lib[id].retirada, `«${id}» tiene que seguir en la biblioteca y marcada como retirada`));
+  // `wg4` (cuerda) y `wf1` (gusano) no entran hasta que la app lea postparto, osteopenia y presión (Laura §3).
+  ['wg4', 'wf1', 'wh4', 'wh5'].forEach(id => assert.ok(!lib[id], `🔴 «${id}» volvió a la biblioteca sin el dictamen que lo permite`));
+});
+
+test('🔴 v721 · candado 4 de Laura: con varias zonas a la vez el hueco queda VACÍO, nunca se cae al grupo', () => {
+  const { buildWarmup } = _wuMotor();
+  const lim = ['lumbar', 'rodilla', 'tobillo'];
+  let menos = 0;
+  _WU_SESIONES.forEach(s => ['M', 'F'].forEach(sex => {
+    const libre = buildWarmup(s, null, { sex }), con = buildWarmup(s, lim, { sex });
+    const permitidos = _wuIdsDeReceta(con.recipe);
+    _wuIds(con).forEach(id => assert.ok(permitidos.has(id), `🔴 la receta ${con.recipe} rellenó un hueco con «${id}», que no está en sus cadenas`));
+    if (_wuIds(con).length < _wuIds(libre).length) menos++;
+  }));
+  // CONTROL: con tres zonas, alguna receta TIENE que perder piezas; si ninguna pierde, no se filtró nada.
+  assert.ok(menos > 0, 'CONTROL · con lumbar, rodilla y tobillo ninguna receta perdió piezas');
+  // El día de pierna con las tres (tabla de Laura §2): el tobillo en pared cede a los círculos de
+  // tobillo, la estocada a los de cadera, el par 90/90 | isquios cae entero (su `wc1` ya está puesto,
+  // así que ese hueco queda VACÍO) y la caminata con banda cede a la patada lateral. Con los dos
+  // desplazamientos: el par de la activación da lo mismo por los dos lados.
+  [0, 1].forEach(rot => assert.deepStrictEqual(_wuIds(buildWarmup([{ name: 'Prensa', muscle: 'piernas' }], lim, { sex: 'M', rot })),
+    ['wg1', 'wt1', 'wc1', 'wc4', 'wc5'],
+    '🔴 el día de pierna con lumbar, rodilla y tobillo no da lo que dictaron las cadenas de Laura'));
+});
+
+test('🔴 v721 · candado 5 de Laura: el cardio suave no lo excluye NINGUNA zona', () => {
+  // Es la garantía de que la primera serie real nunca llegue en frío: el bloque general existe siempre.
+  const { findWarmupEx } = _wuMotor();
+  const todas = [..._WU_ZONAS, 'generic'];
+  ['wg1', 'wg2'].forEach(id => {
+    assert.ok(!Object.values(core.WARMUP_ZONE_EXCL_IDS).some(l => l.indexOf(id) >= 0), `🔴 «${id}» entró en una lista de exclusión`);
+    assert.ok(!core.warmupContraindicated(findWarmupEx(id), todas), `🔴 «${id}» cae por su nombre en alguna zona`);
+  });
+});
+
+test('🔴 v721 · candado 7 de Laura: el filtro da EXACTAMENTE su matriz, pieza por pieza y zona por zona', () => {
+  // Si se toca `GEN_ZONE_EXCL`, una lista o un nombre, esta matriz se vuelve a barrer sola. Cubre las
+  // dos direcciones: una ❌ que deja pasar y una ✅ que excluye de más (la regla ancha de v424).
+  const { WARMUP_LIBRARY } = _wuMotor();
+  let casillas = 0;
+  Object.values(WARMUP_LIBRARY).flat().filter(e => !e.retirada).forEach(e => _WU_ZONAS.forEach(z => {
+    casillas++;
+    const quiere = (_WU_MATRIZ_LAURA[e.id] || []).indexOf(z) >= 0;
+    assert.strictEqual(core.warmupContraindicated(e, [z]), quiere,
+      `🔴 «${e.id} ${e.name}» en ${z}: Laura dictó ${quiere ? '❌' : '✅/🟡'} y el filtro dice lo contrario`);
+  }));
+  assert.ok(casillas >= 400, `CONTROL DE COBERTURA · solo ${casillas} casillas`);
+});
+
+test('v721 · el cardio suave según dónde entrena, el impacto y la dosis propia de cada receta', () => {
+  // 🔒 UN solo motor para construir y para mirar la biblioteca: con dos extracciones, la de mirar
+  //    era una copia limpia y la matriz probó que el candado de la dosis no veía nada (sabotaje VERDE).
+  const { buildWarmup, WARMUP_LIBRARY } = _wuMotor();
+  const pierna = [{ name: 'Prensa de Pierna', muscle: 'piernas' }];
+  const gen = (s, o) => buildWarmup(s, null, o).general;
+  assert.strictEqual(gen(pierna, { place: 'gym' }).id, 'wg1');
+  assert.strictEqual(gen(pierna, { place: 'gym' }).reps, '4 min · bici', 'el día de pierna es bici 4 minutos (Coach Pro)');
+  assert.strictEqual(gen(pierna, { place: 'casa' }).id, 'wg2');
+  assert.strictEqual(gen(pierna, { place: 'corporal' }).id, 'wg2');
+  assert.strictEqual(gen(pierna, { place: 'parque' }).id, 'wg3');
+  assert.strictEqual(gen(pierna, {}).id, 'wg1', 'sin lugar declarado se asume gimnasio, como el generador');
+  // La dosis de la receta va en una COPIA: la pieza de la biblioteca es compartida y no se toca.
+  const gpa = buildWarmup([{ name: 'Hip Thrust', muscle: 'gluteo', type: 'Compuesto' }], null, { sex: 'F' });
+  assert.strictEqual(gpa.activaciones.find(e => e.id === 'wc4').reps, '15 · 2 s arriba', 'el puente del día A lleva su pausa de 2 s (Valery)');
+  assert.strictEqual(WARMUP_LIBRARY.activacion_gluteo.find(e => e.id === 'wc4').reps, '15 reps', '🔴 la dosis de la receta pisó la pieza de la biblioteca');
+  assert.strictEqual(buildWarmup(pierna, null, {}).activaciones.find(e => e.id === 'wc4').reps, '15 reps',
+    '🔴 el día de pierna heredó la pausa del día de glúteo A: la dosis de una receta se le pegó a todas');
+  // Impacto: el día de core y cardio con saltos suma tobillo y talones; sin saltos, no.
+  const core1 = [{ name: 'Plancha', muscle: 'core' }];
+  const conSaltos = [{ name: 'Plancha', muscle: 'core' }, { name: 'Saltar la cuerda', muscle: 'cardio' }];
+  assert.ok(!_wuIds(buildWarmup(core1, null, { sex: 'M' })).includes('wai4'), 'sin saltos no hay elevación de talones');
+  assert.ok(_wuIds(buildWarmup(conSaltos, null, { sex: 'M' })).includes('wai4'), 'con saltos el día de cardio y core suma talones');
+  assert.ok(_wuIds(buildWarmup(conSaltos, null, { sex: 'F' })).includes('wt2'), 'con saltos el día de core y cardio de mujer suma el tobillo en pared');
+  // 🔒 `\bsalt` y no `salt`: la «Bicicleta de asalto» es la máquina de MENOR impacto (v547).
+  assert.ok(!core.wuSessionImpact([{ name: 'Bicicleta de Asalto' }]), '🔴 la bicicleta de asalto cuenta como impacto');
+  assert.ok(core.wuSessionImpact([{ name: 'Trote en el lugar' }]) && core.wuSessionImpact([{ name: 'Burpees' }]));
+  // 🔒 El día de core de mujer NO arranca con el dead bug (Laura §3.2: la app aún no lee diástasis).
+  const cc = buildWarmup(core1, null, { sex: 'F' });
+  assert.deepStrictEqual(cc.activaciones.map(e => e.id), ['wac5', 'wac4'], '🔴 el día de core de mujer volvió a poner el dead bug primero');
+});
+
+test('🔴 v721 · «Ya vengo caliente», la línea de la aproximación y lo retirado (cableado)', () => {
+  const fs = require('fs'), path = require('path');
+  const a6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const i = a6.indexOf('function renderWarmup(');
+  const cuerpo = a6.slice(i, a6.indexOf('\nfunction ', i + 10));
+  assert.ok(cuerpo.length > 800 && /wu-section-title/.test(cuerpo), 'CONTROL DE COBERTURA · no se recortó renderWarmup');
+  // El botón nace oculto si el cardio ya está hecho, y su ✓ y el botón son la MISMA marca.
+  assert.ok(/id="wu-caliente"[^`]*data-gen="\$\{general\.id\}"[^`]*wuYaCaliente\('\$\{general\.id\}'\)[^`]*\$\{_wuGenHecho\?' hidden':''\}/.test(cuerpo),
+    '🔴 «Ya vengo caliente» no marca el cardio suave o no se esconde cuando ya está hecho');
+  const t = a6.slice(a6.indexOf('function wuToggle('), a6.indexOf('\nfunction ', a6.indexOf('function wuToggle(') + 10));
+  assert.ok(/cal\.dataset\.gen===id\)\s*cal\.hidden=done/.test(t), '🔴 quitar el ✓ del cardio no devuelve el botón (o ponerlo no lo quita)');
+  const y = a6.slice(a6.indexOf('function wuYaCaliente('), a6.indexOf('\nfunction ', a6.indexOf('function wuYaCaliente(') + 10));
+  assert.ok(/if\(!wuIsDone\(rid,id\)\)\s*wuToggle\(id\)/.test(y), '🔴 «Ya vengo caliente» desmarca un cardio que ya estaba hecho');
+  // 🔒 `[hidden]` explícito: `.wu-caliente` pone su propio display y le ganaría al atributo.
+  assert.ok(/\.wu-caliente\[hidden\]\{display:none\}/.test(css), '🔴 el botón ya hecho no se va: su display le gana a [hidden]');
+  assert.ok(/\.wu-caliente\{[^}]*min-height:36px/.test(css), 'el botón tiene que medir 36 px de alto para el dedo');
+  // La aproximación solo se nombra si la sesión trae algo con peso.
+  assert.ok(/_wuAprox=\(exercises\|\|\[\]\)\.some\(e=>exTrack\(e\)==='peso_reps'\)/.test(cuerpo), 'la línea de la aproximación sale aunque no haya nada con peso');
+  assert.ok(/\$\{_wuAprox\}/.test(cuerpo), 'la línea de la aproximación no se pinta');
+  // Lo retirado no se ofrece en el selector del coach, pero sigue resolviendo en sus listas a mano.
+  const k = a3.indexOf('function openWarmPicker(');
+  assert.ok(/filter\(ex=>!ex\.retirada\)/.test(a3.slice(k, a3.indexOf('\nfunction ', k + 10))), '🔴 el selector vuelve a ofrecer lo que el PO retiró');
+  const { findWarmupEx } = _wuMotor();
+  assert.ok(findWarmupEx('wr1') && findWarmupEx('we3'), '🔴 lo retirado dejó de resolver: las listas a mano del PO se vaciarían en silencio');
+});
+
+test('v721 · los textos del calentamiento siguen la regla de Laura (§5)', () => {
+  // Ningún texto invita a ir al final del rango, y las piezas de apnea llevan su frase de respirar.
+  const { WARMUP_LIBRARY, findWarmupEx } = _wuMotor();
+  Object.values(WARMUP_LIBRARY).flat().filter(e => !e.retirada).forEach(e => {
+    assert.ok(!/lo m[aá]s alto posible|hasta sentir|\brelaja/i.test(e.desc), `🔴 «${e.id} ${e.name}» invita a ir al final del rango`);
+    assert.ok(e.desc && e.reps && e.icon && e.ytQuery, `«${e.id}» sin texto, dosis, ícono o video`);
+  });
+  assert.match(findWarmupEx('wa6').desc, /sin aguantar el aire/);
+  assert.match(findWarmupEx('wac1').desc, /no aguantes el aire/);
+  assert.match(findWarmupEx('wac5').desc, /aguantar el aire/);
+  assert.match(findWarmupEx('wac2').desc, /bulto en el centro del abdomen, detente/);
+  assert.match(findWarmupEx('wc4').desc, /Exhala al subir/);
+  // 🔒 Los rótulos de la plancha de hombros iban al revés: juntar los omóplatos es la retracción.
+  assert.match(findWarmupEx('we4').desc, /juntando los omóplatos \(retracción\)[^.]*separarlos \(protracción\)/);
 });
 
 // ══════════════════════════════════════════════════════

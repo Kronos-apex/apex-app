@@ -33,6 +33,14 @@
 - `renderHome()` — dashboard coach con banner de vencimientos ≤5 días
 - `renderClients()` — lista asesorados con `esc()` en todos los campos
 - `renderClientToday()` — vista del día con warmup y timer
+
+### Calentamiento (v721: una receta por tipo de sesión)
+- `WU_RECIPES` (avi-core) — las 12 recetas de Coach Pro y Valery con las cadenas de Laura: `gen` (minutos del cardio suave), `mov` y `act` (huecos), `imp` (lo que se suma con saltos o trote), `reps` (dosis propia). Un hueco es una CADENA: `['wh3','wh2']` = si cae la primera entra la segunda; `[['wc3','wr3'],'wc1']` = par que rota con el plan y luego su alterna. Hueco sin pieza válida → vacío, nunca «cualquier pieza del grupo».
+- `wuRecipeCode(exercises, sex)` (avi-core, pura) — qué receta le toca a la sesión por sus MÚSCULOS (el código del generador no viaja en la rutina). GP_A/GP_B se decide por los compuestos.
+- `wuResolveRecipe(code, {lim, rot, place, impacto, sesPats, lookup})` (avi-core, pura) — devuelve ids: filtra contra la UNIÓN de zonas, rota solo los pares, no repite pieza, elige el cardio suave por lugar (`WU_GEN_BY_PLACE`) y aplica la regla 2 de v594 a la activación.
+- `buildWarmup(exercises, limKeys, opts)` (app-6) — busca las piezas en `WARMUP_LIBRARY` y devuelve `{general, articulares, activaciones, recipe, …}`. `opts` sale SIEMPRE de `wuOptsFor(cliente, rutinaGuardada)`: lo usan las tres pantallas que pintan el calentamiento (`renderWarmup`, el editor `_effWarmIds` y la vista previa de `renderDetailRoutines`).
+- `WARMUP_ZONE_EXCL_IDS` (avi-core) — la matriz de Laura, TODO por id. Una pieza `retirada:true` sigue resolviendo en las listas armadas a mano pero ni las recetas ni el selector del coach la ofrecen.
+- `wuYaCaliente(id)` (app-6) — «Ya vengo caliente»: marca el cardio suave (la misma marca que su ✓, `wuToggle`).
 - `renderClientHistory()` — historial + gráfica SVG de volumen
 - `exportRoutineAsImage()` — canvas con rutina exportable como PNG
 - `exportData()` — exporta las 10 colecciones en JSON

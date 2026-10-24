@@ -2450,35 +2450,53 @@ const TRAINING_STYLES = [
 
 const WARMUP_LIBRARY = {
 
+  // ── CARDIO SUAVE (v721) ── el paso 1 de toda receta, que antes no existía. `WU_GEN_BY_PLACE`
+  // elige cuál según dónde entrena la persona. Textos de Laura (`laura.md` §5.2): el ritmo es
+  // «conversar» y cada uno trae su condición de parada.
+  general:[
+    {id:'wg1',name:'Cardio suave en máquina',icon:'🚴',reps:'3-5 min',desc:'Bici o elíptica (o caminadora plana si no tienes molestia en rodillas ni tobillos), a un ritmo en que puedas conversar. El último minuto sube un poco, sin ahogarte. Si te mareas o te falta el aire, baja el ritmo.',ytQuery:'calentamiento cardio suave bicicleta estática'},
+    {id:'wg2',name:'Marcha en el lugar con brazos',icon:'🚶',reps:'3-5 min',desc:'Marcha con los brazos al ritmo. Las rodillas suben hasta la mitad del muslo, no más; pisa suave y sin saltar.',ytQuery:'marcha en el lugar calentamiento'},
+    {id:'wg3',name:'Caminata rápida',icon:'🌳',reps:'5 min',desc:'Camina a paso firme y con los brazos sueltos, en terreno plano (en banda, sin inclinación). Debes poder hablar entrecortado, no cantar.',ytQuery:'caminata rápida calentamiento'},
+  ],
+
   // ── MOVILIDAD ARTICULAR ──
   hombros:[
     {id:'wh1',name:'Círculos de hombro',icon:'🔄',reps:'10 c/lado',desc:'Brazos extendidos, traza círculos amplios hacia adelante y luego hacia atrás. Siente la articulación soltarse.',ytQuery:'círculos de hombro movilidad calentamiento'},
     {id:'wh2',name:'Rotación de manguito rotador',icon:'↩️',reps:'15 c/lado',desc:'Codo doblado 90°, gira el antebrazo hacia arriba y hacia abajo sin mover el codo. Lento y controlado.',ytQuery:'rotación de manguito rotador ejercicio calentamiento'},
-    {id:'wh3',name:'Apertura de pecho en pared',icon:'🧱',reps:'10 reps',desc:'Apoya el antebrazo en la pared a 90°. Gira el cuerpo alejándote hasta sentir el pecho abrirse. Mantén 2 seg.',ytQuery:'estiramiento apertura de pecho en pared'},
+    // v721 · Laura §5.3: «hasta sentir el pecho abrirse» invitaba a ir al final del rango.
+    {id:'wh3',name:'Apertura de pecho en pared',icon:'🧱',reps:'10 reps',desc:'Apoya el antebrazo en la pared a 90°. Gira el cuerpo alejándote solo hasta donde el pecho se estire suave, sin dolor en el hombro; mantén 2 s.',ytQuery:'estiramiento apertura de pecho en pared'},
     // 🔴 v720 · `wh4` «Rotación torácica sentado» salió por pedido del PO (23-oct): la rotación torácica
     // que se usa es la del suelo (`we2`, pool de espalda). Ninguna lista propia la tenía (0 de 12).
-    {id:'wh5',name:'Círculos de muñeca',icon:'👐',reps:'10 c/dirección',desc:'Entrelaza los dedos y traza círculos amplios con ambas muñecas. Primero en un sentido, luego en el otro.',ytQuery:'círculos de muñeca calentamiento'},
+    // 🔴 v721 · `wh5` «Círculos de muñeca» salió: era un duplicado de `wm1` (0 listas propias la tenían).
+    {id:'wah2',name:'Deslizamiento en pared',icon:'⬆️',reps:'10',desc:'De pie con la espalda cerca de la pared y el mentón recogido, codos y manos pegados a ella en «W». Sube a «Y» y baja sin arquear la espalda baja. Llega solo hasta donde los brazos sigan pegados; si el hombro molesta, no lo hagas.',ytQuery:'wall slides deslizamiento en pared hombro'},
   ],
 
   cadera:[
     {id:'wc1',name:'Círculos de cadera de pie',icon:'⭕',reps:'10 c/dirección',desc:'Pies separados al ancho de hombros, manos en la cadera. Traza círculos grandes con la pelvis como si movieras un hula-hoop.',ytQuery:'círculos de cadera de pie movilidad'},
     // Texto corregido por Laura (2026-08-02): «rota el torso» invitaba a girar DESDE LA CINTURA.
     // El giro es torácico y la pelvis queda quieta — así es tratamiento para un lumbar, no riesgo.
-    {id:'wc2',name:'Estocada con rotación',icon:'🔃',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, gira desde el pecho —la cadera y la pelvis quedan quietas— y levanta el brazo al techo. Si la espalda baja se queja, gira menos.',ytQuery:'estocada con rotación torácica movilidad'},
-    {id:'wc3',name:'Apertura de cadera (90/90)',icon:'🦋',reps:'8 c/lado',desc:'Sentado en el suelo, una pierna hacia adelante y otra hacia afuera formando 90°. Inclínate suavemente sobre la pierna delantera.',ytQuery:'movilidad de cadera 90 90 ejercicio'},
-    {id:'wc4',name:'Puente de glúteo activación',icon:'🌉',reps:'15 reps',desc:'Acostado boca arriba, rodillas dobladas. Sube las caderas apretando el glúteo. Aguanta 1 segundo arriba. Baja lento.',ytQuery:'puente de glúteo activación tutorial'},
-    {id:'wc5',name:'Patada lateral de pie',icon:'↔️',reps:'12 c/lado',desc:'De pie apoyado en una pared. Lleva la pierna al lado lo más alto posible controlado, luego al frente y atrás. Activa el glúteo medio.',ytQuery:'patada lateral de cadera glúteo medio de pie'},
+    {id:'wc2',name:'Estocada con rotación',icon:'🔃',reps:'6 c/lado',desc:'Da un paso largo al frente. En la posición de estocada, gira desde el pecho —la cadera y la pelvis quedan quietas— y lleva el brazo al techo hasta donde llegue sin dolor (o la mano en la nuca). Si la espalda baja se queja, gira menos.',ytQuery:'estocada con rotación torácica movilidad'},
+    // v721 · Laura §5.1: ya no es una inclinación sobre la pierna delantera (flexión lumbar con la
+    // rodilla doblada a fondo y cargada) sino la transición activa que pidió Coach Pro.
+    {id:'wc3',name:'Apertura de cadera (90/90)',icon:'🦋',reps:'6 cambios',desc:'Sentado en el suelo, las dos rodillas dobladas a 90°, una delante y otra detrás, el tronco ERGUIDO. Sin apoyar las manos si puedes, gira las rodillas hacia el otro lado y cambia de posición. Despacio, sin dejar caer la rodilla hasta el suelo ni forzar. Si sientes tirón o dolor en la rodilla, la cadera o la ingle, detente.',ytQuery:'movilidad de cadera 90 90 transiciones'},
+    // v721 · Laura §5.1: sin «al frente y atrás» (la espalda baja se arquea al llevar la pierna atrás)
+    // ni «lo más alto posible» (rota la pelvis). Hasta la cadera, con apoyo.
+    {id:'wc5',name:'Patada lateral de pie',icon:'↔️',reps:'12 c/lado',desc:'De pie, una mano apoyada en la pared y el tronco erguido. Lleva la pierna estirada hacia el lado hasta la altura de la cadera (no más), sin inclinar el cuerpo ni balancearte, y vuelve con control. Primero un lado, luego el otro.',ytQuery:'patada lateral de cadera glúteo medio de pie'},
   ],
 
   rodillas:[
-    {id:'wr1',name:'Círculos de rodilla',icon:'🔵',reps:'10 c/dirección',desc:'Pies juntos y rodillas ligeramente dobladas, manos sobre las rodillas. Traza círculos con las rodillas. Luego cambia de dirección.',ytQuery:'círculos de rodilla calentamiento movilidad'},
+    // 🔒 v721 · `retirada`: el PO la sacó del calentamiento (23-oct). Ya no la sugiere ninguna receta y
+    // el selector del coach no la ofrece, pero sigue en la biblioteca porque está en 11 de sus listas
+    // armadas a mano: borrarla las vaciaría en silencio. Quitarla de esas listas es decisión suya.
+    {id:'wr1',name:'Círculos de rodilla',icon:'🔵',reps:'10 c/dirección',retirada:true,desc:'Pies juntos y rodillas ligeramente dobladas, manos sobre las rodillas. Traza círculos con las rodillas. Luego cambia de dirección.',ytQuery:'círculos de rodilla calentamiento movilidad'},
     {id:'wr2',name:'Sentadilla de movilidad lenta',icon:'⬇️',reps:'10 reps',desc:'Baja la sentadilla muy despacio (4 segundos bajando, 4 subiendo). Sin peso. El objetivo es movilidad, no fuerza.',ytQuery:'sentadilla profunda movilidad lenta sin peso'},
-    {id:'wr3',name:'Movilidad de isquiotibiales de pie',icon:'🦵',reps:'10 c/lado',desc:'De pie, extiende una pierna al frente apoyando el talón. Inclínate ligeramente hacia ella manteniendo la espalda recta. Siente el estiramiento en la parte trasera del muslo.',ytQuery:'movilidad de isquiotibiales de pie talón'},
+    // v721 · Laura §5.3: «hasta sentir el estiramiento» invitaba a ir al final del rango.
+    {id:'wr3',name:'Movilidad de isquiotibiales de pie',icon:'🦵',reps:'10 c/lado',desc:'De pie, extiende una pierna al frente apoyando el talón. Lleva la cadera atrás con la espalda larga, sin redondearla ni rebotar. Si hormiguea o tira, detente.',ytQuery:'movilidad de isquiotibiales de pie talón'},
   ],
 
   tobillos:[
     {id:'wt1',name:'Círculos de tobillo',icon:'🦶',reps:'10 c/dirección',desc:'Sentado o de pie, levanta un pie y traza círculos amplios con el tobillo. Lento y completo. Cambia dirección y luego repite con el otro pie.',ytQuery:'círculos de tobillo movilidad calentamiento'},
-    {id:'wt2',name:'Movilidad tobillo en pared',icon:'🧱',reps:'10 c/lado',desc:'De pie frente a la pared a unos 10 cm. Dobla la rodilla hacia adelante intentando tocar la pared sin levantar el talón. Aumenta la distancia progresivamente.',ytQuery:'movilidad de tobillo en pared dorsiflexión'},
+    {id:'wt2',name:'Movilidad tobillo en pared',icon:'🧱',reps:'10 c/lado',desc:'De pie frente a la pared a unos 10 cm. Dobla la rodilla hacia adelante intentando tocar la pared sin levantar el talón; la rodilla va en línea con el segundo dedo del pie. Aumenta la distancia progresivamente.',ytQuery:'movilidad de tobillo en pared dorsiflexión'},
   ],
 
   munecas:[
@@ -2488,19 +2506,40 @@ const WARMUP_LIBRARY = {
   ],
 
   espalda:[
-    {id:'we5',name:'Rollitos sobre colchoneta',icon:'🌀',reps:'8–10 reps',desc:'Acostado de espalda en la colchoneta, abraza las rodillas al pecho y rueda suavemente adelante y atrás sobre la columna, masajeando y descomprimiendo la espalda baja. Lento y controlado.',ytQuery:'rollitos sobre colchoneta descompresión espalda baja'},
+    // v721 · Laura §5.1: fuera «masajeando y descomprimiendo» (una promesa terapéutica falsa) y
+    // «rueda sobre la columna». Solo para listas a mano: ninguna receta la usa.
+    {id:'we5',name:'Rollitos sobre colchoneta',icon:'🌀',reps:'8',desc:'Acostado boca arriba sobre una colchoneta gruesa, abraza las rodillas y balancéate unos centímetros adelante y atrás, sin llegar a apoyar el cuello. Lento. Si sientes dolor o presión en la espalda o el cuello, detente.',ytQuery:'rollitos sobre colchoneta descompresión espalda baja'},
     {id:'we1',name:'Cat-Cow (Gato-Vaca)',icon:'🐱',reps:'10 reps',desc:'En cuatro patas. Alterna entre arquear la espalda hacia arriba (gato) y hundirla hacia abajo (vaca). 1 segundo en cada posición.',ytQuery:'ejercicio gato vaca cat cow movilidad columna'},
     {id:'we2',name:'Rotación torácica en el suelo',icon:'🔄',reps:'8 c/lado',desc:'Acostado de lado con rodillas dobladas. Extiende los brazos al frente. Rota el brazo de arriba hacia atrás abriendo el pecho. La cadera no se mueve.',ytQuery:'rotación torácica en el suelo movilidad'},
-    {id:'we3',name:'Apertura de cadena posterior',icon:'🙇',reps:'30 seg',desc:'De pie, pies separados. Dobla el cuerpo hacia adelante dejando caer los brazos y la cabeza. Relaja la espalda completamente. No fuerces.',ytQuery:'estiramiento cadena posterior de pie flexión'},
-    {id:'we4',name:'Plancha de hombros',icon:'🤸',reps:'10 reps',desc:'En posición de lagartija alta. Deja caer los hombros hacia el suelo (protracción) y luego empújalos hacia arriba (retracción). Los brazos no se doblan.',ytQuery:'protracción retracción escapular plancha tutorial'},
+    // 🔒 v721 · `retirada` (decisión del PO, 23-oct): está en 4 de sus listas a mano. Ver `wr1`.
+    {id:'we3',name:'Apertura de cadena posterior',icon:'🙇',reps:'30 seg',retirada:true,desc:'De pie, pies separados. Dobla el cuerpo hacia adelante dejando caer los brazos y la cabeza. Relaja la espalda completamente. No fuerces.',ytQuery:'estiramiento cadena posterior de pie flexión'},
+    // v721 · Laura §5.3: «los brazos no se doblan» pedía bloquear el codo. Y los dos rótulos estaban
+    // al revés: bajar el pecho entre los hombros es juntar los omóplatos (retracción), empujar el
+    // suelo es separarlos (protracción).
+    {id:'we4',name:'Plancha de hombros',icon:'🤸',reps:'10 reps',desc:'En posición de lagartija alta, con los codos estirados pero sin bloquearlos, el abdomen firme y la cadera en línea. Deja que el pecho baje entre los hombros juntando los omóplatos (retracción) y luego empuja el suelo para separarlos (protracción).',ytQuery:'protracción retracción escapular plancha tutorial'},
   ],
 
   // ── ACTIVACIÓN ──
   activacion_superior:[
-    {id:'wa1',name:'Flexión de pecho (lagartija)',icon:'💪',reps:'10–15 reps',desc:'Lagartija completa con el cuerpo recto. Si es muy difícil, apoya las rodillas. El objetivo es activar, no fatigarse.',ytQuery:'cómo hacer flexiones lagartijas principiantes'},
-    {id:'wa3',name:'Band pull-apart / apertura con banda',icon:'↔️',reps:'15 reps',desc:'Sostén una banda o toalla con los brazos extendidos al frente. Jala los extremos hacia afuera hasta los lados. Aprieta la espalda alta.',ytQuery:'band pull apart apertura con banda tutorial'},
+    // v721 · Laura §5.3: Valery la usa inclinada; el texto da las tres alturas y la condición.
+    {id:'wa1',name:'Lagartija inclinada',icon:'💪',reps:'10–15 reps',desc:'Manos en una pared o un banco (cuanto más alto, más fácil) o en el suelo si ya es fácil. Cuerpo recto de cabeza a talones; baja el pecho al apoyo y sube. La espalda baja no se hunde.',ytQuery:'flexiones inclinadas en banco principiantes'},
+    {id:'wa3',name:'Band pull-apart / apertura con banda',icon:'↔️',reps:'15 reps',desc:'Sostén una banda o toalla con los brazos extendidos al frente. Jala los extremos hacia afuera hasta los lados, con los hombros lejos de las orejas. Aprieta la espalda alta.',ytQuery:'band pull apart apertura con banda tutorial'},
     {id:'wa4',name:'Balanceo de brazos cruzados',icon:'🤸',reps:'15 reps',desc:'Balancéa los brazos abiertos y luego crúzalos frente al pecho. Alterna cuál brazo queda por encima. Calienta la articulación del hombro.',ytQuery:'balanceo de brazos calentamiento hombros'},
-    {id:'wa2',name:'Remo invertido en barra baja',icon:'🔙',reps:'10 reps',desc:'Debajo de una barra baja, jala el pecho hacia la barra. Activa dorsal y bíceps sin carga extra. (Requiere barra baja — opcional.)',ytQuery:'remo invertido en barra baja tutorial'},
+    // 🔒 v721 · `retirada` (decisión del PO, 23-oct). Ninguna lista a mano la tiene.
+    {id:'wa2',name:'Remo invertido en barra baja',icon:'🔙',reps:'10 reps',retirada:true,desc:'Debajo de una barra baja, jala el pecho hacia la barra. Activa dorsal y bíceps sin carga extra. (Requiere barra baja — opcional.)',ytQuery:'remo invertido en barra baja tutorial'},
+    {id:'wa5',name:'Elevaciones en Y y T',icon:'🙌',reps:'8 de cada una',desc:'Boca abajo con la frente apoyada (en la colchoneta o con el pecho sobre un banco inclinado), sin peso. Con el cuello largo, levanta los brazos en Y y bájalos; luego en T, con los pulgares arriba. El pecho no se despega del apoyo. Si el hombro o el cuello molestan, no lo hagas.',ytQuery:'elevaciones Y T boca abajo hombro'},
+    {id:'wa6',name:'Colgado activo en barra',icon:'🧗',reps:'2 × 15-20 s',desc:'Cuélgate con las manos al ancho de los hombros y los brazos estirados. Baja los hombros lejos de las orejas sin doblar los codos y respira normal, sin aguantar el aire. Si no llegas, deja los pies apoyados en el suelo o en un banco. Suelta si el hombro, el codo o la mano molestan.',ytQuery:'colgado activo escapular en barra'},
+    // Solo como alterna (Laura §2): es la única de espalda alta que sirve a la vez con hombro, cuello y muñeca.
+    {id:'wah1',name:'Jalón facial liviano con banda',icon:'🎯',reps:'12-15',desc:'Banda a la altura de la cara. Jala hacia la nariz abriendo los codos a los lados, con los hombros lejos de las orejas. Liviano: si la banda te hace subir los hombros, es demasiado dura.',ytQuery:'face pull con banda calentamiento'},
+  ],
+
+  // v721 · LA ACTIVACIÓN DE GLÚTEO, que no existía: ningún día de glúteo la traía (Valery). El puente
+  // pasa aquí desde `cadera`: en las recetas va como activación, no como movilidad.
+  activacion_gluteo:[
+    {id:'wc4',name:'Puente de glúteo activación',icon:'🌉',reps:'15 reps',desc:'Acuéstate boca arriba, rodillas dobladas. Sube las caderas apretando el glúteo hasta que hombros, cadera y rodillas queden en línea recta, sin arquear la espalda baja. Aguanta 1 s arriba. Baja lento. Exhala al subir.',ytQuery:'puente de glúteo activación tutorial'},
+    {id:'wag1',name:'Almeja con banda',icon:'🐚',reps:'12 c/lado',desc:'Acuéstate de lado con la cabeza sobre el brazo o una almohada, las rodillas dobladas y la banda sobre ellas. Abre la rodilla de arriba sin que la cadera ruede hacia atrás. Despacio. Si duele la ingle o la cadera, detente.',ytQuery:'almeja con banda clamshell glúteo medio'},
+    {id:'wag2',name:'Caminata lateral con banda',icon:'🦀',reps:'10 pasos c/lado',desc:'Banda sobre las rodillas (nunca en los tobillos), rodillas apenas dobladas —un cuarto de sentadilla— y el tronco erguido. Da pasos cortos de lado manteniendo la tensión; las rodillas no se cierran ni se van hacia adentro.',ytQuery:'caminata lateral con banda glúteo'},
+    {id:'wag3',name:'Patada atrás en cuatro apoyos',icon:'🐾',reps:'10 c/lado',desc:'En cuatro apoyos, con una toalla doblada bajo las rodillas, lleva una pierna doblada hacia atrás y arriba apretando el glúteo, solo hasta que el muslo quede en línea con la espalda. La espalda no se arquea y la cadera no gira.',ytQuery:'patada de glúteo en cuatro apoyos'},
   ],
 
   activacion_inferior:[
@@ -2511,128 +2550,48 @@ const WARMUP_LIBRARY = {
   ],
 
   activacion_core:[
-    {id:'wac1',name:'Plancha isométrica corta',icon:'📏',reps:'3 × 20 seg',desc:'Plancha frontal en antebrazos. Aprieta abdomen, glúteo y quads al mismo tiempo. 20 segundos, 3 veces.',ytQuery:'cómo hacer plancha abdominal correctamente'},
-    {id:'wac2',name:'Deadbug',icon:'🐛',reps:'8 c/lado',desc:'Acostado boca arriba, brazos al techo, rodillas 90°. Extiende el brazo derecho y la pierna izquierda al mismo tiempo. Espalda pegada al suelo.',ytQuery:'dead bug ejercicio core tutorial'},
+    {id:'wac1',name:'Plancha isométrica corta',icon:'📏',reps:'3 × 20 seg',desc:'Plancha frontal en antebrazos. Aprieta abdomen, glúteo y quads al mismo tiempo. 20 segundos, 3 veces. Respira; no aguantes el aire.',ytQuery:'cómo hacer plancha abdominal correctamente'},
+    {id:'wac2',name:'Deadbug',icon:'🐛',reps:'8 c/lado',desc:'Acostado boca arriba, brazos al techo, rodillas 90°. Extiende el brazo derecho y la pierna izquierda al mismo tiempo. Espalda pegada al suelo. Si ves un bulto en el centro del abdomen, detente.',ytQuery:'dead bug ejercicio core tutorial'},
     {id:'wac3',name:'Rotación de cadera tumbado',icon:'🔁',reps:'8 c/lado',desc:'Acostado, rodillas juntas al pecho. Deja caer ambas rodillas a un lado y vuelve al centro. Espalda pegada al suelo. Activa oblicuos.',ytQuery:'rotación de columna tumbado movilidad lumbar'},
+    {id:'wac4',name:'Perro de caza (bird dog)',icon:'🐕',reps:'8 c/lado',desc:'En cuatro apoyos (toalla bajo las rodillas; puños o antebrazos si la muñeca molesta), estira un brazo al frente hasta la altura del hombro y la pierna contraria hacia atrás hasta alinearla con el tronco, sin mover la cadera. 2 s arriba y vuelve. Cambia de lado.',ytQuery:'bird dog perro de caza ejercicio'},
+    {id:'wac5',name:'Respiración 360°',icon:'🌬️',reps:'5 respiraciones',desc:'Acuéstate boca arriba, rodillas dobladas, manos sobre las costillas. Inhala por la nariz: las costillas se abren a los lados y hacia atrás. Exhala largo por la boca soltando todo el aire. Sin forzar ni aguantar el aire.',ytQuery:'respiración 360 diafragmática costillas'},
   ],
 };
 
-// Mapeo de músculo → qué calentamiento necesita
-const MUSCLE_WARMUP_MAP = {
-  pecho:    {articular:['hombros','munecas'],activacion:['activacion_superior']},
-  espalda:  {articular:['hombros','espalda'],activacion:['activacion_superior']},
-  hombros:  {articular:['hombros','munecas'],activacion:['activacion_superior']},
-  biceps:   {articular:['hombros','munecas'],activacion:['activacion_superior']},
-  triceps:  {articular:['hombros','munecas'],activacion:['activacion_superior']},
-  piernas:  {articular:['cadera','rodillas','tobillos'],activacion:['activacion_inferior']},
-  gluteo:   {articular:['cadera','rodillas'],activacion:['activacion_inferior']},
-  core:     {articular:['espalda','cadera'],activacion:['activacion_core']},
-  cardio:   {articular:['rodillas','tobillos'],activacion:['activacion_inferior']},
-  otro:     {articular:['hombros','cadera'],activacion:['activacion_superior','activacion_inferior']},
-};
-
-// Detecta el tipo de sesión y construye el calentamiento ideal.
-// `limKeys` (parseLimitations().keys) filtra los calentamientos contraindicados: hasta 2026-08-02
-// el filtro de lesiones limpiaba el ENTRENO y dejaba el calentamiento intacto — una puerta
-// cerrada con la ventana abierta (hallazgo de Laura). El filtro va ANTES del slice(0,2) para no
-// quedarnos cortos. Si una zona quedara SIN NADA, se queda vacía: NUNCA se cae al pool sin
-// filtrar — un calentamiento de menos no le hace daño a nadie, uno contraindicado sí.
+// Arma el calentamiento de una sesión: UNA RECETA por tipo de entrenamiento (v721). La receta, sus
+// cadenas de alternas y las dos reglas de v594 viven PURAS en avi-core (`wuRecipeCode`,
+// `wuResolveRecipe`); aquí solo se buscan las piezas en la biblioteca.
+// `limKeys` (`limitationsFor(...).keys`) filtra lo contraindicado ANTES de elegir: hasta 2026-08-02
+// el filtro de lesiones limpiaba el ENTRENO y dejaba el calentamiento intacto (hallazgo de Laura).
+// Si una pieza cae entra su alterna, y si ninguna sirve el hueco queda vacío: NUNCA se cae a una
+// pieza sin filtrar — un calentamiento de menos no le hace daño a nadie, uno contraindicado sí.
+// `opts` = `wuOptsFor(cliente, rutina guardada)`: desplazamiento, sexo y dónde entrena.
 function buildWarmup(exercises,limKeys,opts){
-  const _lim=(limKeys&&limKeys.length&&typeof warmupContraindicated==='function')?limKeys:null;
-  // 🔴 v594 · EL CALENTAMIENTO NO REPITE LO QUE YA VIENE (reporte del PO, 8-sep).
-  // `_usados` acumula los PATRONES de movimiento ya cubiertos. Empieza con el del primer ejercicio
-  // de la sesión **solo si va SIN CARGA** (regla 3 del PO: con barra o en máquina, la versión con
-  // peso corporal es una serie de aproximación legítima y se queda).
-  // 🔒 Se filtra ANTES del `slice(0,2)`, igual que el filtro de lesiones y por la misma razón: si
-  // se filtrara después nos quedaríamos cortos en vez de tomar el siguiente del pool.
-  // ⚠️ La regla de la SESIÓN solo se aplica a la ACTIVACIÓN: la movilidad lenta es otra cosa
-  // (tempo 4-4, preparación articular) y el PO no pidió quitarla.
-  const _conCarga=ex=>(typeof exTrack==='function')?exTrack(ex)==='peso_reps':false;
-  const _sesPats=(typeof wuSessionPatterns==='function')?wuSessionPatterns(exercises,_conCarga):[];
-  const _usados=new Set();
-  const _pat=ex=>(typeof wuMovePattern==='function')?wuMovePattern(ex&&ex.name):null;
-  // 🔴 v644 · LA ROTACION POR DIA. Hasta hoy se tomaban SIEMPRE los dos primeros de cada grupo, asi
-  // que del 3.º en adelante solo se llegaba si el filtro de lesiones quitaba a uno de los dos de
-  // arriba: medido, 10 de las 34 piezas no le llegaban a NADIE. `_rot` desplaza el punto de partida
-  // un puesto por dia, dando la vuelta, asi que a lo largo de la semana se usan todas.
-  // 🔒 Sin `opts` el desplazamiento es 0 y el resultado es EXACTAMENTE el de siempre: eso mantiene
-  //    validos los casos ya dictaminados y es el control de que la rotacion no cambia nada sola.
-  const _rot=(opts&&isFinite(opts.rot))?Math.max(0,Math.floor(opts.rot)):0;
-  const _toma=(pool,n)=>(typeof wuTake==='function')?wuTake(pool,n,_rot):pool.slice(0,n);
-  const wuPool=(area,evitar)=>{
-    const pool=WARMUP_LIBRARY[area]||[];
-    const conFiltro=_lim?pool.filter(ex=>!warmupContraindicated(ex,_lim)):pool;
-    if(!evitar)return conFiltro;
-    return conFiltro.filter(ex=>{ const p=_pat(ex); return !p || !evitar.has(p); });
-  };
-  const muscleCount={};
-  (exercises||[]).forEach(e=>{
-    const m=e.muscle||'otro';
-    muscleCount[m]=(muscleCount[m]||0)+1;
+  const o=opts||{};
+  const _lim=(limKeys&&limKeys.length)?limKeys:null;
+  // Regla 3 de v594: con barra o en máquina, la versión con peso corporal es una serie de
+  // aproximación legítima y se queda — por eso la sesión solo bloquea su patrón si va SIN carga.
+  const _conCarga=ex=>exTrack(ex)==='peso_reps';
+  const r=wuResolveRecipe(wuRecipeCode(exercises,o.sex),{
+    lim:_lim, rot:o.rot, place:o.place,
+    impacto:wuSessionImpact(exercises),
+    sesPats:wuSessionPatterns(exercises,_conCarga),
+    lookup:findWarmupEx,
   });
-
-  const muscles=Object.keys(muscleCount);
-  const hasUpper=muscles.some(m=>['pecho','espalda','hombros','biceps','triceps'].includes(m));
-  const hasLower=muscles.some(m=>['piernas','gluteo'].includes(m));
-  const hasCore=muscles.includes('core');
-  const isFull=hasUpper&&hasLower;
-
-  // Determine session label
-  let sessionLabel='Cuerpo completo';
-  let sessionEmoji='⚡';
-  if(isFull){sessionLabel='Cuerpo completo';sessionEmoji='⚡';}
-  else if(hasUpper&&!hasLower){
-    const p=muscles.includes('pecho'),e=muscles.includes('espalda'),h=muscles.includes('hombros');
-    if(p&&!e)sessionLabel='Empuje (tren superior)';
-    else if(e&&!p)sessionLabel='Jalón (tren superior)';
-    else sessionLabel='Tren superior';
-    sessionEmoji='💪';
-  }
-  else if(hasLower&&!hasUpper){
-    sessionLabel=muscles.includes('gluteo')&&!muscles.includes('piernas')?'Glúteo':'Tren inferior';
-    sessionEmoji='🦵';
-  }
-  else if(hasCore){sessionLabel='Core';sessionEmoji='🔥';}
-
-  // Build unique articular exercises (no dupes)
-  const articularSets=new Set();
-  const articulares=[];
-  muscles.forEach(m=>{
-    const map=MUSCLE_WARMUP_MAP[m]||MUSCLE_WARMUP_MAP['otro'];
-    (map.articular||[]).forEach(area=>{
-      if(!articularSets.has(area)){
-        articularSets.add(area);
-        // v594 · la movilidad solo evita repetirse a SÍ MISMA (no mira la sesión: ver arriba).
-        const pool=wuPool(area,_usados);
-        // Take 1-2 exercises per area
-        _toma(pool,2).forEach(ex=>{ articulares.push(ex); const p=_pat(ex); if(p)_usados.add(p); });
-      }
-    });
-  });
-
-  // Build activation exercises (unique, max 3)
-  const activacionSets=new Set();
-  const activaciones=[];
-  muscles.forEach(m=>{
-    const map=MUSCLE_WARMUP_MAP[m]||MUSCLE_WARMUP_MAP['otro'];
-    (map.activacion||[]).forEach(area=>{
-      if(!activacionSets.has(area)){
-        activacionSets.add(area);
-        // v594 · la ACTIVACION evita dos cosas: lo que ya hizo la movilidad, y el primer
-        // ejercicio de la sesion cuando va SIN CARGA (ahi seria literalmente la primera serie).
-        const evitar=new Set([..._usados,..._sesPats]);
-        const pool=wuPool(area,evitar);
-        _toma(pool,2).forEach(ex=>{
-          if(activaciones.length<4){ activaciones.push(ex); const p=_pat(ex); if(p)_usados.add(p); }
-        });
-      }
-    });
-  });
-
-  // Aproximación sets for compound exercises
-  const aproximacion=(exercises||[]).filter(e=>e.type==='Compuesto').slice(0,3);
-
-  return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};
+  // La receta puede dar su propia dosis (el puente de glúteo con 2 s arriba en el día A, los minutos
+  // del cardio suave): se pinta esa sin tocar la pieza de la biblioteca, que es compartida.
+  const pieza=s=>{ const ex=findWarmupEx(s.id); return (ex&&s.reps)?Object.assign({},ex,{reps:s.reps}):ex; };
+  const general=r.gen?pieza(r.gen):null;
+  const articulares=r.mov.map(pieza).filter(Boolean);
+  const activaciones=r.act.map(pieza).filter(Boolean);
+  return {sessionLabel:r.label,sessionEmoji:r.emoji,recipe:r.code,general,articulares,activaciones};
+}
+// Lo que el motor necesita saber de la persona y del plan, en UN sitio: lo usan la pantalla donde
+// se entrena y el editor del coach, y si cada uno lo armara por su lado acabarían enseñando dos
+// calentamientos distintos para la misma rutina (la lección de v644 con el desplazamiento).
+// 🔒 `rutina` es la GUARDADA, nunca la que ya adaptó el ánimo del día (ver `wuRotForRoutine`).
+function wuOptsFor(cliente,rutina){
+  return {rot:wuRotForRoutine(rutina), sex:(cliente&&cliente.sex)||'', place:(cliente&&cliente.place)||'gym'};
 }
 
 // Persistencia del calentamiento (igual que las series: localStorage por rutina).
@@ -2653,7 +2612,16 @@ function wuToggle(id){
   const row=document.getElementById('wu-row-'+id);
   if(btn){btn.textContent=done?'✓':'';btn.style.background=done?'var(--g)':'transparent';btn.style.borderColor=done?'var(--g)':'var(--br2)';}
   if(row){row.style.opacity=done?'.5':'1';}
+  // v721 · el ✓ del cardio suave y «Ya vengo caliente» son la MISMA marca: si se quita el ✓, el botón
+  // vuelve, y si se pone, sobra.
+  const cal=document.getElementById('wu-caliente');
+  if(cal&&cal.dataset.gen===id) cal.hidden=done;
   updateWarmupProgress();
+}
+// «Ya vengo caliente»: da por hecho el cardio suave. Solo marca, nunca desmarca (para eso está su ✓).
+function wuYaCaliente(id){
+  const rid=CUR.activeRoutine&&CUR.activeRoutine.id;if(!rid)return;
+  if(!wuIsDone(rid,id)) wuToggle(id);
 }
 
 function updateWarmupProgress(){
@@ -2695,8 +2663,7 @@ function renderWarmup(exercises){
   // guardada (un entrenamiento rápido, una rutina elegida a mano), se usa la que se está entrenando.
   const _wuRutId=CUR.activeRoutine&&CUR.activeRoutine.id;
   const _wuGuardada=(_wuCli&&(_wuCli.routines||[]).find(r=>r&&r.id===_wuRutId))||CUR.activeRoutine;
-  const _wuRot=(typeof wuRotForRoutine==='function')?wuRotForRoutine(_wuGuardada):0;
-  const {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion}=buildWarmup(exercises,_wuLim,{rot:_wuRot});
+  const {sessionLabel,sessionEmoji,general,articulares,activaciones}=buildWarmup(exercises,_wuLim,wuOptsFor(_wuCli,_wuGuardada));
   // Calentamiento EDITABLE por el coach: si la rutina trae una lista propia (routine.warmup),
   // se usa esa (lista plana); si no, se auto-deriva (movilidad + activación). Editable 2026-06-23.
   const customIds=(CUR.activeRoutine&&CUR.activeRoutine.warmup)||null;
@@ -2708,7 +2675,7 @@ function renderWarmup(exercises){
   // auto-derivado es además lo que el propio editor promete («Sin movimientos — la app auto-sugiere»).
   const _customVivos=(customIds&&customIds.length)?customIds.map(id=>findWarmupEx(id)).filter(Boolean):null;
   const custom=(_customVivos&&_customVivos.length)?_customVivos:null;
-  const total=custom?custom.length:(articulares.length+activaciones.length);
+  const total=custom?custom.length:((general?1:0)+articulares.length+activaciones.length);
   // Sin un solo movimiento que ofrecer no se pinta la tarjeta: más vale nada que una tarjeta muerta
   // con una insignia que le pide calentar y una lista donde no hay con qué.
   if(!total){ con.innerHTML=''; return; }
@@ -2732,7 +2699,7 @@ function renderWarmup(exercises){
   // (`warmupWarnZones`/`warmupWarnText`), jamás una segunda lista: así es como se separan.
   // 🔒 El aviso va también en la CABECERA porque la tarjeta llega COLAPSADA: un aviso escondido
   // detrás de un toque es un aviso que no existe.
-  const _wuItems=custom||[...articulares,...activaciones];
+  const _wuItems=custom||[...(general?[general]:[]),...articulares,...activaciones];
   const _wuZonasDe=(ex)=>(typeof warmupWarnZones==='function')?warmupWarnZones(ex,_wuLim):[];
   const _wuTxt=(z)=>(typeof warmupWarnText==='function')?warmupWarnText(z,true):'';
   const _wuAvisoFila=(ex)=>{
@@ -2758,8 +2725,17 @@ function renderWarmup(exercises){
     </div>`;
   };
 
-  // La "Aproximación" (series con % del peso) se movió a los Sets de calentamiento POR
-  // ejercicio (en cada tarjeta) — aquí queda solo Movilidad + Activación para no duplicar.
+  // La "Aproximación" (series con % del peso) vive en los Sets de calentamiento POR ejercicio (en
+  // cada tarjeta) — aquí no se duplica. v721 · pero es el paso 4 de la receta y llega oculto tras
+  // un «Mostrar»: una línea al final dice dónde está, solo si la sesión trae algo con peso.
+  const _wuAprox=(exercises||[]).some(e=>exTrack(e)==='peso_reps')
+    ?'<div class="wu-aprox-nota">🔥 Después, en tu primer ejercicio con peso, toca «Mostrar» en «Sets de calentamiento»: son tus series livianas antes de las de verdad.</div>':'';
+  // v721 · EL CARDIO SUAVE, paso 1 de toda receta. «Ya vengo caliente» lo da por hecho a quien llegó
+  // caminando o en bici: salta SOLO este bloque, nunca la movilidad ni la aproximación (Laura §4).
+  // Es la misma marca que su ✓ (`wuToggle`), así que no hay un segundo estado que se pueda separar.
+  const _wuGenHecho=!!(general&&rid&&wuIsDone(rid,general.id));
+  const _wuCaliente=general
+    ?`<button type="button" id="wu-caliente" class="wu-caliente" data-gen="${general.id}" onclick="event.stopPropagation();wuYaCaliente('${general.id}')"${_wuGenHecho?' hidden':''}>Ya vengo caliente</button>`:'';
 
   con.innerHTML=`
     <div class="wu-card">
@@ -2784,9 +2760,11 @@ function renderWarmup(exercises){
           // medido, con lumbar + tobillo declarados un día de pierna o de glúteo deja «⚡ Activación
           // muscular» con CERO filas debajo. Hoy no le pasa a nadie (ninguna ficha declara esas dos),
           // y por eso mismo se cierra ahora: cuando le pase a alguien, nadie va a estar mirando.
-          : `${articulares.length?`<div class="wu-section-title">🦴 Movilidad articular</div>
-        ${articulares.map(exRow).join('')}`:''}${activaciones.length?`<div class="wu-section-title"${articulares.length?' style="margin-top:14px"':''}>⚡ Activación muscular</div>
+          : `${general?`<div class="wu-section-title wu-gen-title"><span>💓 Cardio suave</span>${_wuCaliente}</div>
+        ${exRow(general)}`:''}${articulares.length?`<div class="wu-section-title"${general?' style="margin-top:14px"':''}>🦴 Movilidad articular</div>
+        ${articulares.map(exRow).join('')}`:''}${activaciones.length?`<div class="wu-section-title"${(general||articulares.length)?' style="margin-top:14px"':''}>⚡ Activación muscular</div>
         ${activaciones.map(exRow).join('')}`:''}`}
+        ${_wuAprox}
       </div>
     </div>`;
   updateWarmupProgress(); // refleja el calentamiento ya marcado (persistido)
@@ -3298,6 +3276,11 @@ function whatsappNudge(id){
 // marcan visto. Al publicar una feature visible: agregar entrada {v,icon,t,d,steps,cta}
 // y podar viejas (tope 3 vía newsToShow, avi-core). Textos tono Sofía, sin jerga.
 const AVI_NEWS=[
+  // v721 — Aprobado por el PO: el calentamiento por receta (Coach Pro, Valery y Laura). Se VE distinto —un
+  // bloque nuevo de cardio suave y piezas nuevas—, así que se explica. Sin público marcado: todo el que
+  // entrena tiene calentamiento, también el tier libre.
+  {v:721, icon:'flame', t:'Un calentamiento para cada entrenamiento', d:'Tu calentamiento ahora depende de lo que entrenas ese día: unos minutos de cardio suave, la movilidad que necesitas y la activación del músculo que vas a trabajar. Si llegas caminando o en bici, toca «Ya vengo caliente».',
+   steps:['En «Hoy», abre la tarjeta «Calentamiento»','Empieza por el cardio suave, o toca «Ya vengo caliente»','Marca cada movimiento; si no sabes cómo se hace, toca el botón de video']},
   // v718 — Pedido del PO: en los entrenamientos rápidos solo había intervalos y nadie podía caminar o montar
   // bici 20-30 min seguidos. Sin público marcado: los rápidos son de TODOS, también del tier libre.
   {v:718, icon:'heart', t:'Cardio a tu ritmo', d:'Si hoy solo quieres caminar, montar bici, elíptica o escaladora, ya puedes: eliges dónde, pones tus minutos y la app te lleva el tiempo. Cuenta en tu historial y en tu racha.',

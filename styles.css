@@ -1660,6 +1660,12 @@ body.avi-train-onscreen #install-banner{visibility:hidden!important;opacity:0!im
 .wup-body{display:none;padding:10px 12px}
 .wup-body.open{display:block}
 .wu-section-title{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+/* v721 · el cardio suave (paso 1 de la receta) lleva «Ya vengo caliente» a la derecha de su título.
+   `[hidden]` va explícito: un `display` propio le gana al atributo y el botón no se iría nunca. */
+.wu-gen-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.wu-caliente{min-height:36px;padding:0 12px;border-radius:99px;border:1.5px solid var(--br2);background:transparent;color:var(--gt);font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:0;text-transform:none;cursor:pointer;flex-shrink:0}
+.wu-caliente[hidden]{display:none}
+.wu-aprox-nota{font-size:11.5px;color:var(--t2);background:var(--bg);border-radius:var(--rsm);padding:9px 11px;margin-top:12px;line-height:1.5}
 .wu-ex-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);cursor:pointer;transition:opacity .2s}
 .wu-ex-row:last-of-type{border-bottom:none}
 .wu-ex-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}

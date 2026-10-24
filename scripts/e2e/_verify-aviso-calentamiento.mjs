@@ -45,7 +45,10 @@ A.ok(/function renderWarmup\(/.test(TRAMO) && /function buildWarmup\(/.test(TRAM
 // nivel 3, bandera roja R5 → zonas lumbar + isquios. `we5` y `wai3` son los dos que su propio
 // filtro le quitaría, y son los que tiene que ver marcados.
 const LISTA_PO = ['wh1','wh2','wc1','wc2','wr1','wr2','wt1','wt2','wm1','wm2','we5','we1','wa1','wai3'];
-const PAIN_PO = [{ at: '2026-09-14T14:24:53.238Z', id: 'p1', area: 'muslo por detrás', side: 'izquierda',
+// 🔴 v721 · La fecha va RELATIVA a hoy (hace 2 días). Era la real del PO, el 14-sep, y un reporte de dolor
+// vence a los 14 días: desde el 28-sep la persona de prueba ya no declaraba nada y este harness caía en
+// ocho comprobaciones sin que la app tuviera un solo defecto (R2.3: un dato que envejece no es un dato).
+const PAIN_PO = [{ at: new Date(Date.now() - 2 * 86400000).toISOString(), id: 'p1', area: 'muslo por detrás', side: 'izquierda',
   flags: ['R5'], level: 3, exName: 'Peso Muerto Rumano', inicio: 'traumatismo', limita: 'normal', triaje: 4 }];
 
 const PORT = 9413;

@@ -585,4 +585,4 @@ Agentes en `.claude/agents/`. Skills en `.claude/skills/`.
 
 ---
 
-*Última actualización: 2026-10-23 — **v720 «rotación torácica sentado» sale de todos los calentamientos** (con v719 «el volteo de llanta entra al catálogo», v718 «Cardio a tu ritmo» y v717 «los minutos del cardio») · suite 1509. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*
+*Última actualización: 2026-10-24 — **v721 el calentamiento por receta** (un calentamiento para cada tipo de entrenamiento, con las cadenas de Laura; con v720 «rotación torácica sentado» fuera, v719 «el volteo de llanta entra al catálogo», v718 «Cardio a tu ritmo» y v717 «los minutos del cardio») · suite 1519. El historial de cada versión (qué cambió, qué cazó el QA, con qué se verificó) está en [`docs/historial-versiones.md`](docs/historial-versiones.md), la más nueva arriba.*

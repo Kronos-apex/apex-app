@@ -4,6 +4,54 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔥 2026-10-24 — v721: el calentamiento por RECETA (un calentamiento distinto para cada entrenamiento)
+
+- **Pedido del PO** (24-oct, sobre la página final que vio el 23): «en cuanto a calentamiento mete las recomendaciones
+  de Laura y me gusta el nuevo método de calentamiento, vamos a probarlo a ver qué pasa con los asesorados». Diseño de
+  Coach Pro (días de hombre y generales) y Valery (días de mujer), dictamen VINCULANTE de Laura; todo en
+  `docs/calentamiento-2026-10-23/`. Aceptó el recorte a 7 de los dos días de glúteo tal como lo vio dibujado.
+- **El mecanismo cambia**: el motor viejo sumaba los músculos y tomaba 2 piezas de cada zona, así que GP_A y GP_B
+  recibían casi lo mismo y ningún día de glúteo traía activación de glúteo. Ahora hay **una receta fija por tipo de
+  sesión** (12: EMPUJE, TRACCION, PIERNA, TREN_SUP, HOMBROS_BRAZOS, CARDIO_CORE, FULL_BODY, GP_A, GP_B, TREN_SUP_F,
+  EMP_BRAZOS, CORE_CARDIO) en cuatro pasos: **cardio suave** (nuevo; bici/elíptica en el gym, marcha en casa, caminata
+  en el parque; «Ya vengo caliente» lo da por hecho), movilidad, activación y la línea que dice dónde están las series
+  de aproximación. Puro en avi-core: `WU_RECIPES`, `wuRecipeCode` (por músculos; GP_A/GP_B por los compuestos),
+  `wuResolveRecipe` (cadenas de Laura contra la UNIÓN de zonas, pares que rotan con el plan de v644, hueco vacío si
+  ninguna sirve, regla 2 de v594), `wuSessionImpact`; en app-6 `buildWarmup` busca las piezas y `wuOptsFor` es la
+  única puerta de las opciones.
+- **La biblioteca**: entran 12 piezas (`wg1-3` cardio suave, `wa5` Y-T, `wa6` colgado, `wah1` jalón facial —solo como
+  alterna—, `wah2` deslizamiento en pared, `wag1-3` activación de glúteo, `wac4` perro de caza, `wac5` respiración 360°)
+  con los textos de Laura; `wc4` pasa a activación; textos corregidos de `wh3`, `wc2`, `wc3` (ahora transiciones),
+  `wc5` (hasta la cadera, con pared), `wr3`, `wt2`, `we4` (y sus dos rótulos, que iban al revés), `we5`, `wa1`
+  («Lagartija inclinada»), `wa3`, `wac1`, `wac2`. **Sale** `wh5` (duplicado, 0 listas). **Retiradas** (decisión del
+  PO): `wr1`, `we3`, `wa2` — ni recetas ni selector, pero siguen resolviendo en las listas a mano (`wr1` está en 11 y
+  `we3` en 4: quitarlas de ahí es decisión suya, va al roadmap). No entran `wg4` (cuerda) ni `wf1` (gusano) hasta que
+  la app lea postparto, osteopenia y presión (v722).
+- **Laura (§1)**: `WARMUP_ZONE_EXCL_IDS` pasa a TODO por id con las casillas nuevas (`wc3`, `wr3` en lumbar; `wc2`,
+  `wag2` en tobillo; `wag1`, `wag2` en aductor/abductor; `wa5`, `wa6`, `wah2` en hombro; `wa5`, `wa6` en cuello; `wa6`,
+  `wac4`, `wag3` en muñeca; zonas nuevas codo `wa6` y pecho `wh3`). Medido con el filtro REAL: **451 casillas (41
+  piezas × 11 zonas), 0 diferencias** con su matriz.
+- **La tercera superficie**: la vista previa del calentamiento en la ficha del coach (`renderDetailRoutines`) llamaba al
+  motor sin el plan guardado (v644 cableó «Hoy» y el editor y esta se quedó fuera) e ignoraba la lista propia. Ahora usa
+  `wuOptsFor(c,r)` y, si hay lista a mano, enseña esa («tu lista»).
+- **Medido sobre las rutinas reales** (respaldo del 23-oct): 112 rutinas, **100 con calentamiento automático** pasan a
+  receta (F: GP_A 11 · TREN_SUP_F 12 · GP_B 7 · EMP_BRAZOS 11 · FULL_BODY 8 · CORE_CARDIO 1; M: EMPUJE 11 · PIERNA 11 ·
+  TRACCION 11 · HOMBROS_BRAZOS 7 · CARDIO_CORE 6 · FULL_BODY 2 · TREN_SUP 2), con 4 a 7 movimientos cada una; las **12
+  listas a mano siguen igual**.
+- QA: suite 1519 (10 tests nuevos de v721 y 9 viejos pasados al mecanismo nuevo con el MISMO riesgo que vigilaban, con
+  `_wuMotor()`, una sola forma de montar el motor real) · matriz NUEVA `_sabotaje-v721` **23/23 muerden** (la primera
+  corrida dio 20/22: dos candados flojos — la regla de glúteo A/B por compuestos no decidía nada que no decidiera el
+  primer ejercicio, y la prueba de la dosis miraba OTRA copia de la biblioteca; los dos se corrigieron y la regla de
+  compuestos se quitó) · harness NUEVO `_verify-calentamiento-receta` (claro, oscuro y letra «Muy grande» a 360: los 7
+  del día de glúteo, «Ya vengo caliente» marca solo el cardio y vuelve al quitar el ✓, casa = marcha y sin línea de
+  aproximación, lumbar + tobillo sin títulos vacíos) · `_verify-aviso-calentamiento` OK (su dolor de prueba tenía la
+  fecha FIJA del 14-sep y vencía a los 14 días: caía en 8 comprobaciones sin defecto de la app; ahora va relativa) ·
+  `_verify-news` TODO OK · `_guiado-suite` TODO OK · `_shot-trained` TODO OK · `_test-coach-back` TODO OK. Las
+  matrices viejas `_sabotaje-v642/v644/calentamiento` apuntan al motor viejo: su cobertura vigente es la de v721.
+  Regla de v594 n.º 1 (no repetir un patrón) sale del motor y queda en la suite sobre TODAS las recetas (gotcha).
+- Novedades: entrada v721 en AVI_NEWS (el cambio se VE: un bloque nuevo y piezas distintas). **PENDIENTE
+  re-verificación de Fable.**
+
 ## ⏮️ 2026-10-23 — v720: «Rotación torácica sentado» sale de todos los calentamientos
 
 - **Pedido del PO**: «elimina de todos los calentamientos esa rotación torácica sentado, para eso tenemos la rotación

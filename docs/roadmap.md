@@ -27,6 +27,22 @@
 - **Regla general:** congelar **no** es esconder ni borrar. La funcionalidad sigue visible para
   quien la use y sus candados se siguen manteniendo — sobre todo si guarda datos de menores.
 
+### 🔥 CALENTAMIENTO POR RECETA — lo que sigue a v721 (aprobado por el PO el 24-oct)
+Fuente: `docs/calentamiento-2026-10-23/` (Coach Pro, Valery, consolidado y el dictamen de Laura).
+- **v722 · que la app LEA postparto, diástasis y piso pélvico** (clave `core_central`, Laura prioridad ALTA) y, con
+  prioridad media, osteopenia (`hueso`) e hipertensión (`presion`). Toca `GEN_LIMIT_KWS` y el ENTRENO (sin impacto
+  ni flexión de tronco), así que antes de escribir: Laura dicta la regla del entreno para cada clave, y al tocar
+  `GEN_ZONE_EXCL` se vuelve a barrer la matriz del calentamiento (su candado 7). Mientras no exista, el día de core
+  de mujer no arranca con el dead bug y `we5`, `wf1` y `wg4` no entran en ninguna receta.
+- **v723 · las series de aproximación por implemento** (el paso 4): barra de pierna 40/60/80 %, tren superior 50/75 %
+  (+90 % solo a ≤6 reps y NUNCA con hombro, pecho, codo, cuello u operado), prensa/Smith 2 series, máquina 1 al 60 %,
+  aislamiento 1 al 50 % solo si es el primero de su músculo, peso corporal ninguna; tope 3 ejercicios y ~6 series;
+  base al 90 % si el último registro tiene >4 semanas o hubo dolor en 14 días (**que lo confirme Andrés Hyp**). Toca el
+  guiado (zona caliente): hoy es UNA fila `w0` al 50 %. El candado 6 de Laura va con esta versión.
+- **Decisión del PO pendiente:** sus 12 listas armadas a mano tienen `wr1` (círculos de rodilla) en 11 y `we3` (apertura
+  de cadena posterior) en 4. Las dos están `retirada` desde v721: siguen funcionando donde están, pero no se ofrecen.
+  Si decide quitarlas, se migra cada lista (sugerido: `wr1` → quitar, `we3` → `we1`) y Laura las saca de sus listas.
+
 ### ✅ Hecho (resumen ejecutivo)
 - **v1.0–v1.3** (2025 – mayo 2026): base PWA single-file + Supabase sync, push VAPID, mensajes coach↔asesorado, pagos/membresía, nutrición con macros, analytics, dark mode, hardening XSS, gates QA.
 - **v1.4–v1.5** (junio 2026): modalidades `track` por ejercicio, auto-generador con adaptación, auto-registro modo libre, gamificación, catálogo 212 ejercicios con foto propia (pipeline Gemini), rediseño interior.

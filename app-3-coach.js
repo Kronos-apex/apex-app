@@ -3828,22 +3828,29 @@ function renderDetailRoutines(c){
     const totS=(r.exercises||[]).reduce((s,e)=>s+(parseInt(e.sets)||0),0);
     const div=document.createElement('div');div.className='rc';
 
-    // Build warmup preview for coach
-    const wu = exN ? buildWarmup(r.exercises,_limKeys) : null;
-    const wuPreview = wu ? `
+    // Vista previa del calentamiento. 🔴 v721 · tiene que ser EL QUE ESA PERSONA VA A HACER: hasta
+    // v720 llamaba al motor sin el desplazamiento del plan (v644 lo cableó en «Hoy» y en el editor, y
+    // esta tercera superficie se quedó fuera) e ignoraba la lista propia, así que con una lista a mano
+    // el coach revisaba un calentamiento que nadie entrenaba. Con las recetas por sexo la diferencia
+    // habría sido una receta entera.
+    const wu = exN ? buildWarmup(r.exercises,_limKeys,wuOptsFor(c,r)) : null;
+    const _wuPropia=(Array.isArray(r.warmup)&&r.warmup.length)?r.warmup.map(id=>findWarmupEx(id)).filter(Boolean):[];
+    const _wupFila=e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`;
+    const _wupTit=(t,primero)=>`<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:${primero?'0':'8px'} 0 6px">${t}</div>`;
+    const _wupN=_wuPropia.length||(wu?(wu.general?1:0)+wu.articulares.length+wu.activaciones.length:0);
+    const wuPreview = (wu&&_wupN) ? `
       <div style="margin-top:10px;background:var(--bg);border:1px solid var(--br);border-radius:var(--rsm);overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--br);cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.wupchev').style.transform=this.nextElementSibling.classList.contains('open')?'rotate(180deg)':'rotate(0deg)'">
-          <div style="font-size:12px;font-weight:700;color:var(--t2)">${wu.sessionEmoji} Calentamiento — ${esc(wu.sessionLabel)}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--t2)">${wu.sessionEmoji} Calentamiento — ${_wuPropia.length?'tu lista':esc(wu.sessionLabel)}</div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;color:var(--t3)">${wu.articulares.length + wu.activaciones.length} ejercicios</span>
+            <span style="font-size:11px;color:var(--t3)">${_wupN} ejercicio${_wupN!==1?'s':''}</span>
             <span class="wupchev" style="font-size:10px;color:var(--t3);transition:transform .2s">▼</span>
           </div>
         </div>
         <div class="wup-body">
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:6px">🦴 Movilidad articular</div>
-          ${wu.articulares.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`).join('')}
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin:8px 0 6px">⚡ Activación</div>
-          ${wu.activaciones.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)">${e.icon} ${esc(e.name)} <span style="color:var(--t3)">· ${esc(e.reps)}</span></div>`).join('')}
+          ${_wuPropia.length
+            ? _wuPropia.map(_wupFila).join('')
+            : `${wu.general?_wupTit('💓 Cardio suave',true)+_wupFila(wu.general):''}${wu.articulares.length?_wupTit('🦴 Movilidad articular',!wu.general)+wu.articulares.map(_wupFila).join(''):''}${wu.activaciones.length?_wupTit('⚡ Activación',!wu.general&&!wu.articulares.length)+wu.activaciones.map(_wupFila).join(''):''}`}
         </div>
       </div>` : '';
 
@@ -4095,9 +4102,9 @@ function _effWarmIds(){
   // coach tiene delante: si aqui se quedara fijo, lo que el revisa y lo que ella entrena serian dos
   // calentamientos distintos. `CUR.routineExs` es justo lo que esta editando, asi que el
   // calentamiento sugerido se mueve mientras arma la rutina — que es lo que pidio el PO.
-  const _r=(typeof wuRotForRoutine==='function')?wuRotForRoutine({exercises:CUR.routineExs||[]}):0;
-  const w=buildWarmup(CUR.routineExs||[],_c?limitationsFor(_c,Date.now()).keys:null,{rot:_r});
-  return [...w.articulares,...w.activaciones].map(e=>e.id);
+  // v721 · y la MISMA receta: `wuOptsFor` lleva también el sexo y el lugar de la persona.
+  const w=buildWarmup(CUR.routineExs||[],_c?limitationsFor(_c,Date.now()).keys:null,wuOptsFor(_c,{exercises:CUR.routineExs||[]}));
+  return [...(w.general?[w.general]:[]),...w.articulares,...w.activaciones].map(e=>e.id);
 }
 // Limitaciones del asesorado que se está editando + si es el entrenamiento PROPIO del coach.
 // El calentamiento manual NO se filtra (ahí decide él); esto es lo que se lo hace VER.
@@ -4130,7 +4137,7 @@ function renderRfWarmup(){
       <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">${esc(ex.name)}</div><div style="font-size:10.5px;color:var(--t3)">${esc(ex.reps)}</div>${_rfWarmChip(ex,lim)}</div>
       <button onclick="rfWarmDel('${ex.id}')" title="Quitar" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0">✕</button>
     </div>`).join('');
-  con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Sugerido según los músculos de la rutina. Quita o agrega para personalizarlo.</div>'}`
+  con.innerHTML=`${isCustom?'':'<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">Sugerido según el tipo de entrenamiento. Quita o agrega para personalizarlo.</div>'}`
     +(rows||'<div style="font-size:11.5px;color:var(--t3);margin-bottom:6px">Sin movimientos — la app auto-sugiere el calentamiento.</div>')
     +`<button class="btn bg bsm" onclick="openWarmPicker()" style="margin-top:2px">+ Agregar movimiento</button>`;
 }
@@ -4162,10 +4169,11 @@ function openWarmPicker(){
   const body=document.getElementById('wp-body'); if(!body) return;
   const have=new Set(_effWarmIds());
   const lim=_rfWarmLim();
-  const labels={hombros:'Hombro',cadera:'Cadera',rodillas:'Rodilla',tobillos:'Tobillo',munecas:'Muñeca',espalda:'Espalda / columna',activacion_superior:'Activación — tren superior',activacion_inferior:'Activación — tren inferior',activacion_core:'Activación — core'};
+  const labels={general:'Cardio suave',hombros:'Hombro',cadera:'Cadera',rodillas:'Rodilla',tobillos:'Tobillo',munecas:'Muñeca',espalda:'Espalda / columna',activacion_superior:'Activación — tren superior',activacion_gluteo:'Activación — glúteo',activacion_inferior:'Activación — tren inferior',activacion_core:'Activación — core'};
   let html='';
   for(const area in WARMUP_LIBRARY){
-    const pool=WARMUP_LIBRARY[area]||[]; if(!pool.length) continue;
+    // v721 · lo `retirada` sigue resolviendo en las listas que ya lo tienen, pero no se ofrece.
+    const pool=(WARMUP_LIBRARY[area]||[]).filter(ex=>!ex.retirada); if(!pool.length) continue;
     html+=`<div style="font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin:10px 0 5px">${esc(labels[area]||area)}</div>`;
     // `data-wp`/`data-wptick`: los usa `_wpMarkUsed` para marcar lo recién agregado sin repintar.
     // 🔒 Lo que ya está puesto se distingue por el ✓ y por el fondo, NUNCA con `opacity` sobre la
