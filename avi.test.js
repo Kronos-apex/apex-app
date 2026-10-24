@@ -24766,6 +24766,41 @@ test('v719 · menores de 16: la regla de carga axial también saca la llanta', (
   assert.ok(re.test('peso muerto convencional') && re.test('sentadilla con barra') && !re.test('plancha'));
 });
 
+test('🔴 v720 · «Rotación torácica sentado» salió de TODOS los calentamientos (pedido del PO, 23-oct)', () => {
+  // El PO: «elimina de todos los calentamientos esa rotación torácica sentado, para eso tenemos la del
+  // suelo». Medido antes de quitarla: 0 de las 12 listas propias (118 rutinas y plantillas) la tenían,
+  // así que solo llegaba por el calentamiento AUTOMÁTICO, desde el pool de hombros.
+  // Se EJECUTA buildWarmup con su `wuTake` real y con todos los desplazamientos: sin rotación el pool de
+  // hombros entrega solo sus dos primeras piezas, y `wh4` era la cuarta — un test sin `wuTake` aprobaría
+  // aunque siguiera ahí.
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = src.indexOf('const WARMUP_LIBRARY');
+  const fin = src.indexOf('return {sessionLabel,sessionEmoji,articulares,activaciones,aproximacion};');
+  assert.ok(ini > 0 && fin > ini, 'no encontré WARMUP_LIBRARY/buildWarmup en app-6-extra.js');
+  const cierre = src.indexOf('\n}', fin);
+  const { WARMUP_LIBRARY, buildWarmup } = new Function('warmupContraindicated,wuTake',
+    src.slice(ini, cierre + 2) + '\nreturn {WARMUP_LIBRARY, buildWarmup};')(core.warmupContraindicated, core.wuTake);
+  const piezas = Object.values(WARMUP_LIBRARY).flat();
+  const esSentado = n => /rotaci[oó]n tor[aá]cica sentad/i.test(n || '');
+  assert.ok(!piezas.some(e => e.id === 'wh4' || esSentado(e.name)), '🔴 volvió «Rotación torácica sentado» a la biblioteca del calentamiento');
+  // CONTROL: la del suelo sigue en la biblioteca, con su nombre.
+  const suelo = piezas.find(e => e.id === 'we2');
+  assert.ok(suelo && suelo.name === 'Rotación torácica en el suelo', 'la rotación torácica en el suelo (we2) tiene que seguir existiendo');
+  const nombres = w => [...w.articulares, ...w.activaciones].map(e => e.name);
+  const pecho = [{ name: 'Press de Banca', muscle: 'pecho' }, { name: 'Aperturas en Polea', muscle: 'pecho' }];
+  const vistos = new Set();
+  for (let rot = 0; rot < 10; rot++) {
+    const w = buildWarmup(pecho, null, { rot });
+    assert.ok(!nombres(w).some(esSentado), `🔴 el calentamiento de pecho (desplazamiento ${rot}) volvió a pedir la rotación torácica sentado`);
+    assert.ok(w.articulares.length >= 4, 'la movilidad del día de pecho se quedó corta (hombros + muñecas, 2 de cada uno)');
+    nombres(w).forEach(n => vistos.add(n));
+  }
+  // CONTROL DE COBERTURA: el desplazamiento recorrió TODO el pool de hombros. Sin esto, un `wuTake` que no
+  // se inyectara dejaría ver solo las dos primeras piezas y el test aprobaría sin mirar la tercera ni la cuarta.
+  WARMUP_LIBRARY.hombros.forEach(e => assert.ok(vistos.has(e.name), `la rotación nunca entregó «${e.name}»: el test no está recorriendo el pool`));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

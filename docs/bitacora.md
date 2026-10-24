@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⏮️ 2026-10-23 — v720: «Rotación torácica sentado» sale de todos los calentamientos
+
+- **Pedido del PO**: «elimina de todos los calentamientos esa rotación torácica sentado, para eso tenemos la rotación
+  torácica en el suelo». Además pidió revisar el calentamiento contra otras apps porque «metiste muchas cosas que poco se
+  utilizan en la vida real»: eso va aparte, como propuesta para que él decida (no entra en esta versión).
+- **Medido antes de tocar (R0.1)**: 0 de las 12 listas propias (118 rutinas y plantillas en `user_data`) usaban `wh4`;
+  la consulta sí ve los otros 28 ids (control), así que la pieza solo llegaba por el calentamiento AUTOMÁTICO, desde el
+  pool de hombros (días de pecho, hombro, espalda y brazos). Quitarla de `WARMUP_LIBRARY` la saca de todos los
+  calentamientos automáticos y del selector del editor del coach. `we2` (la del suelo) sigue en el pool de espalda.
+- **Efecto aceptado**: el pool de hombros pasa de 5 a 4 piezas, así que a algunas rutinas con hombros se les corre el
+  calentamiento una pieza (lo deriva `wuRotForRoutine`). No entra ninguna pieza nueva: la matriz de Laura 34 × 8 sigue
+  cubriendo todo lo que puede llegar (quitar una opción no promueve nada sin dictamen).
+- QA: suite 1509 (test nuevo: ejecuta `buildWarmup` con `wuTake` real y los desplazamientos 0-9, con control de que
+  la del suelo sigue y de cobertura del pool) · sabotaje: devolver `wh4` → 1508/1509 rojo → restaurado → verde ·
+  `calentamiento-repetido.mjs` sin cambios (0 / 0 / 0). Sin entrada en AVI_NEWS: es quitar un movimiento, no algo nuevo
+  que haya que explicar. **PENDIENTE re-verificación de Fable.**
+
 ## ⏮️ 2026-10-23 — v719: el volteo de llanta (tire flip) entra al catálogo
 
 - **Pedido del PO**: «agregar el ejercicio de darle vueltas a una llanta como ejercicio funcional; averigua todo sobre el

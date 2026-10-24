@@ -2455,7 +2455,8 @@ const WARMUP_LIBRARY = {
     {id:'wh1',name:'Círculos de hombro',icon:'🔄',reps:'10 c/lado',desc:'Brazos extendidos, traza círculos amplios hacia adelante y luego hacia atrás. Siente la articulación soltarse.',ytQuery:'círculos de hombro movilidad calentamiento'},
     {id:'wh2',name:'Rotación de manguito rotador',icon:'↩️',reps:'15 c/lado',desc:'Codo doblado 90°, gira el antebrazo hacia arriba y hacia abajo sin mover el codo. Lento y controlado.',ytQuery:'rotación de manguito rotador ejercicio calentamiento'},
     {id:'wh3',name:'Apertura de pecho en pared',icon:'🧱',reps:'10 reps',desc:'Apoya el antebrazo en la pared a 90°. Gira el cuerpo alejándote hasta sentir el pecho abrirse. Mantén 2 seg.',ytQuery:'estiramiento apertura de pecho en pared'},
-    {id:'wh4',name:'Rotación torácica sentado',icon:'🌀',reps:'10 c/lado',desc:'Sentado, manos detrás de la nuca. Rota el torso a un lado y al otro. La cintura no se mueve, solo la espalda alta.',ytQuery:'rotación torácica sentado movilidad columna'},
+    // 🔴 v720 · `wh4` «Rotación torácica sentado» salió por pedido del PO (23-oct): la rotación torácica
+    // que se usa es la del suelo (`we2`, pool de espalda). Ninguna lista propia la tenía (0 de 12).
     {id:'wh5',name:'Círculos de muñeca',icon:'👐',reps:'10 c/dirección',desc:'Entrelaza los dedos y traza círculos amplios con ambas muñecas. Primero en un sentido, luego en el otro.',ytQuery:'círculos de muñeca calentamiento'},
   ],
 
