@@ -57,8 +57,8 @@ const SABOTAJES = [
     "act: [['wac2'], ['wac4', 'wac5']]"],
   // ── Las listas de Laura (todo por id) ──
   ['los isquios de pie vuelven a la zona lumbar', 'core',
-    "  lumbar: ['we3', 'we5', 'wai3', 'wac3', 'wc3', 'wr3'],",
-    "  lumbar: ['we3', 'we5', 'wai3', 'wac3', 'wc3'],"],
+    "  lumbar: ['we5', 'wai3', 'wac3', 'wc3', 'wr3'],",
+    "  lumbar: ['we5', 'wai3', 'wac3', 'wc3'],"],
   ['el colgado deja de caer por id en codo (queda solo el nombre)', 'core',
     "  codo: ['wa6'],",
     '  codo: [],'],
