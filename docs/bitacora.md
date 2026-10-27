@@ -4,6 +4,40 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔥 2026-10-27 — v722: la pantalla de entrada sin la persona generada
+
+**Pedido del PO, en sus palabras:** *«Quiero eliminar esa foto de fondo la verdad nunca me ha gustado que
+siempre aparece en la app»*. Salió al revisar unas capturas de la app para Instagram, donde se veía la cara.
+
+**Lo que había:** en `#s-login.cin` convivían DOS cosas con el mismo hombre generado con camiseta de AVI —
+la foto `media/brand/hero.jpg` y, encima, el video `media/hero-montage.mp4` (1,4 MB, 11 s, 6 tomas).
+Quitar solo la foto no habría servido: el video la tapaba igual. Por eso se fueron las dos.
+
+**Lo que quedó:** fondo de color de marca, `radial-gradient(120% 80% at 50% 18%, #0F5A42, #08301F, #041711)` —
+el verde se abre detrás del logo y se cierra en los bordes. El PO lo eligió viendo TRES opciones pintadas
+sobre la app real (degradado diagonal · verde profundo · gimnasio sin cara), no descritas con palabras.
+De paso, la primera visita se ahorra los 1,4 MB del montaje.
+
+**Código que se fue con el video:** `aviLoginVideo()` y sus dos llamadas (`showScreen` y `aviHideSplash`).
+Sin video no tenían nada que arrancar; dejarlas habría sido código muerto.
+
+**QA:** los dos tests de v684 que EXIGÍAN ese video se reemplazaron por los de v722, que afirman lo
+contrario y llevan control de discriminación. Sabotaje comprobado: devolviendo la foto al CSS, el candado
+falla (1518/1519). Hook 14/14. Suite 1519/1519 (el total no sube: 2 tests por 2 tests).
+Producción verificada con `_prodcheck.mjs v722` + curl al `styles.css` servido. CI verde (368a1b5).
+
+**Lo que NO toca:** las fotos de los asesorados (`ax_photos`, Supabase Storage). El PO lo advirtió en medio
+del trabajo (*«no vayas a eliminar las fotos de los asesorados!!!!»*) y nunca estuvieron en el alcance:
+lo que se quitó son archivos de `media/brand`, que son modelos generados.
+
+**Pendiente (otro lote, el PO dijo «deja así por el momento»):** las demás fotos de marca siguen en pie —
+panel del coach (`coach-verde.jpg`, otra cara distinta), onboarding (`ob-1/2/3`), fin del entreno
+(`WF_DEFAULT_PHOTO`, `WF_PHOTO_F`), subida de nivel (`PU_DEFAULT_PHOTO`), logros (`LU_DEFAULT_PHOTO`),
+perfil y descanso (`aviProfilePhoto`, `aviRestPhoto`) y el héroe del entreno (`.wohero`). Ahí la foto no es
+fondo sino parte de la pantalla, así que antes de tocarlas hay que verlas una por una con el PO.
+Los archivos `hero.jpg` y `hero-montage.mp4` siguen en disco: los usa `_preview-fotos.html` y se borrarán
+cuando se cierre el lote completo.
+
 ## 🔥 2026-10-24 — v721: el calentamiento por RECETA (un calentamiento distinto para cada entrenamiento)
 
 - **Pedido del PO** (24-oct, sobre la página final que vio el 23): «en cuanto a calentamiento mete las recomendaciones
