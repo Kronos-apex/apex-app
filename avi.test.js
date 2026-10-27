@@ -22705,36 +22705,32 @@ test('🔒 v683 · la app ya no espera detrás de la marca, y la marca se va al 
 });
 
 // ══════════════════════════════════════════════════════
-// v684 · EL VIDEO DEL LOGIN SOLO SE CARGA CUANDO EL LOGIN SE VE (R16 #2, calidad intacta)
+// v722 · EL FONDO DEL LOGIN ES COLOR DE MARCA, NO UNA PERSONA (decisión del PO, 27-oct-2026)
+// Aquí vivían una foto (`media/brand/hero.jpg`) y un video de 1,4 MB (`media/hero-montage.mp4`), los dos
+// con el mismo hombre generado con camiseta de AVI: «nunca me ha gustado que siempre aparece en la app».
+// Esto NO toca las fotos de los asesorados (ax_photos, Supabase Storage): son suyas y se quedan.
 // ══════════════════════════════════════════════════════
-test('🔴 v684 · el video del login no arranca solo desde el marcado (lo bajaba quien nunca lo veía)', () => {
+test('🔴 v722 · el login no trae de vuelta la foto ni el video con la persona generada', () => {
   const fs = require('fs'), path = require('path');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-  const tag = (html.match(/<video class="cin-vid"[^>]*>/) || [''])[0];
-  assert.ok(tag, 'no encontré el video del login');
-  assert.ok(!/\bautoplay\b/.test(tag), '🔴 el video vuelve a arrancar solo (se baja aunque nadie vea el login)');
-  assert.ok(!/\ssrc=/.test(tag), '🔴 el video vuelve a tener src en el marcado: el navegador lo pide al cargar');
-  assert.ok(/data-src="media\/hero-montage\.mp4"/.test(tag) && /preload="none"/.test(tag), 'el video perdió su origen diferido o su preload="none"');
-  // Mientras no reproduce, se ve la foto (la misma del poster) y el video entra con un fundido.
   const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
-  assert.ok(/#s-login\.cin\{[^}]*url\('media\/brand\/hero\.jpg'\)/.test(css), 'sin foto de fondo: el login se vería negro mientras carga el video');
-  assert.ok(/\.cin-vid\{[^}]*opacity:0/.test(css) && /\.cin-vid\.on\{opacity:1\}/.test(css), 'el video ya no entra con fundido (salto de la foto al video)');
+  assert.ok(!/<video class="cin-vid"/.test(html), '🔴 volvió el video del login');
+  assert.ok(!/hero-montage\.mp4/.test(html + css), '🔴 el montaje del login volvió a engancharse');
+  const bloque = (css.match(/#s-login\.cin\{[^}]*\}/) || [''])[0];
+  assert.ok(bloque, 'no encontré el bloque #s-login.cin');
+  assert.ok(!/url\(/.test(bloque), '🔴 el fondo del login vuelve a ser una imagen');
+  assert.ok(/radial-gradient/.test(bloque), 'el fondo del login perdió su color de marca');
+  // CONTROL de discriminación: el candado tiene que morder si alguien reescribe el fondo con la foto.
+  const saboteado = bloque.replace(/background:[^;]*/, "background:#000 url('media/brand/hero.jpg') center/cover no-repeat");
+  assert.ok(/url\(/.test(saboteado), 'el control no reproduce el fondo con foto: el candado no prueba nada');
 });
 
-test('🔒 v684 · el video se carga SOLO con el login a la vista y sin la marca encima', () => {
+test('🔒 v722 · nadie quedó llamando al video que ya no existe', () => {
   const fs = require('fs'), path = require('path');
-  const i1 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
-  const i2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
-  const cuerpo = (src, n) => { const i = src.indexOf(n); assert.ok(i >= 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
-  const vid = cuerpo(i2, 'function aviLoginVideo(');
-  assert.ok(/!s\.classList\.contains\('on'\)\)return false;/.test(vid), '🔴 el video se carga aunque el login no esté a la vista');
-  assert.ok(/if\(o&&!o\.classList\.contains\('fade'\)\)return false;/.test(vid), '🔴 el video se carga debajo de la marca (quien tiene sesión nunca lo ve)');
-  assert.ok(/prefers-reduced-motion: reduce/.test(vid), 'con «reducir movimiento» igual arranca el video');
-  assert.ok(/if\(!v\.getAttribute\('src'\)\)\{ v\.addEventListener\('playing',\(\)=>v\.classList\.add\('on'\),\{once:true\}\); v\.src=v\.dataset\.src; \}/.test(vid),
-    'el video se vuelve a pedir en cada llamada (o ya no entra con fundido al reproducir)');
-  // Las dos puertas: al mostrar el login y al quitar la marca.
-  assert.ok(/if\(id==='s-login'\)aviLoginVideo\(\);/.test(cuerpo(i2, 'function showScreen(')), 'mostrar el login no arranca su video');
-  assert.ok(/typeof aviLoginVideo==='function'\)aviLoginVideo\(\);/.test(cuerpo(i1, 'function aviHideSplash(')), 'al quitar la marca el video del login no arranca');
+  const js = ['app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js']
+    .map((f) => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'))).join('\n');
+  assert.ok(!/aviLoginVideo/.test(js), '🔴 quedó una llamada a aviLoginVideo: la función se borró en v722');
+  assert.ok(!/cin-vid/.test(js), '🔴 quedó código buscando el video del login');
 });
 
 // ══════════════════════════════════════════════════════
