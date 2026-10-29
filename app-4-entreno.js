@@ -2858,9 +2858,13 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     // ya sincroniza (`ax_hist` está en SB_KEYS). Se guarda en las DOS ramas: si solo estuviera
     // en la que crea la entrada, una sesión que arranca sin ánimo y lo declara después lo perdería.
     // startedAt = primera serie marcada (este else corre la 1ª vez de la sesión) → duración real.
+    // 🔴 v723 · MENOS el cardio que ya va hecho: un cardio se marca cuando su cronómetro TERMINA, así que si
+    // abre la sesión su inicio está sus minutos atrás. Sin esto, 10 min de bici salían «1 min · 11 kcal»
+    // (reporte del PO, 28-oct). Regla y medición en `cardioDoneSec` (avi-core).
     // finishedAt: solo si esta llamada viene de un flujo de FIN (100% o "Finalizar temprano") — es
     // lo que distingue una sesión TERMINADA de una parcial en curso (fix tarjeta "ya entrenaste" v367).
-    DB.history[clientId].unshift({mood:(typeof getTodayMood==='function'?getTodayMood(clientId):'')||'',id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:new Date().toISOString(),totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
+    const _ini=new Date(Date.now()-(typeof cardioDoneSec==='function'?cardioDoneSec(setsData):0)*1000).toISOString();
+    DB.history[clientId].unshift({mood:(typeof getTodayMood==='function'?getTodayMood(clientId):'')||'',id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:_ini,totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada

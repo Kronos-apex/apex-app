@@ -506,6 +506,11 @@ function _applyAuthClientDB(client, coll){
   const _sh=(typeof sanitizeHistory==='function')?sanitizeHistory(DB.history[id]):{history:DB.history[id],fixed:0};
   if(_sh.fixed>0){ DB.history={[id]: _sh.history};
     try{ svNow('ax_hist',DB.history); log&&log('AVI: saneados '+_sh.fixed+' valores imposibles del historial'); }catch(_e){} }
+  // 🧹 Auto-cura (v723): la sesión de cardio que quedó guardada con «1 min» (el inicio se sellaba al TERMINAR
+  // el cardio) vuelve a los minutos que tiene anotados, con sus calorías. Regla en `healCardioDuration`.
+  const _hc=(typeof healCardioDuration==='function')?healCardioDuration(DB.history[id]):{history:DB.history[id],fixed:0};
+  if(_hc.fixed>0){ DB.history={[id]: _hc.history};
+    try{ svNow('ax_hist',DB.history); log&&log('AVI: '+_hc.fixed+' sesión(es) de cardio con la duración corregida'); }catch(_e){} }
   // El historial YA saneado va como 2.º argumento: sin él, un récord fantasma (200 kg cuando lo
   // más pesado real son 40) sobrevive y deja ese ejercicio imposible de superar para siempre.
   // ⛔ AQUÍ NO VA UNA AUTO-CURA QUE RELLENE RÉCORDS DESDE EL HISTORIAL. Se construyó, se midió
@@ -1257,6 +1262,12 @@ function _hydrateSelfClient(){
     DB.clients.push(self);
     const id=SELF_CLIENT_ID;
     DB.history[id]   =Array.isArray(row.history)?row.history:[];
+    // v723 · la cura de la duración del cardio va también en esta puerta: 2 de las 6 sesiones medidas son del
+    // coach, y su fila no pasa por `_applyAuthClientDB` (lección de v518: curar en un solo lado no dura).
+    // Como la de los récords de abajo, corre en cada arranque (es idempotente) y sube a la nube con el siguiente
+    // guardado de su historial: `_primeCoachSnap` toma la foto base DESPUÉS y este `sv` no encuentra diferencia.
+    const _hcSelf=(typeof healCardioDuration==='function')?healCardioDuration(DB.history[id]):{history:DB.history[id],fixed:0};
+    if(_hcSelf.fixed>0){ DB.history[id]=_hcSelf.history; try{ sv('ax_hist',DB.history); log&&log('AVI: '+_hcSelf.fixed+' sesión(es) mías de cardio con la duración corregida'); }catch(_e){} }
     DB.bodyweight[id]=Array.isArray(row.bodyweight)?row.bodyweight:[];
     // v591 · el coach entrena, y 5 de los 9 récords atascados medidos son SUYOS. Su fila entra
     // por aquí y no por `_applyAuthClientDB`, así que la cura va en las DOS puertas o la mitad

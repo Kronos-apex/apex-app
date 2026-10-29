@@ -5276,6 +5276,64 @@ function cardioLoggedMin(secsRan, typed, target) {
   return null;
 }
 
+// ── Los segundos de CARDIO ya hechos en una sesión (v723) ──
+// 🔴 Reporte del PO (28-oct-2026, capturas suyas y de Carla): 10 min de bici en «Cardio a tu ritmo» y la
+// pantalla de cierre decía «1 min · 11 kcal» (a ella, 8). El inicio de la sesión (`startedAt`) se sellaba al
+// marcar la PRIMERA serie, que en una serie de fuerza es casi su comienzo; pero un cardio se marca cuando el
+// cronómetro TERMINA. Si el cardio abre la sesión, el reloj de pared arranca al final de él y sus minutos no
+// existen: en una sesión de solo cardio midió 0 s, el piso de 60 s lo dejó en «1 min» y las calorías se
+// estimaron sobre ese minuto. Medido en el respaldo del 28-oct: 6 sesiones de 3 personas, todas de solo cardio
+// y todas con `startedAt` igual a `finishedAt`.
+// Suma los minutos anotados de las series MARCADAS de cardio, con la forma del snapshot del historial
+// ({track, sets:[{min, done}]}). Solo el cardio: una serie de fuerza, una plancha o una ronda de HIIT duran un
+// minuto o menos, y la sesión de solo HIIT ya tiene su duración por protocolo (`hiitProtocolSec`). El tope de
+// 600 min es el mismo de `_SANE_MAX`: lo que pasa de ahí no es un minuto, es un error de tecleo. PURA.
+function cardioDoneSec(exercises) {
+  let sec = 0;
+  (Array.isArray(exercises) ? exercises : []).forEach(ex => {
+    if (!ex || ex.track !== 'cardio' || !Array.isArray(ex.sets)) return;
+    ex.sets.forEach(s => {
+      if (!s || s.done !== true) return;
+      const m = parseFloat(s.min);
+      if (Number.isFinite(m) && m > 0 && m <= _SANE_MAX.min) sec += m * 60;
+    });
+  });
+  return Math.round(sec);
+}
+
+// ── La cura de las sesiones que ya quedaron guardadas así (v723) ──
+// El arreglo va hacia adelante (`saveSessionToHistory` resta el cardio ya hecho al sellar el inicio); las 6
+// sesiones medidas seguirían diciendo «1 min · 8 kcal» en el historial, en la ficha del coach y en el resumen de
+// la semana. Aquí SÍ se puede reescribir, a diferencia del HIIT (v545): la sesión guarda los minutos de su cardio,
+// y una sesión no puede durar MENOS que el cardio que se hizo en ella. Si `durationSec` es menor:
+//   · la duración pasa a ser la del cardio;
+//   · las calorías se escalan en la misma proporción (son MET × peso × horas, lineales en el tiempo: así se
+//     conservan el peso y el MET con que se estimaron, sin adivinar ninguno de los dos);
+//   · el inicio se corre para que de inicio a fin cuente lo mismo (lo lee la tarjeta de Comunidad).
+// Lo que había queda en `healedDur` (regla del repo desde v536: la app no cambia un dato de alguien en silencio).
+// Idempotente por construcción: la curada ya dura lo que su cardio y no vuelve a entrar. PURA: no escribe ni
+// decide cuándo correr.
+function healCardioDuration(history) {
+  const arr = Array.isArray(history) ? history : [];
+  let fixed = 0;
+  const out = arr.map(h => {
+    if (!h) return h;
+    const dur = Number(h.durationSec);
+    if (!Number.isFinite(dur) || dur <= 0) return h;     // sin duración guardada no hay nada que corregir
+    const cardio = cardioDoneSec(h.exercises);
+    if (cardio <= dur) return h;
+    const nh = { ...h, durationSec: cardio,
+      healedDur: { durationSec: dur, kcal: h.kcal == null ? null : h.kcal, startedAt: h.startedAt || null } };
+    const k = Number(h.kcal);
+    if (Number.isFinite(k) && k > 0) nh.kcal = Math.round(k * cardio / dur);
+    const fin = Date.parse(h.finishedAt || ''), ini = Date.parse(h.startedAt || '');
+    if (Number.isFinite(fin) && (!Number.isFinite(ini) || fin - ini < cardio * 1000)) nh.startedAt = new Date(fin - cardio * 1000).toISOString();
+    fixed++;
+    return nh;
+  });
+  return { history: fixed ? out : arr, fixed };
+}
+
 // ── CARDIO A TU RITMO (v718) ──
 // Pedido del PO (23-oct-2026): en «¿Hoy quieres algo distinto?» solo había intervalos, y quien quería
 // caminar o montar bici 20-30 minutos seguidos no podía: el HIIT en Máquina topa el trabajo en 180 s.
@@ -13522,6 +13580,8 @@ if (typeof module !== 'undefined' && module.exports) {
     WATER_GLASS_ML,
     clampQwHiit,
     cardioLoggedMin,
+    cardioDoneSec,
+    healCardioDuration,
     QUICK_CARDIO_OPTIONS,
     quickCardioRoutine,
     newsToShow,

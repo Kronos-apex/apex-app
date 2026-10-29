@@ -25077,6 +25077,77 @@ test('v721 · los textos del calentamiento siguen la regla de Laura (§5)', () =
 });
 
 // ══════════════════════════════════════════════════════
+// v723 · LA DURACIÓN Y LAS CALORÍAS DE UN CARDIO
+// ══════════════════════════════════════════════════════
+// Reporte del PO (28-oct-2026): 10 min de bici en «Cardio a tu ritmo» y la pantalla de cierre decía
+// «1 min · 11 kcal» (a Carla, 8). El inicio de la sesión se sellaba al marcar la primera serie y un
+// cardio se marca cuando su cronómetro TERMINA. Medido en el respaldo del 28-oct: 6 sesiones de 3
+// personas, todas de solo cardio, con startedAt igual a finishedAt. El camino entero en el navegador lo
+// prueba `scripts/e2e/_verify-cardio-duracion.mjs`.
+
+const _cardioSnap = (min, done = true) => ({ id: 'e64', name: 'Bicicleta Estática', track: 'cardio', sets: [{ min, done }] });
+const _fuerzaSnap = () => ({ id: 'e42', name: 'Hip Thrust con Barra', track: 'peso_reps', sets: [{ kg: '100', reps: '12', done: true }] });
+
+test('v723 · cardioDoneSec suma los minutos del cardio MARCADO, y nada más', () => {
+  assert.strictEqual(core.cardioDoneSec([_cardioSnap('10')]), 600);
+  assert.strictEqual(core.cardioDoneSec([_cardioSnap('20.5'), _fuerzaSnap(), _cardioSnap('5')]), 1530);
+  // 🔒 CONTROLES: lo no marcado, la fuerza, lo vacío y lo imposible no suman un segundo.
+  assert.strictEqual(core.cardioDoneSec([_cardioSnap('10', false)]), 0);
+  assert.strictEqual(core.cardioDoneSec([_fuerzaSnap()]), 0);
+  assert.strictEqual(core.cardioDoneSec([_cardioSnap(''), _cardioSnap('abc'), _cardioSnap('-5'), _cardioSnap('6000')]), 0);
+  assert.strictEqual(core.cardioDoneSec(null), 0);
+});
+
+test('v723 · la sesión guardada con «1 min · 8 kcal» vuelve a sus 10 min, con sus calorías y su inicio', () => {
+  const t = '2026-10-28T13:26:30.000Z';
+  const mala = { id: 'h1', startedAt: t, finishedAt: t, durationSec: 60, kcal: 8, exercises: [_cardioSnap('10')] };
+  const r = core.healCardioDuration([mala]);
+  assert.strictEqual(r.fixed, 1);
+  const h = r.history[0];
+  assert.strictEqual(h.durationSec, 600);
+  assert.strictEqual(h.kcal, 80, 'las calorías se escalan con el tiempo: conservan el peso y el MET con que se estimaron');
+  assert.strictEqual(h.startedAt, '2026-10-28T13:16:30.000Z', 'de inicio a fin tienen que contar los mismos 10 min');
+  assert.deepStrictEqual(h.healedDur, { durationSec: 60, kcal: 8, startedAt: t }, 'la app no cambia un dato en silencio (v536)');
+  assert.strictEqual(mala.durationSec, 60, 'PURA: no toca la sesión que recibe');
+  // Idempotente: la curada no se vuelve a tocar.
+  const r2 = core.healCardioDuration(r.history);
+  assert.strictEqual(r2.fixed, 0);
+  assert.strictEqual(r2.history, r.history);
+});
+
+test('🔒 v723 · CONTROLES de la cura: lo que ya cuadra no se toca', () => {
+  const t = '2026-10-28T13:26:30.000Z';
+  const sanas = [
+    // pesas + el cardio al final: el reloj ya contó el cardio (91 de 93 sesiones mixtas medidas).
+    { id: 'a', startedAt: '2026-10-28T12:30:00.000Z', finishedAt: t, durationSec: 3390, kcal: 300, exercises: [_fuerzaSnap(), _cardioSnap('20')] },
+    { id: 'b', startedAt: t, finishedAt: t, durationSec: 3600, kcal: 300, exercises: [_fuerzaSnap()] },
+    { id: 'c', startedAt: t, finishedAt: t, exercises: [_cardioSnap('10')] },          // sin duración guardada
+    { id: 'd', startedAt: t, finishedAt: t, durationSec: 60, kcal: 8, exercises: [_cardioSnap('10', false)] },  // no lo marcó
+  ];
+  const r = core.healCardioDuration(sanas);
+  assert.strictEqual(r.fixed, 0);
+  assert.strictEqual(r.history, sanas, 'sin nada que curar devuelve el MISMO arreglo (el llamador no escribe)');
+});
+
+test('🔒 v723 · CABLEADO: el inicio resta el cardio ya hecho y la cura corre en las dos puertas de carga', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const i = e4.indexOf('function saveSessionToHistory('); const save = e4.slice(i, e4.indexOf('\nfunction ', i + 10));
+  assert.ok(/const _ini=new Date\(Date\.now\(\)-\(typeof cardioDoneSec==='function'\?cardioDoneSec\(setsData\):0\)\*1000\)\.toISOString\(\);/.test(save),
+    '🔴 el inicio de la sesión dejó de restar el cardio ya hecho: 10 min de bici vuelven a salir «1 min»');
+  assert.ok(/startedAt:_ini,/.test(save) && !/startedAt:new Date\(\)\.toISOString\(\)/.test(save),
+    '🔴 la sesión nueva vuelve a sellar su inicio con la hora en que se marcó la primera serie');
+  const c3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const cuerpoDe = f => { const k = c3.indexOf(f); return c3.slice(k, c3.indexOf('\nfunction ', k + 10)); };
+  assert.ok(/const _hc=\(typeof healCardioDuration==='function'\)\?healCardioDuration\(DB\.history\[id\]\)/.test(cuerpoDe('function _applyAuthClientDB('))
+    && /if\(_hc\.fixed>0\)\{ DB\.history=\{\[id\]: _hc\.history\};\s*try\{ svNow\('ax_hist',DB\.history\)/.test(cuerpoDe('function _applyAuthClientDB(')),
+    '🔴 la fila del asesorado ya no cura (o no guarda) la duración del cardio al cargar');
+  assert.ok(/const _hcSelf=\(typeof healCardioDuration==='function'\)\?healCardioDuration\(DB\.history\[id\]\)/.test(cuerpoDe('function _hydrateSelfClient('))
+    && /if\(_hcSelf\.fixed>0\)\{ DB\.history\[id\]=_hcSelf\.history;/.test(cuerpoDe('function _hydrateSelfClient(')),
+    '🔴 la fila propia del coach ya no cura la duración del cardio (2 de las 6 sesiones eran suyas)');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
