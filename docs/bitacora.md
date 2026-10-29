@@ -4,6 +4,50 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔥 2026-10-28 — v723: el cardio cuenta sus minutos en la duración y las calorías
+
+**Reporte del PO, en sus palabras:** *«mira esto y es que no está marcando las calorías del cardio»*, con
+cuatro capturas: la suya (10 min de bici en «Cardio a tu ritmo» → «1 min · 11 kcal») y dos de Carla
+(«1 min · 8 kcal»), más el cronómetro corriendo en 8:25.
+
+**Medido antes de tocar nada (respaldo local del 28-oct, la lectura directa a producción no estaba
+autorizada):** 6 sesiones de 3 personas (el coach 2, Carla 2, Dora R. 2), TODAS de solo cardio, desde el
+24-oct (v718), y las 6 con `startedAt` **igual** a `finishedAt` y `durationSec` 60. De 93 sesiones mixtas
+con cardio, 91 lo llevan al final (el reloj ya lo contaba) y 1 al principio (perdió sus minutos).
+
+**Causa raíz:** `saveSessionToHistory` sellaba el inicio al marcar la PRIMERA serie. En una serie de fuerza
+eso es casi su comienzo; un cardio se marca cuando su cronómetro TERMINA. Si el cardio abre la sesión, el
+reloj de pared arranca al final de él: midió 0 s, el piso de 60 s lo dejó en «1 min» y las calorías
+(MET × peso × horas) salieron de ese minuto. Misma familia que el HIIT de v545 (el reloj de pared mide
+otra cosa que el entrenamiento), pero aquí el dato SÍ existe: los minutos del cardio se anotan desde v717.
+
+**Arreglo:**
+- `cardioDoneSec` (avi-core, pura): los segundos de cardio MARCADO del snapshot de la sesión.
+- `saveSessionToHistory`: al nacer la sesión, el inicio es «ahora» MENOS el cardio ya hecho.
+- `healCardioDuration` (avi-core, pura): una sesión guardada que dura MENOS que su propio cardio pasa a
+  durar lo que su cardio; las calorías se escalan en la misma proporción (conservan el peso y el MET con
+  que se estimaron), el inicio se corre y lo que había queda en `healedDur`. Corre en las dos puertas de
+  carga: `_applyAuthClientDB` (asesorado, sube con `svNow`) y `_hydrateSelfClient` (coach: se cura en cada
+  arranque y sube con su siguiente guardado de historial, igual que los récords de v591).
+- Sin AVI_NEWS: es una corrección de un número, no una función nueva.
+
+**QA:** `_verify-cardio-duracion` (nuevo, local, sin login): ROJO antes del arreglo (4 fallas, «1 min ·
+8 kcal», `inicioAFin` 0) → 8/8 después («10 min · 76 kcal» a 65 kg; la sesión mala vuelve a «10 min ·
+80 kcal»), con su CONTROL (apagando `cardioDoneSec` la misma sonda ve el «1 min» del reporte). Suite
+1519 → 1523. `_sabotaje-v723` **11/11**; la primera corrida dio **10/11**: quitar el filtro de modalidad de
+`cardioDoneSec` dejaba la suite verde porque la prueba solo usaba series de fuerza SIN minutos → se añadió el
+caso que el filtro existe para atajar (commit aparte, 23597b0). Al diseñar la matriz se vio además que la
+guarda `h.healedDur` de la cura era código sobrante (la curada ya dura lo que su cardio) → fuera antes del
+commit. Cinturón del entreno: `_guiado-suite` TODO OK (cuenta QA), `_sabotaje-hiit` 7/7,
+`_sabotaje-finish-temprano` 10/10, `_verify-qw-cardio` 13/13, `_shot-trained` OK. Hook 14/14.
+⏳ **PENDIENTE re-verificación de Fable.**
+
+**Radar que deja:** (1) las calorías de una sesión MIXTA promedian el MET por número de ejercicios, no por
+tiempo: 20 min de cardio en una sesión de 6 ejercicios pesan 1/7; (2) `personalSecsPerSet` divide la
+duración entre las series, y en 91 de 93 sesiones mixtas el cardio va al final y su media hora entra como
+«una serie»: infla el ritmo de quien cierra con cardio; (3) 29 sesiones de cardio anteriores a v717 no
+tienen minutos: esas no se pueden curar (no hay dato).
+
 ## 🔥 2026-10-27 — v722: la pantalla de entrada sin la persona generada
 
 **Pedido del PO, en sus palabras:** *«Quiero eliminar esa foto de fondo la verdad nunca me ha gustado que
