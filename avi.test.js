@@ -25094,6 +25094,8 @@ test('v723 · cardioDoneSec suma los minutos del cardio MARCADO, y nada más', (
   // 🔒 CONTROLES: lo no marcado, la fuerza, lo vacío y lo imposible no suman un segundo.
   assert.strictEqual(core.cardioDoneSec([_cardioSnap('10', false)]), 0);
   assert.strictEqual(core.cardioDoneSec([_fuerzaSnap()]), 0);
+  // Un minuto colado en un ejercicio que NO es cardio (un registro viejo en esa posición) no es tiempo de cardio.
+  assert.strictEqual(core.cardioDoneSec([{ ..._fuerzaSnap(), sets: [{ kg: '100', reps: '12', min: '10', done: true }] }]), 0);
   assert.strictEqual(core.cardioDoneSec([_cardioSnap(''), _cardioSnap('abc'), _cardioSnap('-5'), _cardioSnap('6000')]), 0);
   assert.strictEqual(core.cardioDoneSec(null), 0);
 });
