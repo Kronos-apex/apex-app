@@ -29,17 +29,32 @@
 
 ### 🔥 CALENTAMIENTO POR RECETA — lo que sigue a v721 (aprobado por el PO el 24-oct)
 Fuente: `docs/calentamiento-2026-10-23/` (Coach Pro, Valery, consolidado y el dictamen de Laura).
-- **v722 · que la app LEA postparto, diástasis y piso pélvico** (clave `core_central`, Laura prioridad ALTA) y, con
+- **Siguiente · que la app LEA postparto, diástasis y piso pélvico** (clave `core_central`, Laura prioridad ALTA) y, con
   prioridad media, osteopenia (`hueso`) e hipertensión (`presion`). Toca `GEN_LIMIT_KWS` y el ENTRENO (sin impacto
   ni flexión de tronco), así que antes de escribir: Laura dicta la regla del entreno para cada clave, y al tocar
   `GEN_ZONE_EXCL` se vuelve a barrer la matriz del calentamiento (su candado 7). Mientras no exista, el día de core
   de mujer no arranca con el dead bug y `we5`, `wf1` y `wg4` no entran en ninguna receta.
-- **v723 · las series de aproximación por implemento** (el paso 4): barra de pierna 40/60/80 %, tren superior 50/75 %
+- **Después · las series de aproximación por implemento** (el paso 4): barra de pierna 40/60/80 %, tren superior 50/75 %
   (+90 % solo a ≤6 reps y NUNCA con hombro, pecho, codo, cuello u operado), prensa/Smith 2 series, máquina 1 al 60 %,
   aislamiento 1 al 50 % solo si es el primero de su músculo, peso corporal ninguna; tope 3 ejercicios y ~6 series;
   base al 90 % si el último registro tiene >4 semanas o hubo dolor en 14 días (**que lo confirme Andrés Hyp**). Toca el
   guiado (zona caliente): hoy es UNA fila `w0` al 50 %. El candado 6 de Laura va con esta versión.
 - ✅ **Decidido (24-oct):** `wr1` y `we3` salieron del todo (con `wa2`); sus listas a mano las pierden solas.
+
+### 🏃 CARDIO — lo que sigue a v723 (radar del 28-oct, guardado a pedido del PO)
+v723 arregló la duración (el inicio ya no se sella al TERMINAR el primer cardio). Quedan tres mejoras, en este orden:
+- **Calorías de una sesión MIXTA por TIEMPO, no por número de ejercicios.** `_sessionMET` (app-4) promedia el MET de
+  cada ejercicio por igual: 20 min de cardio en una sesión de 6 ejercicios pesan 1/7. Lo correcto: MET del cardio ×
+  peso × sus horas (`cardioDoneSec`) + MET del resto × peso × el tiempo que queda. Ejemplo: 60 min con 20 de cardio a
+  70 kg → hoy ~373 kcal, por tiempo ~397. Medido el 28-oct: 93 sesiones mixtas con cardio (91 lo llevan al final).
+  Antes de tocarlo, `_trackMET`/`_sessionMET` pasan a avi-core (puras) con su prueba.
+- **El MET POR ACTIVIDAD de cardio.** Hoy todo cardio vale 7: caminar a paso normal anda por 3,5 y la escaladora por
+  encima de 8, así que «Caminar o trotar» le da de más a quien camina. Los valores por actividad (las 6 de «Cardio a tu
+  ritmo»: e20, e375, e64, e67, e135, e65) los valida **Andrés Hyp** antes de escribirlos.
+- **El ritmo personal (`personalSecsPerSet`, avi-core) se infla con el cardio.** Divide la duración de la sesión entre
+  las series hechas y el cardio cuenta como UNA serie de 20-30 min → a quien cierra con cardio la app le estima rutinas
+  más largas. Restar `cardioDoneSec` a la duración y no contar las series de cardio.
+- ℹ️ Sin acción: 29 sesiones de cardio anteriores a v717 no tienen minutos anotados; no se pueden curar (no hay dato).
 
 ### ✅ Hecho (resumen ejecutivo)
 - **v1.0–v1.3** (2025 – mayo 2026): base PWA single-file + Supabase sync, push VAPID, mensajes coach↔asesorado, pagos/membresía, nutrición con macros, analytics, dark mode, hardening XSS, gates QA.
