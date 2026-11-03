@@ -4,6 +4,25 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🎬 2026-11-03 — v724: video para las elevaciones laterales y la bicicleta estática
+
+**Pedido del PO:** *«dale, sube las elevaciones y la bici»*.
+
+- **De dónde salen.** Tanda de calibración de 5 videos generados con Veo 3.1 Lite (ElevenLabs, 3.640 créditos) a partir
+  de las fotos de la app, para los ejercicios más usados sin video (medido: 343 de 375 sin video, 126 en alguna rutina).
+  Veredicto del PO: *«el unico que salio bien ejecutado fue elevaciones laterales pero el resto les falta»*. Curl femoral,
+  curl martillo y desplantes no pasan (el desplante sube y baja en el sitio, sin el paso), y el dead bug salió mal.
+  **Decisión del PO: no se generan más videos de ejercicio con IA; él los grabará y se arregla el entorno en edición.**
+- La bici sale gratis del reel «¿Cardio o pesas?», hecho con la misma foto e64 de la app.
+- **Formato:** 720×720, 30 fps, h264 yuv420p, sin audio, ~0,55 MB. Una repetición (o dos pedaladas) con fundido de
+  0,25-0,3 s en la unión, repetida hasta 7,6-7,8 s. El salto en la vuelta del bucle se midió contra el cuadro anterior:
+  la bici cruda saltaba 5,4 y queda en 1,7 (la mediana del movimiento es 1,1).
+- **Código:** `e8` y `e64` en `EX_VID`. El único uso de `exVidSrc()` es la hoja de detalle (`_showExSheet`); «Cardio a
+  tu ritmo» no muestra video. Versión 723 → 724.
+- **QA:** Julián 🟢 (node --check, catálogo, ids, un .mp4 por cada id de EX_VID, hook 14/14) · Lucas 🟢 (hoja de detalle,
+  poster de respaldo, sw.js por rango, sin cambios en «Cardio a tu ritmo») · suite 1523 · smoke OK (su 404 ya existía).
+- **Producción:** `_prodcheck.mjs v724` OK y los dos .mp4 servidos tienen el mismo md5 que los locales.
+
 ## 🔥 2026-10-28 — v723: el cardio cuenta sus minutos en la duración y las calorías
 
 **Reporte del PO, en sus palabras:** *«mira esto y es que no está marcando las calorías del cardio»*, con
