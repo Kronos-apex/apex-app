@@ -22,8 +22,8 @@ la semana. *«eso asusta a cualquier posible cliente»*. Decidió: *«dale con e
 - **QA:** suite 1524 (test nuevo con clasificador propio) · sabotaje A → ROJO 295 días, sabotaje B → ROJO 15 semanas,
   restaurado verde · smoke OK · hook 14/14. Julián y Lucas aplicados por la sesión (sus subagentes no estaban
   disponibles). **PENDIENTE re-verificación de Fable.**
-- **Producción:** commit 6230d83 en main. `publicar-hogar` lo BLOQUEÓ el control de permisos de la sesión → lo corre el PO;
-  `_prodcheck v725` queda pendiente hasta entonces.
+- **Producción:** commit 6230d83 en main. `publicar-hogar` lo BLOQUEÓ el control de permisos de la sesión → lo corrió el PO.
+  `_prodcheck v725` OK (arranca limpio, 0 jsErrors) y `avi-core.js` servido con el mismo md5 que el local.
 - **Lo que este arreglo NO toca (dicho al PO, en espera):** etiquetas del catálogo (hiperextensiones como espalda), el split
   de mujer de 5 días (Empuje y Brazos sin espalda, un día entero de core y cardio), 4×14 y 55 s para todo sin importar
   el tipo, cardio de cierre «en el sitio» en gym, ~30 series por sesión.
