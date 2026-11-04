@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🏋️ 2026-11-04 — v725: el generador escoge por patrón de movimiento, no solo por músculo
+
+**Reporte del PO:** el plan de una asesorada nueva (mujer, intermedia, 5 días, gym, registrada el 3-nov) traía Hip Thrust
+con Barra + Hip Thrust en Máquina el mismo día, Peso Muerto Rumano + Piernas Rígidas el otro, y ni un jalón ni un remo en
+la semana. *«eso asusta a cualquier posible cliente»*. Decidió: *«dale con el punto 1»* (escoger por patrón de movimiento).
+
+- **Causa raíz.** `_genMoveFamily` solo conocía abducción y aducción; los puestos del split piden músculo + tipo, así que dos
+  «glúteo compuesto» sacaban dos hip thrust, y el único puesto de espalda de la mujer lo podía ocupar una bisagra
+  etiquetada «espalda» (e116 Hiperextensiones).
+- **Arreglo.** 9 familias de fuerza acotadas por músculo (empuje de cadera, bisagra, sentadilla, zancada, patada de
+  glúteo, curl femoral, extensión de cuádriceps, jalón, remo); cardio y core fuera. El puesto de espalda compuesto de
+  Full Body, Tren Superior y Tracción PREFIERE jalón o remo (`_isPull`), sin dejar huecos si no hay.
+- **Medido** (14.400 días: 2 sexos × 3 niveles × 5 días × 4 lugares × 5 objetivos × 8 semillas): días con patrón repetido
+  20,7 % → 6,9 % (gym 595 → 0; queda casa/parque/corporal, donde no hay alternativa). Semanas de gym sin jalón ni remo
+  55 → 0 de 720. Los planes ya escritos no cambian.
+- **QA:** suite 1524 (test nuevo con clasificador propio) · sabotaje A → ROJO 295 días, sabotaje B → ROJO 15 semanas,
+  restaurado verde · smoke OK · hook 14/14. Julián y Lucas aplicados por la sesión (sus subagentes no estaban
+  disponibles). **PENDIENTE re-verificación de Fable.**
+- **Producción:** commit 6230d83 en main. `publicar-hogar` lo BLOQUEÓ el control de permisos de la sesión → lo corre el PO;
+  `_prodcheck v725` queda pendiente hasta entonces.
+- **Lo que este arreglo NO toca (dicho al PO, en espera):** etiquetas del catálogo (hiperextensiones como espalda), el split
+  de mujer de 5 días (Empuje y Brazos sin espalda, un día entero de core y cardio), 4×14 y 55 s para todo sin importar
+  el tipo, cardio de cierre «en el sitio» en gym, ~30 series por sesión.
+
 ## 🎬 2026-11-03 — v724: video para las elevaciones laterales y la bicicleta estática
 
 **Pedido del PO:** *«dale, sube las elevaciones y la bici»*.

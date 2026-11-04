@@ -73,6 +73,12 @@
 - 🛑 **Los harness corren el index.html LOCAL, que apunta al Supabase de PRODUCCIÓN, y hacen login con cuentas REALES (salomon).** Antes del sello v298, mutar `DB` + `svNow('ax_c'/'ax_hist')` empujaba fixtures a la nube real (**incidente 2026-07-08: `_verify-pain` borró las 4 rutinas reales de Salomón** dejando solo una rutina de prueba). **Fix de raíz (v298):** `cloudWriteSealed(location.hostname)` (avi-core) sella `UD.upsertOwn/updateClientRow/deleteClientRow` en localhost → NINGÚN harness puede escribir a producción. Para probar sync a propósito: `window.AVI_ALLOW_CLOUD_WRITE=true` **y contra un proyecto de PRUEBA, jamás producción**. Complemento: `stripFixtureSessions` purga sesiones-fixture (rTest/rVis/rf5) del historial real al cargar (auto-cura los teléfonos ya contaminados). **Cinturón + tirantes:** desde 2026-07-08 los harness usan la **cuenta QA dedicada `qa-harness@apex.com`** (aislada bajo un coach QA que NO sale en el panel de Camilo — ver `~/.avi/qa-accounts.txt`), JAMÁS un asesorado real. El sello es el respaldo por si alguien apunta las creds a una cuenta real.
 
 ### App / datos
+- 🔴 **EL GENERADOR ESCOGE POR «MÚSCULO + TIPO» Y ESO NO DICE QUÉ MOVIMIENTO ES** (v725, lo cazó el PO): dos puestos de «glúteo
+  compuesto» entregaban dos hip thrust el mismo día, y el de «espalda compuesto» aceptaba bisagras (peso muerto, buenos días,
+  hiperextensiones) en vez de un jalón o un remo. Medido: 20,7 % de los 14.400 días posibles repetía un patrón y 55 de 720
+  semanas de gym no traían jalón ni remo. La variedad dentro de un día se cuida por PATRÓN (`_genMoveFamily`, acotado por
+  músculo: «Remo al Mentón» es hombro) y el puesto que pide un patrón lo PREFIERE (`_isPull`). Al agregar un ejercicio,
+  revisar a qué familia cae su nombre; al agregar un puesto al split, preguntarse qué patrón pide, no solo qué músculo.
 - 🔴 **Un EJERCICIO NUEVO del catálogo pasa TODOS los filtros de lesión si su nombre no está en `GEN_ZONE_EXCL`** (v719, la
   llanta): las listas van por nombre, así que un ingreso sin revisar por Laura queda «seguro» en las 11 zonas y para menores.
   Al agregar uno: zona por zona con su mecanismo (y su CONTROL de las que NO), la regla de menores, `REPS_UNIT_EX` si no
