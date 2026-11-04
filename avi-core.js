@@ -312,6 +312,13 @@ function nextPlanDay(routines, now) {
 // que no siempre lleva la palabra (ej. e109 "Elevaciones Y-T-W") — con respaldo por nombre.
 // Pedido de Camilo 2026-06-25.
 const _isRearDelt = ex => /posterior|face pull|pajaro/.test(_norm(((ex && ex.muscleLabel) || '') + ' ' + ((ex && ex.name) || '')));
+// 🔴 v725 · El puesto de «espalda compuesto» es un JALÓN o un REMO. El catálogo también etiqueta
+// así bisagras de cadena posterior (peso muerto convencional, buenos días, hiperextensiones), y el
+// cursor las entregaba en ese puesto: medido, 30 de 720 semanas de gym (3-5 días) salían SIN un solo
+// jalón ni remo — una asesorada nueva recibió Hiperextensiones como su única «espalda» de la semana.
+// Va como `prefer` y no como `avoid`: si en ese sitio no hay ningún jalón ni remo, el puesto se llena
+// igual (un hueco es peor). Ver `_genMoveFamily`.
+const _isPull = ex => { const f = _genMoveFamily(ex); return f === 'jalon' || f === 'remo'; };
 
 // Plantillas de bloque: cada slot = [muscle, type|null, n] (4º opcional = {avoid|prefer:RegExp}
 // para filtrar por nombre dentro del slot). type null = cualquiera de ese músculo.
@@ -328,14 +335,14 @@ const GEN_DAYS = {
   // apariciones). `Aislamiento` entrega 100% nivel P en los 4 entornos. Para TODOS, sin
   // condicionar por sexo: el hombre intermedio ya tiene su glúteo en PIERNA, y `sexKey` cae a
   // 'M' cuando no se declaró sexo → colgar el beneficio de un campo opcional fabrica un defecto.
-  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
+  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
   GP_A:           { name: 'Glúteo y Piernas A', slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
   GP_B:           { name: 'Glúteo y Piernas B', slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
-  TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
+  TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
   EMP_BRAZOS:     { name: 'Empuje y Brazos', slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
   CORE_CARDIO:    { name: 'Core y Cardio', slots: [['core', null, 2], ['cardio', null, 2]] },
   EMPUJE:         { name: 'Empuje', slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: _isRearDelt }], ['triceps', 'Aislamiento', 2]] },
-  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
+  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2, { prefer: _isPull }], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
   PIERNA:         { name: 'Pierna', slots: [['piernas', 'Compuesto', 2], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
   HOMBROS_BRAZOS: { name: 'Hombros y Brazos', slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
   CARDIO_CORE:    { name: 'Cardio y Core', slots: [['cardio', null, 2], ['core', null, 2]] },
@@ -2380,12 +2387,31 @@ function _levelGate(level) {
 
 // Familia de MOVIMIENTO: evita dos ejercicios del MISMO patrón el mismo día (ej. dos
 // abducciones de cadera —máquina, banda o tumbado— que son redundantes). null = no se
-// deduplica (la mayoría). Camilo 2026-06-29: abducción (abre) y aducción (cierra) son
-// OPUESTOS → familias DISTINTAS, deben poder convivir.
+// deduplica. Camilo 2026-06-29: abducción (abre) y aducción (cierra) son OPUESTOS → familias
+// DISTINTAS, deben poder convivir.
+// 🔴 v725 · SOLO CONOCÍA ESAS DOS FAMILIAS y el generador escoge por MÚSCULO: un día con dos
+// puestos de «glúteo compuesto» sacaba Hip Thrust con Barra + Hip Thrust en Máquina, uno con dos de
+// «pierna compuesto» sacaba dos sentadillas o dos pesos muertos, y el de tracción dos remos y ningún
+// jalón. Lo cazó el PO en el plan de una asesorada nueva (4-nov). Medido sobre los 14.400 días que
+// puede generar la app: el 21,1 % repetía uno de estos patrones. Ahora cada patrón de fuerza es
+// UNA familia por día. Cardio y core no se tocan (Remo Ergómetro no es un remo de espalda).
+// 🔒 El patrón se lee del NOMBRE pero se acota por MÚSCULO: «Remo al Mentón» es hombro y «Patada de
+// Tríceps» es brazo — por nombre solo, caerían en remo y en patada de glúteo.
 function _genMoveFamily(ex) {
   const n = _norm((ex && ex.name) || '');
+  const m = (ex && ex.muscle) || '';
   if (/abducc/.test(n)) return 'abduccion_cadera';
   if (/aducc/.test(n))  return 'aduccion_cadera';
+  if (m === 'cardio' || m === 'core') return null;
+  if (/hip thrust|puente de gluteo/.test(n)) return 'empuje_cadera';
+  if (/peso muerto|buenos dias|hiperextensi|patron de bisagra|pull.?through/.test(n)) return 'bisagra';
+  if (/zancada|desplante|bulgar|step.?up|subida con rodilla/.test(n)) return 'zancada';
+  if (/sentadilla(?! sissy)/.test(n)) return 'sentadilla';
+  if (m === 'gluteo' && /patada/.test(n)) return 'patada_gluteo';
+  if (/curl femoral/.test(n)) return 'curl_femoral';
+  if (/extension de cuadriceps/.test(n)) return 'extension_rodilla';
+  if ((m === 'espalda' || m === 'biceps') && /jalon|dominada/.test(n)) return 'jalon';
+  if (m === 'espalda' && /\bremo\b/.test(n)) return 'remo';
   return null;
 }
 function _genPick(lib, muscle, type, st, slotOpts) {

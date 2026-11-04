@@ -25149,6 +25149,72 @@ test('🔒 v723 · CABLEADO: el inicio resta el cardio ya hecho y la cura corre 
     '🔴 la fila propia del coach ya no cura la duración del cardio (2 de las 6 sesiones eran suyas)');
 });
 
+// ── 🔴 v725 · EL GENERADOR ESCOGÍA POR MÚSCULO Y NO POR MOVIMIENTO (4-nov-2026) ──
+// El PO lo vio en el plan de una asesorada nueva (mujer, intermedia, 5 días, gym): Hip Thrust con Barra
+// + Hip Thrust en Máquina el mismo día, Peso Muerto Rumano + Piernas Rígidas el otro, y ni un jalón ni
+// un remo en toda la semana (su única «espalda» eran unas hiperextensiones). Medido antes del arreglo
+// sobre los 14.400 días que puede generar la app: 20,7 % repetía un patrón (595 en gym) y 55 de 720
+// semanas de gym no traían jalón ni remo. El clasificador de este test es PROPIO, a propósito: si
+// leyera `_genMoveFamily`, un error ahí lo heredaría el test y saldría verde.
+test('🔴 v725 · en gym ningún día repite un patrón de movimiento y toda semana de 3+ días trae jalón o remo', () => {
+  const nrm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const patron = e => {
+    const n = nrm(e.name), m = e.muscle;
+    if (m === 'cardio' || m === 'core' || /abducc|aducc/.test(n)) return null;
+    if (/hip thrust|puente de gluteo/.test(n)) return 'empuje de cadera';
+    if (/peso muerto|buenos dias|hiperextensi/.test(n)) return 'bisagra';
+    if (/zancada|desplante|bulgar|step.?up/.test(n)) return 'zancada';
+    if (/sentadilla/.test(n) && !/sissy/.test(n)) return 'sentadilla';
+    if (m === 'gluteo' && /patada/.test(n)) return 'patada de glúteo';
+    if (/curl femoral/.test(n)) return 'curl femoral';
+    if (/extension de cuadriceps/.test(n)) return 'extensión de cuádriceps';
+    if ((m === 'espalda' || m === 'biceps') && /jalon|dominada/.test(n)) return 'jalón';
+    if (m === 'espalda' && /\bremo\b/.test(n)) return 'remo';
+    return null;
+  };
+  // CONTROL del clasificador: los dos hip thrust del caso real son el MISMO patrón, y los nombres
+  // engañosos no cuentan como lo que no son.
+  assert.strictEqual(patron({ name: 'Hip Thrust con Barra', muscle: 'gluteo' }), patron({ name: 'Hip Thrust en Máquina', muscle: 'gluteo' }));
+  assert.strictEqual(patron({ name: 'Remo al Mentón con Barra', muscle: 'hombros' }), null, 'CONTROL · el remo al mentón es de hombro');
+  assert.strictEqual(patron({ name: 'Patada de Tríceps en Polea', muscle: 'triceps' }), null, 'CONTROL · la patada de tríceps no es de glúteo');
+  let dias = 0, semanas = 0; const repetidos = [], sinJalon = [];
+  for (const sex of ['F', 'M']) for (const level of ['Principiante', 'Intermedio', 'Avanzado'])
+  for (const days of [1, 2, 3, 4, 5]) for (const goal of ['Perder grasa', 'Ganar músculo', 'Recomposición', 'Fuerza', 'Salud general'])
+  for (const seed of [0, 3, 5, 7]) {
+    const c = { id: 'v', name: 'P', sex, age: 30, weight: 70, height: 168, goal, level, days, place: 'gym', notes: '' };
+    const out = core.generarRutinas(c, _LIB_REAL, { seed, now: '2026-11-04T12:00:00Z', idFn: () => 'r' });
+    semanas++;
+    for (const r of out.routines) {
+      dias++;
+      const visto = {};
+      for (const e of r.exercises) {
+        const p = patron(e);
+        if (!p) continue;
+        if (visto[p]) repetidos.push(`${sex} ${level} ${days}d ${goal} s${seed} «${r.name}»: ${visto[p]} + ${e.name}`);
+        else visto[p] = e.name;
+      }
+    }
+    if (days >= 3 && !out.routines.some(r => r.exercises.some(e => ['jalón', 'remo'].includes(patron(e)))))
+      sinJalon.push(`${sex} ${level} ${days}d ${goal} s${seed}: ${out.routines.map(r => r.name).join(' / ')}`);
+  }
+  assert.strictEqual(semanas, 2 * 3 * 5 * 5 * 4, 'CONTROL DE COBERTURA · no se generaron todos los planes');
+  assert.ok(dias > semanas * 2, 'CONTROL DE COBERTURA · los planes salieron vacíos');
+  assert.deepStrictEqual(repetidos.slice(0, 5), [], `🔴 ${repetidos.length} días de gym repiten un patrón de movimiento`);
+  assert.deepStrictEqual(sinJalon.slice(0, 5), [], `🔴 ${sinJalon.length} semanas de gym sin un solo jalón ni remo`);
+  // El caso exacto que vio el PO: mujer, intermedia, perder grasa, 5 días en gym.
+  for (const seed of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    const out = core.generarRutinas({ id: 'y', name: 'Y', sex: 'F', age: 32, weight: 69.5, height: 163, goal: 'Perder grasa', level: 'Intermedio', days: 5, place: 'gym', notes: 'No' },
+      _LIB_REAL, { seed, now: '2026-11-04T12:00:00Z', idFn: () => 'r' });
+    const gpa = out.routines.find(r => r.name === 'Glúteo y Piernas A');
+    assert.ok(gpa, 'CONTROL · el split de mujer de 5 días ya no trae «Glúteo y Piernas A»');
+    assert.ok(gpa.exercises.filter(e => patron(e) === 'empuje de cadera').length <= 1,
+      `🔴 semilla ${seed}: vuelven los dos hip thrust el mismo día (${gpa.exercises.map(e => e.name).join(', ')})`);
+    const sup = out.routines.find(r => r.name === 'Tren Superior');
+    assert.ok(sup && sup.exercises.some(e => ['jalón', 'remo'].includes(patron(e))),
+      `🔴 semilla ${seed}: el tren superior de la mujer sale sin jalón ni remo (${sup && sup.exercises.map(e => e.name).join(', ')})`);
+  }
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
