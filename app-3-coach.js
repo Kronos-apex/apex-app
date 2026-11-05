@@ -203,6 +203,22 @@ function openEditClient(){
   document.getElementById('cf-notes').value=c.notes||'';
   om('m-client');
 }
+// v728 · «Sigue vigente»: el coach habló con la persona y la condición sigue. Renueva la fecha y NADA más:
+// no toca la nota ni los filtros. «Ya no aplica» abre la nota para quitar la frase (la fecha se renueva sola
+// al guardar si las condiciones cambiaron; si las deja iguales, el aviso sigue).
+function limitStillValid(){
+  const c=DB.clients.find(x=>x.id===CUR.clientId); if(!c)return;
+  c.limitReviewedAt=new Date().toISOString();
+  sv('ax_c',DB.clients);
+  toast('✅ Anotado. Te lo vuelvo a recordar cuando se cumpla el plazo.');
+  openDetail(c.id,true);
+}
+function limitNoLongerApplies(){
+  openEditClient();
+  const n=document.getElementById('cf-notes'); if(!n)return;
+  setTimeout(()=>{ try{ n.scrollIntoView({block:'center'}); n.focus(); }catch(_e){} },250);
+  toast('Quita de la nota lo que ya no aplica y guarda.');
+}
 
 // ¿El id ya es de una cuenta auth real (uuid)? Los clientes creados localmente por el coach
 // tienen id de uid() (base36, no-uuid) → aún sin cuenta de acceso.
@@ -345,6 +361,13 @@ async function saveClient(){
     else if(_prev&&_ckC&&!_ckC.checked){ toast('La autorización que ya dio queda registrada. Para retirarla, hay que eliminar sus datos.'); }
   }
   if(hashedPass) data.password=hashedPass;
+  // v728 · VIGENCIA (Laura Q5): la fecha de revisión se escribe solo si la nota CAMBIA las condiciones.
+  // Guardar la ficha con las mismas (cambiarle el peso, por ejemplo) no cuenta como revisar.
+  if(typeof limitReviewStamp==='function'){
+    const _prevC=CUR.editClientId?(DB.clients.find(x=>x.id===CUR.editClientId)||{}):{};
+    const _lrs=limitReviewStamp(_prevC.notes||'',data.notes,_prevC.limitReviewedAt||null,data.updatedAt);
+    if(_lrs||_prevC.limitReviewedAt) data.limitReviewedAt=_lrs; // quien nunca tuvo condiciones no estrena un null
+  }
   let _oldEmail=null; // correo previo, para detectar cambio de correo de acceso (bug #3)
   if(CUR.editClientId){
     const i=DB.clients.findIndex(c=>c.id===CUR.editClientId);
@@ -676,6 +699,8 @@ async function _provisionFreeClient(authUser, p){
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
+  // v728 · la nota que escribió al registrarse ya trae su fecha: su plazo de revisión cuenta desde HOY.
+  if(typeof limitReviewStamp==='function') rec.limitReviewedAt=limitReviewStamp('',rec.notes,null,rec.createdAt);
   rec.coach_id=COACH_UID; // modelo de un solo coach: todo self-registro entra al pipeline del coach
   _applyAuthClientDB(rec,{}); // colecciones vacías (usuario nuevo)
   // Siempre auto-generamos la semana (con defaults si faltara algún dato) — ya no hay 2ª pantalla
@@ -2188,6 +2213,17 @@ async function openDetail(id,_silent){
       _painHTML+=`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6;color:var(--ylt)">`+
         `⏳ <strong>Lleva ${_rv.semanas} semanas con el trabajo correctivo de ${esc(_rv.area)}${_rv.side?' ('+esc(_rv.side)+')':''}.</strong> `+
         `¿Lo progresas, lo cambias o lo quitas? <b>Si no haces nada, se deja de poner solo a las 8 semanas.</b></div>`;
+    }
+  }catch(_e){}
+  // v728 · VIGENCIA DE LAS CONDICIONES (Laura Q5): una línea y dos botones. Vencer el plazo NO quita ni
+  // devuelve nada solo; esto es lo único que pasa.
+  try{
+    const _lr=(typeof limitReview==='function')?limitReview(c,Date.now()):null;
+    if(_lr){
+      _painHTML+=`<div class="lim-rev" style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6;color:var(--ylt)">`+
+        `🗓️ <strong>Revisar condición.</strong> ${esc(limitReviewCoachText(_lr))}`+
+        `<div class="lim-acc"><button type="button" class="btn bsm bp" onclick="limitStillValid()">Sigue vigente</button>`+
+        `<button type="button" class="btn bsm bg" onclick="limitNoLongerApplies()">Ya no aplica</button></div></div>`;
     }
   }catch(_e){}
   dn.style.display=(c.notes||_painHTML)?'block':'none';

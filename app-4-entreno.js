@@ -538,7 +538,44 @@ function renderClientProfile(client){
   renderNutritionClient(client.id);
   renderPhotosClient(client.id);
   renderAccountActions(client);
+  renderLimitReviewAsk(client);
   renderProfileRows(client);   // v708 · va al final: cuenta lo que los renderizadores de arriba ya cargaron
+}
+
+// ── v728 · VIGENCIA DE LAS CONDICIONES (Laura Q5): «¿Sigue igual?» ──────────────────────────────────
+// A quien se registró sola, UNA fila en su Perfil, una vez por plazo: ni modal ni push (el PO cortó dos veces
+// los recordatorios a quien no contesta). Ella no puede editar su nota en la app y el plan libre no tiene
+// chat, así que «Cambió» le avisa al coach por su hilo (el canal del reporte de dolor). Ninguna de las dos
+// respuestas quita ni devuelve ejercicios: eso solo lo hace la nota.
+function renderLimitReviewAsk(client){
+  const el=document.getElementById('cn-limrev'); if(!el)return;
+  const propio=(typeof COACH_SELF!=='undefined'&&COACH_SELF);
+  const r=(!propio&&client&&typeof limitReviewAsk==='function')?limitReviewAsk(client,Date.now()):null;
+  if(!r){ el.innerHTML=''; return; }
+  const ic=typeof aviIcon==='function'?aviIcon('calendar',16):'🗓️';
+  el.innerHTML=`<div class="card lim-ask"><div class="cb"><div class="lim-ask-t"><span class="lim-ask-ic" aria-hidden="true">${ic}</span>`+
+    `<span>${esc(limitReviewAskText(r))}</span></div>`+
+    `<div class="lim-acc"><button type="button" class="btn bsm bp" onclick="limitAskAnswer('igual')">Sigue igual</button>`+
+    `<button type="button" class="btn bsm bg" onclick="limitAskAnswer('cambio')">Cambió</button></div></div></div>`;
+}
+function limitAskAnswer(resp){
+  const c=(DB.clients||[]).find(x=>x&&x.id===CUR.clientId); if(!c)return;
+  const r=(typeof limitReviewAsk==='function')?limitReviewAsk(c,Date.now()):null; if(!r)return;
+  const at=new Date().toISOString();
+  c.limitAsk={at,r:resp==='cambio'?'cambio':'igual'};
+  svNow('ax_c',DB.clients);
+  if(c.limitAsk.r==='cambio'){
+    const txt=limitReviewChangedMsg(c.name,r);
+    try{
+      if(!DB.msgs[c.id])DB.msgs[c.id]=[];
+      DB.msgs[c.id].push({from:'client',text:txt,date:at});
+      svNow('ax_m',DB.msgs);
+      if(typeof pushToClient==='function') pushToClient('_coach','🔄 '+((c.name||'Tu asesorado').split(' ')[0])+' dice que su condición cambió',
+        txt.length>80?txt.slice(0,77)+'…':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
+    }catch(_e){}
+    toast('Le avisamos a tu coach. Mientras tanto, tu plan sigue cuidando lo que escribiste.');
+  } else toast('Gracias por contarnos. Tu plan sigue igual.');
+  renderLimitReviewAsk(c);
 }
 
 // (F5a 2026-07-06: el interruptor guiada/clásica y el flag ax_ui_guided se RETIRARON —

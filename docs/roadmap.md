@@ -29,11 +29,14 @@
 
 ### 🔥 CALENTAMIENTO POR RECETA — lo que sigue a v721 (aprobado por el PO el 24-oct)
 Fuente: `docs/calentamiento-2026-10-23/` (Coach Pro, Valery, consolidado y el dictamen de Laura).
-- **Siguiente · que la app LEA postparto, diástasis y piso pélvico** (clave `core_central`, Laura prioridad ALTA) y, con
-  prioridad media, osteopenia (`hueso`) e hipertensión (`presion`). Toca `GEN_LIMIT_KWS` y el ENTRENO (sin impacto
-  ni flexión de tronco), así que antes de escribir: Laura dicta la regla del entreno para cada clave, y al tocar
-  `GEN_ZONE_EXCL` se vuelve a barrer la matriz del calentamiento (su candado 7). Mientras no exista, el día de core
-  de mujer no arranca con el dead bug y `we5`, `wf1` y `wg4` no entran en ninguna receta.
+- ✅ **HECHO (5-nov) · la app LEE postparto, diástasis y piso pélvico (`core_central`), osteopenia (`hueso`),
+  hipertensión (`presion`) y embarazo** (v727, dictámenes de Laura en `docs/poblaciones-2026-11-05/`), con los rápidos
+  filtrados (v726) y la **vigencia** (v728: fecha de revisión, aviso al coach a los 90/180 días, «¿Sigue igual?» a quien
+  se registró sola; nada se levanta solo). Queda de ese frente: (a) la propuesta de recetas de Laura (wc4→wag3/wag1,
+  CARDIO_CORE, pieza `wac6`; decide el PO); (b) 🔴 la nutrición no sabe de embarazo (déficit con «Bajar de peso»:
+  Andrés Hyp, antes que lo demás); (c) que un obstetra lea las señales de parada del embarazo (Laura las citó de memoria);
+  (d) el texto del coach para el embarazo dice «si ya terminó, quita la frase», y quitarla levanta TAMBIÉN el abdomen y
+  el piso pélvico justo en el postparto: que Laura diga si debe pedir cambiarla por «postparto».
 - **Después · las series de aproximación por implemento** (el paso 4): barra de pierna 40/60/80 %, tren superior 50/75 %
   (+90 % solo a ≤6 reps y NUNCA con hombro, pecho, codo, cuello u operado), prensa/Smith 2 series, máquina 1 al 60 %,
   aislamiento 1 al 50 % solo si es el primero de su músculo, peso corporal ninguna; tope 3 ejercicios y ~6 series;

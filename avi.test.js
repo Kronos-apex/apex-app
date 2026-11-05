@@ -25634,6 +25634,139 @@ test('🔒 v727 · candado 11 y 13 · TODAS las superficies ven las condiciones 
   assert.ok(/limitationsFor\(_c,Date\.now\(\)\)\.keys/.test(src), 'el selector de sustitución dejó de pasar por limitationsFor');
 });
 
+// ── v728 · VIGENCIA DE LAS CONDICIONES (Laura Q5 + §11 del embarazo · candado 9) ─────────────────────
+const _V0 = '2026-01-01T12:00:00.000Z';
+const _vDia = n => Date.parse(_V0) + n * 86400000;
+test('🔒 v728 · la fecha de revisión se escribe al CAMBIAR las condiciones, nunca al guardar las mismas', () => {
+  const S = core.limitReviewStamp, AHORA = '2026-11-05T12:00:00.000Z';
+  assert.strictEqual(S('', 'postparto', null, AHORA), AHORA, 'un alta con condición no estrena fecha');
+  assert.strictEqual(S('', '', null, AHORA), null, 'sin nota no hay nada que revisar');
+  assert.strictEqual(S('', 'dolor de rodilla', null, AHORA), null, 'CONTROL: una zona de dolor no es una condición');
+  assert.strictEqual(S('postparto', 'postparto, ya me siento mejor', _V0, AHORA), _V0, '🔴 guardar las MISMAS condiciones renovó la fecha (eso no es revisar)');
+  assert.strictEqual(S('postparto', 'postparto y me duele la rodilla', _V0, AHORA), _V0, '🔴 una zona nueva renovó la fecha de la condición');
+  assert.strictEqual(S('postparto', 'postparto', null, AHORA), null, '🔴 una nota vieja SIN fecha quedó con fecha sin que nadie la revisara');
+  assert.strictEqual(S('postparto', 'postparto y osteopenia', _V0, AHORA), AHORA, 'una condición NUEVA no renovó la fecha');
+  assert.strictEqual(S('postparto y osteopenia', 'osteopenia', _V0, AHORA), AHORA, 'quitar una condición no renovó la fecha');
+  assert.strictEqual(S('postparto', 'ya estoy bien', _V0, AHORA), null, 'sin condiciones la fecha no se borra');
+});
+
+test('🔒 v728 · el aviso aparece a los 90 días (abdomen, embarazo) y a los 180 (huesos, presión), no antes', () => {
+  const R = (notes, dias, extra) => core.limitReview(Object.assign({ notes, limitReviewedAt: _V0 }, extra || {}), _vDia(dias));
+  for (const [nota, plazo, cond] of [['postparto', 90, 'core_central'], ['estoy embarazada', 90, 'embarazo'], ['osteopenia', 180, 'hueso'], ['hipertension', 180, 'presion']]) {
+    assert.strictEqual(R(nota, plazo - 1), null, `🔴 «${nota}» avisó antes de los ${plazo} días`);
+    const r = R(nota, plazo);
+    assert.ok(r && r.plazo === plazo && !r.sinFecha, `«${nota}» no avisó a los ${plazo} días`);
+    assert.deepStrictEqual(r.conds, [cond], `«${nota}»: condiciones del aviso`);
+  }
+  assert.ok(/^Anotó embarazo hace más de 90 días\. Pregúntale cómo va; si ya tiene visto bueno de su médico u obstetra/.test(core.limitReviewCoachText(R('estoy embarazada', 90))),
+    'el texto del embarazo no es el de Laura (§11)');
+  // Dos condiciones con plazos distintos: cada una a su tiempo.
+  assert.deepStrictEqual(R('postparto y osteopenia', 100).conds, ['core_central']);
+  const dos = R('postparto y osteopenia', 200);
+  assert.deepStrictEqual(dos.conds.slice().sort(), ['core_central', 'hueso']);
+  assert.ok(/hace más de 180 días/.test(core.limitReviewCoachText(dos)));
+  assert.strictEqual(R('me duele la rodilla', 400), null, 'CONTROL: una zona de dolor no pide revisión de condición');
+});
+
+test('🔒 v728 · sin fecha cuenta como vencida; una fecha días en el futuro también', () => {
+  const sin = core.limitReview({ notes: 'hernia umbilical' }, _vDia(0));
+  assert.ok(sin && sin.sinFecha && sin.conds.includes('core_central'), '🔴 la nota vieja sin fecha no le pide al coach que la revise');
+  assert.ok(/no hay registro de cuándo se revisó/.test(core.limitReviewCoachText(sin)));
+  assert.ok(core.limitReview({ notes: 'postparto', limitReviewedAt: new Date(_vDia(10)).toISOString() }, _vDia(0)).sinFecha,
+    '🔴 una fecha 10 días en el futuro calla el aviso para siempre');
+  assert.strictEqual(core.limitReview({ notes: 'postparto', limitReviewedAt: new Date(_vDia(0) + 3600000).toISOString() }, _vDia(0)), null,
+    'CONTROL: un reloj adelantado una hora no cuenta como «sin fecha»');
+  assert.ok(core.limitReview({ notes: 'postparto', limitReviewedAt: 'basura' }, _vDia(0)).sinFecha);
+});
+
+test('🔒 v728 · candado 9 · NADA se reabre solo: con 400 días las claves y lo que se quita siguen IGUAL', () => {
+  const c = { id: 'v', notes: 'postparto, osteopenia e hipertension. Estoy embarazada', limitReviewedAt: _V0, painCare: [] };
+  const hoy = core.limitationsFor(c, _vDia(1)), luego = core.limitationsFor(c, _vDia(400));
+  assert.deepStrictEqual(luego.keys, hoy.keys, '🔴 una condición se levantó sola con el calendario');
+  assert.deepStrictEqual(core.limitationsFor(Object.assign({}, c, { limitReviewedAt: null }), _vDia(400)).keys, hoy.keys,
+    '🔴 la fecha de revisión cambia las claves');
+  assert.ok(!/limitReviewedAt|limitAsk/.test(core.limitationsFor.toString() + core.parseLimitations.toString()),
+    '🔴 el filtro empezó a mirar la fecha de revisión');
+  const gen = (d) => core.generarRutinas(Object.assign({ name: 'V', sex: 'F', age: 31, weight: 64, height: 160, goal: 'Perder grasa', level: 'Intermedio', days: 4, place: 'gym' }, c),
+    _LIB_REAL, { seed: 3, now: new Date(_vDia(d)).toISOString(), idFn: () => 'r' }).limitations.keys;
+  assert.deepStrictEqual(gen(400), gen(1), '🔴 el generador relajó el filtro con el paso del tiempo');
+});
+
+test('🔒 v728 · a quien se registró sola se le pregunta UNA vez por plazo, y el coach ve lo que contestó', () => {
+  const base = { notes: 'postparto', limitReviewedAt: _V0, selfReg: true };
+  const A = (extra, d) => core.limitReviewAsk(Object.assign({}, base, extra || {}), _vDia(d));
+  assert.strictEqual(A({}, 89), null, 'se le preguntó antes del plazo');
+  assert.ok(A({}, 95), 'no se le preguntó al vencer el plazo');
+  assert.strictEqual(core.limitReviewAsk(Object.assign({}, base, { selfReg: false }), _vDia(95)), null, 'CONTROL: a quien creó el coach no se le pregunta (lo pregunta el coach)');
+  const igual = { limitAsk: { at: new Date(_vDia(95)).toISOString(), r: 'igual' } };
+  assert.strictEqual(A(igual, 96), null, '🔴 contestó y se le volvió a preguntar en el mismo plazo');
+  assert.strictEqual(A(igual, 184), null, '🔴 se le volvió a preguntar antes de cumplir otro plazo');
+  assert.ok(A(igual, 185), '🔴 si el coach no renueva, al plazo siguiente no se le vuelve a preguntar');
+  const r = core.limitReview(Object.assign({}, base, igual), _vDia(96));
+  assert.ok(r && /respondió en la app que sigue igual/.test(core.limitReviewCoachText(r)), 'el coach no ve que contestó «sigue igual»');
+  const cambio = core.limitReview(Object.assign({}, base, { limitAsk: { at: new Date(_vDia(95)).toISOString(), r: 'cambio' } }), _vDia(96));
+  assert.ok(/avisó desde la app que CAMBIÓ/.test(core.limitReviewCoachText(cambio)));
+  // El coach renueva el día 100: la respuesta vieja no cuenta para el ciclo nuevo.
+  const ren = Object.assign({}, base, igual, { limitReviewedAt: new Date(_vDia(100)).toISOString() });
+  assert.strictEqual(core.limitReviewAsk(ren, _vDia(189)), null);
+  assert.ok(core.limitReviewAsk(ren, _vDia(190)), '🔴 la respuesta del ciclo anterior calló el aviso del ciclo nuevo');
+  assert.strictEqual(core.limitReview(ren, _vDia(190)).respondio, null);
+  // Una respuesta ANTES del vencimiento no cuenta (pudo ser del ciclo anterior).
+  assert.ok(core.limitReviewAsk(Object.assign({}, base, { limitAsk: { at: new Date(_vDia(80)).toISOString(), r: 'igual' } }), _vDia(95)));
+});
+
+test('🔒 v728 · textos: a la persona sin diagnósticos ni promesas; al coach, a quién preguntar', () => {
+  const NOTAS = ['postparto con diastasis y cesarea', 'osteoporosis', 'hipertension arterial', 'estoy embarazada', 'hernia umbilical'];
+  for (const n of NOTAS) {
+    const r = core.limitReview({ notes: n }, _vDia(0));
+    const t = core.limitReviewAskText(r);
+    assert.ok(/¿Sigue igual\?/.test(t) && /cuéntale a tu coach/.test(t), `«${n}»: ${t}`);
+    assert.ok(!/diástasis|diastasis|hernia|osteoporosis|osteopenia|hipertensi|cesárea|cesarea|postparto/i.test(t), `🔴 a la persona se le nombra un diagnóstico: ${t}`);
+    assert.ok(!/seguro|sin riesgo|sin problema|no te preocupes|semanas/i.test(t), `🔴 promesa o plazo: ${t}`);
+    const m = core.limitReviewChangedMsg('Prueba Persona', r);
+    assert.ok(/^🔄 Prueba avisó desde la app/.test(m) && /El filtro sigue puesto/.test(m), m);
+  }
+  assert.ok(/tu abdomen o tu suelo pélvico/.test(core.limitReviewAskText(core.limitReview({ notes: 'postparto' }, _vDia(0)))));
+  assert.ok(/médico o fisio/.test(core.limitReviewCoachText(core.limitReview({ notes: 'postparto' }, _vDia(0)))));
+  assert.strictEqual(core.limitReviewAskText(null), '');
+  assert.strictEqual(core.limitReviewCoachText(null), '');
+});
+
+test('🔒 v728 · las pantallas usan la vigencia y nadie más toca la nota ni los filtros', () => {
+  const fs = require('fs'), path = require('path');
+  const a3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const a4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const cuerpo = (src, nombre) => { const i = src.indexOf('function ' + nombre + '('); assert.ok(i >= 0, 'falta ' + nombre); return src.slice(i, src.indexOf('\n}', i)); };
+  // Alta y edición de la ficha: la fecha sale de la nota de ANTES y la de AHORA.
+  const sc = cuerpo(a3, 'saveClient');
+  assert.ok(/const _lrs=limitReviewStamp\(_prevC\.notes\|\|'',data\.notes,_prevC\.limitReviewedAt/.test(sc) && /data\.limitReviewedAt=_lrs/.test(sc),
+    '🔴 guardar la ficha ya no calcula o no guarda la fecha de revisión');
+  assert.ok(sc.indexOf('data.limitReviewedAt=_lrs') < sc.indexOf('DB.clients[i]={...existing,...data}'), '🔴 la fecha se calcula DESPUÉS de mezclar la ficha (llega tarde)');
+  assert.ok(/rec\.limitReviewedAt=limitReviewStamp\('',rec\.notes,null,rec\.createdAt\)/.test(cuerpo(a3, '_provisionFreeClient')), '🔴 el registro por cuenta propia nace sin fecha de revisión');
+  // La ficha del coach pinta el aviso con sus dos botones.
+  const od = a3.slice(a3.indexOf('async function openDetail('), a3.indexOf('async function openDetail(') + 12000);
+  assert.ok(/limitReview\(c,Date\.now\(\)\)/.test(od) && /limitStillValid\(\)/.test(od) && /limitNoLongerApplies\(\)/.test(od), '🔴 la ficha dejó de mostrar «Revisar condición»');
+  const sv = cuerpo(a3, 'limitStillValid');
+  assert.ok(/c\.limitReviewedAt=new Date\(\)\.toISOString\(\)/.test(sv) && !/\.notes\s*=|painCare/.test(sv), '«Sigue vigente» debe renovar SOLO la fecha');
+  // El Perfil de la persona.
+  assert.ok(/renderLimitReviewAsk\(client\)/.test(cuerpo(a4, 'renderClientProfile')), '🔴 el Perfil dejó de preguntar');
+  assert.ok(/id="cn-limrev"/.test(html), 'falta el sitio de la fila en el Perfil');
+  const ans = cuerpo(a4, 'limitAskAnswer');
+  assert.ok(/c\.limitAsk=\{at,r:/.test(ans) && /const txt=limitReviewChangedMsg\(c\.name,r\)/.test(ans), 'la respuesta no se guarda o no arma el aviso al coach');
+  assert.ok(/DB\.msgs\[c\.id\]\.push\(\{from:'client',text:txt,date:at\}\)/.test(ans) && /svNow\('ax_m',DB\.msgs\)/.test(ans), '🔴 «Cambió» no le deja el mensaje al coach en su hilo');
+  assert.ok(/if\(typeof pushToClient==='function'\) pushToClient\('_coach',/.test(ans), '🔴 «Cambió» no le manda el push al coach');
+  assert.ok(!/\.notes\s*=|limitReviewedAt\s*=|painCare/.test(ans), '🔴 la respuesta de la persona tocó la nota, la fecha del coach o el dolor');
+});
+
+test('🔒 v728 · la fecha de revisión del coach viaja en su propio registro («Mi entrenamiento»)', () => {
+  const v = core.selfClientFromRow({ profile: { notes: 'postparto', limitReviewedAt: _V0 } });
+  assert.strictEqual(v.limitReviewedAt, _V0, '🔴 su ficha diría «no hay registro» para siempre');
+  assert.ok(!('limitReviewedAt' in core.selfClientFromRow({ profile: {} })), 'CONTROL: sin fecha no se inventa la clave');
+  const m = core.mergeOwnProfile({ notes: 'postparto', limitReviewedAt: _V0, tier: 'x' }, core.clientToRow(v, {}).profile);
+  assert.strictEqual(m.limitReviewedAt, _V0);
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -2691,3 +2691,9 @@ button.dt-tile:active{transform:scale(.97)}
 /* v709 · Progreso en pestañas (lote 4): el control segmentado es el de la ficha del coach (.dt-*). */
 #cn-history .pg-sec{display:none}
 #cn-history[data-ptab="resumen"] .pg-sec[data-pt="resumen"],#cn-history[data-ptab="historial"] .pg-sec[data-pt="historial"],#cn-history[data-ptab="records"] .pg-sec[data-pt="records"],#cn-history[data-ptab="logros"] .pg-sec[data-pt="logros"]{display:block}
+/* v728 · vigencia de las condiciones (Laura Q5): la línea del coach en la ficha y la fila del Perfil de quien
+   se registró sola. Los dos botones van en su propia fila y se parten si no caben (letra «Muy grande»). */
+.lim-acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.lim-ask{margin-bottom:12px}
+.lim-ask-t{display:flex;gap:9px;align-items:flex-start;font-size:var(--fs-base);color:var(--t1);line-height:1.5}
+.lim-ask-ic{flex-shrink:0;display:flex;color:var(--g2);margin-top:1px}

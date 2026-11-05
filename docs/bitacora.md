@@ -4,6 +4,44 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🗓️ 2026-11-05 — v728: la vigencia de las condiciones (se revisan, nunca caducan solas)
+
+**Origen:** Q5 del dictamen de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md`) y §11 del de embarazo, dentro de
+«el resto tus recomendaciones» del PO. Con su «dale con la v728».
+- **El problema:** la nota no tenía fecha (medido: 0 campos de fecha). «Cesárea hace 10 años» quedaba para siempre sin crunch,
+  planchas ni saltos: sobrerrestricción permanente, que también es un daño. Y que caducara sola sería peor (la lección de
+  `PAIN_TTL_MS`: un dolor que caduca solo no se resolvió, se dejó de mirar).
+- **La regla (pura en avi-core):** `limitReviewedAt` en la ficha (viaja con el perfil; `clientToRow` copia todo y
+  `selfClientFromRow` lo deja pasar para «Mi entrenamiento»). `limitReviewStamp` lo escribe SOLO cuando la nota CAMBIA las
+  condiciones (alta, edición del coach y registro por cuenta propia); guardar con las mismas no cuenta como revisar.
+  `limitReview` avisa a los 90 días (abdomen y piso pélvico, embarazo) y a los 180 (huesos, presión); sin fecha o con una fecha
+  días en el futuro cuenta como vencida. 🔒 `limitationsFor` no mira la fecha: nada se quita ni se devuelve solo.
+- **El coach:** en la ficha, «Revisar condición» con el texto de Laura («Anotó embarazo hace más de 90 días. Pregúntale cómo va;
+  si ya tiene visto bueno de su médico u obstetra, actualiza la nota») y dos botones: **Sigue vigente** (renueva solo la fecha)
+  y **Ya no aplica** (abre la ficha con el cursor en la nota). Si la persona contestó en la app, se lo dice.
+- **La persona que se registró sola:** una fila en su Perfil, una vez por plazo, sin diagnósticos: «Hace unos meses escribiste
+  algo sobre tu abdomen o tu suelo pélvico. ¿Sigue igual?». **Desviación del texto de Laura** («actualiza tu nota y tu plan se
+  ajusta»): medido que la persona NO puede editar su nota en la app y que el plan libre no tiene chat, así que «Cambió» le deja
+  el aviso al coach en su hilo + push (el canal del reporte de dolor) y le dice que su plan sigue cuidando lo que escribió.
+  Ninguna respuesta toca la nota ni el filtro. Sin entrada en AVI_NEWS: la fila se explica sola donde aparece.
+- **Medido el 5-nov (respaldo local):** 1 persona con condición (la hernia umbilical, creada por el coach, sin fecha) → su ficha
+  pide revisar desde hoy, que es lo que Laura pidió en Q6 (¿operado?, ¿se abulta?, ¿visto bueno?). 0 personas registradas solas
+  con condición.
+- **Cazado antes del commit:** la primera versión daba por contestado el ciclo de la persona hasta que el COACH renovara la
+  fecha: si el coach no mira (el plan libre), no se le volvía a preguntar nunca → la respuesta vale UN plazo (gotcha nuevo).
+  Y «Tiene anotado una condición» → «Anotó una condición».
+- **QA:** suite 1544 → 1552 (8 pruebas: fecha al cambiar y no al guardar igual, plazos 89/90 y 179/180 por clave, sin fecha y
+  fecha futura, candado 9 con 400 días y el generador, una vez por plazo con renovación del coach, textos sin diagnósticos,
+  cableado de las pantallas, «Mi entrenamiento») · **19 sabotajes, los 19 en ROJO** (el S18 —el push apagado— salió VERDE en la
+  primera pasada: la prueba buscaba el texto de la llamada; se reforzó y se sumó el S19 del mensaje), restaurado verde y
+  comparado byte a byte · harness nuevo `_verify-vigencia.mjs` 20/20 (clics reales en los cuatro botones, guardar igual vs
+  cambiar la condición, capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-condiciones` 10/10 · `_verify-qw-limitaciones`
+  9/9 · `_verify-perfil-filas` y `_verify-ficha-pestanas` OK · `_test-coach-back` OK. Julián y Lucas aplicados por la sesión
+  (sus subagentes no están disponibles). **PENDIENTE re-verificación de Fable.**
+- **Para el PO (radar):** el texto del coach para el embarazo (v727) dice «si el embarazo ya terminó, quita la frase de la
+  nota», y quitarla levanta TAMBIÉN el filtro del abdomen y el piso pélvico justo en el postparto: que Laura diga si debe pedir
+  cambiarla por «postparto».
+
 ## 🩺 2026-11-05 — v727: la app lee condiciones (abdomen y piso pélvico, salud ósea, presión arterial, embarazo) y avisa los síntomas del corazón
 
 **Origen:** dictámenes de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md` y `laura-embarazo.md`). Decisiones del PO

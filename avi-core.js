@@ -1417,6 +1417,105 @@ function limitationCoachAlert(name, lim, notes) {
     + card + escribio;
 }
 
+// ── v728 · VIGENCIA DE LAS CONDICIONES (Laura, 5-nov Q5 y §11 del embarazo) ─────────────────────────
+// La condición dura hasta que el coach la quite o la confirme: JAMÁS caduca sola (regla madre del
+// dictamen del 8-ago: el retorno se decide por criterios cumplidos, nunca por días; y la lección de
+// `PAIN_TTL_MS`: un dolor que caduca solo no se resolvió, se dejó de mirar). Pero hasta v727 la nota no
+// tenía fecha, y «cesárea hace 10 años» se quedaba para siempre sin crunch, planchas ni saltos: eso
+// también es un daño (sobrerrestricción permanente). Por eso se REVISA:
+//   · `limitReviewedAt` (ISO, en el registro del asesorado; viaja con su perfil) se escribe al GUARDAR una
+//     nota que CAMBIA las condiciones y cuando el coach pulsa «Sigue vigente». Nunca por abrir la ficha ni
+//     por guardarla con las mismas condiciones.
+//   · Al vencer el plazo NO se abre ni se quita nada: 🔒 `limitationsFor` no mira esta fecha. Sale UNA
+//     línea al coach en la ficha y, a quien se registró sola, UNA fila en su Perfil, una vez por plazo.
+//   · Sin fecha (notas de antes de v728) cuenta como vencida: una condición que nadie confirmó no se puede
+//     dar por revisada. Medido el 5-nov: 1 persona en ese caso (la hernia umbilical, creada por el coach).
+// La persona NO puede editar su nota en la app (solo la escribe al registrarse) y el plan libre no tiene
+// chat: su «Cambió» le avisa al coach por su hilo, el mismo canal del reporte de dolor.
+const COND_REVIEW_DAYS = { core_central: 90, embarazo: 90, hueso: 180, presion: 180 };
+// Cómo se le nombra la condición al COACH (a él sí se le dicen diagnósticos: es su oficio).
+const COND_REVIEW_COACH = {
+  core_central: 'una condición del abdomen o del suelo pélvico', hueso: 'osteopenia u osteoporosis',
+  presion: 'hipertensión o una condición del corazón', embarazo: 'embarazo',
+};
+const _DIA_MS = 86400000;
+function _condsOf(notes) { return (parseLimitations(notes || '').conds || []).slice().sort(); }
+// La fecha de revisión que queda al GUARDAR la nota. `prevNotes` es la que había (vacía en un alta). PURA.
+function limitReviewStamp(prevNotes, nextNotes, prevStamp, nowIso) {
+  const antes = _condsOf(prevNotes), ahora = _condsOf(nextNotes);
+  if (!ahora.length) return null;                                    // sin condiciones no hay nada que revisar
+  if (antes.join('|') === ahora.join('|')) return prevStamp || null; // mismas condiciones: guardar NO es revisar
+  return nowIso;
+}
+// Una fecha que no se entiende o que llega DÍAS en el futuro cuenta como «sin fecha» (callaría el aviso para
+// siempre); un reloj adelantado unos minutos en otro teléfono, no.
+function _reviewTs(v, now) {
+  const t = Date.parse(v || '');
+  return (isFinite(t) && t > 0 && t <= now + 2 * _DIA_MS) ? t : null;
+}
+function _fechaCorta(ts) {
+  const d = new Date(ts);
+  return d.getDate() + ' de ' + SHARE_MESES[d.getMonth()];
+}
+// ¿Toca revisar? null si no. `respondio` = lo que contestó la persona EN ESTE ciclo. PURA (recibe `now`).
+function limitReview(client, nowTs) {
+  const c = client || {};
+  const now = nowTs || Date.now();
+  const conds = _condsOf(c.notes);
+  if (!conds.length) return null;
+  const t = _reviewTs(c.limitReviewedAt, now);
+  const vencidas = t == null ? conds : conds.filter(k => now - t >= (COND_REVIEW_DAYS[k] || 90) * _DIA_MS);
+  if (!vencidas.length) return null;
+  const plazos = vencidas.map(k => COND_REVIEW_DAYS[k] || 90);
+  const corto = Math.min(...plazos);
+  // El ciclo empieza cuando vence la PRIMERA. Una respuesta de la persona cuenta si llegó desde ahí y vale UN
+  // plazo: si el coach no renueva la fecha, se le vuelve a preguntar al plazo siguiente (una vez por plazo,
+  // no una vez para siempre).
+  const desde = t == null ? null : t + corto * _DIA_MS;
+  const a = (c.limitAsk && typeof c.limitAsk === 'object') ? c.limitAsk : null;
+  const at = a ? _reviewTs(a.at, now) : null;
+  const enCiclo = at != null && now - at < corto * _DIA_MS && (desde == null || at >= desde);
+  return {
+    conds: _dedupCondKeys(vencidas), plazo: Math.max(...plazos), sinFecha: t == null, revisado: t, desde,
+    respondio: enCiclo ? { at, r: a.r === 'cambio' ? 'cambio' : 'igual' } : null,
+  };
+}
+// La fila del Perfil: solo a quien se registró sola y solo si no contestó en este ciclo.
+function limitReviewAsk(client, nowTs) {
+  if (!client || !client.selfReg) return null;
+  const r = limitReview(client, nowTs);
+  return (r && !r.respondio) ? r : null;
+}
+function limitReviewCoachText(r) {
+  if (!r) return '';
+  const que = _listaY(r.conds.map(k => COND_REVIEW_COACH[k]).filter(Boolean));
+  const quien = r.conds.indexOf('embarazo') >= 0 ? 'médico u obstetra' : 'médico o fisio';
+  const cabeza = r.sinFecha
+    ? `Anotó ${que} y no hay registro de cuándo se revisó.`
+    : `Anotó ${que} hace más de ${r.plazo} días.`;
+  const resp = !r.respondio ? ''
+    : r.respondio.r === 'cambio'
+      ? ` El ${_fechaCorta(r.respondio.at)} avisó desde la app que CAMBIÓ: revisa la nota.`
+      : ` El ${_fechaCorta(r.respondio.at)} respondió en la app que sigue igual.`;
+  return `${cabeza} Pregúntale cómo va; si ya tiene visto bueno de su ${quien}, actualiza la nota.${resp}`;
+}
+// A la persona: sin diagnósticos (habla de «tu abdomen», no de lo que escribió) y sin plazos de recuperación.
+function limitReviewAskText(r) {
+  if (!r) return '';
+  const que = _listaY(r.conds.map(k => GEN_COND_CLIENT[k]).filter(Boolean));
+  return `${r.sinFecha ? 'Hace un tiempo' : 'Hace unos meses'} escribiste algo sobre ${que}. ¿Sigue igual? `
+    + 'Si cambió, cuéntale a tu coach para que revise tu nota y tu plan.';
+}
+// Lo que le llega al coach a su hilo cuando la persona toca «Cambió».
+function limitReviewChangedMsg(name, r) {
+  if (!r) return '';
+  const first = String(name || '').trim().split(/\s+/)[0] || 'Tu asesorado';
+  const que = _listaY(r.conds.map(k => COND_REVIEW_COACH[k]).filter(Boolean));
+  const quien = r.conds.indexOf('embarazo') >= 0 ? 'médico u obstetra' : 'médico o fisio';
+  return `🔄 ${first} avisó desde la app que cambió algo de lo que anotó (${que}). `
+    + `El filtro sigue puesto hasta que actualices su nota: pregúntale cómo va y si tiene visto bueno de su ${quien}.`;
+}
+
 // ── AVISO AL COACH: se registró SOLA una persona MENOR de edad (v565) ──────────────
 // El formulario le promete al menor que «tu coach va a hablar con él o ella antes de
 // empezar», y una promesa que la app no cumple es peor que no hacerla: sin este aviso el
@@ -6584,6 +6683,9 @@ function selfClientFromRow(row, opts) {
     //    la lápida no viajaría en su vista y el borrado de su propio récord volvería a resucitar.
     //    Solo si existe: un `prTombs:null` inventaría una clave en el perfil al guardar.
     ...(p.prTombs ? { prTombs: p.prTombs } : {}),
+    // 🔒 v728 · la fecha de revisión de sus condiciones, por lo mismo: sin ella su ficha diría «no hay registro
+    //    de cuándo se revisó» para siempre, por más que pulse «Sigue vigente».
+    ...(p.limitReviewedAt ? { limitReviewedAt: p.limitReviewedAt } : {}),
     routines: Array.isArray(row.routines) ? row.routines : [],
     // NADA de negocio: sin payments, sin tier, sin suspended, sin wantsCoach.
   };
@@ -13268,6 +13370,13 @@ if (typeof module !== 'undefined' && module.exports) {
     pushPlanFromRoutines,
     genLimitationNote,
     limitationCoachAlert,
+    COND_REVIEW_DAYS,
+    limitReviewStamp,
+    limitReview,
+    limitReviewAsk,
+    limitReviewCoachText,
+    limitReviewAskText,
+    limitReviewChangedMsg,
     minorCoachAlert,
     clientProgressStory,
     showcaseMinorConsent,
