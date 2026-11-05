@@ -4,6 +4,44 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🤰 2026-11-05 — v729: cuando el embarazo termina (Laura) y la comida con embarazo (Andrés Hyp)
+
+**Origen:** radar de v728 + pedidos del PO: *«pásale el texto del embarazo a Laura»*, *«pásale lo de la nutrición a
+Andrés»* y, al ver los dictámenes, *«ninguna persona en lactancia o embarazo va a estar entrenando desde la app pero como
+prevención está bien, termina ya este tema»*. Dictámenes: `docs/poblaciones-2026-11-05/laura-postparto.md` y
+`andres-embarazo.md` (briefings `_BRIEFING-3.md` y `_BRIEFING-andres-embarazo.md`). Medido el 5-nov: 0 personas en esos casos.
+- **Lo medido antes:** el texto de v727 le pedía al coach «si el embarazo ya terminó, quita la frase», y quitarla dejaba la
+  nota SIN claves (se iba también el abdomen y el suelo pélvico en el postparto). «Ya nació el bebé», «parto hace 1 mes»,
+  «recién parida» no se leían; «ya no estoy embarazada» y «perdí el embarazo» se leían como EMBARAZO (con «tu bebé se mueve
+  menos»); «aborto», «legrado» no se leían. La comida NO leía la nota: «Perder grasa» + embarazo = 1.693 kcal (−449) con el
+  rótulo «Mínimo seguro para tu cuerpo»; «Ganar músculo» = +350.
+- **Laura (entreno y textos), completo:** `GEN_POSTPARTO_RE` (parto como lo dice la gente, con guarda de «hace años» que no
+  se traga la edad de la madre; lactancia como señal de postparto, decisión del PO), `GEN_EMBARAZO_FIN_RE` («ya no estoy
+  embarazada» = terminó, no negación; las negaciones de descarte se siguen leyendo como embarazo A PROPÓSITO),
+  `GEN_PERDIDA_RE` (`core_central` sola, nunca la lista ni los textos del embarazo, salvo un embarazo ACTUAL), «voy a tener
+  un bebé / voy a ser mamá» (PO). Banderas `postparto`, `perdida`, `fin`, `lactancia`. Texto del coach: «NO borres la frase:
+  cámbiala por postparto o pérdida del embarazo»; con pérdida, `GEN_PERDIDA_COACH` reemplaza al genérico; con postparto se
+  suma `GEN_POSTPARTO_COACH`; a la persona, `GEN_RECIENTE_CLIENT` sin nombrar lo ocurrido; con pérdida la frase textual NO
+  se copia al hilo. Vigencia (v728) con embarazo: el coach lee qué escribir y el botón dice «Terminó o cambió»; la persona
+  lee «nos contaste algo sobre cómo estabas» y el mensaje al hilo dice «su salud», sin nombrar el embarazo.
+- **Andrés (comida), el núcleo:** mujer + embarazo → gasto × 1,05 para los seis objetivos (sin leer el trimestre), peso
+  real, proteína 1,6 g/kg con tope de 20 % y piso de 1,1, grasa 0,9 g/kg, carbohidrato ≥ max(175 g; 2 g/kg), agua ≥ 9
+  vasos; el plan escrito por el coach bajo el piso se escala (por encima no se toca); rótulo honesto; el «por qué» del
+  embarazo en la pantalla de ella; la tarjeta que aplaudía el peso se calla con embarazo, postparto, pérdida o fin. Cifras
+  idénticas a las de Andrés (68 kg: 2.249 kcal, P109 C316 G61; plan de 1.740 → 2.250; menor ×1,051). **Queda en el roadmap:**
+  reglas de lactancia y postparto en la comida, grasa estimada/cintura/medidas, los 5 escapes de N6 y los textos T3-T9.
+- **Desviación de R1.1:** las dos partes van en UNA versión (v729): mismo tema, se tocan en la lactancia y el postparto, y
+  el PO pidió cerrarlo junto.
+- **Cazado antes del commit:** (1) el sabotaje S5 (sin embarazo ACTUAL) salió VERDE: la frase de la prueba («perdí el
+  anterior») ni siquiera se leía como pérdida, así que no probaba la regla → caso nuevo con las dos cosas a la vez. (2) Edité
+  `app-5-salud.js` con la matriz corriendo y contaminó 14 sabotajes con 2 rojos ajenos (la lección de siempre: no editar
+  mientras corre) → se rehízo el cambio sin tocar las líneas que vigilan dos candados viejos y se repitió la matriz.
+- **QA:** suite 1552 → 1562 · **26 sabotajes en ROJO** (16 de Laura, 10 de Andrés), restaurado verde y comparado byte a byte ·
+  `_verify-vigencia` 22/22 (ahora con el Perfil del embarazo sin nombrarlo y la pantalla de comida: gasto × 1,05, el «por qué»
+  del embarazo y ni una palabra de déficit; capturas MIRADAS) · `_verify-condiciones` 10/10 · `_verify-qw-limitaciones` 9/9.
+  ⚠️ Las señales médicas y las cifras de comida están citadas de memoria: que las lea un obstetra y un nutricionista.
+  **PENDIENTE re-verificación de Fable.**
+
 ## 🗓️ 2026-11-05 — v728: la vigencia de las condiciones (se revisan, nunca caducan solas)
 
 **Origen:** Q5 del dictamen de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md`) y §11 del de embarazo, dentro de

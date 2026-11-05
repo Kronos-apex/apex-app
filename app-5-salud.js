@@ -327,6 +327,11 @@ const GOAL_WHY={
   // más abajo, en la misma pantalla. Las dos correcciones son de Sofía.
   recomposicion:{title:'🔄 Recomposición / Cambiar grasa por músculo',
     text:'Comes lo que gastas: ni más ni menos. Lo que sube es la proteína, porque aquí el objetivo no es que la balanza baje — es que cambie de qué está hecho ese peso: menos grasa y más músculo. Tu peso puede quedarse igual, y eso está bien. Por eso la balanza sola te va a confundir; lo que sí te va a mostrar el cambio es la cintura: mídetela cada 3 semanas y compárala, en vez de pesarte todos los días.'},
+  // v730 · EMBARAZO (Andrés Hyp, 5-nov, T2): con embarazo el objetivo de composición NO gobierna el plan; sin esta
+  // entrada la pantalla de ella seguía diciendo «estás en déficit» encima de un plan que ya no lo es. Se pone
+  // después de elegir la clave (no en `nutGoalForClient`: el desplegable del editor no tiene la opción «embarazo»).
+  embarazo:{title:'🤰 Embarazo / Tu plan no baja de lo que gastas',
+    text:'Escribiste algo sobre tu embarazo, así que este plan no busca que bajes de peso ni que cambies tu cuerpo: comes lo que gastas, con proteína, carbohidratos y agua suficientes para sostener tu energía. No sabemos en qué semana vas, así que este número es un punto de partida y no una indicación para tu embarazo. Cuánto necesitas comer, y qué pasa con tu peso durante el embarazo, lo define tu médico, tu obstetra o un nutricionista: antes de seguirlo, pide su visto bueno. Si algo no te cuadra, no lo sigas y avísale a tu coach.'},
 };
 // inferNutGoal → avi-core.js (fuente única, testeada). GOAL_WHY (texto del "por qué")
 // se queda aquí porque es data de presentación que usa renderNutritionClient.
@@ -651,6 +656,9 @@ function openNutritionRoom(clientId){
     // corregido sin una línea que le dijera de dónde salió.
     d={kcal:est.kcalObj,water:est.water,prot:m.prot_g,carb:m.carb_g,fat:m.fat_g,isEst:true,label:est.label,why:GOAL_WHY[nutGoalForClient(c.goal,c,_nutPesoDe(c))],minorFloor:est.minorFloor,minorCap:est.minorCap};
   }
+  // v730 · con embarazo (mujer + nota) el «por qué» es SIEMPRE el del embarazo, sea cual sea el objetivo: el de
+  // «Perder grasa» le diría «estás en déficit» encima de un plan que ya no lo es (Andrés Hyp, T2).
+  if(typeof nutEmbarazo==='function'&&nutEmbarazo(c)) d.why=GOAL_WHY.embarazo;
   const pk=d.prot*4, ck=d.carb*4, fk=d.fat*9, tot=pk+ck+fk||1;
   const pp=Math.round(pk/tot*100), cp=Math.round(ck/tot*100), fp=Math.max(0,100-pp-cp);
 

@@ -113,9 +113,11 @@ check('anotar una condición nueva le pone fecha de HOY y no pide revisar todav�
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await ev(TEMA('oscuro')); await ev(TAMANO('xl')); await ev(LIMPIAR);
 s = await ev(FICHA('estoy embarazada y tengo osteopenia', HACE(200), `{selfReg:true,tier:'libre',limitAsk:{at:${HACE(5)},r:'cambio'}}`));
-check('oscuro + «Muy grande»: embarazo (médico u obstetra), lo que avisó la persona y nada fuera de pantalla',
-  s.ok && s.hay && /Anotó embarazo y osteopenia u osteoporosis hace más de 180 días/.test(s.texto) && /médico u obstetra/.test(s.texto)
-  && /avisó desde la app que CAMBIÓ/.test(s.texto) && s.altos.every(h => h >= 36) && s.fuera === 0, s.err || JSON.stringify({ t: s.texto, fuera: s.fuera, altos: s.altos }));
+// v729 (Laura, laura-postparto P1): con embarazo el aviso dice QUÉ escribir y el botón es «Terminó o cambió».
+check('oscuro + «Muy grande»: embarazo (qué escribir, «No la borres», «Terminó o cambió»), lo que avisó la persona y nada fuera',
+  s.ok && s.hay && /Anotó embarazo y osteopenia u osteoporosis hace más de 180 días/.test(s.texto) && /Si sigue embarazada, pulsa «Sigue vigente»/.test(s.texto)
+  && /No la borres/.test(s.texto) && s.botones.join('|') === 'Sigue vigente|Terminó o cambió'
+  && /avisó desde la app que CAMBIÓ/.test(s.texto) && s.altos.every(h => h >= 36) && s.fuera === 0, s.err || JSON.stringify({ t: s.texto, b: s.botones, fuera: s.fuera, altos: s.altos }));
 await foto('2-coach-embarazo-oscuro-xl');
 await ev(TAMANO(''));
 
@@ -173,6 +175,26 @@ s = await ev(`(async()=>{const c=DB.clients[0];
   return {ok:true,hay:!!document.querySelector('#cn-limrev .lim-ask'),r:(c.limitAsk||{}).r,msgs:(DB.msgs[c.id]||[]).length,push:window._pushes.length};})()`);
 check('«Sigue igual»: la fila se va y NO se le escribe ni se le manda push al coach', s.ok && !s.hay && s.r === 'igual' && s.msgs === 0 && s.push === 0, s.err || JSON.stringify(s));
 await ev(TAMANO(''));
+
+// ── (3) v729/v730 · EMBARAZO: la fila del Perfil no lo nombra y la pantalla de comida no habla de déficit ──────────
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+await ev(TEMA('claro')); await ev(LIMPIAR);
+s = await ev(PERFIL('estoy embarazada', HACE(100), `{goal:'Perder grasa'}`));
+check('embarazo en el Perfil: «nos contaste algo sobre cómo estabas», sin la palabra embarazo', s.ok && s.hay && /nos contaste algo sobre cómo estabas/.test(s.texto) && !/embaraz/i.test(s.texto), s.err || s.texto);
+s = await ev(`(async()=>{try{ DB.nutrition={}; openNutritionRoom(CUR.clientId); await new Promise(r=>setTimeout(r,700));
+  const b=document.getElementById('nutroom-body'); const t=b?b.innerText:''; b.scrollTop=0;
+  // La cifra esperada se DERIVA de la persona (R2.3): gasto × 1,05 con su peso, no un número escrito a mano.
+  const est=nutritionEstimate(DB.clients[0]);
+  return {ok:true,t:t.slice(0,4000),kcal:est.kcalObj,tdee:est.tdee,fuera:${FUERA('#nutroom-body')}}; }catch(e){return {ok:false,err:e.message};}})()`);
+const _kcalTxt = s.kcal != null ? s.kcal.toLocaleString('es-CO') : '?';
+check('comida de una embarazada con «Perder grasa»: gasto × 1,05, el «por qué» del embarazo y ni una palabra de déficit',
+  s.ok && s.kcal >= Math.round(s.tdee * 1.05) && s.kcal <= s.tdee * 1.13 && (s.t.includes(_kcalTxt) || s.t.includes(String(s.kcal)))
+  && /Tu plan no baja de lo que gastas/.test(s.t) && /médico, tu obstetra o un nutricionista/.test(s.t) && !/déficit|Mínimo seguro/i.test(s.t) && s.fuera === 0,
+  s.err || JSON.stringify({ kcal: s.kcal, tdee: s.tdee, banda: s.kcal >= Math.round(s.tdee * 1.05) && s.kcal <= s.tdee * 1.13,
+    porque: /Tu plan no baja de lo que gastas/.test(s.t), medico: /médico, tu obstetra o un nutricionista/.test(s.t),
+    deficit: (s.t.match(/déficit|Mínimo seguro/i) || [])[0] || null, fuera: s.fuera }));
+await foto('5-comida-embarazo-claro');
+await ev(`(()=>{const r=document.getElementById('nutrition-room'); if(r) r.classList.remove('on'); return 1;})()`);
 
 for (const r of results) console.log(r);
 console.log('\njsErrors: ' + JSON.stringify(jsErrors));

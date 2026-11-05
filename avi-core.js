@@ -384,7 +384,71 @@ const GEN_SPLITS = {
 // 🔒 Sin lookbehind en ninguna (`(?<!…)` revienta el parseo en Safari < 16.4 y tumba avi-core entero;
 // la suite lo verifica). Cada término corto con su borde de palabra y su CONTROL en la suite.
 // Una sola constante para la palabra embarazo: la usan `core_central`, `embarazo` y `lim.embarazo`.
-const GEN_EMBARAZO_RE = /embaraz(?!os[oa])|gestante|gestacion|prenada|dulce espera|futura mama|bebe (viene )?en camino|(estoy|ando|vamos|estamos) esperando (un |mi |a mi |al )?(bebe|hij[oa]|nino|nina)|espero (un |mi )?(bebe|hij[oa]|nino|nina)/;
+const GEN_EMBARAZO_RE = /embaraz(?!os[oa])|gestante|gestacion|prenada|dulce espera|futura mama|bebe (viene )?en camino|(estoy|ando|vamos|estamos) esperando (un |mi |a mi |al )?(bebe|hij[oa]|nino|nina)|espero (un |mi )?(bebe|hij[oa]|nino|nina)|(voy|vamos) a (tener (un |una |mi |nuestro |nuestra )(bebe|hij[oa])|ser (mama|madre))/;
+// ── v729 · CUANDO EL EMBARAZO TERMINA (Laura, 5-nov noche: `docs/poblaciones-2026-11-05/laura-postparto.md`) ──
+// 🔴 El texto de v727 le pedía al coach «si el embarazo ya terminó, quita la frase», y quitarla apagaba TAMBIÉN el
+// filtro del abdomen y del suelo pélvico justo en el postparto. Y las formas naturales de anotar el parto («ya nació
+// el bebé», «parto hace 1 mes», «recién parida») no se leían. Cuatro regex armadas por piezas con nombre (una literal
+// de 3.000 caracteres no se puede revisar); la suite afirma sobre su `.source` que no llevan lookbehind.
+// «Hace años»: mira UNA palabra adelante. Más ancha se comía «tuvo un bebé y es de 30 años».
+const GEN_NUM = String.raw`(\d+|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|quince|veinte|varios|muchos)`;
+const GEN_ANT = String.raw`(?!( \w+)? (hace|de)( mas de| como| unos| casi)? ${GEN_NUM} anos|( \w+)? (en|del) (19|20)\d\d)`;
+const GEN_BEBE = String.raw`(bebe|bebita|bebito|beba)`;
+const GEN_HIJO = String.raw`(hij[oa]|nene|nena|nino|nina|gemelos|mellizos)`;
+const GEN_DET = String.raw`(un |una |mi |su |el |al |nuestro |nuestra |a mi |a su )?`;
+const GEN_TIEMPO = String.raw`(\d+ (dias?|semanas?)|([1-9]|1\d|2[0-4]|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce) mes(es)?|(un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez) (dias?|semanas?))`;
+// La lactancia entra como SEÑAL de postparto (no limita la carga por sí misma, pero quien la escribe suele estar en los
+// dos años del parto: la población invisible de la diástasis). Decisión del PO (5-nov): como prevención.
+const GEN_LACTANCIA_SRC = String.raw`lactanc|lactand|amamant|lactante|(doy|dando|dar|di|le doy|le estoy dando) (el )?pecho (a |al )?(mi |un |el |su )?(${GEN_BEBE}|${GEN_HIJO})`;
+const GEN_LACTANCIA_RE = new RegExp(GEN_LACTANCIA_SRC);
+const GEN_POSTPARTO_RE = new RegExp([
+  String.raw`post[ -]?parto|pos[ -]?parto|puerper`,
+  String.raw`(tras|luego del?|despues del?) (el |mi |un |este )?parto`,
+  String.raw`\bparto${GEN_ANT} (hace|reciente|fue|prematur|complicad|dificil|largo|rapido|asistid|inducid)`,
+  String.raw`\b(el |mi |su )?${GEN_BEBE}${GEN_ANT} (ya )?nacio`,
+  String.raw`\b${GEN_HIJO}${GEN_ANT} (ya )?nacio`,
+  String.raw`\bnacio ${GEN_DET}(${GEN_BEBE}|${GEN_HIJO})${GEN_ANT}`,
+  String.raw`\bnacieron (mis |los |las |nuestros )?(gemelos|mellizos|hijos|bebes)`,
+  String.raw`\b(tuve|tuvo|tuvimos|tuvieron|acab\w* de tener) ${GEN_DET}${GEN_BEBE}${GEN_ANT}`,
+  String.raw`\b(tuve|tuvo|tuvimos) ${GEN_DET}${GEN_HIJO} hace ${GEN_TIEMPO}`,
+  String.raw`\b(tengo|tiene|tenemos) ${GEN_DET}${GEN_BEBE}${GEN_ANT}`,
+  String.raw`\b${GEN_BEBE} (tiene |de |con )${GEN_TIEMPO}`,
+  String.raw`\b${GEN_HIJO} (tiene |de |con )${GEN_TIEMPO}`,
+  String.raw`recien (parid[ao]|mama|madre|dio a luz|di a luz|tuve|tuvo)`,
+  String.raw`\b(mi|su|nuestro) (bebe )?recien nacid`,
+  String.raw`acab\w* de (parir|dar a luz|ser (mama|madre))`,
+  String.raw`\b(mama|madre) (reciente|primeriza|nueva)\b`,
+  String.raw`\b(mama|madre)${GEN_ANT} hace`,
+  // 🔴 Con el `\b`: sin él «cesaria» cae dentro de «nece-SARIA» y el ejercicio e93 se leía como cesárea (lo cazó Laura).
+  String.raw`\bcezarea|\bsesarea|\bcesaria\b`,
+  GEN_LACTANCIA_SRC,
+].join('|'));
+// La bandera `postparto` también la levantan las frases que ya leía la entrada vieja de `core_central` (y no la diástasis,
+// la hernia ni la cirugía: esas no son recientes).
+const GEN_POSTPARTO_VIEJO_RE = /post ?parto|pos ?parto|despues (de|del) (mi |el )?parto|(tuve|tras) (un |mi )?parto|parto (natural|vaginal|por cesarea)|(^| )(di|dio|dieron|dar) a luz( |$)|cesarea/;
+// «Ya no estoy embarazada», «mi embarazo terminó»: NO es «no hay embarazo», es que hubo parto o pérdida. Se quitan del
+// texto antes de buscar `embarazo` y suman `core_central`. 🔒 Las demás negaciones («no estoy embarazada», «no sé si
+// estoy embarazada») NO se leen a propósito: el falso positivo cuesta sobrerrestricción; el falso negativo dejaría a
+// una embarazada sin filtro (Laura P3).
+const GEN_EMBARAZO_FIN_RE = new RegExp([
+  String.raw`ya no (estoy|esta|ando|andaba) (embarazad[ao]|en embarazo|gestando)`,
+  String.raw`(deje|dejo) de estar embarazad[ao]`,
+  String.raw`(el |mi |su )embarazo (ya )?(termino|acabo|finalizo|paso|concluyo)`,
+  String.raw`(termino|acabo|finalizo) (el |mi |su )embarazo`,
+  String.raw`ya no hay embarazo`,
+].join('|'));
+// La pérdida del embarazo: `core_central` SOLA, nunca la lista ni los textos del embarazo (Laura P4). «Perdí a mi hijo»
+// queda fuera a propósito: es un duelo, no una pérdida gestacional, y la app no debe asumirlo.
+const GEN_PERDIDA_RE = new RegExp([
+  String.raw`perd(i|io|imos|ieron) (a |al |el )?(mi |su |nuestro )?(embarazo|${GEN_BEBE}|gestacion)`,
+  String.raw`perdida (gestacional|del embarazo|de (mi |un |el )?(embarazo|bebe|gestacion))`,
+  String.raw`\baborto|\bme aborto|\babortamos|legrado|curetaje|malparto|mortinato`,
+  String.raw`muerte (fetal|gestacional|perinatal|intrauterina)`,
+  String.raw`embarazo (ectopico|molar|anembrionic\w*|bioquimico|no evolutivo|detenido)`,
+  String.raw`(se )?(me|nos) murio (el |mi |nuestro )?${GEN_BEBE}|${GEN_BEBE} (murio|fallecio|sin vida)|nacio (muert[oa]|sin vida)`,
+].join('|'));
+// Con una pérdida anotada, el embarazo solo se conserva si la nota dice que HOY hay uno («estoy embarazada de nuevo»).
+const GEN_EMBARAZO_ACTUAL_RE = /(estoy|ando|estamos|quede|volvi a quedar|volvi a estar|de nuevo|otra vez) (de nuevo |otra vez )?(en )?embarazad|embarazad[ao] (de nuevo|otra vez)|\d+ (semanas|meses) de (embarazo|gestacion)/;
 // 🚑 Síntomas que pueden venir del corazón o de la respiración (Laura, E4). SOLO AVISO, decisión del PO
 // (5-nov): «recomendar de una vez valoración por profesionales de la salud y listo». No quita nada y,
 // a diferencia de la del nervio, DISPARA SOLA (sin otra limitación). «Dolor de pecho» a secas NO
@@ -437,7 +501,13 @@ const GEN_LIMIT_KWS = [
   // lastres los quita `core_central`; `embarazo` suma boca arriba, boca abajo, caídas y esfuerzo
   // máximo. El trimestre NO se lee (E1): un número en la nota casi nunca es la edad gestacional y
   // solo serviría para RELAJAR la lista.
-  { zones: ['embarazo', 'core_central'], re: GEN_EMBARAZO_RE },
+  // v729 · `emb:true`: esta entrada se prueba sobre la nota SIN las frases de pérdida ni de fin del embarazo (ver
+  // `parseLimitations`), y se calla si hay una pérdida anotada sin un embarazo actual.
+  { zones: ['embarazo', 'core_central'], re: GEN_EMBARAZO_RE, emb: true },
+  // v729 · el parto dicho como lo dice la gente, la pérdida y el fin del embarazo: `core_central` SOLA (Laura P2-P4).
+  { zone: 'core_central', re: GEN_POSTPARTO_RE },
+  { zone: 'core_central', re: GEN_PERDIDA_RE },
+  { zone: 'core_central', re: GEN_EMBARAZO_FIN_RE },
 ];
 // 🔴 ESTE MAPA SE LLENA COMPLETO O LA ZONA NACE MUDA. Lo cazó Laura midiendo (dictamen del
 // 27-ago §5): desde la adenda del 8-ago, `aductor`, `abductor`, `cuello` y `tobillo` no tenían
@@ -1264,8 +1334,16 @@ const GEN_COND_COACH = {
   core_central: 'Declaró una condición del abdomen o del suelo pélvico (postparto, diástasis, hernia, cirugía abdominal o embarazo). Pregúntale hace cuánto y si tiene visto bueno de su médico o fisioterapeuta. Todas las series exhalando en el esfuerzo; si aparece un bulto en el centro del abdomen, que pare.',
   hueso: 'Declaró osteopenia u osteoporosis (o una fractura por fragilidad). El peso muerto y la sentadilla NO se quitaron a propósito: la carga progresiva con la columna neutra es parte del tratamiento. Sí se quitó la flexión y la torsión cargadas. Si hubo fractura vertebral, el impacto y la carga los define su médico.',
   presion: 'Declaró hipertensión o una condición del corazón. Pregúntale si está controlada y qué medicación toma. Cardio a ritmo de conversación, series que no aguanten el aire; si se marea, siente presión en el pecho o le falta el aire, que pare y consulte.',
-  embarazo: 'Menciona un embarazo. Este plan NO es un plan de embarazo y nadie lo ha revisado: que tenga el visto bueno de su médico u obstetra antes de entrenar. La app quitó lo que va boca arriba o boca abajo, el peso del cuerpo sobre el vientre, los saltos, el esfuerzo máximo y las barras sobre un solo apoyo, y pide 8 repeticiones o más exhalando. NO sabe en qué semana va (aplica todo desde que lo nombra), ni si tiene una condición que prohíbe entrenar (sangrado, placenta previa, preeclampsia, rotura de membranas, embarazo múltiple, hipertensión o diabetes sin control): pregúntale semanas, visto bueno y síntomas. No controla el calor, el agua ni los rangos extremos de cadera (la laxitud del embarazo). Si el embarazo ya terminó, quita la frase de la nota.',
+  embarazo: 'Menciona un embarazo. Este plan NO es un plan de embarazo y nadie lo ha revisado: que tenga el visto bueno de su médico u obstetra antes de entrenar. La app quitó lo que va boca arriba o boca abajo, el peso del cuerpo sobre el vientre, los saltos, el esfuerzo máximo y las barras sobre un solo apoyo, y pide 8 repeticiones o más exhalando. NO sabe en qué semana va (aplica todo desde que lo nombra), ni si tiene una condición que prohíbe entrenar (sangrado, placenta previa, preeclampsia, rotura de membranas, embarazo múltiple, hipertensión o diabetes sin control): pregúntale semanas, visto bueno y síntomas. No controla el calor, el agua ni los rangos extremos de cadera (la laxitud del embarazo). Cuando el embarazo termine, NO borres la frase: sin ella la app apaga el filtro del abdomen y del suelo pélvico justo cuando más lo necesita. Cámbiala por «postparto» (y «cesárea» si la hubo) o, si no continuó, por «pérdida del embarazo». Solo la quitas del todo cuando su médico o su fisio la den de alta. Si la frase era un descarte («no estoy embarazada») o hablaba de otra persona, sí bórrala.',
 };
+// v729 · LO QUE YA TERMINÓ (Laura, 5-nov noche, P4). ⚠️ Las señales médicas están citadas de memoria (ACOG sobre el
+// postparto) y las tiene que leer un obstetra: decisión del PO publicarlas como prevención mientras tanto.
+// Al coach, con una pérdida: reemplaza al texto genérico de `core_central`.
+const GEN_PERDIDA_COACH = 'Anotó una pérdida del embarazo. La app aplicó el filtro del abdomen y del suelo pélvico, como en el postparto, y NO el del embarazo; a ella solo le habla de «tu abdomen o tu suelo pélvico». No sabe de cuántas semanas fue ni si hubo legrado, cirugía o parto: pregúntalo solo si ella quiere contarlo, y pídele el visto bueno de su médico antes de entrenar. Si hay sangrado abundante, fiebre o dolor fuerte, que consulte. No uses frases como «ya vendrá otro» o «sigue adelante», ni hables de peso o del cuerpo; escúchala y sigue su ritmo. Si la ves muy afectada, sugiérele apoyo profesional: eso no lo resuelve la app ni el entreno. Es un dato sensible: no lo comentes con terceros.';
+// Al coach, con un postparto: se SUMA al de `core_central`.
+const GEN_POSTPARTO_COACH = 'Postparto: pregúntale hace cuánto nació, si fue vaginal o cesárea y si ya tuvo la revisión de su médico o fisio; con cesárea, la cicatriz y el abdomen pesan más. Si está lactando, eso no es motivo para quitar el entreno, pero consulta la comida con nutrición.';
+// A la persona, con postparto, pérdida o fin: 🔒 no nombra lo ocurrido (ni bebé, ni embarazo, ni parto, ni pérdida).
+const GEN_RECIENTE_CLIENT = 'Si todavía no lo has hecho, confirma con tu médico que ya puedes entrenar. Detente y consulta a tu médico si el sangrado aumenta o vuelve a ser rojo vivo, si tienes fiebre, dolor fuerte en el vientre, dolor o hinchazón en una pantorrilla, dolor de cabeza fuerte, dolor en el pecho o falta de aire; si es fuerte, ve a urgencias.';
 // Q6 de Laura: con una hernia del abdomen la etiqueta «zona lumbar» aparece sin que la espalda esté mal.
 const GEN_HERNIA_LUMBAR_COACH = 'Con hernia, la zona lumbar se activa a propósito como filtro de cargas altas (peso muerto, sentadilla con barra); no significa que tenga la espalda lastimada.';
 const GEN_EMBARAZO_CLIENT = '⚠️ Escribiste algo sobre tu embarazo, así que armamos este plan cuidándolo, pero NO es un plan de embarazo. Todavía no lo ha revisado un profesional de la salud: antes de entrenar, pide el visto bueno de tu médico u obstetra. Quitamos los ejercicios boca arriba o boca abajo, los saltos y el esfuerzo máximo, y no sabemos en qué semana vas. ' + GEN_COND_PARADA.embarazo + ' Si algo no te cuadra, no lo hagas y avísale a tu coach.';
@@ -1289,7 +1367,12 @@ function _limAdvice(keys) {
 // Las hernias del ABDOMEN (la misma alternancia que la entrada de `core_central` en `GEN_LIMIT_KWS`).
 const GEN_HERNIA_ABD_RE = /hernias? (umbilical|abdominal|ventral|epigastric|incisional|inguinal|hiatal)|hernias? (en |de |del )(el |mi )?(ombligo|abdomen|vientre|estomago)/g;
 function _condAdviceCoach(keys, n) {
-  const out = _dedupCondKeys(keys).filter(_isCond).map(z => GEN_COND_COACH[z]).filter(Boolean);
+  // v729 · con una pérdida, el texto de `core_central` se REEMPLAZA (el genérico nombra el embarazo como causa posible);
+  // con un postparto, se le SUMA lo que hay que preguntar.
+  const perdida = GEN_PERDIDA_RE.test(String(n || ''));
+  const postparto = !perdida && (GEN_POSTPARTO_RE.test(String(n || '')) || GEN_POSTPARTO_VIEJO_RE.test(String(n || '')));
+  const out = _dedupCondKeys(keys).filter(_isCond).map(z => (z === 'core_central' && perdida) ? GEN_PERDIDA_COACH : GEN_COND_COACH[z]).filter(Boolean);
+  if (postparto && _dedupCondKeys(keys).indexOf('core_central') >= 0) out.push(GEN_POSTPARTO_COACH);
   // 🔴 La frase «no significa que tenga la espalda lastimada» SOLO si la zona lumbar viene de la hernia
   // del abdomen y de nada más. La nota real que motivó todo esto dice «Hernia lumbar L5 · Hernia
   // umbilical»: ahí la espalda SÍ está comprometida y la frase le mentiría al coach.
@@ -1305,7 +1388,16 @@ function _condAdviceCoach(keys, n) {
 function parseLimitations(notes) {
   const n = _norm(notes);
   const keys = [];
-  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) (k.zones ? k.zones : k.area ? painExclZones(k.area) : [k.zone]).forEach(z => keys.push(z)); });
+  // v729 · el embarazo se busca en la nota SIN las frases de pérdida ni de fin («perdí el embarazo», «ya no estoy
+  // embarazada»), y con una pérdida anotada solo cuenta si HOY hay uno («estoy embarazada de nuevo»).
+  const perdida = GEN_PERDIDA_RE.test(n);
+  const fin = GEN_EMBARAZO_FIN_RE.test(n);
+  const nEmb = n.replace(new RegExp(GEN_PERDIDA_RE.source, 'g'), ' ').replace(new RegExp(GEN_EMBARAZO_FIN_RE.source, 'g'), ' ');
+  const sinEmb = perdida && !GEN_EMBARAZO_ACTUAL_RE.test(nEmb);
+  GEN_LIMIT_KWS.forEach(k => {
+    if (k.emb && sinEmb) return;
+    if (k.re.test(k.emb ? nEmb : n)) (k.zones ? k.zones : k.area ? painExclZones(k.area) : [k.zone]).forEach(z => keys.push(z));
+  });
   const uniq = [...new Set(keys)];
   const detected = uniq.length > 0;
   // Solo rodilla/lumbar/hombro tienen reglas de exclusión. Una limitación "genérica"
@@ -1328,6 +1420,12 @@ function parseLimitations(notes) {
     conds: uniq.filter(_isCond),
     embarazo: uniq.indexOf('embarazo') >= 0,
     cardiac,
+    // v729 · banderas de lo que ya TERMINÓ (Laura P2-P4): no cambian `detected`, `keys`, `zones` ni `hasExclusions`;
+    // cambian lo que se le dice a cada quien. `lactancia` la usa la nutrición (Andrés, N3).
+    postparto: !perdida && (GEN_POSTPARTO_RE.test(n) || GEN_POSTPARTO_VIEJO_RE.test(n)),
+    perdida,
+    fin,
+    lactancia: GEN_LACTANCIA_RE.test(n),
     // El texto dice QUÉ SE QUITÓ; jamás que lo que queda esté bien para esa persona. La versión
     // vieja ("Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras")
     // afirmaba una revisión clínica que nunca ocurrió y le bajaba la guardia a quien revisa.
@@ -1378,6 +1476,8 @@ function genLimitationNote(lim, audience) {
       nervPuesto = true;
     }
     if (!nervPuesto && nerv) partes.push(nerv.trim());
+    // v729 · postparto, pérdida o fin del embarazo: la señal médica de lo reciente, sin nombrar lo ocurrido (Laura P4).
+    if (!l.embarazo && (l.postparto || l.perdida || l.fin)) partes.push(GEN_RECIENTE_CLIENT);
     if (l.cardiac) partes.push(GEN_CARDIAC_CLIENT);
     return partes.join(' ');
   }
@@ -1400,7 +1500,9 @@ function limitationCoachAlert(name, lim, notes) {
   const zonas = (l.zones || []).join(', ') || 'sin zona específica';
   const nota = String(notes || '').trim().replace(/\s+/g, ' ').slice(0, 200);
   const card = l.cardiac ? ' 🚑 ' + l.cardiacAdvice : '';
-  const escribio = nota ? ` Escribió: «${nota}»` : '';
+  // v729 · con una pérdida del embarazo, la frase textual NO se copia al hilo (Laura P4, prohibida 9): el coach la lee
+  // en la ficha, y el hilo es un lugar que ella puede llegar a ver.
+  const escribio = (nota && !l.perdida) ? ` Escribió: «${nota}»` : '';
   // Solo síntomas, sin limitación: NO se habla de una «zona» que no existe ni de un filtro que no hubo.
   if (!l.detected) {
     return `⚠️ ${first} se registró por su cuenta y escribió algo que puede venir del corazón o de la respiración. `
@@ -1497,11 +1599,24 @@ function limitReviewCoachText(r) {
     : r.respondio.r === 'cambio'
       ? ` El ${_fechaCorta(r.respondio.at)} avisó desde la app que CAMBIÓ: revisa la nota.`
       : ` El ${_fechaCorta(r.respondio.at)} respondió en la app que sigue igual.`;
+  // v729 · con embarazo, «actualiza la nota» se leía como «bórrala» y apagaba el filtro del abdomen en el postparto
+  // (Laura P1): se le dice QUÉ escribir en su lugar.
+  if (r.conds.indexOf('embarazo') >= 0) {
+    return `${cabeza} Pregúntale cómo está. Si sigue embarazada, pulsa «Sigue vigente». Si ya nació el bebé, cambia la frase `
+      + 'por «postparto»; si el embarazo no continuó, por «pérdida del embarazo». No la borres: sin la frase se apaga el '
+      + `filtro del abdomen.${resp}`;
+  }
   return `${cabeza} Pregúntale cómo va; si ya tiene visto bueno de su ${quien}, actualiza la nota.${resp}`;
 }
 // A la persona: sin diagnósticos (habla de «tu abdomen», no de lo que escribió) y sin plazos de recuperación.
 function limitReviewAskText(r) {
   if (!r) return '';
+  // v729 · con embarazo NO se nombra (Laura P5): para quien parió es torpe y para quien perdió el embarazo, una herida
+  // abierta en su Perfil. La frase neutra sirve para las tres situaciones sin saber cuál fue.
+  if (r.conds.indexOf('embarazo') >= 0) {
+    return `${r.sinFecha ? 'Hace un tiempo' : 'Hace unos meses'} nos contaste algo sobre cómo estabas. ¿Sigue igual? `
+      + 'Si algo cambió, cuéntale a tu coach para que revise tu nota y tu plan.';
+  }
   const que = _listaY(r.conds.map(k => GEN_COND_CLIENT[k]).filter(Boolean));
   return `${r.sinFecha ? 'Hace un tiempo' : 'Hace unos meses'} escribiste algo sobre ${que}. ¿Sigue igual? `
     + 'Si cambió, cuéntale a tu coach para que revise tu nota y tu plan.';
@@ -1510,6 +1625,11 @@ function limitReviewAskText(r) {
 function limitReviewChangedMsg(name, r) {
   if (!r) return '';
   const first = String(name || '').trim().split(/\s+/)[0] || 'Tu asesorado';
+  // v729 · el mensaje queda en SU hilo como suyo: con embarazo no se nombra (Laura P5).
+  if (r.conds.indexOf('embarazo') >= 0) {
+    return `🔄 ${first} avisó desde la app que cambió algo de lo que anotó sobre su salud. El filtro sigue puesto hasta que `
+      + 'actualices su nota: pregúntale cómo está y si ya tiene el visto bueno de su médico.';
+  }
   const que = _listaY(r.conds.map(k => COND_REVIEW_COACH[k]).filter(Boolean));
   const quien = r.conds.indexOf('embarazo') >= 0 ? 'médico u obstetra' : 'médico o fisio';
   return `🔄 ${first} avisó desde la app que cambió algo de lo que anotó (${que}). `
@@ -7949,6 +8069,60 @@ function bodyWeightSource(client, bwList, now) {
   };
 }
 
+// ── v730 · EMBARAZO EN LA COMIDA (Andrés Hyp, 5-nov: `docs/poblaciones-2026-11-05/andres-embarazo.md`) ───────────
+// 🔴 La nutrición NO leía la nota: una embarazada con «Perder grasa» recibía un déficit de ~450 kcal con el rótulo
+// «Mínimo seguro para tu cuerpo», y con «Ganar músculo» un superávit libre. REGLA E1: mujer + nota con embarazo →
+// nunca déficit ni superávit libre: gasto × 1,05 para los SEIS objetivos, sin leer el trimestre (Laura E1). Es la
+// regla de menores en otro sitio. REGLA E2: peso REAL (sin la rampa de IMC: el peso del embarazo no es grasa, y con
+// la rampa la proteína BAJABA mientras ella subía), proteína 1,6 g/kg con tope de 20 % de las kcal y piso de 1,1 g/kg,
+// grasa 0,9 g/kg, carbohidrato con piso de max(175 g; 2,0 g/kg), agua con piso de 9 vasos.
+// ⚠️ Cifras de Andrés citadas de memoria (IOM/ACOG): las tiene que leer un nutricionista u obstetra. El 2.º y 3.er
+// trimestre piden más energía y la app no sabe la semana: eso llega por el plan escrito del coach, que NO tiene techo.
+const NUT_EMB_MARGEN = 1.05;
+const NUT_EMB_PROT_G_KG = 1.6;
+const NUT_EMB_PROT_MIN_G_KG = 1.1;
+const NUT_EMB_PROT_MAX_PCT = 0.20;
+const NUT_EMB_FAT_G_KG = 0.9;
+const NUT_EMB_CARB_MIN_G = 175;
+const NUT_EMB_AGUA_MIN_VASOS = 9;
+const NUT_EMB_LABEL = 'Mantenimiento: por lo que escribiste sobre tu embarazo, tu plan no baja de lo que gastas. Cuánto más necesitas lo define tu médico, obstetra o nutricionista.';
+// Solo mujeres: sin esto, un hombre que escribe «mi esposa está embarazada» pasaba de déficit a superávit (lo midió Andrés).
+function nutEmbarazo(client) {
+  return !!client && client.sex === 'F' && !!parseLimitations((client && client.notes) || '').embarazo;
+}
+function nutEmbMacros(kcal, w) {
+  const prot = Math.round(Math.max(NUT_EMB_PROT_MIN_G_KG * w, Math.min(NUT_EMB_PROT_G_KG * w, NUT_EMB_PROT_MAX_PCT * kcal / 4)));
+  const fat = Math.round(NUT_EMB_FAT_G_KG * w);
+  const carbMin = Math.max(NUT_EMB_CARB_MIN_G, Math.round(NUT_CARB_MIN_G_KG * w));
+  const carb = Math.max(carbMin, Math.round((kcal - prot * 4 - fat * 9) / 4));
+  const m = { prot_g: prot, carb_g: carb, fat_g: fat };
+  m.kcal = nutMacroKcal(m);
+  return m;
+}
+// La otra puerta: un plan ESCRITO por el coach por debajo del piso se escala (mismo reparto, como en menores); por encima
+// no se toca. La proteína no sube más de lo que él escribió (o 1,6 g/kg si escribió menos).
+function nutEmbFloorBase(base, client, weightKg) {
+  if (!base || !base.macros || !(base.kcalObj > 0) || !nutEmbarazo(client)) return base;
+  const w = parseFloat(weightKg != null && weightKg !== '' ? weightKg : client.weight);
+  const tdee = nutMinorTdee(client, w);
+  if (!tdee) return base;
+  const piso = Math.round(tdee * NUT_EMB_MARGEN);
+  if (base.kcalObj >= piso) return base;
+  const factor = piso / base.kcalObj;
+  const p0 = base.macros.prot_g;
+  const macros = {
+    prot_g: Math.min(Math.round(p0 * factor), Math.max(Math.round(p0), Math.round(NUT_EMB_PROT_G_KG * w))),
+    carb_g: Math.round(base.macros.carb_g * factor),
+    fat_g: Math.round(base.macros.fat_g * factor),
+  };
+  macros.kcal = nutMacroKcal(macros);
+  if (macros.kcal < piso) { macros.carb_g += Math.ceil((piso - macros.kcal) / 4); macros.kcal = nutMacroKcal(macros); }
+  return Object.assign({}, base, {
+    kcalObj: macros.kcal, macros,
+    embFloor: { tdee, piso, kcalAntes: base.kcalObj, factor: Math.round(factor * 1000) / 1000 },
+  });
+}
+
 // ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
 // TMB(Mifflin-St Jeor) → TDEE(×actividad) → objetivo calórico por meta → macros.
 // weightKg opcional (si no, usa client.weight). Devuelve null si faltan datos
@@ -7967,6 +8141,22 @@ function nutritionEstimate(client, weightKg) {
   const af = parseFloat(client.activityFactor) || 1.55;
   const tdee = calcTDEE(tmb, af);
   const t = kcalTargetFor(client.goal, tdee);
+  // v730 · EMBARAZO (Andrés E1+E2): el objetivo de composición no gobierna un embarazo. Mismo plan para los seis
+  // objetivos; la banda de menores se aplica después (una embarazada menor de edad: las dos reglas a la vez).
+  if (nutEmbarazo(client)) {
+    const mE = nutEmbMacros(Math.round(tdee * NUT_EMB_MARGEN), w);
+    const bE = nutMinorBandBase({ kcalObj: mE.kcal, macros: mE }, client, w);
+    const outE = {
+      tmb, tdee, af, kcalObj: bE.kcalObj, label: NUT_EMB_LABEL,
+      deficit: Math.round(bE.kcalObj - tdee), floored: false, macros: bE.macros,
+      water: Math.max(w ? Math.round(w * 35 / 250) : 0, NUT_EMB_AGUA_MIN_VASOS),
+      embarazo: true,
+    };
+    if (bE.minorFloor) outE.minorFloor = bE.minorFloor;
+    if (bE.minorCap) outE.minorCap = bE.minorCap;
+    if (bE.minorFloorUnknown) outE.minorFloorUnknown = true;
+    return outE;
+  }
   // 🔴 UN MENOR NUNCA LLEVA DÉFICIT. Ni con objetivo «Perder grasa», ni con «Recomposición».
   // Está creciendo: restarle energía no es un plan, es un riesgo — y además «recomposición» en
   // alguien de peso normal no es un objetivo. Se le entrega su mantenimiento y el TEXTO lo dice
@@ -9457,10 +9647,11 @@ function nutBaseFor(client, nut, weightKg) {
     // `desfase` se calcula ANTES del piso a propósito: describe la contradicción del COACH (su
     // titular contra sus propios macros), no el efecto de nuestro candado. Mezclarlos le echaría
     // encima la culpa de algo que hicimos nosotros — el error de v471 con el botón «✨ Generar».
-    return nutMinorBandBase({
+    // v730 · el piso del embarazo va ANTES de la banda de menores (orden de Andrés: embarazo → techo → piso de menores).
+    return nutMinorBandBase(nutEmbFloorBase({
       origen: 'coach', kcalObj: macros.kcal, macros,
       kcalEscrito: Math.round(k), desfase: macros.kcal - Math.round(k),
-    }, client, weightKg);
+    }, client, weightKg), client, weightKg);
   }
   const est = nutritionEstimate(client, weightKg);
   if (!est || !est.macros) return null;
@@ -11234,7 +11425,11 @@ function coachInsight(client, sessions, prs, now, opts) {
   // 7) Peso hacia el objetivo — SOLO premium, SOLO en positivo. CANDADO DE PRODUCTO: si el peso
   //    va en dirección CONTRARIA al objetivo, SILENCIO TOTAL — esa conversación es del coach
   //    humano, no de una tarjeta automática (nunca regañamos por la báscula).
-  if (!isFree && Array.isArray(opts.bw)) {
+  //    🔒 v730 · y con embarazo, postparto, pérdida o fin del embarazo, SILENCIO en las dos direcciones (Andrés N4):
+  //    con «Ganar músculo» aplaudía como músculo el peso del embarazo, y con «Perder grasa» el que baja por náuseas.
+  const _limCuerpo = parseLimitations((client && client.notes) || '');
+  const _cuerpoCallado = _limCuerpo.embarazo || _limCuerpo.postparto || _limCuerpo.perdida || _limCuerpo.fin;
+  if (!isFree && Array.isArray(opts.bw) && !_cuerpoCallado) {
     const cutoff = nowTs - INSIGHT_BW_WINDOW_DAYS * 86400000;
     const bwPts = opts.bw
       .map(e => ({ t: new Date(e && e.date).getTime(), kg: parseFloat(e && e.kg) }))
@@ -13593,6 +13788,18 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_EXCL_IDS,
     GEN_LIMIT_KWS,
     GEN_EMBARAZO_RE,
+    GEN_POSTPARTO_RE,
+    GEN_PERDIDA_RE,
+    GEN_EMBARAZO_FIN_RE,
+    GEN_EMBARAZO_ACTUAL_RE,
+    GEN_LACTANCIA_RE,
+    GEN_PERDIDA_COACH,
+    GEN_POSTPARTO_COACH,
+    GEN_RECIENTE_CLIENT,
+    nutEmbarazo,
+    nutEmbMacros,
+    nutEmbFloorBase,
+    NUT_EMB_LABEL,
     GEN_CARDIAC_RE,
     GEN_COND_KEYS,
     GEN_COND_PARADA,

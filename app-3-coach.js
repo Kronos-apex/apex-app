@@ -2223,7 +2223,8 @@ async function openDetail(id,_silent){
       _painHTML+=`<div class="lim-rev" style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;line-height:1.6;color:var(--ylt)">`+
         `🗓️ <strong>Revisar condición.</strong> ${esc(limitReviewCoachText(_lr))}`+
         `<div class="lim-acc"><button type="button" class="btn bsm bp" onclick="limitStillValid()">Sigue vigente</button>`+
-        `<button type="button" class="btn bsm bg" onclick="limitNoLongerApplies()">Ya no aplica</button></div></div>`;
+        // v729 · con embarazo, «Ya no aplica» invitaba a BORRAR la frase (y con ella el filtro del postparto): Laura P1.
+        `<button type="button" class="btn bsm bg" onclick="limitNoLongerApplies()">${_lr.conds.indexOf('embarazo')>=0?'Terminó o cambió':'Ya no aplica'}</button></div></div>`;
     }
   }catch(_e){}
   dn.style.display=(c.notes||_painHTML)?'block':'none';

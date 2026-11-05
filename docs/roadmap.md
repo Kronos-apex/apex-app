@@ -35,8 +35,16 @@ Fuente: `docs/calentamiento-2026-10-23/` (Coach Pro, Valery, consolidado y el di
   se registró sola; nada se levanta solo). Queda de ese frente: (a) la propuesta de recetas de Laura (wc4→wag3/wag1,
   CARDIO_CORE, pieza `wac6`; decide el PO); (b) 🔴 la nutrición no sabe de embarazo (déficit con «Bajar de peso»:
   Andrés Hyp, antes que lo demás); (c) que un obstetra lea las señales de parada del embarazo (Laura las citó de memoria);
-  (d) el texto del coach para el embarazo dice «si ya terminó, quita la frase», y quitarla levanta TAMBIÉN el abdomen y
-  el piso pélvico justo en el postparto: que Laura diga si debe pedir cambiarla por «postparto».
+  (d) ✅ HECHO en v729: el texto pide cambiar la frase por «postparto» o «pérdida del embarazo» (Laura, `laura-postparto.md`),
+  la app lee el parto, la pérdida y el fin del embarazo, y la comida ya no da déficit con embarazo (Andrés, núcleo de
+  `andres-embarazo.md`). Decisión del PO: «como prevención está bien, termina ya este tema».
+- **Pendiente del dictamen de Andrés (5-nov), por prevención y sin nadie en ese caso hoy:** reglas L (lactancia: gasto ×
+  1,05 o 1.800 kcal, carbohidrato ≥ 210 g, agua ≥ 12) y P (postparto, pérdida o fin: déficit no mayor de −300) con la
+  bandera `lim.lactancia` que ya existe · apagar con embarazo la grasa estimada (Marina), la bandera de cintura, las
+  tarjetas de riesgo cintura/talla y `getGoalMsg` del coach, y el recordatorio de medidas · los 5 escapes de N6
+  (`nutGoalCheck` mudo, `nutPlanReview` que marca rojo un plan de embarazo, `nutProtCheck`, la opción «embarazo» del
+  editor y `NUT_TEMPLATES`, el agua del hábito por `waterGoalFor`) · textos T3-T9. Que un nutricionista u obstetra lea
+  las cifras (1,05; 20 %; 175 g; 9 vasos) y los textos; las señales de parada del postparto, un obstetra.
 - **Después · las series de aproximación por implemento** (el paso 4): barra de pierna 40/60/80 %, tren superior 50/75 %
   (+90 % solo a ≤6 reps y NUNCA con hombro, pecho, codo, cuello u operado), prensa/Smith 2 series, máquina 1 al 60 %,
   aislamiento 1 al 50 % solo si es el primero de su músculo, peso corporal ninguna; tope 3 ejercicios y ~6 series;

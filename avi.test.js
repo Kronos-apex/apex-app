@@ -25658,8 +25658,10 @@ test('🔒 v728 · el aviso aparece a los 90 días (abdomen, embarazo) y a los 1
     assert.ok(r && r.plazo === plazo && !r.sinFecha, `«${nota}» no avisó a los ${plazo} días`);
     assert.deepStrictEqual(r.conds, [cond], `«${nota}»: condiciones del aviso`);
   }
-  assert.ok(/^Anotó embarazo hace más de 90 días\. Pregúntale cómo va; si ya tiene visto bueno de su médico u obstetra/.test(core.limitReviewCoachText(R('estoy embarazada', 90))),
-    'el texto del embarazo no es el de Laura (§11)');
+  // v729 · el texto del embarazo cambió por el dictamen de Laura del 5-nov noche (P1): ya no dice «actualiza la nota»,
+  // que se leía como «bórrala» y apagaba el filtro del abdomen en el postparto.
+  assert.ok(/^Anotó embarazo hace más de 90 días\. Pregúntale cómo está\. Si sigue embarazada, pulsa «Sigue vigente»/.test(core.limitReviewCoachText(R('estoy embarazada', 90))),
+    'el texto del embarazo no es el de Laura (§11 y P1 de laura-postparto)');
   // Dos condiciones con plazos distintos: cada una a su tiempo.
   assert.deepStrictEqual(R('postparto y osteopenia', 100).conds, ['core_central']);
   const dos = R('postparto y osteopenia', 200);
@@ -25765,6 +25767,198 @@ test('🔒 v728 · la fecha de revisión del coach viaja en su propio registro (
   assert.ok(!('limitReviewedAt' in core.selfClientFromRow({ profile: {} })), 'CONTROL: sin fecha no se inventa la clave');
   const m = core.mergeOwnProfile({ notes: 'postparto', limitReviewedAt: _V0, tier: 'x' }, core.clientToRow(v, {}).profile);
   assert.strictEqual(m.limitReviewedAt, _V0);
+});
+
+// ── v729 · CUANDO EL EMBARAZO TERMINA (Laura, `docs/poblaciones-2026-11-05/laura-postparto.md`) ──────────
+const _pk = n => core.parseLimitations(n).keys.slice().sort().join(',');
+test('🔒 v729 · candado 1 · las regex nuevas no llevan lookbehind (no las ve un grep: se mira su .source)', () => {
+  for (const [nombre, re] of [['GEN_POSTPARTO_RE', core.GEN_POSTPARTO_RE], ['GEN_PERDIDA_RE', core.GEN_PERDIDA_RE],
+    ['GEN_EMBARAZO_FIN_RE', core.GEN_EMBARAZO_FIN_RE], ['GEN_EMBARAZO_ACTUAL_RE', core.GEN_EMBARAZO_ACTUAL_RE], ['GEN_LACTANCIA_RE', core.GEN_LACTANCIA_RE],
+    ['GEN_EMBARAZO_RE', core.GEN_EMBARAZO_RE]]) {
+    assert.ok(re instanceof RegExp, nombre + ' no está exportada');
+    assert.ok(!/\(\?<[=!]/.test(re.source), '🔴 ' + nombre + ' lleva lookbehind (revienta avi-core en Safari < 16.4)');
+  }
+});
+
+test('🔒 v729 · candados 2 y 3 · el parto dicho como lo dice la gente se lee; sus controles no', () => {
+  const POS = ['ya nació el bebé', 'tuvo a su bebé', 'tuvo el bebé hace 3 semanas', 'parto hace 1 mes', 'recién parida',
+    'acaba de tener un bebé', 'mi hijo nació hace 2 meses', 'tengo un bebé de 8 meses', 'mi hija tiene 3 meses', 'mi bebé de 40 días',
+    'acabo de dar a luz', 'post-parto', 'puerperio', 'tras el parto', 'mi recién nacido', 'lactancia', 'estoy lactando', 'amamantando',
+    'le doy pecho a mi bebé', 'tuve un bebé hace 5 meses', 'tuve un hijo hace 6 semanas', 'tuve un bebé hace 1 año', 'cezarea',
+    // candado 3: la guarda de «hace años» no se traga la edad de la madre
+    'tuvo un bebé y es de 30 años', 'tengo 30 años y tuve un bebé'];
+  for (const n of POS) assert.ok(core.parseLimitations(n).keys.includes('core_central'), `🔴 «${n}» no se lee como postparto`);
+  const NEG = ['nací en 1990', 'mi bebé tiene 3 años', 'tuvo un bebé hace 5 años', 'tuve un bebé hace 2 años', 'el parto de ideas',
+    'parto de cero, soy principiante', 'parte', 'repartir', 'reparto domicilios', 'me apartó del gym', 'quiero tener un bebé',
+    'soy enfermera de recién nacidos', 'intolerante a la lactosa', 'ácido láctico', 'tuve un hijo', 'mi hijo tiene 12 años',
+    'la fuerza necesaria', 'es necesaria', 'mi hija nació en 2010'];
+  for (const n of NEG) {
+    const l = core.parseLimitations(n);
+    assert.ok(!l.keys.includes('core_central') && !l.postparto, `🔴 «${n}» se lee como postparto (falso positivo)`);
+  }
+  // Cada control con su par positivo: lo que cambia es SOLO el tiempo.
+  assert.ok(core.parseLimitations('tuve un bebé hace 5 meses').postparto && !core.parseLimitations('tuve un bebé hace 5 años').postparto);
+  assert.ok(core.parseLimitations('mi bebé tiene 3 meses').postparto && !core.parseLimitations('mi bebé tiene 3 años').postparto);
+});
+
+test('🔒 v729 · candado 4 · ni el nombre ni la descripción de ningún ejercicio activan las regex nuevas', () => {
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  assert.ok(_LIB_REAL.length >= 375, 'el catálogo real no cargó');
+  for (const [nombre, re] of [['postparto', core.GEN_POSTPARTO_RE], ['pérdida', core.GEN_PERDIDA_RE], ['fin', core.GEN_EMBARAZO_FIN_RE]]) {
+    const caen = _LIB_REAL.filter(e => re.test(norm(e.name + ' ' + (e.desc || '') + ' ' + (e.descSimple || ''))));
+    assert.deepStrictEqual(caen.map(e => e.id), [], `🔴 la regex de ${nombre} se activa con ejercicios del catálogo`);
+  }
+  // CONTROL de que la prueba mira la descripción: e93 dice «necesaria» y sin el \\b caería por «cesaria».
+  const e93 = _LIB_REAL.find(e => e.id === 'e93');
+  assert.ok(e93 && /necesaria/.test(norm(e93.desc || e93.descSimple || '')) && /cesaria/.test(norm(e93.desc || e93.descSimple || '')),
+    'CONTROL: e93 ya no dice «necesaria»; buscar otro texto que pruebe el borde de palabra');
+});
+
+test('🔒 v729 · candados 5 y 6 · lo que el texto manda escribir conserva el abdomen; el fin del embarazo no es una negación', () => {
+  for (const n of ['postparto', 'postparto, cesárea', 'pérdida del embarazo', 'ya no está embarazada'])
+    assert.ok(core.parseLimitations(n).keys.includes('core_central'), `🔴 «${n}» (lo que el texto pide escribir) apaga el filtro del abdomen`);
+  const t = core.GEN_COND_COACH.embarazo;
+  assert.ok(/NO borres la frase/.test(t) && /postparto/.test(t) && /pérdida del embarazo/.test(t), 'el texto del coach no dice qué escribir');
+  assert.ok(!/quita la frase de la nota/.test(t), '🔴 el texto del coach vuelve a mandar BORRAR la frase');
+  for (const n of ['ya no estoy embarazada', 'mi embarazo terminó', 'terminó mi embarazo', 'dejé de estar embarazada', 'ya no hay embarazo']) {
+    const l = core.parseLimitations(n);
+    assert.strictEqual(_pk(n), 'core_central', `«${n}» debe quedar en core_central sin embarazo`);
+    assert.ok(l.fin, `«${n}» sin bandera fin`);
+  }
+  // Las negaciones de descarte NO se leen, a propósito (falso positivo documentado: el otro error deja a una embarazada sin filtro).
+  for (const n of ['no estoy embarazada', 'no sé si estoy embarazada', 'descarto embarazo', 'mi pareja está embarazada'])
+    assert.strictEqual(_pk(n), 'core_central,embarazo', `«${n}»: la negación de descarte se dejó de tratar como embarazo`);
+});
+
+test('🔒 v729 · candado 7 · la pérdida del embarazo: abdomen sí, embarazo no, y a ella no se le nombra nada', () => {
+  const POS = ['perdí el embarazo', 'perdí el bebé', 'perdimos a nuestro bebé', 'tuve un aborto espontáneo', 'aborto', 'me practicaron un legrado',
+    'embarazo ectópico', 'pérdida gestacional', 'muerte fetal', 'nació sin vida', 'mi bebé murió', 'estuve embarazada, perdí el bebé en marzo'];
+  for (const n of POS) {
+    const l = core.parseLimitations(n);
+    assert.strictEqual(_pk(n), 'core_central', `🔴 «${n}» → ${_pk(n)} (debe ser core_central sola)`);
+    assert.ok(l.perdida && !l.embarazo, `«${n}» sin bandera de pérdida o con embarazo`);
+  }
+  for (const n of ['aborté el plan de dieta', 'perdí peso', 'perdí el equilibrio', 'pérdida de peso', 'lo perdí', 'perdí a mi hijo'])
+    assert.ok(!core.parseLimitations(n).perdida && !core.parseLimitations(n).keys.includes('core_central'), `🔴 «${n}» se lee como pérdida`);
+  assert.strictEqual(_pk('estoy embarazada de nuevo, perdí el anterior'), 'core_central,embarazo', '🔴 un embarazo ACTUAL se perdió por una pérdida anterior');
+  // 🔴 El caso de arriba NO prueba la regla del embarazo ACTUAL: «perdí el anterior» ni siquiera se lee como pérdida (lo
+  // destapó el sabotaje S5, que salió verde). Estos sí tienen las dos cosas a la vez.
+  for (const n of ['tuve un aborto el año pasado y estoy embarazada otra vez', 'perdí el embarazo en marzo, quedé embarazada de nuevo'])
+    assert.ok(core.parseLimitations(n).perdida && _pk(n) === 'core_central,embarazo', `🔴 «${n}» → ${_pk(n)}: un embarazo ACTUAL se calló por una pérdida anterior`);
+  const PROHIBIDAS = /beb[eé]|embaraz|parto|aborto|p[eé]rdida|perdiste|ces[aá]rea|seguro|sin problema|no te preocupes|te acompañamos|lo sentimos|se mueve menos|obstetra/i;
+  for (const n of ['perdí el embarazo', 'tuve un aborto espontáneo', 'ya nació el bebé', 'ya no estoy embarazada', 'postparto, cesárea']) {
+    const nota = core.genLimitationNote(core.parseLimitations(n), 'client');
+    assert.ok(/confirma con tu médico/.test(nota), `«${n}»: falta la señal médica de lo reciente`);
+    assert.ok(!PROHIBIDAS.test(nota), `🔴 «${n}»: el texto a la persona dice «${(nota.match(PROHIBIDAS) || [])[0]}»`);
+  }
+  // Al coach: la pérdida reemplaza el genérico; el postparto suma lo que hay que preguntar; la cita textual no va al hilo.
+  const lp = core.parseLimitations('perdí el embarazo');
+  assert.ok(lp.condAdvice.includes('Anotó una pérdida del embarazo') && !/postparto, diástasis, hernia/.test(lp.condAdvice));
+  assert.ok(core.parseLimitations('ya nació el bebé').condAdvice.includes('Postparto: pregúntale'));
+  const alerta = core.limitationCoachAlert('Prueba Persona', lp, 'perdí el embarazo');
+  assert.ok(alerta && !/Escribió: «/.test(alerta), '🔴 la frase textual de la pérdida se copia al hilo');
+  assert.ok(/Escribió: «/.test(core.limitationCoachAlert('Prueba Persona', core.parseLimitations('postparto'), 'postparto')), 'CONTROL: sin pérdida la cita sigue');
+});
+
+test('🔒 v729 · candados 8, 9 y 11 · la vigencia del embarazo: no se nombra a la persona y la fecha se renueva al terminar', () => {
+  const R = d => core.limitReview({ notes: 'estoy embarazada', limitReviewedAt: _V0, selfReg: true }, _vDia(d));
+  for (const d of [90, 180, 270]) assert.ok(R(d), `no avisó a los ${d} días`);
+  assert.strictEqual(R(89), null);
+  const r = R(90);
+  assert.ok(!/embaraz/i.test(core.limitReviewAskText(r)) && /nos contaste algo sobre cómo estabas/.test(core.limitReviewAskText(r)), '🔴 la fila del Perfil nombra el embarazo');
+  const m = core.limitReviewChangedMsg('Prueba Persona', r);
+  assert.ok(!/embaraz|obstetra/i.test(m) && /sobre su salud/.test(m), '🔴 el mensaje en su hilo nombra el embarazo');
+  const c = core.limitReviewCoachText(r);
+  assert.ok(/postparto/.test(c) && /pérdida del embarazo/.test(c) && /No la borres/.test(c), 'el aviso del coach no dice qué escribir');
+  assert.ok(/actualiza la nota/.test(core.limitReviewCoachText(core.limitReview({ notes: 'postparto' }, _vDia(0)))), 'CONTROL: las demás condiciones conservan su texto');
+  const AHORA = '2026-11-05T12:00:00.000Z';
+  for (const n of ['postparto', 'ya nació el bebé', 'perdí el embarazo', 'ya no estoy embarazada'])
+    assert.strictEqual(core.limitReviewStamp('estoy embarazada', n, _V0, AHORA), AHORA, `🔴 pasar a «${n}» no renueva la fecha`);
+  assert.strictEqual(core.limitReviewStamp('estoy embarazada', 'embarazada de 30 semanas', _V0, AHORA), _V0, 'guardar el mismo embarazo renovó la fecha');
+  const a3 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.ok(/_lr\.conds\.indexOf\('embarazo'\)>=0\?'Terminó o cambió':'Ya no aplica'/.test(a3), '🔴 con embarazo el botón sigue diciendo «Ya no aplica»');
+});
+
+test('🔒 v729 · candado 10 · sin regresión: lo que ya se leía da las mismas claves', () => {
+  const ANTES = { 'post parto': 'core_central', 'di a luz hace 6 meses': 'core_central', 'cesárea hace 10 años': 'core_central',
+    'diástasis abdominal': 'core_central', 'suelo pélvico': 'core_central', 'embarazada': 'core_central,embarazo', 'gestante': 'core_central,embarazo',
+    'dulce espera': 'core_central,embarazo', 'bebé en camino': 'core_central,embarazo', 'estoy esperando un bebé': 'core_central,embarazo',
+    'espero un hijo': 'core_central,embarazo', 'futura mamá': 'core_central,embarazo', 'hernia umbilical': 'core_central,lumbar',
+    'embarazada, hipertensión': 'core_central,embarazo,presion', 'postparto': 'core_central', 'situación embarazosa': '' };
+  for (const [n, k] of Object.entries(ANTES)) assert.strictEqual(_pk(n), k, `🔴 «${n}» cambió de claves`);
+  // «Voy a tener un bebé» / «voy a ser mamá» (decisión del PO: prevención) y su control.
+  assert.strictEqual(_pk('voy a tener un bebé'), 'core_central,embarazo');
+  assert.strictEqual(_pk('voy a ser mamá'), 'core_central,embarazo');
+  assert.strictEqual(_pk('quiero tener un bebé'), '', 'CONTROL: un plan no es un embarazo');
+});
+
+// ── v730 · EMBARAZO EN LA COMIDA (Andrés Hyp, `docs/poblaciones-2026-11-05/andres-embarazo.md`) ─────────────────
+const _embC = (o) => Object.assign({ sex: 'F', age: 30, weight: 68, height: 162, activityFactor: 1.55, goal: 'Perder grasa', notes: 'estoy embarazada' }, o || {});
+test('🔒 v730 · E1: con embarazo, nunca déficit ni superávit libre: gasto × 1,05 para los seis objetivos (cifras de Andrés)', () => {
+  const GOALS = ['Perder grasa', 'Recomposición', 'Ganar músculo', 'Fuerza', 'Salud general', 'Resistencia'];
+  const planes = GOALS.map(g => core.nutritionEstimate(_embC({ goal: g })));
+  for (const e of planes) assert.deepStrictEqual(e.macros, planes[0].macros, '🔴 con embarazo el objetivo cambió el plan');
+  const e = planes[0];
+  assert.strictEqual(e.tdee, 2142);
+  assert.deepStrictEqual({ k: e.kcalObj, p: e.macros.prot_g, c: e.macros.carb_g, g: e.macros.fat_g }, { k: 2249, p: 109, c: 316, g: 61 }, 'no son las cifras medidas por Andrés');
+  assert.ok(e.embarazo && e.label === core.NUT_EMB_LABEL, 'el rótulo sigue diciendo otra cosa');
+  assert.ok(!/seguro|déficit|deficit|no te preocupes|sin riesgo/i.test(core.NUT_EMB_LABEL), '🔴 el rótulo promete o habla de déficit');
+  // CONTROL: sin embarazo el plan de siempre (déficit con «Perder grasa»).
+  assert.strictEqual(core.nutritionEstimate(_embC({ notes: '' })).kcalObj, 1693);
+  // Barrido: piso exacto, sin pasarse, macros y agua en su banda.
+  let n = 0;
+  for (const w of [45, 52, 60, 68, 76, 85, 95, 110]) for (const h of [150, 158, 166, 175]) for (const a of [18, 25, 32, 40]) for (const af of [1.2, 1.375, 1.55, 1.725]) {
+    const x = core.nutritionEstimate(_embC({ weight: w, height: h, age: a, activityFactor: af, goal: GOALS[n++ % 6] }));
+    const r = x.kcalObj / x.tdee;
+    assert.ok(r >= 1.049 && r <= 1.13, `🔴 kcal/gasto ${r.toFixed(3)} fuera de [1,05; 1,13] (${w} kg, ${h} cm, ${a} a, ${af})`);
+    assert.ok(x.macros.carb_g >= 175, '🔴 carbohidrato bajo 175 g');
+    const pgk = x.macros.prot_g / w, ppct = x.macros.prot_g * 4 / x.kcalObj;
+    assert.ok(pgk >= 1.09 && pgk <= 1.61 && ppct <= 0.215, `🔴 proteína ${pgk.toFixed(2)} g/kg, ${(ppct * 100).toFixed(1)} %`);
+    assert.ok(x.water >= 9, '🔴 agua bajo 9 vasos');
+  }
+  assert.ok(n >= 500, 'el barrido no corrió');
+});
+
+test('🔒 v730 · solo mujeres, peso real y una sola cuenta para las dos puertas', () => {
+  const h = { sex: 'M', age: 30, weight: 80, height: 175, activityFactor: 1.55, goal: 'Perder grasa' };
+  assert.strictEqual(core.nutritionEstimate(Object.assign({}, h, { notes: 'mi esposa está embarazada' })).kcalObj, core.nutritionEstimate(Object.assign({}, h, { notes: '' })).kcalObj,
+    '🔴 un hombre que escribe «mi esposa está embarazada» cambió de plan');
+  for (const notes of ['situación embarazosa', 'tengo una hernia', 'postparto'])
+    assert.deepStrictEqual(core.nutritionEstimate(_embC({ notes })), core.nutritionEstimate(_embC({ notes: '' })), `CONTROL: «${notes}» no es embarazo y cambió la comida`);
+  // Peso real: la proteína no BAJA mientras el peso sube (con la rampa de IMC bajaba de 161 a 144 g).
+  let prev = 0;
+  for (const w of [68, 72, 76, 80, 85, 90]) {
+    const p = core.nutritionEstimate(_embC({ weight: w })).macros.prot_g;
+    assert.ok(p >= prev, `🔴 la proteína bajó a ${p} g con ${w} kg`); prev = p;
+  }
+  // Una sola cuenta: la calculadora y el plato dicen lo mismo.
+  assert.strictEqual(core.nutBaseFor(_embC(), null, 68).kcalObj, core.nutritionEstimate(_embC(), 68).kcalObj);
+  // El plan escrito por el coach: bajo el piso se escala; por encima no se toca (el 2.º y 3.er trimestre los firma él).
+  const bajo = core.nutBaseFor(_embC(), { kcal: 1800, prot: 150, carbs: 150, fat: 60 }, 68);
+  assert.deepStrictEqual({ k: bajo.kcalObj, p: bajo.macros.prot_g, c: bajo.macros.carb_g, g: bajo.macros.fat_g }, { k: 2250, p: 150, c: 237, g: 78 });
+  assert.ok(bajo.embFloor && bajo.embFloor.piso === 2249 && bajo.embFloor.kcalAntes === 1740);
+  const alto = core.nutBaseFor(_embC(), { kcal: 2470, prot: 130, carbs: 330, fat: 70 }, 68);
+  assert.ok(alto.kcalObj === 2470 && !alto.embFloor, '🔴 el piso le puso techo al plan del coach');
+  assert.strictEqual(core.nutBaseFor(_embC({ notes: '' }), { kcal: 1800, prot: 150, carbs: 150, fat: 60 }, 68).kcalObj, 1740, 'CONTROL: sin embarazo el plan escrito no se toca');
+  // Embarazada menor de edad: las dos reglas a la vez, sin déficit.
+  const m = core.nutritionEstimate(_embC({ age: 16, weight: 58, height: 160 }));
+  assert.ok(m.embarazo && m.kcalObj >= Math.round(m.tdee * 1.05), '🔴 la embarazada menor quedó bajo su gasto');
+});
+
+test('🔒 v730 · la tarjeta del peso se calla con embarazo, postparto o pérdida (en las dos direcciones)', () => {
+  const sess = [ciDay(0, [ciBW('A')])];
+  const bw = (a, b, c) => [{ date: new Date(CI_NOW - 30 * 86400000).toISOString(), kg: a }, { date: new Date(CI_NOW - 15 * 86400000).toISOString(), kg: b }, { date: new Date(CI_NOW - 86400000).toISOString(), kg: c }];
+  const sube = { level: 'Intermedio', days: 3, goal: 'ganar músculo' }, baja = { level: 'Intermedio', days: 3, goal: 'perder grasa' };
+  assert.strictEqual((core.coachInsight(sube, sess, {}, CI_NOW, { bw: bw(60, 61, 62) }) || {}).type, 'peso', 'CONTROL: sin nota celebra');
+  assert.strictEqual((core.coachInsight(baja, sess, {}, CI_NOW, { bw: bw(62, 61, 60) }) || {}).type, 'peso', 'CONTROL: sin nota celebra');
+  for (const notes of ['estoy embarazada', 'ya nació el bebé', 'perdí el embarazo', 'ya no estoy embarazada']) {
+    assert.notStrictEqual((core.coachInsight(Object.assign({ notes }, sube), sess, {}, CI_NOW, { bw: bw(60, 61, 62) }) || {}).type, 'peso', `🔴 «${notes}»: aplaude el peso que sube`);
+    assert.notStrictEqual((core.coachInsight(Object.assign({ notes }, baja), sess, {}, CI_NOW, { bw: bw(62, 61, 60) }) || {}).type, 'peso', `🔴 «${notes}»: aplaude el peso que baja`);
+  }
+  // La pantalla de comida de ella lee el «por qué» del embarazo.
+  const a5 = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-5-salud.js'), 'utf8'));
+  assert.ok(/if\(typeof nutEmbarazo==='function'&&nutEmbarazo\(c\)\) d\.why=GOAL_WHY\.embarazo;/.test(a5) && /embarazo:\{title:'🤰 Embarazo/.test(a5),
+    '🔴 la pantalla de comida le sigue explicando «déficit» a una embarazada');
 });
 
 // ══════════════════════════════════════════════════════
