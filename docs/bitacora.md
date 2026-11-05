@@ -38,6 +38,9 @@
   cambiar la condición, capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-condiciones` 10/10 · `_verify-qw-limitaciones`
   9/9 · `_verify-perfil-filas` y `_verify-ficha-pestanas` OK · `_test-coach-back` OK. Julián y Lucas aplicados por la sesión
   (sus subagentes no están disponibles). **PENDIENTE re-verificación de Fable.**
+- **Producción:** con el «dale publica» del PO (5-nov): push f15946b, `publicar-hogar` corrido en la sesión, `_prodcheck v728`
+  OK (arranca limpio, 0 jsErrors, rótulo «versión 728» en coach y asesorado) y `avi-core`, `app-3`, `app-4` y `styles.css`
+  servidos con el mismo md5 que el local. CI verde (f15946b).
 - **Para el PO (radar):** el texto del coach para el embarazo (v727) dice «si el embarazo ya terminó, quita la frase de la
   nota», y quitarla levanta TAMBIÉN el filtro del abdomen y el piso pélvico justo en el postparto: que Laura diga si debe pedir
   cambiarla por «postparto».
