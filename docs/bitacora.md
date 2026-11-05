@@ -40,6 +40,10 @@ prevención está bien, termina ya este tema»*. Dictámenes: `docs/poblaciones-
   `_verify-vigencia` 22/22 (ahora con el Perfil del embarazo sin nombrarlo y la pantalla de comida: gasto × 1,05, el «por qué»
   del embarazo y ni una palabra de déficit; capturas MIRADAS) · `_verify-condiciones` 10/10 · `_verify-qw-limitaciones` 9/9.
   ⚠️ Las señales médicas y las cifras de comida están citadas de memoria: que las lea un obstetra y un nutricionista.
+- **Producción:** con el «publícalas cuando terminen» del PO: push d53abdf, `publicar-hogar` en la sesión, `_prodcheck v729` OK
+  (arranca limpio, 0 jsErrors), `avi-core`, `app-3` y `app-5` servidos con el mismo md5 que el local, CI verde (d53abdf).
+  El hook [14] frenó el primer commit por dos «clave: `…`» de los dictámenes (falso positivo: clave de condición, no
+  contraseña): se reescribieron las frases, sin `--no-verify`.
   **PENDIENTE re-verificación de Fable.**
 
 ## 🗓️ 2026-11-05 — v728: la vigencia de las condiciones (se revisan, nunca caducan solas)
