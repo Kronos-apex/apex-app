@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⚡ 2026-11-05 — v726: los entrenamientos rápidos respetan las limitaciones
+
+**Origen:** dictamen de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md`, «Qué NO miré», candado 13) y su hueco
+n.º 6 del 8-ago, nunca cerrado. Medido en los datos reales el mismo día: un asesorado con «hernia umbilical» en su nota hizo
+«Abdomen Express» dos veces (la última el 5-oct), con el crunch que su plan le quita. El PO: *«el resto tus recomendaciones»*
+(rápidos filtrados primero).
+
+- **Causa raíz.** El generador, el selector de sustitución, el calentamiento y la marca del coach pasan por `limitationsFor`;
+  la biblioteca de rápidos (`QUICK_WORKOUTS`, a un toque de «Hoy») y las opciones de «Cardio a tu ritmo» no.
+- **Arreglo.** `quickWorkoutFit` / `quickWorkoutsFor` (puros, avi-core) por la MISMA puerta (`exerciseContraindicated`,
+  probando cada copia del id: la del dispositivo y la del catálogo). Se FILTRA (lo arma la app, lo elige alguien sin criterio
+  clínico): el ejercicio sale de la sesión, la tarjeta dice «Quitamos N … por lo que nos contaste de tu rodilla», el rápido que
+  se queda sin ejercicios no se ofrece y una nota lo nombra; la ventana del cardio igual. Lee la nota Y el reporte de dolor.
+  `startQuickWorkout` vuelve a medir al pulsar y arranca con la sesión filtrada. Sin novedad en AVI_NEWS: se explica sola donde
+  pasa.
+- **QA:** suite 1524 → 1530 (6 pruebas nuevas contra la biblioteca REAL de app-4 y el catálogo real, con controles de
+  cobertura y discriminación) · sabotaje: S1 filtro vacío → 5 rojos, S2 arranque sin filtrar → 1 rojo (la primera versión
+  del candado NO lo cazaba: se reforzó), S3 solo la copia del dispositivo → 1 rojo, S4 biblioteca sin filtrar → 1 rojo;
+  restaurado verde · harness nuevo `_verify-qw-limitaciones.mjs` 9/9 (clic real: la sesión de Abdomen Express arranca sin
+  e18; capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-qw-cardio` 13/13 y `_verify-qwcfg` OK. **PENDIENTE
+  re-verificación de Fable.**
+- **Lo que NO hace todavía:** las condiciones nuevas (abdomen y piso pélvico, salud ósea, presión arterial) entran en v727;
+  este mismo filtro las tomará solas porque pasan por `GEN_ZONE_EXCL`.
+
 ## 🏋️ 2026-11-04 — v725: el generador escoge por patrón de movimiento, no solo por músculo
 
 **Reporte del PO:** el plan de una asesorada nueva (mujer, intermedia, 5 días, gym, registrada el 3-nov) traía Hip Thrust

@@ -25215,6 +25215,113 @@ test('🔴 v725 · en gym ningún día repite un patrón de movimiento y toda se
   }
 });
 
+// ── v726 · LOS ENTRENAMIENTOS RÁPIDOS PASAN POR LAS LIMITACIONES (candado 13 de Laura, 5-nov) ──
+// La biblioteca de rápidos no consultaba `limitationsFor`: medido en los datos reales, un asesorado
+// con «hernia umbilical» en su nota hizo dos veces «Abdomen Express», con el crunch que su plan le
+// quita. Estas pruebas leen la biblioteca REAL de app-4-entreno.js y el catálogo real.
+const _QW_REAL = (() => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const open = src.indexOf('[', src.indexOf('const QUICK_WORKOUTS=['));
+  let depth = 0, q = null, end = -1;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i], p = src[i - 1];
+    if (q) { if (c === q && p !== '\\') q = null; continue; }
+    if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+    if (c === '[') depth++; else if (c === ']') { depth--; if (!depth) { end = i; break; } }
+  }
+  return eval(src.slice(open, end + 1));
+})();
+const _qwDe = (lista, id) => lista.find(f => f.w.id === id);
+
+test('🔴 v726 · el caso real: con «hernia umbilical» Abdomen Express ya no trae el crunch', () => {
+  assert.ok(_QW_REAL.length >= 8, `CONTROL · esperaba la biblioteca real de rápidos, leí ${_QW_REAL.length}`);
+  const keys = core.limitationsFor({ notes: 'hernia umbilical', painCare: [] }, Date.parse('2026-11-05T12:00:00Z')).keys;
+  assert.ok(keys.includes('lumbar'), 'CONTROL · «hernia» dejó de leerse como zona lumbar');
+  const conNota = _qwDe(core.quickWorkoutsFor(_QW_REAL, keys, _LIB_REAL), 'qw_abs_casa');
+  const sinNota = _qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL), 'qw_abs_casa');
+  assert.ok(sinNota.w.items.some(i => i.id === 'e18'), 'CONTROL · Abdomen Express dejó de traer el crunch (e18): la prueba ya no mide nada');
+  assert.strictEqual(sinNota.quitados.length, 0, 'sin limitaciones no se quita nada');
+  assert.ok(!conNota.w.items.some(i => i.id === 'e18'), '🔴 Abdomen Express le sigue sirviendo el crunch a quien escribió «hernia umbilical»');
+  assert.deepStrictEqual(conNota.quitados.map(q => q.id), ['e18']);
+  assert.deepStrictEqual(conNota.zonas, ['lumbar']);
+  assert.ok(conNota.w.items.length >= 1 && !conNota.oculto, 'lo que sí le va se sigue ofreciendo');
+});
+
+test('🔒 v726 · candado 13: ningún rápido ofrece un ejercicio contraindicado, en NINGUNA zona', () => {
+  const zonas = Object.keys(core.GEN_ZONE_EXCL);
+  assert.ok(zonas.length >= 11, `CONTROL · esperaba las zonas de Laura, leí ${zonas.length}`);
+  let fugas = [], quitadosTotal = 0, sinFiltroContra = 0;
+  for (const z of zonas) {
+    for (const f of core.quickWorkoutsFor(_QW_REAL, [z], _LIB_REAL)) {
+      const ids = f.w.cardio ? f.opciones : f.w.items.map(i => i.id);
+      for (const id of ids) {
+        const ex = _LIB_REAL.find(e => e.id === id);
+        assert.ok(ex, `el rápido «${f.w.name}» nombra ${id}, que no está en el catálogo`);
+        if (core.exerciseContraindicated(ex, [z], _LIB_REAL)) fugas.push(`${z}: ${f.w.name} → ${ex.name}`);
+      }
+      quitadosTotal += f.quitados.length;
+    }
+    // CONTROL DE DISCRIMINACIÓN: la biblioteca SIN filtrar sí trae contraindicados para esta zona.
+    for (const w of _QW_REAL) {
+      const ids = w.cardio ? core.QUICK_CARDIO_OPTIONS.map(o => o.id) : w.items.map(i => i.id);
+      sinFiltroContra += ids.filter(id => core.exerciseContraindicated(_LIB_REAL.find(e => e.id === id), [z], _LIB_REAL)).length;
+    }
+  }
+  assert.ok(sinFiltroContra > 20, `CONTROL · la biblioteca sin filtro casi no choca con ninguna zona (${sinFiltroContra}): la prueba no discrimina`);
+  assert.strictEqual(quitadosTotal, sinFiltroContra, 'el filtro quitó una cantidad distinta de la que la sonda independiente cuenta como contraindicada');
+  assert.deepStrictEqual(fugas.slice(0, 5), [], `🔴 ${fugas.length} ejercicios contraindicados siguen en los rápidos`);
+});
+
+test('🔒 v726 · un rápido que se queda sin ejercicios NO se ofrece; el cardio pierde solo sus opciones', () => {
+  const rod = core.quickWorkoutsFor(_QW_REAL, ['rodilla'], _LIB_REAL);
+  assert.strictEqual(_qwDe(rod, 'qw_plio').oculto, true, '🔴 «Cardio Pliométrico» (todo saltos) se le ofrece a quien tiene la rodilla mal');
+  assert.strictEqual(_qwDe(rod, 'qw_plio').quedan, 0);
+  assert.strictEqual(_qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL), 'qw_plio').oculto, false, 'CONTROL · sin limitaciones el pliométrico sí se ofrece');
+  const tob = _qwDe(core.quickWorkoutsFor(_QW_REAL, ['tobillo'], _LIB_REAL), 'qw_cardio');
+  assert.ok(!tob.opciones.includes('e20'), '🔴 con el tobillo mal se ofrece «Caminar o trotar» (Carrera/Caminata)');
+  assert.ok(tob.opciones.includes('e64') && tob.opciones.includes('e67'), 'la bici y la elíptica (sin impacto) se tienen que quedar');
+  assert.strictEqual(tob.oculto, false);
+  assert.strictEqual(_qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL), 'qw_cardio').opciones.length, core.QUICK_CARDIO_OPTIONS.length,
+    'CONTROL · sin limitaciones el cardio ofrece todas sus opciones');
+});
+
+test('🔒 v726 · el dolor que reportó la persona también filtra los rápidos (misma puerta que el plan)', () => {
+  const hoy = Date.parse('2026-11-05T12:00:00Z');
+  const keys = core.limitationsFor({ notes: '', painCare: [{ area: 'rodilla', level: 2, at: new Date(hoy).toISOString() }] }, hoy).keys;
+  assert.ok(_qwDe(core.quickWorkoutsFor(_QW_REAL, keys, _LIB_REAL), 'qw_plio').oculto, '🔴 el reporte de dolor de rodilla no llega a los rápidos');
+});
+
+test('🔒 v726 · se prueba CADA copia del ejercicio: renombrarlo en el dispositivo no lo cuela', () => {
+  const renombrado = { ..._LIB_REAL.find(e => e.id === 'e18'), name: 'Mi abdomen del lunes' };
+  assert.ok(!core.exerciseContraindicated(renombrado, ['lumbar']), 'CONTROL · el nombre inventado no debería delatar nada por sí solo');
+  const fit = core.quickWorkoutFit([{ id: 'e18' }], ['lumbar'], [renombrado].concat(_LIB_REAL));
+  assert.deepStrictEqual(fit.quitados.map(q => q.id), ['e18'], '🔴 el crunch renombrado en el dispositivo se cuela en los rápidos');
+});
+
+test('🔒 v726 · los textos de los rápidos le hablan a la persona («tu …»), nunca dicen que lo demás sea seguro', () => {
+  assert.strictEqual(core.quickFitZonas(['rodilla', 'lumbar']), 'tu rodilla y tu zona lumbar');
+  assert.strictEqual(core.quickFitZonas(['isquios']), 'la parte de atrás de tu muslo');
+  assert.strictEqual(core.quickFitZonas([]), '');
+  for (const z of Object.keys(core.GEN_ZONE_LABEL)) {
+    const t = core.zoneLabelClient(z);
+    assert.ok(t && !/\btu (la|el|los|las) /.test(t) && !/\bsu\b/.test(t), `etiqueta para la persona mal armada en «${z}»: «${t}»`);
+  }
+  const ui = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const tramo = ui.slice(ui.indexOf('function _qwLib('), ui.indexOf('function _qwRun('));
+  assert.ok(tramo.length > 500, 'CONTROL · no encontré el tramo de los rápidos');
+  assert.ok(!/segur|sin riesgo|sin problema|no te preocupes/i.test(tramo), 'un texto de los rápidos promete seguridad');
+  assert.ok(/quickWorkoutsFor\(QUICK_WORKOUTS/.test(tramo) && !/QUICK_WORKOUTS\.map\(/.test(tramo),
+    '🔴 la biblioteca vuelve a pintarse sin pasar por las limitaciones');
+  const arranque = tramo.slice(tramo.indexOf('function startQuickWorkout('), tramo.indexOf('function qwStartConfigured('));
+  assert.ok(/const fit=_qwFitOf\(orig\);/.test(arranque) && arranque.indexOf('_qwFitOf(') < arranque.indexOf('_qwGo('),
+    '🔴 el rápido arranca sin medir sus limitaciones');
+  // Medir no basta: lo que arranca tiene que ser lo FILTRADO (el sabotaje `spec=orig` pasaba la línea de arriba).
+  assert.ok(/const spec=fit\.w;/.test(arranque) && !/\bspec=orig\b/.test(arranque) && !/_qwGo\(orig\b/.test(arranque),
+    '🔴 el rápido arranca con la lista SIN filtrar');
+  const cardio = tramo.slice(tramo.indexOf('function openQuickCardio('), tramo.indexOf('function qwStartCardio('));
+  assert.ok(/_qwFitOf\(/.test(cardio) && !/QUICK_CARDIO_OPTIONS\.map\(/.test(cardio), '🔴 las opciones de cardio se pintan sin filtrar');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

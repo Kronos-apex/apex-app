@@ -356,6 +356,9 @@ html[data-theme="light"] .mta {
 .qw-card-desc{font-size:12.5px;color:var(--t2);line-height:1.45}
 .qw-card-tag{align-self:flex-start;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--t3);background:var(--bg);border:1px solid var(--br);border-radius:20px;padding:2px 9px}
 .qw-card-go{font-size:22px;font-weight:700;color:var(--t3);flex-shrink:0;align-self:center}
+/* v726 · lo que los rápidos le quitaron a la persona por sus limitaciones, dicho donde lo ve */
+.qw-fit-note{font-size:12.5px;color:var(--t1);line-height:1.5;background:var(--yll);border:1px solid var(--br);border-radius:var(--r);padding:10px 13px;margin-bottom:12px}
+.qw-card-fit{font-size:11.5px;color:var(--t2);line-height:1.4;margin-top:2px}
 /* v718 · «Cardio a tu ritmo»: una fila por actividad en la ventana #m-qwcardio */
 .qwc-opt{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:8px;padding:9px 12px;border-radius:var(--r);border:1px solid var(--br);background:var(--w);color:var(--t1);transition:border-color .12s,transform .12s}
 .qwc-opt:hover{border-color:var(--g2)}

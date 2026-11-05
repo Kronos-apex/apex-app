@@ -1994,20 +1994,34 @@ function buildQuickRoutine(spec, cfg){
   });
   return {id:spec.id,name:spec.name,day:'Libre',quick:true,exercises};
 }
+// v726 · los rápidos pasan por las limitaciones de la persona —su nota y el dolor que reportó—, por la
+// MISMA puerta que el generador (`quickWorkoutsFor`, avi-core). Lo que no le va se quita y se le dice.
+function _qwLib(){ return (DB.exercises||[]).concat(typeof defaultExercises!=='undefined'?defaultExercises:[]); }
+function _qwLimKeys(){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+  return c?(limitationsFor(c,Date.now()).keys||[]):[];
+}
+function _qwFitOf(spec){ return quickWorkoutsFor([spec],_qwLimKeys(),_qwLib())[0]; }
+// «A», «A ni B», «A, B ni C». Recibe los nombres YA escapados.
+function _qwNi(nombres){ const l=nombres.map(n=>'«'+n+'»'); return l.length<2?l.join(''):l.slice(0,-1).join(', ')+' ni '+l[l.length-1]; }
 function openQuickWorkouts(){
   const room=document.getElementById('quickwo-room'),body=document.getElementById('quickwo-body');
   if(!room||!body)return;
-  body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+
-    QUICK_WORKOUTS.map(w=>`<button class="qw-card" onclick="startQuickWorkout('${w.id}')">
+  const fits=quickWorkoutsFor(QUICK_WORKOUTS,_qwLimKeys(),_qwLib());
+  const ocultos=fits.filter(f=>f.oculto);
+  const aviso=ocultos.length?`<div class="qw-fit-note">No te mostramos ${_qwNi(ocultos.map(f=>esc(f.w.name)))}: no ${ocultos.length===1?'va':'van'} con lo que nos contaste de ${esc(quickFitZonas([].concat(...ocultos.map(f=>f.zonas))))}.</div>`:'';
+  body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+aviso+
+    fits.filter(f=>!f.oculto).map(f=>{ const w=f.w; return `<button class="qw-card" onclick="startQuickWorkout('${w.id}')">
       <span class="qw-card-ic">${typeof aviIcon==='function'&&w.ic?aviIcon(w.ic,24):w.emoji}</span>
       <span class="qw-card-mid">
         <span class="qw-card-nm">${esc(w.name)}</span>
         <span class="qw-card-meta">${esc(w.goal)} · ${esc(w.place)} · ${esc(w.dur)}</span>
         <span class="qw-card-desc">${esc(w.desc)}</span>
-        <span class="qw-card-tag">${w.cardio?QUICK_CARDIO_OPTIONS.length+' opciones':(w.items||[]).length+((w.items||[]).length===1?' ejercicio':' ejercicios')}</span>
+        <span class="qw-card-tag">${f.quedan+(w.cardio?(f.quedan===1?' opción':' opciones'):(f.quedan===1?' ejercicio':' ejercicios'))}</span>
+        ${f.quitados.length?`<span class="qw-card-fit">Quitamos ${f.quitados.length===1?(w.cardio?'una opción':'un ejercicio'):f.quitados.length+(w.cardio?' opciones':' ejercicios')} por lo que nos contaste de ${esc(quickFitZonas(f.zonas))}</span>`:''}
       </span>
       <span class="qw-card-go">›</span>
-    </button>`).join('')+`<div style="height:30px"></div>`;
+    </button>`; }).join('')+`<div style="height:30px"></div>`;
   body.scrollTop=0; _roomFront(room); _syncRoomBodyClass();
 }
 function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
@@ -2017,7 +2031,10 @@ function closeQuickRoom(){ const r=document.getElementById('quickwo-room'); if(r
 // prellenado con los valores del preset — el usuario decide (pedido Camilo 2026-07-09).
 let _qwCfgSpec=null;
 function startQuickWorkout(id){
-  const spec=QUICK_WORKOUTS.find(w=>w.id===id); if(!spec)return;
+  const orig=QUICK_WORKOUTS.find(w=>w.id===id); if(!orig)return;
+  // Se vuelve a medir al pulsar (no se reusa lo pintado): la sesión que arranca es la filtrada.
+  const fit=_qwFitOf(orig); if(fit.oculto)return;
+  const spec=fit.w;
   if(spec.cardio){ openQuickCardio(); return; }
   const hiitItem=(spec.items||[]).find(it=>it.hiit);
   if(hiitItem){
@@ -2048,7 +2065,12 @@ function qwStartConfigured(){
 // tarjeta del cardio del guiado (recuerda los de la última vez por actividad).
 function openQuickCardio(){
   const list=document.getElementById('qwcardio-list'); if(!list)return;
-  list.innerHTML=QUICK_CARDIO_OPTIONS.map(o=>`<button class="qwc-opt" onclick="qwStartCardio('${o.id}')">
+  const spec=QUICK_WORKOUTS.find(w=>w.cardio);
+  const fit=spec?_qwFitOf(spec):null;
+  const ok=fit?new Set(fit.opciones):null;
+  const fuera=QUICK_CARDIO_OPTIONS.filter(o=>ok&&!ok.has(o.id));
+  list.innerHTML=(fuera.length?`<div class="qw-fit-note">No te mostramos ${_qwNi(fuera.map(o=>esc(o.label)))}: no ${fuera.length===1?'va':'van'} con lo que nos contaste de ${esc(quickFitZonas(fit.zonas))}.</div>`:'')+
+    QUICK_CARDIO_OPTIONS.filter(o=>!ok||ok.has(o.id)).map(o=>`<button class="qwc-opt" onclick="qwStartCardio('${o.id}')">
       <span class="qwc-opt-ic">${typeof aviIcon==='function'?aviIcon(o.ic,20):''}</span>
       <span class="qwc-opt-tx"><b>${esc(o.label)}</b><small>${esc(o.sub)}</small></span>
       <span class="qwc-opt-go">›</span>

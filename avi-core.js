@@ -5390,6 +5390,61 @@ function quickCardioRoutine(optId, catalog) {
   return { id: 'qw_cardio_' + optId, name: 'Cardio · ' + opt.label, day: 'Libre', quick: true, exercises: [ex] };
 }
 
+// 🔴 v726 · LOS ENTRENAMIENTOS RÁPIDOS NO MIRABAN NINGUNA LIMITACIÓN. Era el hueco n.º 6 del dictamen
+// de Laura del 8-ago, y lo volvió a medir el 5-nov (`docs/poblaciones-2026-11-05/laura.md`, «Qué NO
+// miré»): el generador, el selector de sustitución, el calentamiento y la marca del coach pasan por
+// `limitationsFor`; la biblioteca de rápidos, a un toque de «Hoy», no. Medido en los datos reales el
+// mismo día: un asesorado con «hernia umbilical» en su nota hizo «Abdomen Express» dos veces, con el
+// crunch que su plan le quita.
+// 🔒 SE FILTRA, NO SE MARCA: los arma la app y los elige la persona, que no tiene criterio clínico para
+// leer una marca (la regla de la casa: lo que arma el algoritmo se FILTRA, lo que arma una persona se
+// MARCA). Misma puerta que todo lo demás (`exerciseContraindicated`), jamás una segunda lista.
+// `lib` = la lista del dispositivo y el catálogo, en ese orden: se prueba CADA copia del id, porque el
+// coach puede haber renombrado el ejercicio y el criterio clínico vive en el nombre del catálogo.
+function quickWorkoutFit(items, limKeys, lib) {
+  const L = Array.isArray(lib) ? lib : [];
+  const keys = limKeys || [];
+  const keep = [], quitados = [];
+  (items || []).forEach(it => {
+    if (!it || !it.id) return;
+    const copias = L.filter(e => e && e.id === it.id);
+    if (!copias.length) copias.push({ id: it.id, name: it.name || '' });
+    const zonas = keys.filter(z => copias.some(ex => exerciseContraindicated(ex, [z], L)));
+    if (zonas.length) quitados.push({ id: it.id, name: copias[copias.length - 1].name || it.id, zonas });
+    else keep.push(it);
+  });
+  return { keep, quitados, zonas: [...new Set([].concat(...quitados.map(q => q.zonas)))] };
+}
+// Cómo se le nombra la zona A LA PERSONA, con su posesivo. `GEN_ZONE_LABEL` le habla al coach y no
+// siempre acepta un «tu» delante («tu la parte de atrás de tu muslo»).
+const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión' };
+function zoneLabelClient(z) {
+  return GEN_ZONE_LABEL_CLIENT[z] || (GEN_ZONE_LABEL[z] ? 'tu ' + GEN_ZONE_LABEL[z] : '');
+}
+// «tu rodilla y tu zona lumbar». Dice de DÓNDE sale el filtro, nunca que lo que queda sea seguro.
+function quickFitZonas(zonas) {
+  const l = [...new Set((zonas || []).map(zoneLabelClient).filter(Boolean))];
+  if (!l.length) return '';
+  return l.length === 1 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1];
+}
+// La biblioteca entera pasada por las limitaciones de la persona. Un rápido que se queda sin
+// ejercicios no se ofrece (`oculto`); «Cardio a tu ritmo» se mide por sus OPCIONES (`opciones`).
+function quickWorkoutsFor(list, limKeys, lib) {
+  return (list || []).map(w => {
+    const items = w.cardio ? QUICK_CARDIO_OPTIONS.map(o => ({ id: o.id })) : (w.items || []);
+    const fit = quickWorkoutFit(items, limKeys, lib);
+    return {
+      w: w.cardio ? w : Object.assign({}, w, { items: fit.keep }),
+      opciones: w.cardio ? fit.keep.map(i => i.id) : null,
+      total: items.length,
+      quedan: fit.keep.length,
+      quitados: fit.quitados,
+      zonas: fit.zonas,
+      oculto: items.length > 0 && fit.keep.length === 0,
+    };
+  });
+}
+
 // ── Novedades de la app (v302): qué mostrarle al asesorado — puro, testeable ──
 // Devuelve las entradas MÁS NUEVAS que la última versión vista (seenV), de la más
 // reciente a la más vieja, tope 3 (una tarjeta digerible; lo viejo ya no es noticia).
@@ -13610,6 +13665,10 @@ if (typeof module !== 'undefined' && module.exports) {
     healCardioDuration,
     QUICK_CARDIO_OPTIONS,
     quickCardioRoutine,
+    quickWorkoutFit,
+    zoneLabelClient,
+    quickFitZonas,
+    quickWorkoutsFor,
     newsToShow,
     habitDayKey,
     waterGoalGlasses,
