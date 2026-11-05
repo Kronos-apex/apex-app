@@ -457,7 +457,7 @@ function _selfRegLimAlert(c,res){
     DB.msgs[c.id].push({from:'client',text:txt,date:c.limAlertAt});
     svNow('ax_m',DB.msgs); svNow('ax_c',DB.clients);
     if(typeof pushToClient==='function'){
-      pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+' se registró con una limitación',
+      pushToClient('_coach','⚠️ '+((c.name||'Alguien').split(' ')[0])+((lim&&!lim.detected&&lim.cardiac)?' se registró con síntomas para valorar':' se registró con una limitación'),
         txt.length>80?txt.slice(0,77)+'…':txt,{type:'message',chatId:c.id,tag:'avi-chat-coach'});
     }
     return true;
@@ -3952,7 +3952,12 @@ function renderGenPreview(c,res){
   // de zonas VACÍA a quien no había declarado nada (defecto visto al tocar esta línea 2026-08-02).
   const _lim=res.limitations||{};
   const _nerve=_lim.nerve?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--rd)"><b>🚑 Ojo:</b> ${esc(_lim.nerveAdvice)}</div>`:'';
-  const warn=_lim.detected?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(_lim.zones.join(', '))}). ${esc(_lim.advice)} <b>Revisa cada día antes de aprobar</b> — un algoritmo no conoce el detalle clínico, tú sí.${_nerve}</div>`:'';
+  // v727 · lo que el coach tiene que saber de cada condición (Laura Q4/E3), dentro del mismo aviso.
+  const _cond=_lim.condAdvice?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--rd)">${esc(_lim.condAdvice)}</div>`:'';
+  // v727 · la alerta del corazón va APARTE y sale aunque no haya ninguna limitación (Laura E4: dentro
+  // del aviso de limitación quedaba muda, como la del nervio, para quien solo escribe «me desmayo»).
+  const _card=_lim.cardiac?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>🚑 Valoración médica primero:</b> ${esc(_lim.cardiacAdvice)}</div>`:'';
+  const warn=_card+(_lim.detected?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(_lim.zones.join(', '))}). ${esc(_lim.advice)} <b>Revisa cada día antes de aprobar</b> — un algoritmo no conoce el detalle clínico, tú sí.${_cond}${_nerve}</div>`:'');
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ylt);margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
   const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
   const loadBanner=res.loadProfile==='high'?`<div style="background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--blt);margin-bottom:12px"><b>⚖️ Perfil de carga alto</b> (IMC/cintura) — el borrador prioriza <b>máquinas y movimientos guiados/asistidos</b> y evita saltos/pliométricos, para cuidar articulaciones mientras gana base. Ajústalo según veas a la persona.</div>`:'';

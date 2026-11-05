@@ -366,9 +366,37 @@ const GEN_SPLITS = {
 
 // Detección de limitaciones físicas en `notes` (lo que hace Laura, codificado).
 // `lumbar` ampliada 2026-08-02 con las formas que la gente SÍ escribe (lumbago, espondilo-,
-// protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1). Nota de Laura sobre
-// `hernia`: atrapa también la inguinal y NO se corrige — también desaconseja Valsalva y carga
-// axial alta, así que el error va hacia el lado seguro.
+// protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1).
+// 🔒 `hernia` A SECAS SE QUEDA EN `lumbar`, Y NO SE «CORRIGE» (Laura, 2-ago y 5-nov Q6). Dos motivos:
+//  (1) desaconseja Valsalva y carga axial alta, así que con cualquier hernia el error va hacia el lado
+//      seguro; (2) desde v727, con una hernia del ABDOMEN (umbilical, inguinal, ventral…) la clave
+//      `core_central` saca lo que carga la pared, pero por NOMBRE no puede ver cuánta carga lleva un
+//      peso muerto ni si se retiene el aire: `lumbar` hace de MEDIDOR DE CARGA (saca peso muerto,
+//      sentadilla con barra, remo con barra, militar con barra). Por eso «hernia umbilical» da las DOS
+//      claves y el aviso al coach explica que la zona lumbar se activó a propósito. Candado en la suite:
+//      «hernia umbilical» → lumbar + core_central · «hernia discal L5» → solo lumbar · «tengo una hernia»
+//      → solo lumbar · «hernia inguinal» → lumbar + core_central + aductor + abductor.
+// ── v727 · CONDICIONES (dictámenes de Laura del 5-nov, `docs/poblaciones-2026-11-05/`) ──────────
+// `core_central` (abdomen y piso pélvico), `hueso` (salud ósea), `presion` (presión arterial o
+// corazón) y `embarazo` NO son zonas de dolor: son condiciones. Filtran igual que una zona (misma
+// puerta, `GEN_ZONE_EXCL`), pero se le HABLAN distinto a la persona (`GEN_COND_KEYS`). El PO decidió
+// (5-nov) que la app NO pregunta por ellas: solo se leen si la persona o el coach las ESCRIBE.
+// 🔒 Sin lookbehind en ninguna (`(?<!…)` revienta el parseo en Safari < 16.4 y tumba avi-core entero;
+// la suite lo verifica). Cada término corto con su borde de palabra y su CONTROL en la suite.
+// Una sola constante para la palabra embarazo: la usan `core_central`, `embarazo` y `lim.embarazo`.
+const GEN_EMBARAZO_RE = /embaraz(?!os[oa])|gestante|gestacion|prenada|dulce espera|futura mama|bebe (viene )?en camino|(estoy|ando|vamos|estamos) esperando (un |mi |a mi |al )?(bebe|hij[oa]|nino|nina)|espero (un |mi )?(bebe|hij[oa]|nino|nina)/;
+// 🚑 Síntomas que pueden venir del corazón o de la respiración (Laura, E4). SOLO AVISO, decisión del PO
+// (5-nov): «recomendar de una vez valoración por profesionales de la salud y listo». No quita nada y,
+// a diferencia de la del nervio, DISPARA SOLA (sin otra limitación). «Dolor de pecho» a secas NO
+// dispara: en un gimnasio es músculo; el corazón se separa por la irradiación, el esfuerzo general
+// («al correr», no «por el press») y las palabras que el músculo no usa («opresión»).
+const GEN_CARDIAC_RE = /palpitacion|taquicardia|desmay|sincope|(perdi|perdida de)l? (el )?conocimiento|se me (acelera|dispara|sale|salta)\w* (el )?(corazon|pecho)|corazon (acelerado|desbocado)|(el )?corazon (me )?(late|se pone)( muy| demasiado| super| bien)? \w*(rapido|fuerte|raro|acelerad)|latidos? (irregulares|raros|fuertes|descontrolados)|me duele el corazon|dolor\w* (fuerte |agudo )?(en|del|de) (el )?(corazon|pecho)[^.]{0,40}(al|cuando|mientras|despues de|con) (hacer |el |un |mucho |algun |cualquier |subir |subiendo )?(ejercicio|esfuerzo|corr(er|o|iendo)|trot(ar|o|ando)|camin(ar|o|ando)|escaleras|cardio|actividad)|dolor\w* (en|del|de) (el )?pecho (que )?(se )?(me )?(irradia|baja|pasa|va|se corre|se extiende) (al|a la|hacia|por)( el)? (brazo|mandibula|quijada|espalda|cuello)|opresion (en|del|de) (el )?(pecho|torax)|presion (fuerte )?en (el )?pecho|se me aprieta (el )?pecho|me aprieta (el )?pecho (al|cuando|mientras) (corro|camino|subo|hago|me esfuerzo|troto|entreno)|siento (que )?(me )?aprieta (el )?pecho|(siento|tengo|con) (como )?(un )?peso en (el )?pecho|me falta (el )?(aire|aliento|respiracion)|falta de (aire|aliento)|no puedo respirar|dificultad para respirar|disnea|me ahogo (al|cuando|con|sin|de repente|en reposo|caminando|subiendo)|\bmare(o|os|ada|ado)\b(?! (en|de|por|al) (el |un |los |las )?(carro|carros|bus|buses|avion|barco|bote|moto|viaje|viajar|viajes|transporte))|me marea\b|vertigo(?! a (las |la )?altura)|vision (borrosa|nublada)|se me nubla la vista/;
+const GEN_COND_KEYS = ['core_central', 'hueso', 'presion', 'embarazo'];
+// Con `presion` o `core_central` (y `embarazo`, que siempre viaja con `core_central`) el esquema NUNCA
+// baja de 8 repeticiones y no se ofrece el bloque 5×5 del estancamiento: lo que el nombre de un
+// ejercicio no deja ver es la carga máxima y el aire retenido (Laura, Q2). `hueso` NO: ahí la carga
+// progresiva ES el tratamiento.
+const GEN_MIN_REPS8_KEYS = ['presion', 'core_central', 'embarazo'];
 // 🔴 v676 · LAS NOTAS SOLO RECONOCÍAN 3 ZONAS DE 11 (R13, 27-sep). Lucía Ríos tiene escrito
 // «Rodillas desgastadas, dolor en la espalda alta, dolor en los codos» y el lector devolvía SOLO
 // `rodilla`: las reglas de codo y cuello existían y no le llegaban. Las zonas nuevas NO traen
@@ -399,6 +427,17 @@ const GEN_LIMIT_KWS = [
   { area: 'cadera o ingle', re: /cadera|\bingle\b|inguinal|pubalgia|\bpubis\b/ },
   { area: 'muslo por dentro (aductores)', re: /\baductor/ },
   { area: 'cara externa del muslo o glúteo (abductores)', re: /abductor|trocanter/ },
+  // v727 · condiciones (Laura, 5-nov Q1; 60 frases medidas, 0 discrepancias). `parto` suelto NO entra
+  // («parto de cero», «reparto»); `presion` a secas NO entra jamás («presión en el pecho» es bandera
+  // roja, no hipertensión); `bypass` solo con «gastric» o «coronari»; `\bstent\b` («consistente»).
+  { zone: 'core_central', re: /post ?parto|pos ?parto|despues (de|del) (mi |el )?parto|(tuve|tras) (un |mi )?parto|parto (natural|vaginal|por cesarea)|(^| )(di|dio|dieron|dar) a luz( |$)|diastasis|separacion (abdominal|de (los )?(rectos|abdominales))|cesarea|(piso|suelo) pelvic|prolapso|incontinencia|hernias? (umbilical|abdominal|ventral|epigastric|incisional|inguinal|hiatal)|hernias? (en |de |del )(el |mi )?(ombligo|abdomen|vientre|estomago)|eventracion|histerectom|abdominoplast|bariatric|manga gastric|bypass gastric|laparotom|(cirugia|operacion) (abdominal|de abdomen)/ },
+  { zone: 'hueso', re: /osteopeni|osteopor|descalcifi|densidad osea|huesos (fragiles|debiles|porosos)|fragilidad osea|fractura (vertebral|por compresion|por fragilidad|de (la )?columna)|aplastamiento vertebral|vertebra aplastada/ },
+  { zone: 'presion', re: /hipertens|(presion|tension) (arterial )?(alta|elevada)(?! en )|\bhta\b|cardiopat|arritmia|taquicardia|infarto|angina de pecho|\bstent\b|marcapaso|angioplast|bypass coronari|insuficiencia cardiac|enfermedad (del )?corazon|problemas? (del |de |en el )?(el )?corazon|problemas? cardiac|soplo cardiac|valvulopat|losartan|enalapril|amlodipin|captopril|metoprolol|atenolol|carvedilol|hidroclorotiazida|valsartan|preeclampsia/ },
+  // 🔒 EMBARAZO = `embarazo` + `core_central`, SIEMPRE juntas (Laura E1): el abdomen, el impacto y los
+  // lastres los quita `core_central`; `embarazo` suma boca arriba, boca abajo, caídas y esfuerzo
+  // máximo. El trimestre NO se lee (E1): un número en la nota casi nunca es la edad gestacional y
+  // solo serviría para RELAJAR la lista.
+  { zones: ['embarazo', 'core_central'], re: GEN_EMBARAZO_RE },
 ];
 // 🔴 ESTE MAPA SE LLENA COMPLETO O LA ZONA NACE MUDA. Lo cazó Laura midiendo (dictamen del
 // 27-ago §5): desde la adenda del 8-ago, `aductor`, `abductor`, `cuello` y `tobillo` no tenían
@@ -413,7 +452,16 @@ const GEN_ZONE_LABEL = {
   codo: 'codo', muneca: 'muñeca o mano', pecho: 'pecho',
   isquios: 'la parte de atrás de tu muslo (isquiotibiales)',
   generic: 'lesión/postoperatorio',
+  // v727 · condiciones (Laura Q4/E3): sustantivo singular que acepta el «su» fijo de «Ojo con su …».
+  core_central: 'abdomen y piso pélvico', hueso: 'salud ósea', presion: 'presión arterial o corazón',
+  embarazo: 'embarazo',
 };
+// El embarazo implica la regla del abdomen: si las dos salen juntas en una etiqueta, solo se nombra el
+// embarazo («Ojo con su embarazo», no «…su abdomen y piso pélvico y embarazo»). Laura E3 §1.
+function _dedupCondKeys(keys) {
+  const k = keys || [];
+  return k.indexOf('embarazo') >= 0 ? k.filter(z => z !== 'core_central') : k.slice();
+}
 // Síntomas que sugieren compromiso NERVIOSO (radiculopatía). No cambian qué se excluye —
 // cambian lo que la app le dice al coach: esto es criterio de DERIVACIÓN médica antes de
 // cargar, no de sustituir un ejercicio por otro. (Veredicto de Laura, fisio, 2026-08-02.)
@@ -567,6 +615,38 @@ const GEN_ZONE_EXCL = {
   //    a secas: se llevaría `wc3 Apertura de cadera` y `we3 Apertura de cadena posterior`.
   // Los presses se quedan TODOS y son 🟡 (rango corto, sin tocar el pecho): eso va en texto.
   pecho: /aperturas|apertura de pecho|contractora|fondos|lanzamiento|azote|volteo de llanta|tire flip/,
+  // ── v727 · CONDICIONES (Laura, `docs/poblaciones-2026-11-05/laura.md` Q2 y `laura-embarazo.md` E1) ──
+  // La lista saca lo que AGRAVA a esa población, jamás lo que es su tratamiento. Lo que el nombre no
+  // ve (carga máxima, aire retenido) lo cubren el mínimo de 8 repeticiones y el TEXTO.
+  // 🔒 ABDOMEN Y PISO PÉLVICO (65 de 375): flexión y torsión de tronco, elevaciones de piernas,
+  // planchas de peso completo, impacto, lo que empuja sobre el suelo pélvico (lastres, trineo,
+  // acarreos) y los explosivos. SE QUEDAN (son el tratamiento): dead bug, Pallof, bird dog, plancha en
+  // rodillas y plancha lateral, puente, prensa, sentadilla y rumano (la carga la cuida el candado de
+  // repeticiones, no la lista: si el nombre los sacara, una mujer a 14 meses del parto perdería todo
+  // su tren inferior). ⚠️ `plancha(?! en rodillas$)(?! lateral$)` depende de que el nombre termine
+  // ahí: «Plancha Lateral con Elevación de Cadera» cae, y toda plancha NUEVA cae por defecto.
+  core_central: /crunch|abdominales|sit-?up|russian twist|giro ruso|hollow|rueda abdominal|ab wheel|elevacion de (piernas|rodillas)|\bv-?ups?\b|dragon flag|lenador|plancha(?! en rodillas$)(?! lateral$)|toques de hombro|mountain climber|caminata del (oso|cangrejo)|oruga|cobra|\bsalto|saltarin|burpee|sprawl|sprint|carrera|rodillas altas|talones al gluteo|caminata del granjero|farmer|trineo|lastrad|lanzamiento|thruster|man maker|azote|clean|push press|cuerdas de batalla|pesa rusa|volteo de llanta|tire flip/,
+  // 🔒 SALUD ÓSEA (31 de 375): flexión y torsión CARGADAS de la columna y lo de mayor riesgo de caída.
+  // SE QUEDAN A PROPÓSITO, la evidencia es a favor: peso muerto, sentadilla con barra, hip thrust,
+  // prensa, remo y press militar con barra (la carga axial con columna neutra es el estímulo óseo),
+  // superman e hiperextensiones (corrigen la cifosis), salto a la cuerda y saltos de tijera (impacto
+  // moderado). `buenos dias con barra` y no a secas: `e148` (sin peso) es la versión terapéutica.
+  hueso: /crunch|abdominales|sit-?up|russian twist|giro ruso|lenador|hollow|rueda abdominal|ab wheel|elevacion de (piernas|rodillas)|\bv-?ups?\b|dragon flag|oruga|postura del nino|buenos dias con barra|salto al cajon|doble salto|sprint|burpee|sprawl|volteo de llanta|tire flip/,
+  // 🔒 PRESIÓN ARTERIAL O CORAZÓN (44 de 375): isométricos máximos (todas las planchas, wall sit,
+  // colgarse), apnea y explosivos (saltos de potencia, sprint, HIIT, thruster). SE QUEDAN: bici,
+  // elíptica, caminata, prensa, sentadilla y rumano con peso moderado, remos, jalones, crunch, dead
+  // bug, los isométricos autorresistidos de brazo (terapéuticos en hipertensión), salto a la cuerda.
+  // Sacar el HIIT es criterio de Laura (la app no ve la cifra de tensión) y Andrés Hyp puede revisarlo.
+  presion: /plancha|wall sit|sentadilla isometrica|hollow|colgarse|dragon flag|caminata del granjero|farmer|trineo|lastrad|volteo de llanta|tire flip|con salto|salto al cajon|salto del patinador|salto agrupado|doble salto|sprint|burpee|sprawl|hiit|man maker|thruster|cuerdas de batalla|clean|push press|azote|lanzamiento|pesa rusa/,
+  // 🔒 EMBARAZO (60 de 375; con `core_central` la unión es 124): boca arriba (ACOG 804 lo desaconseja
+  // prolongado tras el primer trimestre y la app no ve el síntoma que obliga a cambiar de posición),
+  // boca abajo, el peso del cuerpo colgando sobre el vientre, la barra sobre un solo apoyo y lo que cae
+  // hacia adelante (caídas), la sobrecarga y el esfuerzo máximo. SE QUEDAN: caminar, bici, elíptica,
+  // sentadilla, prensa 45° y horizontal, rumano, remos sentado, jalones, hombro sentado, flexiones en
+  // pared o rodillas, Pallof, bird dog, cuadrupedia y lo que va de lado (abducción tumbado, almeja).
+  // ⚠️ `hiperextensi(on|ones)` y no `hiperextensiones?`: lo segundo no atrapa «hiperextensión» y así
+  // se le coló `e357` a Laura en su primera pasada (lo cazó el generador, no el listado).
+  embarazo: /press de banca|press declinado|aperturas declinadas|aperturas con mancuernas en banco|press de pecho en el suelo|press frances|press jm|press tate|pullover con (mancuerna en banco|barra z)|curl femoral tumbado|hip thrust|puente|frog pump|prensa vertical|superman|nadador|elevaciones y-t-w|hiperextensi(on|ones) (en banco|de cadera)|curl de biceps arana|remo invertido|remo renegado|curl nordico|sissy|zercher|bicicleta de asalto|hiit|intervalos|lagartijas|push-?up|flexiones (diamante|arqueras|con )|dead bug/,
 };
 // Ejercicios que el NOMBRE genuinamente no delata. En todo el dictamen es UN solo caso, y por eso
 // esto no es una lista paralela sino la excepción documentada: `e93 «Sentadilla con Banda de
@@ -638,6 +718,12 @@ const GEN_EXCL_IDS = {
   //    extendida — la posición de máximo estiramiento del aductor. El mecanismo que Laura nombró
   //    para esta zona es «el cambio de dirección y la base abierta», y esto es las dos cosas.
   aductor: ['e336'],
+  // EMBARAZO (Laura E1, v727) — lo que el nombre no delata: `e72` Dead Bug (también por nombre; id por
+  // si lo renombran) · `e110` Press Inclinado con Barra (banco a 30°, casi plano) · `e246` Zancada con
+  // Barra al Hombro y `e334` Búlgara con Barra (barra sobre UN apoyo: caída) · `e309` Peso Muerto
+  // Parcial en Rack (sobrecarga por definición) · `e322` Pájaro en Banco Inclinado (boca abajo) ·
+  // `e332` Curl Femoral a una Pierna (la máquina es la tumbada).
+  embarazo: ['e72', 'e110', 'e246', 'e309', 'e322', 'e332', 'e334'],
 };
 // 🔴 v676 · LO QUE LA REGLA ANCHA SE LLEVABA Y LAURA DICTÓ QUE NO SE BORRA. `rodilla` conserva
 // `sentadilla` a secas A PROPÓSITO (el riesgo vive en rango y alineación, y el sistema no controla
@@ -909,13 +995,28 @@ const WARMUP_ZONE_EXCL_IDS = {
   muneca: ['we4', 'we1', 'wa1', 'wa6', 'wac4', 'wag3'],
   codo: ['wa6'],
   pecho: ['wh3'],
+  // ── v727 · CONDICIONES (Laura, 5-nov Q3 y E2). Barridas las 12 recetas × 2 sitios × con/sin impacto:
+  // 0 violaciones contra su oráculo escrito a mano, y la ÚNICA pieza que asciende es `wah1` (jalón
+  // facial liviano, ✅ en las cuatro). 🔒 `wf1` no puede entrar a la biblioteca sin estar ya en estas
+  // listas, en el MISMO commit (un id huérfano es una protección que no protege).
+  // `core_central`: la plancha corta, la plancha de hombros y los rollitos. 🔒 `wac2` (dead bug) NO
+  // está, a propósito (rectificación de Laura del 5-nov): su texto pide exhalar y parar ante un bulto,
+  // y en el entreno `e72` se queda; quitarlo aquí sería incoherente.
+  core_central: ['wac1', 'we4', 'we5'],
+  hueso: ['we5', 'wac3'],
+  // `presion`: el colgado y la plancha corta (`we4` cae además por el nombre, «plancha»).
+  presion: ['wa6', 'wac1'],
+  // `embarazo`: boca arriba (rollitos, puente, dead bug, rotación tumbado, respiración 360°), boca abajo
+  // (Y-T) y la plancha de hombros. Aquí `wac2` SÍ cae: la razón ya no es la población invisible sino
+  // la posición. 6 de 12 recetas quedan con una activación menos: un hueco no lastima a nadie.
+  embarazo: ['we5', 'wc4', 'wac2', 'wac3', 'wac5', 'wa5', 'we4'],
 };
 // Zonas DECLARADAS por esa persona para las que ESTE calentamiento está contraindicado. Puras.
 // Alimentan la marca del selector manual del coach: cuando él arma el calentamiento a mano NO se
 // filtra nada (ahí decide una persona, y hacer desaparecer opciones en silencio sería peor), pero
 // tiene que VERLO. Misma fuente que el generador — jamás una segunda lista, que se separan.
 function warmupWarnZones(wu, limKeys) {
-  return (limKeys || []).filter(z => warmupContraindicated(wu, [z])).map(_zoneLabelCoach).filter(Boolean);
+  return _dedupCondKeys((limKeys || []).filter(z => warmupContraindicated(wu, [z]))).map(_zoneLabelCoach).filter(Boolean);
 }
 // 🔴 v676 · LA MARCA DE LOS EJERCICIOS QUE ARMA EL COACH, QUE NUNCA EXISTIÓ (R13). La regla de la
 // casa dice «lo que arma el algoritmo se FILTRA, lo que arma una persona se MARCA», y el selector
@@ -927,7 +1028,7 @@ function warmupWarnZones(wu, limKeys) {
 // decidí yo y no presenta dolor»). La marca solo le recuerda lo que él mismo escribió.
 // Misma puerta que el filtro (`exerciseContraindicated`, con `lib` por los nombres renombrados).
 function exerciseWarnZones(ex, limKeys, lib) {
-  return (limKeys || []).filter(z => exerciseContraindicated(ex, [z], lib)).map(_zoneLabelCoach).filter(Boolean);
+  return _dedupCondKeys((limKeys || []).filter(z => exerciseContraindicated(ex, [z], lib))).map(_zoneLabelCoach).filter(Boolean);
 }
 // La etiqueta de `isquios` le habla a la PERSONA («la parte de atrás de TU muslo») y en la marca
 // del coach salía «Ojo con su la parte de atrás de tu muslo». Las demás sirven tal cual.
@@ -1100,7 +1201,7 @@ function limitationsFor(client, nowTs) {
   return Object.assign({}, lim, {
     detected: true,
     keys,
-    zones: [...new Set(keys.map(z => GEN_ZONE_LABEL[z]).filter(Boolean))],
+    zones: [...new Set(_dedupCondKeys(keys).map(z => GEN_ZONE_LABEL[z]).filter(Boolean))],
     hasExclusions,
     fromPain,
     // El aviso DICE que el filtro salió de un reporte de la propia persona, no de sus notas. Y
@@ -1126,16 +1227,85 @@ const GEN_ZONE_QUITA = {
   isquios: 'isquiotibiales: el curl femoral y el curl nórdico',
   aductor: 'muslo por dentro: lo lateral, la base abierta y los saltos',
   abductor: 'cara externa del muslo: abducción, lo lateral, lo que va sobre una pierna y los saltos',
+  // v727 · condiciones (Laura Q4/E3). 🔴 Sin su entrada aquí el aviso salía «Quitamos lo que suele
+  // molestar ahí — .» (lo midió Laura): ESTE MAPA SE LLENA COMPLETO O LA CLAVE NACE MUDA.
+  core_central: 'abdomen y piso pélvico: abdominales de flexión y torsión, planchas, saltos y carreras, y lo que carga hacia abajo (lastres, trineo, acarreos)',
+  hueso: 'salud ósea: abdominales de flexión, giros con carga, buenos días con barra y los saltos y carreras de mayor riesgo de caída',
+  presion: 'presión arterial: planchas y aguantes largos, colgarse, explosivos y HIIT, y lo que obliga a aguantar el aire',
+  embarazo: 'embarazo: ejercicios boca arriba o boca abajo, el peso del cuerpo sobre el vientre (lagartijas, pike), barras sobre una sola pierna, sobrecargas y el esfuerzo máximo (HIIT, bicicleta de asalto)',
 };
 function _zonasQueQuita(keys) {
   return (keys || []).map(z => GEN_ZONE_QUITA[z]).filter(Boolean).join('; ');
+}
+
+// ── v727 · LOS TEXTOS DE LAS CONDICIONES (Laura, 5-nov Q4 y E3) ─────────────────────────────────
+// Tres razones por las que no sirve la plantilla del dolor: (1) quien está en postparto o tiene la
+// tensión alta no tiene «una molestia en» una zona; (2) «si algo te duele, no lo hagas» no aplica: la
+// señal de parar es un bulto, un escape de orina, un mareo, presión en el pecho; (3) a la persona NO
+// se le nombran diagnósticos (al coach sí: es su oficio). Siguen las reglas de siempre: la app dice
+// qué QUITÓ, jamás que lo que queda sea seguro; sin plazos; sin «no te preocupes».
+const GEN_COND_CLIENT = {
+  core_central: 'tu abdomen o tu suelo pélvico', hueso: 'tus huesos',
+  presion: 'tu presión arterial o tu corazón', embarazo: 'tu embarazo',
+};
+// El criterio de PARAR de cada condición: reemplaza al «si algo te duele».
+// ⚠️ La del embarazo sale de ACOG 804 y SOGC/CSEP 2019, citadas de memoria por Laura (su competencia es
+// la musculoesquelética): un obstetra debería leerla. No usa ninguna cifra de semanas ni de carga.
+const GEN_COND_PARADA = {
+  core_central: 'Exhala siempre al hacer el esfuerzo y no aguantes el aire. Si ves o sientes un bulto en el centro del abdomen, se te escapa orina o sientes peso o presión abajo, detente y avísale a tu coach.',
+  hueso: 'Mantén la espalda recta en cada ejercicio, sin redondearla con peso. Si te da un dolor fuerte o repentino en la espalda o en otro hueso, detente y consúltalo con tu médico.',
+  presion: 'Respira normal en cada repetición, sin aguantar el aire, y haz el cardio a un ritmo en que puedas conversar. Si sientes presión en el pecho, mareo o te falta el aire, detente y busca atención médica.',
+  embarazo: 'Entrena a un ritmo en que puedas conversar, exhala en cada esfuerzo sin aguantar el aire y toma agua. Detente y consulta a tu médico u obstetra si tienes sangrado, pérdida de líquido, contracciones o dolor en el vientre, mareo o desmayo, dolor de cabeza fuerte, dolor en el pecho, falta de aire que aparece antes de esforzarte o no pasa al descansar, dolor o hinchazón en una pantorrilla, debilidad que te quite el equilibrio, o si notas que el bebé se mueve menos; si es fuerte, ve a urgencias. También detente si ves un bulto en el centro del abdomen.',
+};
+// Lo que el COACH tiene que saber (vista previa del generador, nota de la rutina y aviso del registro).
+// 🔒 El de embarazo REEMPLAZA a la frase de la mañana («NO controla la posición boca arriba ni boca
+// abajo»), que dejó de ser cierta en cuanto la lista existió.
+const GEN_COND_COACH = {
+  core_central: 'Declaró una condición del abdomen o del suelo pélvico (postparto, diástasis, hernia, cirugía abdominal o embarazo). Pregúntale hace cuánto y si tiene visto bueno de su médico o fisioterapeuta. Todas las series exhalando en el esfuerzo; si aparece un bulto en el centro del abdomen, que pare.',
+  hueso: 'Declaró osteopenia u osteoporosis (o una fractura por fragilidad). El peso muerto y la sentadilla NO se quitaron a propósito: la carga progresiva con la columna neutra es parte del tratamiento. Sí se quitó la flexión y la torsión cargadas. Si hubo fractura vertebral, el impacto y la carga los define su médico.',
+  presion: 'Declaró hipertensión o una condición del corazón. Pregúntale si está controlada y qué medicación toma. Cardio a ritmo de conversación, series que no aguanten el aire; si se marea, siente presión en el pecho o le falta el aire, que pare y consulte.',
+  embarazo: 'Menciona un embarazo. Este plan NO es un plan de embarazo y nadie lo ha revisado: que tenga el visto bueno de su médico u obstetra antes de entrenar. La app quitó lo que va boca arriba o boca abajo, el peso del cuerpo sobre el vientre, los saltos, el esfuerzo máximo y las barras sobre un solo apoyo, y pide 8 repeticiones o más exhalando. NO sabe en qué semana va (aplica todo desde que lo nombra), ni si tiene una condición que prohíbe entrenar (sangrado, placenta previa, preeclampsia, rotura de membranas, embarazo múltiple, hipertensión o diabetes sin control): pregúntale semanas, visto bueno y síntomas. No controla el calor, el agua ni los rangos extremos de cadera (la laxitud del embarazo). Si el embarazo ya terminó, quita la frase de la nota.',
+};
+// Q6 de Laura: con una hernia del abdomen la etiqueta «zona lumbar» aparece sin que la espalda esté mal.
+const GEN_HERNIA_LUMBAR_COACH = 'Con hernia, la zona lumbar se activa a propósito como filtro de cargas altas (peso muerto, sentadilla con barra); no significa que tenga la espalda lastimada.';
+const GEN_EMBARAZO_CLIENT = '⚠️ Escribiste algo sobre tu embarazo, así que armamos este plan cuidándolo, pero NO es un plan de embarazo. Todavía no lo ha revisado un profesional de la salud: antes de entrenar, pide el visto bueno de tu médico u obstetra. Quitamos los ejercicios boca arriba o boca abajo, los saltos y el esfuerzo máximo, y no sabemos en qué semana vas. ' + GEN_COND_PARADA.embarazo + ' Si algo no te cuadra, no lo hagas y avísale a tu coach.';
+const GEN_CARDIAC_ADVICE = 'Menciona síntomas que pueden venir del corazón o de la respiración (palpitaciones, desmayo, mareo, falta de aire, o dolor o presión en el pecho al esfuerzo). Antes de cargar, que lo valore un profesional de la salud: este plan es un borrador y no reemplaza esa valoración. No se quitó ningún ejercicio por esto.';
+// A la persona no se le repiten los síntomas que escribió («algo que puede tener que ver con»): no se diagnostica.
+const GEN_CARDIAC_CLIENT = '⚠️ Escribiste algo que puede tener que ver con el corazón o con la respiración. Te recomendamos que lo consultes con un profesional de la salud antes de entrenar: este plan no reemplaza esa valoración, y no quitamos ningún ejercicio por esto. Si lo sientes mientras entrenas, detente; y si es fuerte o no pasa, busca atención médica de una vez.';
+function _listaY(l) {
+  return l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1];
+}
+function _isCond(z) { return GEN_COND_KEYS.indexOf(z) >= 0; }
+// Lo que el filtro QUITÓ, para el coach. 🔒 Sin condiciones devuelve EXACTAMENTE la frase de siempre.
+function _limAdvice(keys) {
+  if (!(keys || []).some(z => GEN_ZONE_EXCL[z]))
+    return 'Limitación sin zona específica: NO se excluyó ningún ejercicio automáticamente. Revísala y ajústala a mano antes de aprobar.';
+  const dolor = keys.some(z => !_isCond(z) && GEN_ZONE_EXCL[z]);
+  const cond = keys.some(_isCond);
+  const que = !cond ? 'lo que suele molestar ahí' : dolor ? 'lo que suele molestar ahí y lo que no conviene con lo que escribió' : 'lo que no conviene con lo que escribió';
+  const cierre = (cond && !dolor) ? 'ajusta cargas y confírmale lo que su médico le permite.' : 'ajusta cargas y rangos, y confírmale qué hace hoy sin dolor.';
+  return 'Quitamos ' + que + ' — ' + _zonasQueQuita(keys) + '. Es un filtro automático por lo que escribió, NO una valoración clínica: ' + cierre;
+}
+// Las hernias del ABDOMEN (la misma alternancia que la entrada de `core_central` en `GEN_LIMIT_KWS`).
+const GEN_HERNIA_ABD_RE = /hernias? (umbilical|abdominal|ventral|epigastric|incisional|inguinal|hiatal)|hernias? (en |de |del )(el |mi )?(ombligo|abdomen|vientre|estomago)/g;
+function _condAdviceCoach(keys, n) {
+  const out = _dedupCondKeys(keys).filter(_isCond).map(z => GEN_COND_COACH[z]).filter(Boolean);
+  // 🔴 La frase «no significa que tenga la espalda lastimada» SOLO si la zona lumbar viene de la hernia
+  // del abdomen y de nada más. La nota real que motivó todo esto dice «Hernia lumbar L5 · Hernia
+  // umbilical»: ahí la espalda SÍ está comprometida y la frase le mentiría al coach.
+  if (keys.indexOf('lumbar') >= 0 && keys.indexOf('core_central') >= 0) {
+    const s = String(n || '');
+    const lumbarRe = (GEN_LIMIT_KWS.find(k => k.zone === 'lumbar') || {}).re;
+    if (s.replace(GEN_HERNIA_ABD_RE, ' ') !== s && lumbarRe && !lumbarRe.test(s.replace(GEN_HERNIA_ABD_RE, ' '))) out.push(GEN_HERNIA_LUMBAR_COACH);
+  }
+  return out.join(' ');
 }
 
 // Parsea las notas del cliente → limitaciones detectadas. Exportada para tests.
 function parseLimitations(notes) {
   const n = _norm(notes);
   const keys = [];
-  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) (k.area ? painExclZones(k.area) : [k.zone]).forEach(z => keys.push(z)); });
+  GEN_LIMIT_KWS.forEach(k => { if (k.re.test(n)) (k.zones ? k.zones : k.area ? painExclZones(k.area) : [k.zone]).forEach(z => keys.push(z)); });
   const uniq = [...new Set(keys)];
   const detected = uniq.length > 0;
   // Solo rodilla/lumbar/hombro tienen reglas de exclusión. Una limitación "genérica"
@@ -1145,22 +1315,29 @@ function parseLimitations(notes) {
   // Compromiso nervioso: solo se anuncia si además hay algo detectado (un texto suelto con
   // "debilidad" hablando de otra cosa no debe disparar una derivación médica).
   const nerve = detected && GEN_NERVE_RE.test(n);
+  // 🚑 v727 · la alerta cardíaca NO exige `detected` (a diferencia de la del nervio): quien escribe solo
+  // «a veces me desmayo» no tiene zona, y sin esto la app no diría nada. No toca keys ni exclusiones.
+  const cardiac = GEN_CARDIAC_RE.test(n);
   return {
     detected,
     keys: uniq,
-    zones: [...new Set(uniq.map(z => GEN_ZONE_LABEL[z]))],
+    zones: [...new Set(_dedupCondKeys(uniq).map(z => GEN_ZONE_LABEL[z]))],
     hasExclusions,
     nerve,
+    // v727 · condiciones (se le hablan distinto a la persona) y las dos banderas que cambian lo que se dice.
+    conds: uniq.filter(_isCond),
+    embarazo: uniq.indexOf('embarazo') >= 0,
+    cardiac,
     // El texto dice QUÉ SE QUITÓ; jamás que lo que queda esté bien para esa persona. La versión
     // vieja ("Se excluyeron ejercicios contraindicados y se priorizaron variantes seguras")
     // afirmaba una revisión clínica que nunca ocurrió y le bajaba la guardia a quien revisa.
-    advice: !detected ? ''
-      // Sin repetir «revisa cada día»: el banner del coach ya cierra con eso (se vio MIRANDO
-      // la captura, no leyendo el texto — el string suelto no delata la redundancia).
-      : hasExclusions ? 'Quitamos lo que suele molestar ahí — ' + _zonasQueQuita(uniq) + '. Es un filtro automático por lo que escribió, NO una valoración clínica: ajusta cargas y rangos, y confírmale qué hace hoy sin dolor.'
-      : 'Limitación sin zona específica: NO se excluyó ningún ejercicio automáticamente. Revísala y ajústala a mano antes de aprobar.',
+    // Sin repetir «revisa cada día»: el banner del coach ya cierra con eso (se vio MIRANDO
+    // la captura, no leyendo el texto — el string suelto no delata la redundancia).
+    advice: !detected ? '' : _limAdvice(uniq),
+    condAdvice: _condAdviceCoach(uniq, n),
     nerveAdvice: !nerve ? ''
       : 'Menciona síntomas que pueden venir del nervio (dolor que baja por la pierna, hormigueo o falta de fuerza). Antes de cargar, que lo valore un profesional de la salud: este plan es un borrador y no reemplaza esa valoración.',
+    cardiacAdvice: cardiac ? GEN_CARDIAC_ADVICE : '',
   };
 }
 
@@ -1175,14 +1352,38 @@ function parseLimitations(notes) {
 // 🔒 LA LÍNEA QUE NO SE MUEVE: la app dice QUÉ QUITÓ, jamás que lo que queda esté bien para esa
 // persona (gotcha de v424). En la versión del asesorado eso pesa MÁS, no menos: es la única que
 // lee alguien sin criterio clínico para dudar de ella.
+// v727 · Con condiciones el texto se arma por partes: (1) el de siempre, SOLO para las zonas de dolor
+// (sin condiciones sale idéntico al de antes); (2) el del embarazo, SIEMPRE que se nombre, aunque sea lo
+// único; (3) el de las demás condiciones, con su criterio de parar; (4) el cardíaco, que sale aunque no
+// haya ninguna limitación.
 function genLimitationNote(lim, audience) {
   const l = lim || {};
   const zonas = (l.zones || []).join(', ');
   const nerv = l.nerve ? ' 🚑 ' + l.nerveAdvice : '';
+  const conds = l.conds || [];
   if (audience === 'client') {
-    return `⚠️ Escribiste que tienes una molestia en ${zonas || 'una zona'}, así que este plan la tuvo en cuenta. ${l.advice}${nerv} Todavía no lo ha revisado un profesional: si algo te duele, no lo hagas y avísale a tu coach.`;
+    const partes = [];
+    let nervPuesto = false;
+    const dolor = (l.keys || []).filter(z => !_isCond(z));
+    if (l.detected && (dolor.length || !conds.length)) {
+      const zonasD = conds.length ? [...new Set(dolor.map(z => GEN_ZONE_LABEL[z]).filter(Boolean))].join(', ') : zonas;
+      const adv = conds.length ? _limAdvice(dolor) : l.advice;
+      partes.push(`⚠️ Escribiste que tienes una molestia en ${zonasD || 'una zona'}, así que este plan la tuvo en cuenta. ${adv}${nerv} Todavía no lo ha revisado un profesional: si algo te duele, no lo hagas y avísale a tu coach.`);
+      nervPuesto = true;
+    }
+    if (l.embarazo) partes.push(GEN_EMBARAZO_CLIENT);
+    const otras = _dedupCondKeys(conds).filter(z => z !== 'embarazo');
+    if (otras.length) {
+      partes.push(`⚠️ Escribiste algo sobre ${_listaY(otras.map(z => GEN_COND_CLIENT[z]))}, así que armamos este plan cuidándolo. Quitamos lo que no conviene — ${_zonasQueQuita(otras)}. ${otras.map(z => GEN_COND_PARADA[z]).join(' ')}${nervPuesto ? '' : nerv} Todavía no lo ha revisado un profesional de la salud: si algo no te cuadra, no lo hagas y avísale a tu coach.`);
+      nervPuesto = true;
+    }
+    if (!nervPuesto && nerv) partes.push(nerv.trim());
+    if (l.cardiac) partes.push(GEN_CARDIAC_CLIENT);
+    return partes.join(' ');
   }
-  return `⚠️ REVISAR — limitación detectada (${zonas}). ${l.advice}${nerv} Ajusta antes de aprobar.`;
+  const card = l.cardiac ? ' 🚑 ' + l.cardiacAdvice : '';
+  if (!l.detected) return `⚠️ REVISAR —${card} Ajusta antes de aprobar.`;
+  return `⚠️ REVISAR — limitación detectada (${zonas}). ${l.advice}${l.condAdvice ? ' ' + l.condAdvice : ''}${nerv}${card} Ajusta antes de aprobar.`;
 }
 
 // El aviso que le llega al COACH cuando alguien se registra SOLO y declara una limitación.
@@ -1193,18 +1394,27 @@ function genLimitationNote(lim, audience) {
 // Mismo canal que el reporte de dolor, que lleva versiones funcionando: mensaje en su hilo + push.
 function limitationCoachAlert(name, lim, notes) {
   const l = lim || {};
-  if (!l.detected) return null;
+  // v727 · la alerta cardíaca avisa sola (Laura E4): con «!l.detected» a secas quedaba muda.
+  if (!l.detected && !l.cardiac) return null;
   const first = String(name || '').trim().split(/\s+/)[0] || 'Un asesorado';
   const zonas = (l.zones || []).join(', ') || 'sin zona específica';
   const nota = String(notes || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+  const card = l.cardiac ? ' 🚑 ' + l.cardiacAdvice : '';
+  const escribio = nota ? ` Escribió: «${nota}»` : '';
+  // Solo síntomas, sin limitación: NO se habla de una «zona» que no existe ni de un filtro que no hubo.
+  if (!l.detected) {
+    return `⚠️ ${first} se registró por su cuenta y escribió algo que puede venir del corazón o de la respiración. `
+      + `Su plan se generó solo y NADIE lo ha revisado.${card}${escribio}`;
+  }
   // El texto NO afirma que el filtro alcance: si la zona no tiene lista clínica, lo dice.
   const filtro = l.hasExclusions
     ? 'El generador sacó lo que carga esa zona, que es un filtro por lo que escribió y no una valoración.'
     : 'Esa zona NO tiene filtro automático: no se excluyó ni un ejercicio.';
   return `⚠️ ${first} se registró por su cuenta y declaró una limitación (${zonas}). `
     + `Su plan se generó solo y NADIE lo ha revisado. ${filtro}`
+    + (l.condAdvice ? ' ' + l.condAdvice : '')
     + (l.nerve ? ' 🚑 ' + l.nerveAdvice : '')
-    + (nota ? ` Escribió: «${nota}»` : '');
+    + card + escribio;
 }
 
 // ── AVISO AL COACH: se registró SOLA una persona MENOR de edad (v565) ──────────────
@@ -2616,6 +2826,10 @@ function generarRutinas(client, lib, opts) {
   // nota del coach (P0 del dictamen de Laura). Determinista — la ventana de vigencia se mide
   // contra `opts.now`, no contra el reloj.
   const lim = limitationsFor(client, Date.parse(now) || Date.now());
+  // 🔒 v727 · candado de Laura (Q2): con presión arterial, abdomen y piso pélvico o embarazo, NUNCA
+  // menos de 8 repeticiones (medido antes: «Fuerza» daba 6 con o sin «hipertensión» en la nota). El
+  // nombre de un ejercicio no deja ver la carga máxima ni el aire retenido; esto sí lo controla.
+  if ((lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0)) scheme.repsN = Math.max(scheme.repsN, 8);
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
   const loadProfile = opts.loadProfile === 'high' ? 'high' : 'normal'; // por IMC/cintura (ver bodyLoadProfile)
@@ -2665,7 +2879,7 @@ function generarRutinas(client, lib, opts) {
     if (nameCount[nm] > 1) nm += ' ' + nameCount[nm];
     const note = exs.length === 0
       ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
-      : lim.detected
+      : (lim.detected || lim.cardiac)
       ? genLimitationNote(lim, opts.audience)
       : scheme.adaptation
       ? '🌱 Fase de adaptación (primeras semanas): 15-20 reps con poco o nada de peso, sin llegar al fallo. La técnica primero; las cargas suben cuando el patrón esté limpio.'
@@ -2675,7 +2889,7 @@ function generarRutinas(client, lib, opts) {
       note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
       // needsReview también si el día quedó VACÍO (lib/entorno sin match) — el coach no
       // debe poder aprobar un día en blanco sin alerta. Auditoría 2026-06-21.
-      createdAt: now, generated: true, reviewed: false, needsReview: lim.detected || exs.length === 0,
+      createdAt: now, generated: true, reviewed: false, needsReview: lim.detected || !!lim.cardiac || exs.length === 0,
     };
   });
   // 🔴 TRABAJO CORRECTIVO: la mitad que faltaba. El motor sabía quitar lo que hace daño y no
@@ -5417,13 +5631,14 @@ function quickWorkoutFit(items, limKeys, lib) {
 }
 // Cómo se le nombra la zona A LA PERSONA, con su posesivo. `GEN_ZONE_LABEL` le habla al coach y no
 // siempre acepta un «tu» delante («tu la parte de atrás de tu muslo»).
+// Las condiciones (v727) van con la frase de Laura, sin diagnósticos (`GEN_COND_CLIENT`).
 const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión' };
 function zoneLabelClient(z) {
-  return GEN_ZONE_LABEL_CLIENT[z] || (GEN_ZONE_LABEL[z] ? 'tu ' + GEN_ZONE_LABEL[z] : '');
+  return GEN_ZONE_LABEL_CLIENT[z] || GEN_COND_CLIENT[z] || (GEN_ZONE_LABEL[z] ? 'tu ' + GEN_ZONE_LABEL[z] : '');
 }
 // «tu rodilla y tu zona lumbar». Dice de DÓNDE sale el filtro, nunca que lo que queda sea seguro.
 function quickFitZonas(zonas) {
-  const l = [...new Set((zonas || []).map(zoneLabelClient).filter(Boolean))];
+  const l = [...new Set(_dedupCondKeys(zonas || []).map(zoneLabelClient).filter(Boolean))];
   if (!l.length) return '';
   return l.length === 1 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1];
 }
@@ -11500,8 +11715,10 @@ function shockPlan(client, exName, sessions, lib, now) {
     apply: { reps: SHOCK_REMONTA_REPS },
     msg: name + ', vi que el ' + exName + ' se te plantó en ' + bestKg + ' kg. Vamos a destrabarlo: estas 2 semanas baja el peso ~10% y hazlo a ' + SHOCK_REMONTA_REPS + ' repeticiones con técnica perfecta. En la semana 3 volvemos por ese récord 💪',
   });
-  // 2) Bloque de fuerza 5×5 — NO si hay dolor activo (subir carga con dolor es peligroso).
-  if (!hasPain) {
+  // 2) Bloque de fuerza 5×5 — NO si hay dolor activo (subir carga con dolor es peligroso), y desde v727
+  //    tampoco con presión arterial, abdomen y piso pélvico o embarazo (candado de 8 repeticiones, Laura Q2).
+  const minReps8 = (lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0);
+  if (!hasPain && !minReps8) {
     options.push({
       id: 'pesado', title: 'Bloque de fuerza 5×5',
       desc: '3 semanas de ' + SHOCK_PESADO_SETS + ' series × ' + SHOCK_PESADO_REPS + ' repeticiones con más carga y descansos largos — un estímulo distinto rompe la meseta.',
@@ -13264,6 +13481,14 @@ if (typeof module !== 'undefined' && module.exports) {
     warmupWarnText,
     WARMUP_ZONE_EXCL_IDS,
     GEN_ZONE_EXCL,
+    GEN_EXCL_IDS,
+    GEN_LIMIT_KWS,
+    GEN_EMBARAZO_RE,
+    GEN_CARDIAC_RE,
+    GEN_COND_KEYS,
+    GEN_COND_PARADA,
+    GEN_COND_COACH,
+    _zonasQueQuita,
     genSchemeFor,
     restForType,
     restForExercise,

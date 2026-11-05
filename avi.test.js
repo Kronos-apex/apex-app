@@ -22158,7 +22158,10 @@ test('🔴 v676 · la nota REAL de Lucía Ríos reconoce sus tres zonas (antes s
     '🔴 las notas volvieron a ignorar «espalda alta» o «codos»: ' + JSON.stringify(lim.keys));
   // CONTROL: las otras dos notas reales de la base no cambian.
   assert.deepStrictEqual(core.parseLimitations('Lesión rodilla derecha operada, con 10 % menos de cartilago y tendon').keys.sort(), ['generic', 'rodilla']);
-  assert.deepStrictEqual(core.parseLimitations('Hernia lumbar L5\n\nHernia umbilical').keys, ['lumbar']);
+  // v727 · esta nota real pasa de ['lumbar'] a ['lumbar', 'core_central'] A PROPÓSITO: es el caso de la
+  // Q6 de Laura (5-nov), que dictó las DOS claves para una hernia del abdomen. No es un control que se
+  // movió para poner verde: es la conducta que el dictamen pide, y el test de v727 la fija aparte.
+  assert.deepStrictEqual(core.parseLimitations('Hernia lumbar L5\n\nHernia umbilical').keys, ['lumbar', 'core_central']);
 });
 
 test('🔒 v676 · cada palabra nueva de las notas hereda las reglas del ÁREA del cuestionario (una sola fuente)', () => {
@@ -25242,8 +25245,9 @@ test('🔴 v726 · el caso real: con «hernia umbilical» Abdomen Express ya no 
   assert.ok(sinNota.w.items.some(i => i.id === 'e18'), 'CONTROL · Abdomen Express dejó de traer el crunch (e18): la prueba ya no mide nada');
   assert.strictEqual(sinNota.quitados.length, 0, 'sin limitaciones no se quita nada');
   assert.ok(!conNota.w.items.some(i => i.id === 'e18'), '🔴 Abdomen Express le sigue sirviendo el crunch a quien escribió «hernia umbilical»');
-  assert.deepStrictEqual(conNota.quitados.map(q => q.id), ['e18']);
-  assert.deepStrictEqual(conNota.zonas, ['lumbar']);
+  // v727 · con la clave del abdomen (Laura Q6) también salen los escaladores y la plancha frontal.
+  assert.deepStrictEqual(conNota.quitados.map(q => q.id), ['e18', 'e81', 'e17']);
+  assert.deepStrictEqual(conNota.zonas.slice().sort(), ['core_central', 'lumbar']);
   assert.ok(conNota.w.items.length >= 1 && !conNota.oculto, 'lo que sí le va se sigue ofreciendo');
 });
 
@@ -25320,6 +25324,314 @@ test('🔒 v726 · los textos de los rápidos le hablan a la persona («tu …»
     '🔴 el rápido arranca con la lista SIN filtrar');
   const cardio = tramo.slice(tramo.indexOf('function openQuickCardio('), tramo.indexOf('function qwStartCardio('));
   assert.ok(/_qwFitOf\(/.test(cardio) && !/QUICK_CARDIO_OPTIONS\.map\(/.test(cardio), '🔴 las opciones de cardio se pintan sin filtrar');
+});
+
+// ── v727 · LAS CONDICIONES: abdomen y piso pélvico, salud ósea, presión arterial, embarazo y la alerta
+// cardíaca (dictámenes de Laura del 5-nov, `docs/poblaciones-2026-11-05/laura.md` y `laura-embarazo.md`).
+// Decisiones del PO del 5-nov: no se pregunta en el registro (solo se lee lo que se ESCRIBE); embarazo
+// según estándar; síntomas del corazón = recomendar de una vez valoración médica, sin quitar nada.
+const _COND = ['core_central', 'hueso', 'presion', 'embarazo'];
+const _nrm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const _limK = t => core.parseLimitations(t).keys.slice().sort();
+
+test('🔒 v727 · candado 1 · las palabras: cada positiva enciende su clave y cada control NO', () => {
+  const pos = {
+    core_central: ['estoy en postparto', 'post parto de 4 meses', 'despues del parto me quedo el abdomen flojo', 'di a luz hace 6 meses',
+      'tengo diastasis', 'separacion abdominal', 'cesarea hace 10 años', 'suelo pelvico debil', 'prolapso', 'incontinencia al toser',
+      'hernias umbilicales', 'hernia en el ombligo', 'me hicieron una abdominoplastia', 'manga gastrica hace un año', 'cirugia abdominal'],
+    hueso: ['tengo osteopenia', 'osteoporosis', 'me descalcifique', 'densidad osea baja', 'huesos fragiles', 'fractura vertebral por compresion'],
+    presion: ['tengo hipertension', 'tengo la tension alta, tomo pastillas', 'presion arterial elevada', 'tengo hta', 'tuve un infarto',
+      'arritmia', 'tengo un stent', 'tomo losartan', 'problemas del corazon', 'preeclampsia en mi embarazo anterior'],
+    embarazo: ['estoy embarazada', 'embarazada de 12 semanas', 'cursando gestacion', 'soy gestante', 'estoy preñada',
+      'estoy en dulce espera', 'soy futura mamá', 'mi bebe viene en camino', 'estoy esperando un bebe', 'espero un hijo para marzo'],
+  };
+  for (const z of _COND) for (const t of pos[z])
+    assert.ok(core.parseLimitations(t).keys.includes(z), `🔴 «${t}» no enciende ${z}`);
+  // Controles: cada uno tiene su variante positiva arriba (la regex no está vacía por casualidad).
+  const ctrl = {
+    core_central: ['parto de cero, soy principiante', 'reparto domicilios', 'me aparto del gym', 'se llama Cesar', 'Cesareo', 'situacion embarazosa',
+      'a luz del dia', 'hernia discal L5', 'tengo una hernia'],
+    hueso: ['menopausia', 'osteoartrosis de rodilla', 'voy al osteopata', 'tomo calcio y vitamina D', 'fractura de muñeca'],
+    presion: ['tension alta en el trapecio', 'siento presion en el pecho al correr', 'presion arterial normal', 'mucha presion en el trabajo',
+      'hipotension, presion baja', 'trabajo consistente y constante', 'soy muy consistente', 'mi frecuencia cardiaca en reposo es 60'],
+    embarazo: ['situacion embarazosa', 'que embarazoso', 'espero bajar de peso', 'espero un cambio', 'estoy esperando resultados', 'esperando el bus',
+      'tuve un bebe hace 8 meses', 'gestion del tiempo', 'digestion lenta', 'congestion nasal', 'espero a mi hijo en la salida del colegio'],
+  };
+  for (const z of _COND) for (const t of ctrl[z])
+    assert.ok(!core.parseLimitations(t).keys.includes(z), `🔴 falso positivo: «${t}» enciende ${z}`);
+  // 🔴 «presión en el pecho» NO es hipertensión (es bandera roja): no puede sonar a «la app ya lo tiene».
+  assert.ok(!core.parseLimitations('presion en el pecho').keys.includes('presion'));
+});
+
+test('🔒 v727 · candado 4 de la tarde · embarazo = embarazo + abdomen, SIEMPRE juntas; el trimestre NO se lee', () => {
+  const l = core.parseLimitations('estoy embarazada');
+  assert.deepStrictEqual(l.keys.slice().sort(), ['core_central', 'embarazo']);
+  assert.strictEqual(l.embarazo, true);
+  const ctrl = core.parseLimitations('situación embarazosa');
+  assert.deepStrictEqual(ctrl.keys, []); assert.strictEqual(ctrl.embarazo, false);
+  // Ningún número relaja nada (Laura E1: el número casi nunca es la edad gestacional).
+  assert.deepStrictEqual(_limK('embarazada de 8 semanas'), _limK('embarazada'));
+  assert.deepStrictEqual(_limK('embarazada de 30 semanas'), _limK('embarazada'));
+  assert.deepStrictEqual(_limK('primer trimestre de embarazo'), _limK('embarazada'));
+});
+
+test('🔒 v727 · Q6 · la hernia: del abdomen da lumbar + abdomen; discal o a secas, solo lumbar', () => {
+  assert.deepStrictEqual(_limK('hernia umbilical'), ['core_central', 'lumbar']);
+  assert.deepStrictEqual(_limK('hernia discal L5'), ['lumbar'], '«hernia discal» no es del abdomen');
+  assert.deepStrictEqual(_limK('tengo una hernia'), ['lumbar'], '«hernia» a secas no se sabe de cuál: no se inventa abdomen');
+  assert.deepStrictEqual(_limK('hernia inguinal'), ['abductor', 'aductor', 'core_central', 'lumbar']);
+  // La frase que le explica al coach por qué aparece «zona lumbar» sale SOLO si la espalda no vino por otro lado.
+  const solo = core.parseLimitations('hernia umbilical').condAdvice;
+  const conLumbar = core.parseLimitations('Hernia lumbar L5\n\nHernia umbilical').condAdvice;
+  assert.ok(/no significa que tenga la espalda lastimada/.test(solo), 'con hernia umbilical sola, el coach no sabe por qué sale «zona lumbar»');
+  assert.ok(!/no significa que tenga la espalda lastimada/.test(conLumbar), '🔴 a quien tiene hernia lumbar L5 se le dice que la espalda no está lastimada');
+  // El comentario que protege a `hernia` en la regla lumbar es parte del contrato (antes era su única defensa).
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  const tramo = src.slice(src.indexOf('// Detección de limitaciones físicas'), src.indexOf('const GEN_LIMIT_KWS = ['));
+  assert.ok(/`hernia` A SECAS SE QUEDA EN `lumbar`/.test(tramo) && /core_central/.test(tramo), 'el comentario de la regla lumbar perdió su razón');
+});
+
+test('🔒 v727 · candado 2 · sin lookbehind en avi-core (revienta Safari < 16.4 y tumba la app entera)', () => {
+  const src = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8'));
+  const tiene = s => /\(\?<[=!]/.test(s);
+  assert.ok(tiene('/(?<!a)b/') && tiene('/(?<=a)b/'), 'CONTROL · la sonda no reconoce un lookbehind');
+  assert.ok(!tiene(src), '🔴 avi-core.js tiene un lookbehind en el código');
+});
+
+test('🔒 v727 · candado 3 · los ejercicios que caen por condición quedan FIJADOS (65 · 31 · 44 · 60; juntas embarazo 124)', () => {
+  const caen = zs => _LIB_REAL.filter(e => core.exerciseContraindicated(e, zs, _LIB_REAL)).map(e => e.id).sort();
+  const FIJO = {
+    core_central: 'e17 e18 e47 e48 e62 e63 e20 e66 e69 e75 e76 e81 e131 e132 e136 e157 e168 e176 e182 e183 e184 e185 e186 e187 e188 e189 e190 e191 e192 e193 e194 e195 e196 e197 e198 e200 e201 e202 e203 e204 e205 e240 e241 e277 e304 e347 e360 e361 e362 e363 e364 e365 e366 e367 e368 e369 e370 e371 e376 e377 e378 e379 e380 e381 e382',
+    hueso: 'e50 e18 e47 e48 e62 e63 e75 e131 e132 e167 e176 e187 e198 e202 e203 e240 e241 e360 e361 e362 e363 e364 e366 e367 e368 e369 e370 e378 e379 e380 e382',
+    presion: 'e17 e49 e63 e74 e69 e75 e128 e136 e157 e164 e184 e185 e186 e187 e188 e189 e190 e191 e192 e193 e196 e197 e198 e200 e201 e202 e203 e204 e205 e211 e277 e304 e347 e365 e367 e368 e371 e376 e377 e378 e379 e380 e381 e382',
+    embarazo: 'e1 e110 e71 e12 e57 e15 e42 e43 e73 e72 e74 e82 e83 e91 e92 e97 e106 e109 e112 e116 e123 e137 e146 e149 e154 e215 e216 e217 e219 e220 e222 e242 e243 e246 e264 e273 e275 e276 e291 e293 e294 e295 e296 e307 e309 e312 e322 e332 e333 e334 e335 e337 e345 e348 e349 e350 e357 e359 e373 e380',
+  };
+  const cuenta = { core_central: 65, hueso: 31, presion: 44, embarazo: 60 };
+  for (const z of _COND) {
+    const fijo = FIJO[z].split(' ').sort();
+    assert.strictEqual(fijo.length, cuenta[z], `CONTROL · la lista fijada de ${z} no tiene ${cuenta[z]}`);
+    assert.deepStrictEqual(caen([z]), fijo, `🔴 cambió lo que cae por ${z}: si fue a propósito, que Laura lo revise y se fija de nuevo`);
+  }
+  assert.strictEqual(caen(['embarazo', 'core_central']).length, 124, 'la unión del embarazo dejó de ser 124');
+});
+
+test('🔒 v727 · candado 3 · lo que es TRATAMIENTO no cae (controles de Laura)', () => {
+  const de = id => _LIB_REAL.find(e => e.id === id);
+  const queda = (zs, ids, porque) => ids.forEach(id => {
+    assert.ok(de(id), `CONTROL · ${id} ya no está en el catálogo`);
+    assert.ok(!core.exerciseContraindicated(de(id), zs, _LIB_REAL), `🔴 ${zs.join('+')} quita ${id} ${de(id).name}, que ${porque}`);
+  });
+  queda(['core_central'], ['e72', 'e133', 'e134', 'e164', 'e49'], 'es rehabilitación del núcleo');
+  queda(['core_central'], ['e13', 'e14', 'e36'], 'la carga la cuida el mínimo de 8 repeticiones, no la lista');
+  const nom = re => _LIB_REAL.filter(e => re.test(_nrm(e.name)));
+  const pm = nom(/^peso muerto( convencional)?( con barra)?$/);
+  assert.ok(pm.length >= 1, 'CONTROL · no encontré el peso muerto convencional');
+  queda(['hueso'], pm.map(e => e.id).concat(['e13', 'e42', 'e82', 'e116', 'e66']), 'la carga axial y la extensión son el tratamiento óseo');
+  assert.ok(core.exerciseContraindicated(de('e50'), ['hueso'], _LIB_REAL), '«Buenos días con barra» tiene que caer en hueso');
+  assert.ok(!core.exerciseContraindicated(de('e148'), ['hueso'], _LIB_REAL), '«Patrón de bisagra sin peso» es terapéutico');
+  queda(['presion'], ['e64', 'e67', 'e151', 'e254', 'e327', 'e36'], 'es cardio continuo, isométrico de brazo o carga moderada');
+  // Embarazo: los 52 controles de la tarde, contra la unión que ve una embarazada.
+  queda(['embarazo', 'core_central'], ('e375 e141 e145 e64 e248 e249 e67 e13 e70 e80 e158 e128 e36 e236 e330 e14 e226 e114 e52 e25 e229 ' +
+    'e6 e27 e319 e22 e23 e8 e21 e2 e84 e111 e77 e78 e113 e133 e134 e164 e49 e165 e130 e90 e163 e89 e44 e45 e129 e94 e126 e39 e29 e10 e11').split(' '),
+    'el estándar lo deja (caminar, bici, sentadilla, remos, de lado, cuadrupedia)');
+});
+
+test('🔒 v727 · candado 1 de la tarde · ORÁCULO independiente: todo lo que la DESCRIPCIÓN pone boca arriba o boca abajo cae con embarazo', () => {
+  // 🔴 El oráculo NO puede ser la regex nueva (así se le coló e357 a Laura): lee la descripción.
+  const POS = /boca arriba|boca abajo|acuestate|acostad[oa]|tumbad[oa]|recuestate|en decubito/;
+  const LADO = /de lado|de costado|sentad/;
+  const tumbados = _LIB_REAL.filter(e => POS.test(_nrm(e.desc)) && !LADO.test(_nrm(e.desc)));
+  assert.ok(tumbados.length >= 20, `CONTROL · el oráculo casi no encuentra posiciones (${tumbados.length})`);
+  const escapan = tumbados.filter(e => !core.exerciseContraindicated(e, ['embarazo', 'core_central'], _LIB_REAL));
+  assert.deepStrictEqual(escapan.map(e => e.id + ' ' + e.name), [], '🔴 se le ofrece a una embarazada un ejercicio acostado');
+  const sinEmb = tumbados.filter(e => !core.exerciseContraindicated(e, ['core_central'], _LIB_REAL));
+  assert.ok(sinEmb.length > 10, `CONTROL DE DISCRIMINACIÓN · sin la clave embarazo deberían escapar muchos (escapan ${sinEmb.length})`);
+});
+
+test('🔒 v727 · renombrar no engaña: lo que cae por id sigue cayendo con otro nombre', () => {
+  ['e110', 'e322', 'e332', 'e246', 'e309', 'e334', 'e72'].forEach(id => {
+    const ex = { ..._LIB_REAL.find(e => e.id === id), name: 'Ejercicio de prueba' };
+    assert.ok(core.exerciseContraindicated(ex, ['embarazo']), `🔴 ${id} renombrado se cuela en embarazo`);
+  });
+  const { WARMUP_LIBRARY } = _wuMotor();
+  const pieza = id => Object.values(WARMUP_LIBRARY).flat().find(p => p.id === id);
+  [['wa6', 'presion'], ['we5', 'core_central'], ['wac3', 'hueso'], ['wac5', 'embarazo'], ['wa5', 'embarazo']].forEach(([id, z]) => {
+    assert.ok(pieza(id), `CONTROL · ${id} no está en la biblioteca del calentamiento`);
+    assert.ok(core.warmupContraindicated({ ...pieza(id), name: 'Pieza renombrada' }, [z]), `🔴 ${id} renombrada deja de caer en ${z}`);
+  });
+});
+
+test('🔒 v727 · candado 4 · con presión, abdomen o embarazo el esquema NUNCA baja de 8 repeticiones; el 5×5 no se ofrece', () => {
+  const reps = notes => {
+    const out = core.generarRutinas({ id: 'r8', name: 'R', sex: 'M', age: 40, weight: 80, height: 175, goal: 'Fuerza', level: 'Intermedio', days: 4, place: 'gym', notes },
+      _LIB_REAL, { seed: 1, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+    return out.routines.flatMap(r => r.exercises).filter(e => e.type !== 'Cardio' && e.type !== 'HIIT' && /^\d+$/.test(String(e.reps))).map(e => +e.reps);
+  };
+  const sin = reps('');
+  assert.ok(sin.length > 10 && sin.every(n => n === 6), `CONTROL · «Fuerza» sin nota ya no da 6 repeticiones (${[...new Set(sin)]})`);
+  for (const nota of ['hipertension controlada', 'postparto', 'estoy embarazada'])
+    assert.ok(reps(nota).every(n => n >= 8), `🔴 con «${nota}» hay series de menos de 8 repeticiones`);
+  // Con osteoporosis el plan cambia de ejercicios (alguno trae sus repeticiones propias), pero el esquema NO sube a 8.
+  assert.ok(Math.min(...reps('osteoporosis')) === 6, 'en salud ósea la carga progresiva ES el tratamiento: no se toca');
+  const opts = notes => shockPlan({ ...spClient, notes }, 'Jalón al Pecho', spStalled, spLib, CI_NOW).options.map(o => o.id);
+  assert.ok(opts('').includes('pesado'), 'CONTROL · sin nota el 5×5 se ofrece');
+  for (const nota of ['hipertension', 'postparto', 'embarazada'])
+    assert.ok(!opts(nota).includes('pesado'), `🔴 con «${nota}» se ofrece el bloque 5×5`);
+  assert.ok(opts('osteoporosis').includes('pesado'), 'en salud ósea el 5×5 se sigue ofreciendo');
+});
+
+test('🔒 v727 · candado 5 · el calentamiento de las condiciones: listas, barrido de las 12 recetas y lo que ASCIENDE', () => {
+  const { WARMUP_LIBRARY } = _wuMotor();
+  const todas = Object.values(WARMUP_LIBRARY).flat();
+  const pieza = id => todas.find(p => p.id === id);
+  const L = core.WARMUP_ZONE_EXCL_IDS;
+  assert.deepStrictEqual(L.core_central, ['wac1', 'we4', 'we5']);
+  assert.deepStrictEqual(L.hueso, ['we5', 'wac3']);
+  assert.deepStrictEqual(L.presion, ['wa6', 'wac1']);
+  assert.deepStrictEqual(L.embarazo, ['we5', 'wc4', 'wac2', 'wac3', 'wac5', 'wa5', 'we4']);
+  _COND.forEach(z => L[z].forEach(id => assert.ok(pieza(id), `${z} nombra ${id}, que no existe en la biblioteca`)));
+  assert.ok(!pieza('wf1') && !pieza('wg4'), '🔴 wf1 o wg4 entraron a la biblioteca sin pasar por las listas de las condiciones');
+  _COND.forEach(z => ['wg1', 'wg2', 'wg3', 'wa1', 'wac4'].forEach(id => assert.ok(!L[z].includes(id), `${id} no puede estar en la lista de ${z}`)));
+  // La rectificación de Laura, en sus dos mitades, acoplada al texto de la pieza.
+  assert.ok(!L.core_central.includes('wac2') && L.embarazo.includes('wac2'), 'el dead bug del calentamiento: fuera de embarazo, dentro de abdomen');
+  assert.ok(/exhala/i.test(pieza('wac2').desc || '') && /bulto/i.test(pieza('wac2').desc || ''), '🔴 wac2 se queda con abdomen solo si su texto pide exhalar y parar ante un bulto');
+  // wg1 es el tope de esfuerzo de presión arterial: no cae y conserva «puedas conversar».
+  assert.ok(!_COND.some(z => core.warmupContraindicated(pieza('wg1'), [z])) && /puedas conversar/.test(_nrm(pieza('wg1').desc || '')),
+    'wg1 dejó de ser el cardio suave de todas las condiciones');
+
+  // ORÁCULO escrito a mano (la tabla clínica de Laura), independiente de las listas del código.
+  const PROHIBIDO = { core_central: ['wac1', 'we4', 'we5'], hueso: ['we5', 'wac3'], presion: ['wa6', 'wac1', 'we4'], embarazo: ['we5', 'wc4', 'wac2', 'wac3', 'wac5', 'wa5', 'we4'] };
+  const VIEJAS = ['rodilla', 'lumbar', 'hombro', 'aductor', 'abductor', 'cuello', 'tobillo', 'muneca', 'codo', 'pecho', 'isquios'];
+  const NUEVAS = [['core_central'], ['hueso'], ['presion'], ['embarazo', 'core_central']];
+  const conjuntos = [];
+  NUEVAS.forEach(n => { conjuntos.push([n, []]); VIEJAS.forEach(v => conjuntos.push([n, [v]])); });
+  conjuntos.push([['core_central', 'presion'], []], [['core_central', 'hueso'], []], [['core_central', 'hueso', 'presion'], ['lumbar', 'rodilla']],
+    [['core_central'], ['lumbar', 'rodilla', 'tobillo']], [['embarazo', 'core_central', 'presion', 'hueso'], []], [['embarazo', 'core_central'], VIEJAS]);
+  const lookup = id => pieza(id) || null;
+  const ids = r => [r.gen && r.gen.id, ...r.mov.map(s => s.id), ...r.act.map(s => s.id)].filter(Boolean);
+  const barrer = () => {
+    let viol = 0, casos = 0; const asc = new Set(); const sinBase = [];
+    for (const code of Object.keys(core.WU_RECIPES)) for (const place of ['gym', 'casa']) for (const impacto of [false, true])
+      for (const [nuevas, viejas] of conjuntos) {
+        casos++;
+        const r = core.wuResolveRecipe(code, { place, impacto, lookup, lim: nuevas.concat(viejas), rot: 0 });
+        const base = core.wuResolveRecipe(code, { place, impacto, lookup, lim: viejas.length ? viejas : null, rot: 0 });
+        const got = ids(r);
+        nuevas.forEach(z => got.forEach(id => { if (PROHIBIDO[z].includes(id)) viol++; }));
+        got.filter(id => !ids(base).includes(id)).forEach(id => asc.add(id));
+        if (!r.gen || !r.mov.length) sinBase.push(`${code}/${place}/${nuevas}+${viejas}`);
+      }
+    return { viol, casos, asc: [...asc].sort(), sinBase };
+  };
+  const m = barrer();
+  assert.ok(m.casos >= 12 * 2 * 2 * 50, `CONTROL DE COBERTURA · solo ${m.casos} casos`);
+  assert.strictEqual(m.viol, 0, `🔴 ${m.viol} piezas prohibidas en el barrido de recetas`);
+  assert.deepStrictEqual(m.sinBase.slice(0, 3), [], '🔴 una receta quedó sin cardio suave o sin movilidad');
+  assert.deepStrictEqual(m.asc, ['wah1'], `🔴 ascendió una pieza que Laura no barrió: ${m.asc.join(', ')} (clase del 20-sep)`);
+  // CONTROL DE DISCRIMINACIÓN: vaciando las listas por id de las condiciones, el oráculo SÍ ve violaciones.
+  const guard = {}; _COND.forEach(z => { guard[z] = L[z]; L[z] = []; });
+  let ctrl;
+  try { ctrl = barrer(); } finally { _COND.forEach(z => { L[z] = guard[z]; }); }
+  assert.ok(ctrl.viol > 0, 'CONTROL · sin las listas por id el barrido no ve ninguna violación: no discrimina');
+  assert.deepStrictEqual(L.embarazo, ['we5', 'wc4', 'wac2', 'wac3', 'wac5', 'wa5', 'we4'], 'CONTROL · las listas no se restauraron');
+});
+
+test('🔒 v727 · candado 8 · los textos: etiquetas, nada de diagnósticos ni promesas, y el criterio de PARAR', () => {
+  const de = id => _LIB_REAL.find(e => e.id === id);
+  const ojo = (id, zs) => core.warmupWarnText(core.exerciseWarnZones(de(id), zs, _LIB_REAL));
+  assert.strictEqual(ojo('e18', ['core_central']), 'Ojo con su abdomen y piso pélvico');
+  assert.strictEqual(ojo('e50', ['hueso']), 'Ojo con su salud ósea');
+  assert.strictEqual(ojo('e17', ['presion']), 'Ojo con su presión arterial o corazón');
+  // e380 cae por las dos: el embarazo implica el abdomen, no se escribe «…pélvico y embarazo».
+  assert.strictEqual(ojo('e380', ['embarazo', 'core_central']), 'Ojo con su embarazo');
+  assert.ok(!core.parseLimitations('embarazada').zones.includes('abdomen y piso pélvico'));
+  // Ninguna clave nace muda.
+  _COND.forEach(z => assert.ok(core._zonasQueQuita([z]).length > 10, `🔴 ${z} sin entrada en GEN_ZONE_QUITA: el aviso diría «Quitamos … — .»`));
+  assert.ok(!/— \./.test(core.parseLimitations('estoy embarazada').advice));
+  // Solo condiciones → nada de «molestia en» ni «te duele»; sí su parada y «Todavía no lo ha revisado un profesional».
+  const DIAG = /diastasis|hernia|osteoporosis|osteopenia|hipertension|cesarea/;
+  for (const [nota, z] of [['postparto con diastasis y cesarea', 'core_central'], ['osteoporosis y osteopenia', 'hueso'], ['hipertension', 'presion']]) {
+    const t = core.genLimitationNote(core.parseLimitations(nota), 'client');
+    assert.ok(!/molestia en|te duele/.test(t), `«${nota}»: le habla de una molestia a quien tiene una condición`);
+    assert.ok(t.includes(core.GEN_COND_PARADA[z]) && /Todavía no lo ha revisado un profesional/.test(t), `«${nota}»: falta su criterio de parar`);
+    assert.ok(!DIAG.test(_nrm(t)), `🔴 «${nota}»: el aviso a la persona nombra un diagnóstico: ${t}`);
+  }
+  // Ningún texto nuevo promete seguridad ni tranquiliza.
+  const nuevos = [...Object.values(core.GEN_COND_PARADA), ...Object.values(core.GEN_COND_COACH), core._zonasQueQuita(_COND),
+    core.genLimitationNote(core.parseLimitations('embarazada'), 'client'), core.genLimitationNote(core.parseLimitations('me desmayo'), 'client'),
+    core.parseLimitations('me desmayo').cardiacAdvice].join(' ');
+  assert.ok(!/\bseguro\b|sin riesgo|sin problema|no te preocupes/i.test(nuevos), '🔴 un texto de las condiciones promete seguridad');
+});
+
+test('🔒 v727 · candado 7 de la tarde · el aviso del embarazo sale SIEMPRE, al cliente y al coach, con las señales del estándar', () => {
+  const l = core.parseLimitations('estoy embarazada');
+  const cli = core.genLimitationNote(l, 'client');
+  ['Todavía no lo ha revisado un profesional', 'médico u obstetra', 'visto bueno', 'sangrado', 'líquido', 'contracciones', 'mareo',
+    'dolor de cabeza', 'pecho', 'falta de aire', 'pantorrilla', 'se mueve menos'].forEach(s => assert.ok(cli.includes(s), `al cliente le falta «${s}»`));
+  assert.ok(!/molestia en|te duele/.test(cli));
+  const coach = core.genLimitationNote(l, 'coach');
+  ['NO es un plan de embarazo', 'semana', 'obstetra'].forEach(s => assert.ok(coach.includes(s), `al coach le falta «${s}»`));
+  assert.ok(!/NO controla la posición boca arriba ni boca abajo/.test(coach), '🔴 vuelve la frase vieja, que ya no es cierta');
+  const alerta = core.limitationCoachAlert('Ana', l, 'estoy embarazada');
+  assert.ok(alerta && alerta.includes('NO es un plan de embarazo'), 'el aviso del registro no trae lo del embarazo');
+  // Con otra condición o un dolor a la vez, el aviso del embarazo sigue saliendo.
+  assert.ok(core.genLimitationNote(core.parseLimitations('embarazada y me duele la rodilla'), 'client').includes('médico u obstetra'));
+  assert.ok(core.genLimitationNote(core.parseLimitations('embarazada, tengo hipertension'), 'client').includes('médico u obstetra'));
+});
+
+test('🔒 v727 · candado 8 de la tarde · la alerta del corazón dispara SOLA, recomienda valoración y no quita nada', () => {
+  const pos = ['tengo palpitaciones', 'se me acelera el corazon sin hacer nada', 'mi corazon late muy rapido', 'me desmaye el año pasado',
+    'casi me desmayo', 'perdi el conocimiento una vez', 'dolor en el pecho al hacer ejercicio', 'presion en el pecho cuando corro',
+    'dolor fuerte en el pecho al subir escaleras', 'dolor de pecho que se me va al brazo izquierdo', 'me aprieta el pecho cuando camino rapido',
+    'me falta el aire al caminar', 'no puedo respirar bien', 'me ahogo al subir escaleras', 'me mareo cuando entreno', 'tengo mareos',
+    'vertigo al levantarme', 'vision borrosa al esforzarme', 'latidos irregulares'];
+  pos.forEach(t => assert.ok(core.parseLimitations(t).cardiac, `🔴 «${t}» no dispara la alerta del corazón`));
+  const ctrl = ['frecuencia cardiaca en reposo 60', 'mi frecuencia cardiaca maxima es 180', 'quiero sacar pecho', 'dolor de pecho por el press',
+    'me duele el pectoral', 'dolor en el pecho por las flexiones de ayer', 'me ahogo de la risa', 'mareo en el bus', 'me mareo en el carro',
+    'la marea sube', 'vertigo a las alturas', 'mi corazon esta fuerte y sano', 'me gusta el cardio', 'me falta tiempo', 'me falta motivacion',
+    'presion arterial normal', 'mucha presion en el trabajo', 'la camiseta me aprieta el pecho', 'quiero fortalecer el corazon'];
+  ctrl.forEach(t => assert.ok(!core.parseLimitations(t).cardiac, `falso positivo: «${t}» dispara la alerta del corazón`));
+  // Falso positivo ACEPTADO (Laura E4): el parser no entiende «no/sin». Que nadie lo «arregle» a ciegas.
+  assert.ok(core.parseLimitations('sin mareos ni palpitaciones').cardiac, 'la negación dispara a propósito (lado seguro)');
+  const sola = core.parseLimitations('a veces me desmayo');
+  assert.ok(sola.cardiac && !sola.detected && sola.keys.length === 0 && !sola.hasExclusions, '🔴 la alerta exige otra limitación para avisar');
+  assert.ok(core.parseLimitations('arritmia').keys.includes('presion') && !core.parseLimitations('arritmia').cardiac, 'un diagnóstico es presión, no síntoma');
+  const tq = core.parseLimitations('tengo taquicardia al subir escaleras');
+  assert.ok(tq.keys.includes('presion') && tq.cardiac, 'taquicardia es diagnóstico Y síntoma');
+  // No quita nada: el plan es el MISMO con o sin la nota (decisión del PO: «recomendar y listo»).
+  const plan = notes => core.generarRutinas({ id: 'cz', name: 'C', sex: 'F', age: 35, weight: 65, height: 162, goal: 'Salud general', level: 'Principiante', days: 3, place: 'gym', notes },
+    _LIB_REAL, { seed: 2, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+  const ej = p => p.routines.map(r => r.exercises.map(e => e.id).join(',')).join('|');
+  const conNota = plan('a veces me desmayo');
+  assert.strictEqual(ej(conNota), ej(plan('')), '🔴 la alerta del corazón cambió el plan');
+  assert.ok(conNota.routines.every(r => r.needsReview && /profesional de la salud/.test(r.note)), 'la nota de la rutina no recomienda la valoración');
+  const al = core.limitationCoachAlert('Ana', sola, 'a veces me desmayo');
+  assert.ok(al && /profesional de la salud/.test(al) && !/Esa zona NO tiene filtro/.test(al), '🔴 el aviso al coach no sale o habla de una zona que no existe');
+  const cli = core.genLimitationNote(sola, 'client');
+  assert.ok(/profesional de la salud/.test(cli) && !/desmay/.test(_nrm(cli)), 'a la persona: recomendar la valoración sin repetirle el síntoma');
+});
+
+test('🔒 v727 · candado 11 y 13 · TODAS las superficies ven las condiciones (generador, calentamiento, marca del coach, rápidos)', () => {
+  const lib = _LIB_REAL;
+  const gen = notes => core.generarRutinas({ id: 's', name: 'S', sex: 'F', age: 31, weight: 64, height: 160, goal: 'Perder grasa', level: 'Intermedio', days: 4, place: 'gym', notes },
+    lib, { seed: 3, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+  for (const [nota, zs] of [['postparto', ['core_central']], ['osteopenia', ['hueso']], ['hipertension', ['presion']], ['estoy embarazada', ['embarazo', 'core_central']]]) {
+    const out = gen(nota);
+    const fugas = out.routines.flatMap(r => r.exercises).filter(e => core.exerciseContraindicated(e, zs, lib));
+    assert.deepStrictEqual(fugas.map(e => e.name), [], `🔴 el generador le da a «${nota}» lo que su condición quita`);
+    assert.ok(out.routines.every(r => r.exercises.length >= 3), `«${nota}»: el filtro dejó un día casi vacío`);
+    assert.deepStrictEqual(out.limitations.keys.slice().sort(), zs.slice().sort());
+  }
+  const { buildWarmup } = _wuMotor();
+  const rutina = [{ id: 'e13', name: 'Sentadilla con Barra', muscle: 'piernas', type: 'Compuesto', track: 'peso_reps' }];
+  assert.ok(!_wuIds(buildWarmup(rutina, ['embarazo', 'core_central'], {})).includes('wc4'), '🔴 el calentamiento le sigue pidiendo el puente boca arriba a una embarazada');
+  const qw = _qwDe(core.quickWorkoutsFor(_QW_REAL, ['embarazo', 'core_central'], lib), 'qw_hiit_casa');
+  assert.ok(qw.oculto, '🔴 «HIIT sin equipo» (saltos) se le ofrece a una embarazada');
+  const abs = _qwDe(core.quickWorkoutsFor(_QW_REAL, ['embarazo', 'core_central'], lib), 'qw_abs_casa');
+  assert.ok(!abs.w.items.some(i => ['e18', 'e72', 'e81', 'e17'].includes(i.id)), '🔴 «Abdomen Express» le sirve boca arriba o planchas a una embarazada');
+  assert.strictEqual(core.quickFitZonas(['embarazo', 'core_central']), 'tu embarazo');
+  const src = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.ok(/limitationsFor\(_c,Date\.now\(\)\)\.keys/.test(src), 'el selector de sustitución dejó de pasar por limitationsFor');
 });
 
 // ══════════════════════════════════════════════════════

@@ -95,16 +95,20 @@ await ev(CERRAR);
 // ── (2) el caso real: «hernia umbilical» ────────────────────────────────────────────────────────
 m = await ev(MONTAR('claro', 'hernia umbilical', '')); await sleep(900);
 s = await ev(BIBLIOTECA);
-check('«hernia umbilical»: Abdomen Express queda en 4 y lo dice en su tarjeta; solo se esconde el pliométrico (todo saltos)',
-  s.absTag === '4 ejercicios' && s.absFit === 'Quitamos un ejercicio por lo que nos contaste de tu zona lumbar' && s.n === s.esperadas - 1
-  && !s.nombres.includes('Cardio Pliométrico') && /tu zona lumbar/.test(s.nota) && s.fuera === 0, JSON.stringify(s));
+// v727 · con la regla del abdomen (Laura Q6: hernia del abdomen = lumbar + abdomen y piso pélvico) también salen
+// los escaladores y la plancha frontal, y «HIIT sin equipo» (todo impacto) deja de ofrecerse.
+check('«hernia umbilical»: Abdomen Express queda en 2 (dead bug y plancha lateral) y lo dice; se esconden el HIIT sin equipo y el pliométrico',
+  s.absTag === '2 ejercicios' && s.absFit === 'Quitamos 3 ejercicios por lo que nos contaste de tu zona lumbar y tu abdomen o tu suelo pélvico'
+  && s.n === s.esperadas - 2 && !s.nombres.includes('Cardio Pliométrico') && !s.nombres.includes('HIIT sin equipo')
+  && /tu zona lumbar/.test(s.nota) && /tu abdomen o tu suelo pélvico/.test(s.nota) && s.fuera === 0, JSON.stringify(s));
 await foto('1-biblioteca-hernia-claro');
 // Arranca con un CLIC real en la tarjeta y mira qué rutina quedó en «Hoy».
 s = await ev(`(async()=>{const c=[...document.querySelectorAll('#quickwo-body .qw-card')].find(x=>/Abdomen Express/.test(x.textContent));
   if(!c)return {ok:false}; c.click(); await new Promise(r=>setTimeout(r,1300));
   const r=CUR.todayOverride; return {ok:!!r,id:r&&r.id,ids:r?r.exercises.map(e=>e.id):[],
     texto:(document.getElementById('cn-today')||{}).textContent.includes('Crunch Abdominal')};})()`);
-check('🔴 la sesión que arranca NO trae el crunch (e18) y sí el resto', s.ok && s.id === 'qw_abs_casa' && !s.ids.includes('e18') && s.ids.length === 4 && !s.texto, JSON.stringify(s));
+check('🔴 la sesión que arranca NO trae el crunch (e18), ni escaladores ni plancha frontal; sí el dead bug y la plancha lateral',
+  s.ok && s.id === 'qw_abs_casa' && !s.ids.includes('e18') && s.ids.join(',') === 'e72,e49' && !s.texto, JSON.stringify(s));
 await ev(CERRAR);
 
 // ── (3) rodilla: el pliométrico (todo saltos) no se ofrece ──────────────────────────────────────

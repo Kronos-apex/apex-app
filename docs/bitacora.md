@@ -4,6 +4,39 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🩺 2026-11-05 — v727: la app lee condiciones (abdomen y piso pélvico, salud ósea, presión arterial, embarazo) y avisa los síntomas del corazón
+
+**Origen:** dictámenes de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md` y `laura-embarazo.md`). Decisiones del PO
+ese día: *«No preguntes nada de posparto o diálisis [diástasis], eso en caso de que el usuario lo nombre. El tema del embarazo
+igual si el usuario lo nombra según estándares o reglamentos para esas etapas. El tema de palpitaciones sí recomendar de una vez
+valoración por profesionales de la salud y listo; el resto tus recomendaciones»*.
+
+- **Qué hace.** Cuatro claves nuevas que se leen de la nota (`GEN_LIMIT_KWS`, 60 frases de control de Laura): `core_central`
+  (postparto, cesárea, diástasis, piso pélvico, hernia del abdomen, cirugía abdominal), `hueso` (osteopenia, osteoporosis,
+  fractura por fragilidad), `presion` (hipertensión, corazón, fármacos; «presión» a secas NUNCA) y `embarazo` (siempre junto con
+  `core_central`; el trimestre NO se lee). Filtran por la MISMA puerta que las zonas (`GEN_ZONE_EXCL`, `GEN_EXCL_IDS.embarazo`,
+  `WARMUP_ZONE_EXCL_IDS`): caen 65 · 31 · 44 · 60 de 375 (la embarazada ve 251). Con presión, abdomen o embarazo el esquema
+  nunca baja de 8 repeticiones y el 5×5 del estancamiento no se ofrece. Textos nuevos (`GEN_COND_*`): a la persona sin nombrar
+  diagnósticos y con su criterio de PARAR; al coach, qué preguntar. El aviso del embarazo sale siempre (visto bueno del médico u
+  obstetra + señales del estándar). «Hernia umbilical» da lumbar + abdomen (Laura Q6) y el coach lee por qué aparece «zona
+  lumbar» SOLO si la espalda no viene por otro lado. Alerta del corazón (`GEN_CARDIAC_RE`): dispara SOLA, no quita nada, bloque
+  propio en la vista previa del coach, nota de la rutina y aviso del registro. `wac2` dice «Exhala al extender».
+- **Lo que NO hace (decidido):** no pregunta en el registro (Q7 descartada por el PO); no cambia las recetas del calentamiento
+  (6 de 12 quedan con una activación menos para una embarazada: la propuesta de Laura de cadenas nuevas y `wac6` espera decisión);
+  la vigencia (`limitReviewedAt` + chip a los 90/180 días) va en otra versión. Sin novedad en AVI_NEWS: es un aviso que se explica
+  donde aparece y no aplica a la mayoría.
+- **Cambia a propósito una conducta que ya existía:** la nota real «Hernia lumbar L5 · Hernia umbilical» pasa de `lumbar` a
+  `lumbar + core_central` (control del test de v676 actualizado con su razón) y su «Abdomen Express» queda en dead bug + plancha
+  lateral.
+- **QA:** suite 1530 → 1544 (14 pruebas: palabras con controles, cifras fijadas, controles terapéuticos, oráculo por DESCRIPCIÓN
+  independiente de la regex, renombrar no engaña, 8 repeticiones y 5×5, barrido de las 12 recetas con ascenso EXACTO `{wah1}` y su
+  control con las listas vaciadas, textos, embarazo, corazón, todas las superficies) · 13 sabotajes, los 13 en ROJO, restaurado
+  verde · harness nuevo `_verify-condiciones.mjs` 10/10 (vista previa del coach, nota de la persona registrada sola, rápidos;
+  capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-qw-limitaciones` 9/9 (actualizado a la regla del abdomen) ·
+  `_verify-qw-cardio` 13/13. **PENDIENTE re-verificación de Fable.**
+- **Para el PO (radar):** la nutrición no sabe qué es un embarazo (una embarazada con «Bajar de peso» recibe déficit: Andrés Hyp);
+  las señales de parada del embarazo las citó Laura de memoria de ACOG 804 / SOGC 2019: que un obstetra las lea.
+
 ## ⚡ 2026-11-05 — v726: los entrenamientos rápidos respetan las limitaciones
 
 **Origen:** dictamen de Laura del 5-nov (`docs/poblaciones-2026-11-05/laura.md`, «Qué NO miré», candado 13) y su hueco
