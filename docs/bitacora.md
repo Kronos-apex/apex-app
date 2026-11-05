@@ -34,6 +34,8 @@ valoración por profesionales de la salud y listo; el resto tus recomendaciones�
   verde · harness nuevo `_verify-condiciones.mjs` 10/10 (vista previa del coach, nota de la persona registrada sola, rápidos;
   capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-qw-limitaciones` 9/9 (actualizado a la regla del abdomen) ·
   `_verify-qw-cardio` 13/13. **PENDIENTE re-verificación de Fable.**
+- **Producción:** con el «dale publica las dos» del PO (5-nov): push 51be8ee + d454cb7, `publicar-hogar` corrido en la sesión,
+  `_prodcheck v727` OK (arranca limpio, 0 jsErrors), `avi-core.js` servido con el mismo md5 que el local, CI verde (d454cb7).
 - **Para el PO (radar):** la nutrición no sabe qué es un embarazo (una embarazada con «Bajar de peso» recibe déficit: Andrés Hyp);
   las señales de parada del embarazo las citó Laura de memoria de ACOG 804 / SOGC 2019: que un obstetra las lea.
 
@@ -58,6 +60,7 @@ n.º 6 del 8-ago, nunca cerrado. Medido en los datos reales el mismo día: un as
   restaurado verde · harness nuevo `_verify-qw-limitaciones.mjs` 9/9 (clic real: la sesión de Abdomen Express arranca sin
   e18; capturas claro, oscuro y «Muy grande» MIRADAS) · `_verify-qw-cardio` 13/13 y `_verify-qwcfg` OK. **PENDIENTE
   re-verificación de Fable.**
+- **Producción:** salió junto con v727 el 5-nov (ver su entrada): `_prodcheck v727` OK y CI verde.
 - **Lo que NO hace todavía:** las condiciones nuevas (abdomen y piso pélvico, salud ósea, presión arterial) entran en v727;
   este mismo filtro las tomará solas porque pasan por `GEN_ZONE_EXCL`.
 
