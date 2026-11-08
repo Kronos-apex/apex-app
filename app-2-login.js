@@ -2141,6 +2141,7 @@ function renderHome(){
   if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
   if(typeof renderPulse==='function')renderPulse();
   if(typeof renderAwaitCard==='function')renderAwaitCard();
+  if(typeof renderNewAccountsCard==='function')renderNewAccountsCard(); // v732 · cuentas nuevas de la semana
   if(typeof renderPageCard==='function')renderPageCard();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
@@ -2172,7 +2173,8 @@ let _coachNoticeOrder=null, _coachNoticePrev=null;
 function _coachRestoreOrder(){
   const more=document.getElementById('h-more'); if(!more)return;
   const padre=more.parentElement; if(!padre)return;
-  const ids=((typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[]).concat(['h-more']);
+  // v732 · `COACH_NOTICE_FIXED` (Cuentas nuevas) entra al GRUPO que se reordena, no al tope.
+  const ids=((typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[]).concat((typeof COACH_NOTICE_FIXED!=='undefined')?COACH_NOTICE_FIXED:[],['h-more']);
   if(!_coachNoticeOrder){
     _coachNoticeOrder=[...padre.children].map(e=>e.id).filter(id=>ids.indexOf(id)>=0);
     // El grupo también necesita saber DÓNDE empieza, o al restaurarlo quedaría contiguo y en

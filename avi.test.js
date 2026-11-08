@@ -26042,6 +26042,75 @@ test('🔒 v731 · CABLEADO: cada fila lleva su pestaña, el filtro corre SIEMPR
   assert.ok(/id="cli-tabs"[\s\S]{0,200}role="tablist"/.test(html), 'las pestañas sin role=tablist (lector de pantalla)');
 });
 
+// ── v732 · CUENTAS NUEVAS ───────────────────────────────────────────────────────────────────────
+test('🔴 v732 · newAccountsList: quien se registró SOLO en 7 días, sin las ya vistas, la más nueva arriba', () => {
+  const now = new Date('2026-11-08T15:00:00Z');
+  const C = [
+    { id: 'hoy', name: 'Laura', selfReg: true, createdAt: '2026-11-08T13:00:00Z', canal: { c: 'ig-bio', at: '2026-11-08T12:00:00Z' }, tier: 'libre' },
+    { id: 'tres', name: 'Mateo', selfReg: true, createdAt: '2026-11-05T10:00:00Z', tier: 'libre' },
+    { id: 'viejo', name: 'Sara', selfReg: true, createdAt: '2026-10-31T14:00:00Z', tier: 'libre' },
+    { id: 'coach', name: 'Andrea', createdAt: '2026-11-08T09:00:00Z' },
+    { id: 'visto', name: 'Karen', selfReg: true, createdAt: '2026-11-07T09:00:00Z', tier: 'libre' },
+    { id: 'sinfecha', name: 'Pablo', selfReg: true, tier: 'libre' },
+    { id: 'futuro', name: 'Reloj', selfReg: true, createdAt: '2026-11-09T15:00:00Z' },
+    { id: '_self', name: 'Coach', selfReg: true, createdAt: '2026-11-08T10:00:00Z' },
+  ];
+  const H = { hoy: [{ doneSets: 4 }, { doneSets: 0 }], tres: [] };
+  const l = core.newAccountsList(C, H, { visto: '2026-11-07T20:00:00Z' }, now);
+  assert.deepStrictEqual(l.map(x => x.id), ['hoy', 'tres'], '🔴 la lista de cuentas nuevas trae a quien no es');
+  assert.strictEqual(l[0].canal, 'ig-bio');
+  assert.strictEqual(l[0].sesiones, 1, 'un entreno abierto sin series no cuenta como entreno');
+  assert.strictEqual(l[1].canal, null, 'sin canal no se inventa uno');
+  // CONTROL: el límite de 7 días está en su sitio (6 días y 23 h entra; 7 días y 1 h no).
+  assert.strictEqual(core.newAccountsList([{ id: 'x', selfReg: true, createdAt: '2026-11-01T16:00:00Z' }], {}, {}, now).length, 1);
+  assert.strictEqual(core.newAccountsList([{ id: 'x', selfReg: true, createdAt: '2026-11-01T14:00:00Z' }], {}, {}, now).length, 0);
+  assert.deepStrictEqual(core.newAccountsList(null, null, null, now), []);
+  assert.deepStrictEqual(core.newAccountsList(C, H, {}, 'no-es-fecha'), []);
+});
+
+test('🔴 v732 · newAccountWhen y newAccountPush: el día de calendario y un aviso que no inventa', () => {
+  assert.strictEqual(core.newAccountWhen('2026-11-08T07:00:00', new Date('2026-11-08T20:00:00')), 'hoy');
+  assert.strictEqual(core.newAccountWhen('2026-11-07T23:30:00', new Date('2026-11-08T07:00:00')), 'ayer', '🔴 quien llegó anoche sale «hoy» (contó 24 h, no el día)');
+  assert.strictEqual(core.newAccountWhen('2026-11-05T12:00:00', new Date('2026-11-08T12:00:00')), 'hace 3 días');
+  assert.strictEqual(core.newAccountWhen('x', new Date()), '');
+  const p = core.newAccountPush({ name: 'Laura Pinto', canal: { c: 'ig-bio' }, goal: 'Bajar de peso', days: 3 });
+  assert.strictEqual(p.title, '🆕 Laura se registró en AVI', 'solo el primer nombre en la notificación');
+  assert.strictEqual(p.body, 'Llegó desde Instagram (enlace de la bio) · Bajar de peso · 3 días por semana');
+  assert.ok(!/Llegó desde/.test(core.newAccountPush({ name: 'Mateo', goal: 'Fuerza' }).body), '🔴 sin canal el aviso dice de dónde llegó');
+  assert.ok(core.newAccountPush({}).body.length > 0 && /Alguien/.test(core.newAccountPush({}).title), 'sin datos el aviso no sale vacío');
+});
+
+test('🔒 v732 · CABLEADO: el aviso sale DESPUÉS de crear la fila, una vez, y la tarjeta se pinta en Inicio', () => {
+  const fs = require('fs'), path = require('path');
+  const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = e3.indexOf('async function _provisionFreeClient('); const pv = e3.slice(i, e3.indexOf('\nfunction ', i + 10));
+  const crea = pv.indexOf('UD.createFromClient('), aviso = pv.indexOf('_selfRegNewAlert(rec)');
+  assert.ok(aviso > 0, '🔴 el registro no le avisa al coach que llegó una cuenta');
+  assert.ok(crea > 0 && crea < aviso, '🔴 el aviso sale antes de que exista la fila');
+  const f = e3.slice(e3.indexOf('function _selfRegNewAlert('), e3.indexOf('\n}', e3.indexOf('function _selfRegNewAlert(')));
+  assert.ok(/\|\|c\.newAlertAt\|\|/.test(f) && /c\.newAlertAt=new Date/.test(f), '🔴 sin candado, el aviso se repite');
+  assert.ok(/pushToClient\('_coach'/.test(f) && /newAccountPush\(/.test(f), 'el aviso va al coach con el texto de la función pura');
+  assert.ok(/renderNewAccountsCard\(\)/.test(e2.slice(e2.indexOf('function renderHome('))), '🔴 Inicio no pinta las cuentas nuevas');
+  assert.ok(/id="h-new"/.test(html), 'falta #h-new en Inicio');
+  const r = e3.slice(e3.indexOf('function renderNewAccountsCard('), e3.indexOf('\nfunction ', e3.indexOf('function renderNewAccountsCard(') + 10));
+  assert.ok(/esc\(x\.name\)/.test(r) && /esc\(det\)/.test(r) && /newAccountsList\(/.test(r), '🔴 la tarjeta pinta datos de la persona sin esc() o no delega en la pura');
+});
+
+test('🔒 v732 · «Cuentas nuevas» va en el GRUPO de avisos (su sitio) y FUERA del tope (no le quita cupo a nadie)', () => {
+  const fs = require('fs'), path = require('path');
+  assert.ok(core.COACH_NOTICE_FIXED.indexOf('h-new') >= 0, '🔴 fuera del grupo, el reordenador la deja detrás de «Tienes N avisos más»');
+  assert.ok(core.COACH_NOTICE_PRIORITY.indexOf('h-new') < 0, '🔴 dentro del tope le quitaría el cupo a «espera tu respuesta»');
+  // CONTROL: el tope de 2 sigue igual para los que sí cuentan.
+  assert.deepStrictEqual(core.coachNoticePlan(['h-today-banner', 'h-await', 'h-pulse']).ocultas, ['h-pulse']);
+  const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const f = e2.slice(e2.indexOf('function _coachRestoreOrder('), e2.indexOf('\nfunction ', e2.indexOf('function _coachRestoreOrder(') + 10));
+  assert.ok(/COACH_NOTICE_FIXED/.test(f), '🔴 el reordenador no conoce a los avisos fijos');
+  const c = e2.slice(e2.indexOf('function _applyCoachCap('), e2.indexOf('\nfunction ', e2.indexOf('function _applyCoachCap(') + 10));
+  assert.ok(!/COACH_NOTICE_FIXED/.test(c), '🔴 los avisos fijos entraron al tope');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

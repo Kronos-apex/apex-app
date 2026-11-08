@@ -4,6 +4,29 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
+
+**Origen:** pedido del PO: *«si hay nuevos asesorados la verdad es que hoy no me doy cuenta si llegan nuevos usuarios»*.
+- **Medido antes:** 4 cuentas que se registraron solas en 7 días (1 desde la bio de Instagram —la PRIMERA cuenta completa
+  que llega de redes, meta del 7-nov—, 2 de la web, 1 sin canal), todas libres y 3 sin entrenar. Las 18 cuentas
+  autorregistradas traen `createdAt` en el perfil y coincide con el de Auth (la tarjeta puede leerlo).
+- **Decisión del PO** (con la vista previa): aviso al celular + tarjeta «Cuentas nuevas» en Inicio hasta que abra a cada
+  persona (contra «solo Inicio» y «solo celular»).
+- **Hecho:** `newAccountsList` / `newAccountWhen` / `newAccountPush` (avi-core, PURAS): quien se registró SOLO en los
+  últimos 7 días, sin las ya vistas, la más nueva arriba; «hoy / ayer / hace N días» por día de calendario; el aviso
+  con el primer nombre y el canal solo si lo hay. `_selfRegNewAlert` en `_provisionFreeClient`, después de crear la fila
+  y una vez (`newAlertAt`), por el mismo `pushToClient('_coach')` de los avisos de limitación y de menor. Tarjeta `#h-new`
+  bajo «quién entrenó hoy»: tocar abre la ficha y la marca vista; «Ya las vi»; lo visto es LOCAL (`avi_newseen`, R1.6).
+- **Cazado por el harness, no por la captura:** la primera versión quedaba DETRÁS de «Tienes N avisos más»:
+  `_coachRestoreOrder` reagrupa los avisos de `COACH_NOTICE_PRIORITY` y todo lo demás queda debajo. La captura se veía
+  bien solo porque las otras tarjetas estaban vacías. Arreglo: `COACH_NOTICE_FIXED` = en el GRUPO (su sitio del marcado),
+  fuera del TOPE (no le quita el cupo a «espera tu respuesta»). Gotcha nuevo.
+- **QA:** suite 1567 → 1571 · sabotaje 1 (sin avisos fijos) → suite ROJA y harness ROJO 2 fallos · sabotaje 2 (sin el
+  candado del aviso) → suite ROJA · restaurado verde · `_verify-cuentas-nuevas.mjs` (nuevo, sin login) 12/12, con un caso
+  de tope LLENO, + capturas claro y oscuro MIRADAS. El push real no se prueba en harness (`cloudWriteSealed`).
+- **AVI_NEWS:** no lleva entrada (la ve solo el coach).
+- **PENDIENTE re-verificación de Fable** (R4.1).
+
 ## 👥 2026-11-08 — v731: la lista de asesorados por plan
 
 **Origen:** pedido del PO: *«necesito tener una lista personalizada de mis asesorados, quienes entrenan conmigo»*.

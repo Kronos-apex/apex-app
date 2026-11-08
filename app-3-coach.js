@@ -736,6 +736,21 @@ function _profileFromMeta(authUser){
 
 // Provisiona la fila de un asesorado libre nuevo: arma el cliente, genera su semana y
 // crea su fila en user_data. Se usa en el 1er ingreso (registro o primer login tras confirmar).
+// ── AVISO AL COACH: llegó una cuenta NUEVA (v732) ───────────────────────────────────────────
+// Pedido del PO (8-nov): *«hoy no me doy cuenta si llegan nuevos usuarios»* — medido: 4 en 7 días
+// sin que nada se lo dijera. Mismo canal que los avisos de limitación y de menor (push al coach),
+// después de crear la fila. UNA vez por cuenta (`newAlertAt`). El texto lo arma `newAccountPush`
+// (avi-core, PURA); tocarlo abre la app, y la tarjeta «Cuentas nuevas» de Inicio la muestra.
+function _selfRegNewAlert(c){
+  try{
+    if(!c||!c.selfReg||c.newAlertAt||typeof pushToClient!=='function'||typeof newAccountPush!=='function')return false;
+    c.newAlertAt=new Date().toISOString();
+    const p=newAccountPush(c);
+    pushToClient('_coach',p.title,p.body,{type:'newclient',tag:'avi-new-'+c.id});
+    return true;
+  }catch(e){ warn('AVI: aviso de cuenta nueva falló (no bloquea):',e&&e.message); return false; }
+}
+
 async function _provisionFreeClient(authUser, p){
   const complete = !!(p && p._complete); // ¿el usuario YA eligió objetivo/nivel? (registro por correo)
   const rec={
@@ -768,6 +783,7 @@ async function _provisionFreeClient(authUser, p){
   // y sin fila esa escritura no tiene dónde caer.
   _selfRegLimAlert(rec,_genRes);
   _selfRegMinorAlert(rec);
+  _selfRegNewAlert(rec);
   // R22 · la cuenta quedó lista: 8 contra 10 dice cuántos se pierden en el correo. ANTES de soltar el canal:
   // `_wzFunnel` lo lee de ahí, y después ya no está (lo cazó Julián).
   _wzFunnel(10);
@@ -4499,6 +4515,50 @@ function renderAwaitCard(){
       <span style="font-size:11px;color:var(--t2);flex-shrink:0">${esc(chatWaitText(x.horas))}${x.n>1?` · ${x.n} mensajes`:''}</span>
     </div>`).join('')}
     ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Mensajes</div>`:''}
+  </div>`;
+}
+// ══════════ v732 · CUENTAS NUEVAS — quién llegó esta semana ══════════
+// Decisión del PO (8-nov): tarjeta en Inicio con quien se registró solo en los últimos 7 días
+// (`newAccountsList`, avi-core), hasta que la abra. Va FUERA del tope de avisos (v581) a propósito,
+// como «quién entrenó hoy» (v592): lo pidió para no perderse a nadie, y un aviso apartado en
+// «Tienes N avisos más» es justo lo que no vería. Lo «ya visto» es LOCAL de este aparato
+// (`avi_newseen`, silencio local permitido por R1.6) y se poda a los 30 días.
+const NEW_SEEN_KEY='avi_newseen';
+function _newSeen(){ try{ return JSON.parse(localStorage.getItem(NEW_SEEN_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function _newSeenSave(m){
+  const lim=Date.now()-30*864e5, out={};
+  Object.keys(m||{}).forEach(k=>{ const t=Date.parse(m[k]); if(!isNaN(t)&&t>=lim)out[k]=m[k]; });
+  try{ localStorage.setItem(NEW_SEEN_KEY,JSON.stringify(out)); }catch(e){}
+}
+function newAccountOpen(id){
+  const m=_newSeen(); m[id]=new Date().toISOString(); _newSeenSave(m);
+  if(typeof openDetail==='function')openDetail(id);
+  renderNewAccountsCard();
+}
+function newAccountsSeenAll(){
+  const m=_newSeen(), ahora=new Date().toISOString();
+  ((typeof newAccountsList==='function')?newAccountsList(DB.clients,DB.history,m,new Date()):[]).forEach(x=>{ m[x.id]=ahora; });
+  _newSeenSave(m); renderNewAccountsCard();
+}
+function renderNewAccountsCard(){
+  const el=document.getElementById('h-new'); if(!el)return;
+  const now=new Date();
+  const lista=(typeof newAccountsList==='function')?newAccountsList(DB.clients,DB.history,_newSeen(),now):[];
+  if(!lista.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  const n=lista.length, top=lista.slice(0,5);
+  const entrenos=k=>k?(k+' entreno'+(k!==1?'s':'')):'sin entrenar todavía';
+  el.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+      <div style="font-size:12px;font-weight:700;color:var(--gt);min-width:0">${typeof aviIcon==='function'?aviIcon('users',13):'🆕'} ${n} ${n>1?'cuentas nuevas':'cuenta nueva'} esta semana</div>
+      <button class="btn bg bsm" style="min-height:36px;flex-shrink:0" onclick="newAccountsSeenAll()">Ya las vi</button>
+    </div>
+    ${top.map(x=>{ const canal=(typeof canalLabel==='function')?canalLabel(x.canal):''; const det=[newAccountWhen(x.at,now),canal,entrenos(x.sesiones)].filter(Boolean).join(' · ');
+      return `<div role="button" tabindex="0" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--br);cursor:pointer;min-height:40px" onclick="newAccountOpen('${esc(x.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();newAccountOpen('${esc(x.id)}')}" aria-label="Ver la ficha de ${esc(x.name)}">
+      <div style="min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(det)}</div></div>
+      <span aria-hidden="true" style="flex-shrink:0;color:var(--t3);font-size:20px;line-height:1">›</span>
+    </div>`; }).join('')}
+    ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Asesorados → Libres</div>`:''}
   </div>`;
 }
 function _coachQrList(){ let v=null; try{ v=JSON.parse(localStorage.getItem('ax_cqr')||'null'); }catch(e){} return (typeof coachQuickReplies==='function')?coachQuickReplies(v):[]; }

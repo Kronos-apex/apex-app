@@ -6745,6 +6745,44 @@ function clientListVisible(rowTab, activeTab, term, haystack) {
   return t === 'todos' || rowTab === t;
 }
 
+// ── CUENTAS NUEVAS: el coach se entera de quién llega (v732) ─────────────────────────────────
+// Pedido del PO (8-nov): *«la verdad es que hoy no me doy cuenta si llegan nuevos usuarios»*.
+// Medido ese día: 4 cuentas en 7 días (1 desde la bio de Instagram, 2 de la web, 1 sin canal),
+// todas libres y 3 sin entrenar, y nada se lo avisó. Decisión del PO: aviso al celular apenas
+// termina el registro + tarjeta «Cuentas nuevas» en Inicio hasta que abra a cada persona.
+// Solo quien se registró SOLA (a quien crea el coach ya lo conoce) y solo 7 días: después ya no
+// es nueva. `seen` = {id: fecha} de las que ya abrió. PURA.
+const NEW_ACCOUNT_DIAS = 7;
+function newAccountsList(clients, history, seen, now) {
+  const t = (now instanceof Date) ? now.getTime() : Number(now);
+  if (!isFinite(t)) return [];
+  const vistos = (seen && typeof seen === 'object') ? seen : {};
+  const out = [];
+  (clients || []).forEach(c => {
+    if (!c || isSelfClient(c) || !c.selfReg || vistos[c.id]) return;
+    const at = Date.parse(c.createdAt);
+    if (!c.createdAt || isNaN(at) || at > t + 60e3 || t - at > NEW_ACCOUNT_DIAS * 864e5) return;
+    const ses = ((history && history[c.id]) || []).filter(s => s && (s.doneSets || 0) > 0).length;
+    out.push({ id: c.id, name: c.name || '', at: new Date(at).toISOString(), canal: (c.canal && c.canal.c) || null, sesiones: ses, plan: clientPlan(c) });
+  });
+  return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || String(a.name).localeCompare(String(b.name)));
+}
+// «hoy» · «ayer» · «hace 3 días», por día de CALENDARIO (no por 24 h: quien llegó anoche es «ayer»).
+function newAccountWhen(atIso, now) {
+  const a = new Date(atIso), n = (now instanceof Date) ? now : new Date(now);
+  if (isNaN(a.getTime()) || isNaN(n.getTime())) return '';
+  const dia = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const k = Math.round((dia(n) - dia(a)) / 864e5);
+  return k <= 0 ? 'hoy' : k === 1 ? 'ayer' : 'hace ' + k + ' días';
+}
+// El aviso al celular del coach cuando termina el registro. Sin canal no se inventa uno.
+function newAccountPush(c) {
+  const nombre = String((c && c.name) || 'Alguien').trim().split(/\s+/)[0] || 'Alguien';
+  const canal = canalLabel(c && c.canal && c.canal.c);
+  const partes = [canal ? 'Llegó desde ' + canal : '', c && c.goal ? String(c.goal) : '', c && c.days ? c.days + ' días por semana' : ''].filter(Boolean);
+  return { title: '🆕 ' + nombre + ' se registró en AVI', body: partes.join(' · ') || 'Tiene su rutina lista. Mira su ficha.' };
+}
+
 // ── La SALIDA de un candado y de una banda de cuenta, según el plan (v696, R18) ──────────────
 // La web vende AVI PRO (la app entera, sin coach) y la app solo conocía «Premium = un coach»: el
 // candado decía «Disponible con un coach (Premium)» y su único botón pedía un coach. Quien quería PRO
@@ -10772,6 +10810,11 @@ const COACH_NOTICE_PRIORITY = [
   'h-pulse',
 ];
 const COACH_MAX_NOTICES = 2;
+// v732 · Van DENTRO del grupo de avisos (el orden del marcado, que `_coachRestoreOrder` mantiene)
+// pero NUNCA cuentan para el tope: «Cuentas nuevas» lo pidió el PO para no perderse a nadie, y sin
+// estar en el grupo el reordenador la dejaba detrás de «Tienes N avisos más» (medido en
+// `_verify-cuentas-nuevas`: quedaba de última, después de la fila de apartados).
+const COACH_NOTICE_FIXED = ['h-new'];
 function coachNoticePlan(presentes, opts) {
   opts = opts || {};
   const max = (opts.max === undefined) ? COACH_MAX_NOTICES : opts.max;
@@ -13851,6 +13894,11 @@ if (typeof module !== 'undefined' && module.exports) {
     clientListTabValid,
     clientListCounts,
     clientListVisible,
+    NEW_ACCOUNT_DIAS,
+    newAccountsList,
+    newAccountWhen,
+    newAccountPush,
+    COACH_NOTICE_FIXED,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,
