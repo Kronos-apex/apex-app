@@ -6,6 +6,8 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+> ✅ **v730, v731 y v732 EN PRODUCCIÓN (8-nov, 5:19 p. m.):** publicadas con la orden del PO («publica»); `_prodcheck.mjs v732` PROD OK (arranque limpio, rótulo «versión 732» en coach y asesorado, 0 errores JS) y CI verde en `deac1f5`. Web: barra «Instala AVI» publicada (`npx vercel --prod`), `verificar-instalar.mjs https://avientrena.com` TODO OK.
+
 **Origen:** pedido del PO: *«si hay nuevos asesorados la verdad es que hoy no me doy cuenta si llegan nuevos usuarios»*.
 - **Medido antes:** 4 cuentas que se registraron solas en 7 días (1 desde la bio de Instagram —la PRIMERA cuenta completa
   que llega de redes, meta del 7-nov—, 2 de la web, 1 sin canal), todas libres y 3 sin entrenar. Las 18 cuentas
