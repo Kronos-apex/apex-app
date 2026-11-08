@@ -6718,6 +6718,33 @@ function clientPlan(client) {
 }
 const PLAN_LABEL = { libre: 'Libre', app: 'Premium app', coach: 'Premium + Coach' };
 
+// ── La lista del coach por PLAN (v731) ───────────────────────────────────────────────────────
+// Pedido del PO (8-nov): *«necesito tener una lista personalizada de mis asesorados, quienes
+// entrenan conmigo»*. Medido ese día: 29 cuentas, 14 con coach, 7 AVI PRO y 8 libres, todas en una
+// sola lista; y 4 cuentas nuevas en 7 días (todas libres) que nadie vio. Decisión del PO: pestañas
+// por plan, «Entrenan conmigo» por defecto, armadas solas con el plan (si alguien pasa a coach,
+// cambia de pestaña sin que él haga nada). Sale de `clientPlan`, no de los pagos: un vencido sigue
+// entrenando con él. El coach («Yo») va en «Entrenan conmigo» pero no suma: la cifra es de negocio.
+const CLIENT_LIST_TABS = ['coach', 'pro', 'libre', 'todos'];
+function clientListTab(c) {
+  const p = clientPlan(c);
+  return p === 'app' ? 'pro' : p === 'libre' ? 'libre' : 'coach';
+}
+function clientListTabValid(t) { return CLIENT_LIST_TABS.indexOf(t) >= 0 ? t : 'coach'; }
+function clientListCounts(clients) {
+  const n = { coach: 0, pro: 0, libre: 0, todos: 0 };
+  (clients || []).forEach(c => { if (!c || isSelfClient(c)) return; n[clientListTab(c)]++; n.todos++; });
+  return n;
+}
+// ¿Se ve esta fila? Con algo escrito en el buscador se busca en TODAS las pestañas (si no, quien
+// busca a una persona libre desde «Entrenan conmigo» no la encuentra y cree que no existe).
+function clientListVisible(rowTab, activeTab, term, haystack) {
+  const q = String(term || '').toLowerCase().trim();
+  if (q) return String(haystack || '').toLowerCase().indexOf(q) >= 0;
+  const t = clientListTabValid(activeTab);
+  return t === 'todos' || rowTab === t;
+}
+
 // ── La SALIDA de un candado y de una banda de cuenta, según el plan (v696, R18) ──────────────
 // La web vende AVI PRO (la app entera, sin coach) y la app solo conocía «Premium = un coach»: el
 // candado decía «Disponible con un coach (Premium)» y su único botón pedía un coach. Quien quería PRO
@@ -13819,6 +13846,11 @@ if (typeof module !== 'undefined' && module.exports) {
     healRoutineLevel,
     restoreWorkOrder,
     sessionKeyRemap,
+    CLIENT_LIST_TABS,
+    clientListTab,
+    clientListTabValid,
+    clientListCounts,
+    clientListVisible,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,

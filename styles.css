@@ -2666,6 +2666,9 @@ button.gx-badge{font-family:inherit;cursor:pointer;width:100%;color:inherit}
 .dt-tab:active{transform:scale(.97)}
 .dt-tab .dt-dot{position:absolute;top:5px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--or)}
 .dt-tab[aria-selected="true"] .dt-dot{background:white}
+/* v731 · la cifra de cada pestaña de la lista de asesorados (Entrenan conmigo · PRO · Libres · Todos) */
+.dt-tab .cli-tab-n{margin-left:3px;font-weight:700;opacity:.72;font-variant-numeric:tabular-nums}
+#cli-tabs{margin-bottom:4px}
 #p-detail .dt-sec{display:none}
 #p-detail[data-dtab="resumen"] .dt-sec[data-dt="resumen"],#p-detail[data-dtab="entreno"] .dt-sec[data-dt="entreno"],#p-detail[data-dtab="comida"] .dt-sec[data-dt="comida"],#p-detail[data-dtab="cuerpo"] .dt-sec[data-dt="cuerpo"],#p-detail[data-dtab="pagos"] .dt-sec[data-dt="pagos"]{display:block}
 .dt-k{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}

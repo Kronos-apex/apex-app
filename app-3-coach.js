@@ -1,17 +1,65 @@
 // F5 (v310): iconos de marca en el panel del coach — solo presentacion (innerHTML).
 const _coIco=(n,sz,fb)=>typeof aviIcon==='function'?aviIcon(n,sz):fb;
 // ══════════════════════ CLIENTS ══════════════════════
-function filterClients(q){
-  const term=(q||'').toLowerCase().trim();
-  const list=document.getElementById('cli-list');
-  if(!list)return;
+// v731 · El buscador y las pestañas por plan son UN solo filtro (`clientListVisible`, avi-core): con
+// algo escrito se busca en TODAS las pestañas; sin nada, se ve la pestaña elegida.
+function filterClients(q){ _cliApplyFilter(q); }
+
+// ── Pestañas por plan (v731) — «Entrenan conmigo» · PRO · Libres · Todos ──────────────────────
+// Decisión del PO (8-nov): abre siempre en «Entrenan conmigo» y se arma sola con el plan. La pestaña
+// elegida vive solo mientras la app está abierta (al volver a entrar, otra vez «Entrenan conmigo»).
+let _cliN=null, _cliDots=null;
+function _cliActiveTab(){ return CUR.cliTab=(typeof clientListTabValid==='function')?clientListTabValid(CUR.cliTab):'coach'; }
+function cliTab(t){
+  CUR.cliTab=(typeof clientListTabValid==='function')?clientListTabValid(t):'coach';
+  _cliPaintTabs(); _cliApplyFilter();
+}
+function cliTabKey(e){
+  const k=e&&e.key, tabs=(typeof CLIENT_LIST_TABS!=='undefined')?CLIENT_LIST_TABS:['coach','pro','libre','todos'];
+  const i=tabs.indexOf(_cliActiveTab());
+  const j=k==='ArrowRight'?Math.min(tabs.length-1,i+1):k==='ArrowLeft'?Math.max(0,i-1):k==='Home'?0:k==='End'?tabs.length-1:-1;
+  if(j<0)return;
+  e.preventDefault(); cliTab(tabs[j]);
+  const b=document.querySelector('#cli-tabs .dt-tab[data-t="'+tabs[j]+'"]'); if(b)b.focus();
+}
+// Cifras en cada pestaña y un punto en la que esconde a alguien que pide atención (pide coach, le
+// escribió o reportó dolor): mirar «Entrenan conmigo» no puede tapar un lead que está en «Libres».
+function _cliPaintTabs(n,dots){
+  if(n)_cliN=n; if(dots)_cliDots=dots;
+  const bar=document.getElementById('cli-tabs'); if(!bar)return;
+  const t=_cliActiveTab();
+  bar.querySelectorAll('.dt-tab').forEach(b=>{
+    const k=b.getAttribute('data-t'), on=k===t;
+    b.setAttribute('aria-selected',on?'true':'false'); b.tabIndex=on?0:-1;
+    const s=b.querySelector('.cli-tab-n'); if(s&&_cliN)s.textContent=String(_cliN[k]||0);
+    let dot=b.querySelector('.dt-dot'); const want=!!(_cliDots&&_cliDots[k]&&!on);
+    if(want&&!dot){ dot=document.createElement('span'); dot.className='dt-dot'; dot.setAttribute('aria-hidden','true'); b.appendChild(dot); }
+    else if(!want&&dot) dot.remove();
+  });
+}
+const CLI_TAB_EMPTY={coach:'Todavía nadie tiene plan con coach.',pro:'Todavía nadie está en AVI PRO.',libre:'Nadie en el plan libre por ahora.',todos:'Todavía no hay asesorados.'};
+function _cliApplyFilter(q){
+  const list=document.getElementById('cli-list'); if(!list)return;
+  const searchEl=document.getElementById('cli-search');
+  const term=String(q!=null?q:(searchEl?searchEl.value:'')).trim();
+  const tab=_cliActiveTab();
+  let vis=0;
   list.querySelectorAll('.cli').forEach(el=>{
     const name=(el.querySelector('.cn')||{}).textContent||'';
     const meta=(el.querySelector('.cm')||{}).textContent||'';
-    el.style.display=(!term||name.toLowerCase().includes(term)||meta.toLowerCase().includes(term))?'':'none';
+    const on=(typeof clientListVisible==='function')?clientListVisible(el.getAttribute('data-tab'),tab,term,name+' '+meta):true;
+    el.style.display=on?'':'none'; if(on)vis++;
   });
-  const visible=list.querySelectorAll('.cli[style*="display: "]:not([style*="none"]),.cli:not([style])').length;
-  document.getElementById('cli-lbl').textContent=term?`${list.querySelectorAll('.cli:not([style*="none"])').length} resultado${list.querySelectorAll('.cli:not([style*="none"])').length!==1?'s':''} de ${DB.clients.length}`:`${DB.clients.length} asesorado${DB.clients.length!==1?'s':''} registrado${DB.clients.length!==1?'s':''}`;
+  let emp=document.getElementById('cli-tab-empty');
+  const hay=list.querySelectorAll('.cli').length>0;
+  if(hay&&!vis){
+    if(!emp){ emp=document.createElement('div'); emp.id='cli-tab-empty'; emp.className='empty'; list.appendChild(emp); }
+    emp.innerHTML=`<div class="etxt">${term?'Nadie coincide con «'+esc(term)+'».':esc(CLI_TAB_EMPTY[tab]||'')}</div>`;
+    emp.style.display='';
+  } else if(emp) emp.remove();
+  const n=(DB.clients||[]).filter(clientIsBillable).length;
+  const lbl=document.getElementById('cli-lbl');
+  if(lbl)lbl.textContent=term?`${vis} resultado${vis!==1?'s':''} de ${n}`:`${n} asesorado${n!==1?'s':''} registrado${n!==1?'s':''}`;
 }
 
 function miniSparkline(clientId){
@@ -39,6 +87,7 @@ function renderClients(){
   // esa cifra es de negocio y no puede subir porque él también entrene.
   const _nReales=DB.clients.filter(clientIsBillable).length;
   document.getElementById('cli-lbl').textContent=`${_nReales} asesorado${_nReales!==1?'s':''} registrado${_nReales!==1?'s':''}`;
+  const _tabsBar=document.getElementById('cli-tabs'); if(_tabsBar)_tabsBar.style.display=DB.clients.length?'':'none';
   if(!DB.clients.length){list.innerHTML=`<div style="padding:20px 0"><div style="text-align:center;padding:8px 0 20px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--gt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">${_coIco('users',26,'👥')}</div><div style="font-size:17px;font-weight:800;color:var(--t1);margin-bottom:6px">Aún no hay asesorados</div><div style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Crea tu primer cliente para comenzar<br>a gestionar rutinas y progreso.</div><button class="btn bp" onclick="openAddClient()" style="padding:12px 28px;font-size:14px">+ Nuevo asesorado</button></div>${[0,1,2].map(()=>`<div class="cli" style="pointer-events:none;opacity:.3"><div style="width:42px;height:42px;border-radius:50%;background:var(--br2);flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="height:13px;width:55%;background:var(--br2);border-radius:6px;margin-bottom:7px"></div><div style="height:11px;width:80%;background:var(--br);border-radius:6px"></div></div><div style="width:54px;height:22px;background:var(--br2);border-radius:20px;flex-shrink:0"></div></div>`).join('')}</div>`;return}
   list.innerHTML='';
   // Orden inteligente (mejora 7 + v360): quién necesita atención primero. sortClientsByAttention
@@ -57,7 +106,10 @@ function renderClients(){
     if(_ldone[c.id]) o.leadsDone=_ldone;
     if(Object.keys(o).length) _optsById[c.id]=o;
   });
+  const _dots={};
   sortClientsByAttention(DB.clients,DB.history,undefined,_optsById).forEach(({c,r})=>{
+    const _tab=(typeof clientListTab==='function')?clientListTab(c):'coach';
+    if(r&&(r.reason==='lead'||r.reason==='unread'||r.reason==='pain'))_dots[_tab]=true;
     const ms=_coachMsgs(c.id);const last=ms[ms.length-1];
     // Rutina del día o mañana
     const _days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -98,7 +150,7 @@ function renderClients(){
     const _ATN={pain:['--rdl','--rdt'],overdue:['--rdl','--rdt'],grace:['--orl','--ort'],unread:['--bll','--blt'],lead:['--orl','--ort'],expiring:['--orl','--ort'],idle:['--br','--t2'],nostart:['--br','--t2']};
     const _ac=_ATN[r.reason];
     const atn=(r.label&&_ac)?`<span class="cli-pill" style="background:var(${_ac[0]});color:var(${_ac[1]})">${r.label}</span>`:'';
-    const d=document.createElement('div');d.className='cli';
+    const d=document.createElement('div');d.className='cli';d.setAttribute('data-tab',_tab);
     d.innerHTML=`<div class="cav ring" style="${avcStyle(c.name)};--cring:${st.ring}">${esc(ini(c.name))}</div>
       <div style="flex:1;min-width:0">
         <div class="cn cn-full">${esc(c.name)}</div>
@@ -116,9 +168,10 @@ function renderClients(){
     d.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openDetail(c.id); } };
     d.onclick=()=>openDetail(c.id);list.appendChild(d);
   });
-  // Re-aplicar el filtro activo sobre la lista recién reconstruida (filterClients opera sobre el
-  // DOM ya creado y actualiza la etiqueta a "N resultados de M"). Si no hay término, no-op.
-  if(_term&&typeof filterClients==='function')filterClients(_term);
+  // v731: cifras y puntos de las pestañas, y el filtro (pestaña + buscador) SIEMPRE — antes solo
+  // corría con algo escrito, y ahora la pestaña también filtra.
+  _cliPaintTabs((typeof clientListCounts==='function')?clientListCounts(DB.clients):null,_dots);
+  _cliApplyFilter(_term);
 }
 
 function openAddClient(){CUR.editClientId=null;_mcToggleAccountFields(true);_cfPassReset('Mín. 8 · sin su nombre');document.getElementById('mc-title').textContent='Nuevo asesorado';document.getElementById('save-cli-btn').textContent='Guardar';['cf-name','cf-last','cf-email','cf-pass','cf-weight','cf-height','cf-age','cf-phone','cf-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('cf-goal').value='Perder grasa';document.getElementById('cf-level').value='Principiante';document.getElementById('cf-days').value='3';document.getElementById('cf-place').value='gym';document.getElementById('cf-sex').value='';document.getElementById('cf-activity').value='1.55';cfLoadConsent(null);om('m-client')}

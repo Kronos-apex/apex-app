@@ -26001,6 +26001,47 @@ test('🔒 v730 · CABLEADO: la anotación de dueño en TODAS las listas y la re
   assert.ok(/sessionKeyRemap\(/.test(m), 'la reubicación no delega en sessionKeyRemap');
 });
 
+// ── v731 · LA LISTA DEL COACH POR PLAN ──────────────────────────────────────────────────────────
+test('🔴 v731 · clientListTab: la pestaña sale del PLAN (no de los pagos) y el coach no suma', () => {
+  assert.strictEqual(core.clientListTab({ id: 'a' }), 'coach', 'creado por el coach sin tier = entrena con él');
+  assert.strictEqual(core.clientListTab({ id: 'a', tier: 'premium' }), 'coach');
+  assert.strictEqual(core.clientListTab({ id: 'a', tier: 'app' }), 'pro');
+  assert.strictEqual(core.clientListTab({ id: 'a', tier: 'libre' }), 'libre');
+  // Un vencido sigue entrenando con él: el pago no lo saca de su pestaña.
+  assert.strictEqual(core.clientListTab({ id: 'a', tier: 'premium', payments: [{ date: '2026-01-01', dueDate: '2026-02-01' }] }), 'coach',
+    '🔴 un asesorado con la mensualidad vencida desaparece de «Entrenan conmigo»');
+  const n = core.clientListCounts([{ id: '_self' }, { id: 'a' }, { id: 'b', tier: 'premium' }, { id: 'c', tier: 'app' }, { id: 'd', tier: 'libre' }, { id: 'e', tier: 'libre' }, null]);
+  assert.deepStrictEqual(n, { coach: 2, pro: 1, libre: 2, todos: 5 }, '🔴 el coach («Yo») cuenta como asesorado');
+  assert.strictEqual(core.clientListTabValid('xx'), 'coach', 'una pestaña desconocida abre «Entrenan conmigo»');
+  assert.strictEqual(core.clientListTabValid('todos'), 'todos');
+});
+
+test('🔴 v731 · clientListVisible: sin búsqueda manda la pestaña; con búsqueda se busca en TODAS', () => {
+  const V = core.clientListVisible;
+  assert.strictEqual(V('coach', 'coach', '', 'Ana'), true);
+  assert.strictEqual(V('libre', 'coach', '', 'Ana'), false, '🔴 «Entrenan conmigo» muestra a los libres');
+  assert.strictEqual(V('libre', 'todos', '', 'Ana'), true);
+  assert.strictEqual(V('libre', 'coach', 'ana', 'Ana Ruiz · Bajar de peso'), true, '🔴 desde «Entrenan conmigo» no encuentro a una persona libre');
+  assert.strictEqual(V('coach', 'coach', 'pedro', 'Ana Ruiz'), false, 'la búsqueda sigue filtrando por nombre');
+  assert.strictEqual(V('pro', undefined, '  ', 'Ana'), false, 'espacios no son búsqueda; sin pestaña válida manda «Entrenan conmigo»');
+});
+
+test('🔒 v731 · CABLEADO: cada fila lleva su pestaña, el filtro corre SIEMPRE y el buscador usa la misma regla', () => {
+  const fs = require('fs'), path = require('path');
+  const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = e3.indexOf('function renderClients('); const r = e3.slice(i, e3.indexOf('\nfunction ', i + 10));
+  assert.ok(/d\.setAttribute\('data-tab',_tab\)/.test(r), '🔴 las filas no saben en qué pestaña van');
+  assert.ok(/_cliApplyFilter\(_term\);/.test(r), '🔴 el filtro de pestaña no corre al pintar la lista');
+  assert.ok(!/if\(_term&&typeof filterClients/.test(r), '🔴 el filtro volvió a correr solo con algo escrito (la pestaña no filtraría)');
+  const f = e3.slice(e3.indexOf('function _cliApplyFilter('), e3.indexOf('\n}', e3.indexOf('function _cliApplyFilter(')));
+  assert.ok(/clientListVisible\(/.test(f), 'el filtro no delega en clientListVisible');
+  assert.ok(/esc\(term\)/.test(f), '🔴 el texto buscado se pinta sin esc()');
+  assert.ok(/function filterClients\(q\)\{ _cliApplyFilter\(q\); \}/.test(e3), 'el buscador tiene que usar el MISMO filtro');
+  for (const t of ['coach', 'pro', 'libre', 'todos']) assert.ok(html.includes(`data-t="${t}"`) && html.includes(`onclick="cliTab('${t}')"`), `falta la pestaña ${t}`);
+  assert.ok(/id="cli-tabs"[\s\S]{0,200}role="tablist"/.test(html), 'las pestañas sin role=tablist (lector de pantalla)');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

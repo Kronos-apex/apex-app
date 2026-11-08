@@ -4,6 +4,23 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 👥 2026-11-08 — v731: la lista de asesorados por plan
+
+**Origen:** pedido del PO: *«necesito tener una lista personalizada de mis asesorados, quienes entrenan conmigo»*.
+- **Medido antes (Supabase, solo lectura):** 29 cuentas en UNA sola lista: 14 con coach, 7 AVI PRO y 8 libres; y 4
+  cuentas nuevas en 7 días (todas libres, 3 sin entrenar) que nadie vio. Esa segunda mitad va en v732.
+- **Decisión del PO** (con las dos opciones dibujadas): pestañas por plan, «Entrenan conmigo» por defecto, armadas
+  solas con el plan (contra «una lista que marco yo a mano»).
+- **Hecho:** `clientListTab` / `clientListCounts` / `clientListVisible` (avi-core, PURAS) sobre `clientPlan` —no sobre
+  los pagos: un vencido sigue entrenando con él—. Pestañas «Entrenan conmigo · PRO · Libres · Todos» con su cifra (el
+  coach «Yo» se ve en la suya pero no suma), reusando `dt-seg`/`dt-tab` de la ficha (teclado ← → Inicio Fin). Con algo
+  escrito el buscador recorre TODAS las pestañas («1 resultado de 6»). Punto en la pestaña que esconde a alguien que
+  pide coach, le escribió o reportó dolor. Estado vacío por pestaña. La pestaña dura mientras la app está abierta.
+- **QA:** suite 1564 → 1567 · sabotaje (la búsqueda solo en la pestaña abierta) → suite ROJA → restaurado verde ·
+  `_verify-lista-planes.mjs` (nuevo, sin login) 14/14 + capturas claro y oscuro a 390 px MIRADAS (las 4 pestañas en una
+  fila; con letra xl caben y miden ≥ 36 px).
+- **PENDIENTE re-verificación de Fable** (R4.1).
+
 ## ⚖️ 2026-11-08 — v730: los pesos siguen a su ejercicio cuando el plan cambia
 
 **Origen:** reporte del PO: *«al mover el orden de los ejercicios en las rutinas los pesos no se mueven con el
