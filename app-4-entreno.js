@@ -1418,6 +1418,9 @@ function renderClientToday(client, overrideRoutine){
   // por cerrarla o porque el sistema mató la pestaña), se recupera ANTES de pintar.
   if(baseR&&typeof restoreTodayWorkIfAny==='function')restoreTodayWorkIfAny(baseR);
   if(baseR&&CUR.todayWorking&&CUR.todayWorking.id===baseR.id)baseR=CUR.todayWorking;
+  // v730: si el plan cambió por debajo (el coach reordenó o cambió ejercicios), los kilos de la vez
+  // pasada se van con SU ejercicio antes de pintar. Sobre la rutina BASE, antes del ánimo.
+  if(baseR)remapSessionKeysToOwners(baseR,client.id);
   if(!baseR){
     _todayOrder(false);
     // 🔴 DÍA 1 SIN ENTRENO HOY (v531). El plan va de lunes a viernes, así que quien se registra
@@ -2621,7 +2624,7 @@ function _sweepOrphanSessionKeys(routine){
 // en memoria (CUR.todayWorking); el plan guardado no se toca hasta confirmar al finalizar.
 // Ver feedback_avi_practicidad_usuario.
 const _SK_SET=['log','done','drop'];   // por-serie: clave `${kind}_${rid}_${ei}_${si}…`
-const _SK_EX=['lastre','wshow','barra','salto']; // por-ejercicio: clave exacta `${kind}_${rid}_${ei}` (v681: barra · v689: salto)
+const _SK_EX=['lastre','wshow','barra','salto','exid']; // por-ejercicio: clave exacta `${kind}_${rid}_${ei}` (v681: barra · v689: salto · v730: exid)
 function _swapSessionKeys(rid,a,b){
   const grab=idx=>{ const out=[];
     _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`;
@@ -2639,6 +2642,65 @@ function _swapSessionKeys(rid,a,b){
 function _clearSessionKeys(rid,idx){
   _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`; Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)localStorage.removeItem(k); }); });
   _SK_EX.forEach(kind=>localStorage.removeItem(`${kind}_${rid}_${idx}`));
+}
+// ── LOS PESOS SIGUEN A SU EJERCICIO CUANDO EL PLAN CAMBIA POR DEBAJO (v730) ─────────────────────
+// 🔴 REPORTE DEL PO (8-nov): *«al mover el orden de los ejercicios en las rutinas los pesos no se
+// mueven con el ejercicio… si cambio press de banca por elevaciones laterales los pesos de press se
+// quedan en elevaciones laterales».* Reproducido (`_repro-orden-plan.mjs`): 100 kg anotados en el
+// press de banca aparecían en el press militar en cuanto llegaba el plan reordenado, y un ejercicio
+// que entraba en el puesto de otro QUITADO heredaba sus kilos.
+// LA CAUSA: las claves van por POSICIÓN y se heredan como sugerencia; el reorden del EDITOR (`moveEx`)
+// cambia solo el plan —y casi siempre en OTRO teléfono, el del coach—, así que nadie puede mover las
+// claves en el momento. Se arregla en el teléfono que entrena: `exid_<rid>_<ei>` anota de qué
+// ejercicio son las claves de cada puesto (viaja con ellas: está en `_SK_EX` y en `MV_MUST_RE`) y,
+// antes de pintar «Hoy», `sessionKeyRemap` (avi-core, PURA) dice a dónde se va cada puesto.
+// El formato de las claves de sesión NO cambia (doctrina). Sin anotación todavía —sesiones de antes
+// de esta versión— el dueño sale de la última sesión guardada de ESA rutina: sus ejercicios están en
+// el mismo orden en que se escribieron las claves.
+// 🔒 Corre sobre la rutina BASE (plan o copia de trabajo de hoy), nunca sobre la adaptada al ánimo:
+// `applyMood` quita el último ejercicio cuando la persona está cansada, y con esa lista sus kilos se
+// borrarían por un cambio que es solo de hoy.
+const _exOwnerId=e=>e?(e.id||(e.name?'n:'+e.name:null)):null;
+function _grabSessionKeysAt(rid,idx){
+  const out=[];
+  _SK_SET.forEach(kind=>{ const p=`${kind}_${rid}_${idx}_`;
+    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(p)===0)out.push([kind,k.slice(p.length),localStorage.getItem(k),false]); }); });
+  _SK_EX.forEach(kind=>{ const v=localStorage.getItem(`${kind}_${rid}_${idx}`); if(v!=null)out.push([kind,'',v,true]); });
+  return out;
+}
+function remapSessionKeysToOwners(routine,clientId){
+  if(!routine||!routine.id||typeof sessionKeyRemap!=='function')return;
+  try{
+    const rid=routine.id;
+    const current=(routine.exercises||[]).filter(Boolean).map(_exOwnerId);
+    const tp='exid_'+rid+'_';
+    const keys=Object.keys(localStorage);
+    const owners=[]; let tags=false, maxIdx=-1;
+    keys.forEach(k=>{ if(k.indexOf(tp)===0){ const i=parseInt(k.slice(tp.length),10); if(i>=0){ owners[i]=localStorage.getItem(k); tags=true; } } });
+    // Hasta qué puesto hay claves (las que no tienen dueño también cuentan: si un dueño llega a ese
+    // puesto, las suyas no pueden quedar mezcladas con las viejas).
+    _SK_SET.concat(_SK_EX).forEach(kind=>{ if(kind==='exid')return; const p=kind+'_'+rid+'_';
+      keys.forEach(k=>{ if(k.indexOf(p)===0){ const i=parseInt(k.slice(p.length),10); if(i>maxIdx)maxIdx=i; } }); });
+    // Sin anotación, el dueño sale de la última sesión guardada… salvo que HOY haya una copia de
+    // trabajo (la persona reordenó en «Hoy»): `todayMoveEx` ya movió las claves con ella y la última
+    // sesión guardada puede ser de antes de ese reorden. Ahí las claves ya cuadran con la copia.
+    if(!tags&&!(CUR.todayWorking&&CUR.todayWorking.id===rid)){
+      const h=((DB.history&&DB.history[clientId])||[]).find(x=>x&&x.routineId===rid&&Array.isArray(x.exercises));
+      if(h) h.exercises.forEach((e,i)=>{ owners[i]=_exOwnerId(e); });
+    }
+    if(maxIdx>=0){
+      const len=Math.max(owners.length,maxIdx+1);
+      const map=sessionKeyRemap(Array.from({length:len},(_,i)=>owners[i]==null?null:owners[i]),current);
+      if(map){
+        const moved=Object.keys(map).map(oi=>[+oi,map[oi],_grabSessionKeysAt(rid,+oi)]);
+        moved.forEach(([oi])=>_clearSessionKeys(rid,oi));
+        moved.forEach(([,ni,es])=>{ if(ni>=0) es.forEach(([kind,suf,val,isEx])=>localStorage.setItem(isEx?`${kind}_${rid}_${ni}`:`${kind}_${rid}_${ni}_${suf}`,val)); });
+      }
+    }
+    // Desde aquí cada puesto queda anotado con el ejercicio que lo ocupa hoy.
+    current.forEach((id,i)=>{ if(id)localStorage.setItem(tp+i,id); else localStorage.removeItem(tp+i); });
+    Object.keys(localStorage).forEach(k=>{ if(k.indexOf(tp)===0&&!(parseInt(k.slice(tp.length),10)<current.length))localStorage.removeItem(k); });
+  }catch(e){ warn('AVI: reubicar los pesos al cambiar el plan falló (no bloquea):',e&&e.message); }
 }
 // ── EL REORDEN TIENE QUE SOBREVIVIR A UNA RECARGA (v538) ─────────────────────────────────────
 // 🔴 REPORTE DEL PO (24-ago): *«si no pude empezar con press inclinado y lo roté por press plano,

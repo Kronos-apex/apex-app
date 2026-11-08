@@ -2743,6 +2743,45 @@ function restoreWorkOrder(guardado, baseExercises, catalogo, hoyStr) {
   return out;
 }
 
+// ── LOS PESOS SIGUEN A SU EJERCICIO CUANDO CAMBIA EL PLAN (v730) ─────────────────────────────
+// 🔴 REPORTE DEL PO (8-nov): *«al mover el orden de los ejercicios en las rutinas los pesos no se
+// mueven con el ejercicio… si cambio press de banca por elevaciones laterales los pesos de press se
+// quedan en elevaciones laterales».* Las claves de sesión van por POSICIÓN (`log_<rid>_<ei>_…`) y se
+// heredan al día siguiente como sugerencia; el reorden del EDITOR cambia solo el plan (y casi
+// siempre desde el teléfono del coach), así que cada peso queda en el ejercicio que ocupa su puesto.
+// `todayMoveEx` sí mueve las claves, pero el plan cambia por debajo en el teléfono que entrena.
+// Esta función dice, para cada puesto VIEJO, a qué puesto NUEVO se van sus claves. PURA.
+//   owners[oi]  = id del ejercicio dueño de las claves del puesto oi (null = no se sabe)
+//   current[ni] = id del ejercicio que hoy está en el puesto ni
+// Devuelve { oi: ni } (ni = -1 → se borran) o null si no hay nada que mover.
+// Reglas: (1) un dueño conocido se va a donde está su ejercicio; si está repetido, en orden de
+// aparición; (2) si su ejercicio ya no está en el plan, sus kilos se BORRAN —nunca se le quedan al
+// que entró en su puesto—; (3) un puesto sin dueño conocido se queda donde está, salvo que un dueño
+// conocido llegue a ese puesto (ahí manda el dato con dueño) o que el puesto ya no exista.
+function sessionKeyRemap(owners, current) {
+  const own = Array.isArray(owners) ? owners : [];
+  const cur = Array.isArray(current) ? current : [];
+  const libres = new Map();
+  cur.forEach((id, ni) => {
+    if (id == null || id === '') return;
+    if (!libres.has(id)) libres.set(id, []);
+    libres.get(id).push(ni);
+  });
+  const map = {}, ocupados = new Set();
+  for (let oi = 0; oi < own.length; oi++) {
+    const id = own[oi];
+    if (id == null || id === '') continue;
+    const cola = libres.get(id);
+    if (cola && cola.length) { const ni = cola.shift(); map[oi] = ni; ocupados.add(ni); }
+    else map[oi] = -1;
+  }
+  for (let oi = 0; oi < own.length; oi++) {
+    if (own[oi] != null && own[oi] !== '') continue;
+    map[oi] = (oi < cur.length && !ocupados.has(oi)) ? oi : -1;
+  }
+  return Object.keys(map).every(k => map[k] === +k) ? null : map;
+}
+
 // ── AUTO-CURA DEL NIVEL EN PLANES YA ESCRITOS (v536) ─────────────────────────────────────────
 // 🔴 EL DEFECTO: **el gate de nivel se corrige HACIA ADELANTE y nunca hacia atrás.** El motor de
 // hoy no comete el fallo (0 violaciones en 5.760 planes del barrido), pero **nada recalcula los
@@ -13127,7 +13166,7 @@ function shareSiteLabel(site) {
 const MV_ITEM_MAX = 4000;
 const MV_TOTAL_MAX = 100000;
 // v681: `barra_` (la barra elegida del día, por ejercicio) viaja como `lastre_`: es del entreno a medias.
-const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|barra_|salto_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
+const MV_MUST_RE = /^(avi_auth$|done_|log_|lastre_|barra_|salto_|exid_|drop_|wshow_|wu_|wuopen_|session_date_|session_id_|work_|mood_|moodalert_)/;
 const MV_SKIP_RE = /^(ax_udcache_|ax_coachcache_|ax_bccache$|ax_cwq_|ax_coachpending_|ax_udirty_|ax_udbase_)/;
 // La MISMA regla del lado que envía y del que recibe (una sola definición).
 function mudanzaKeyAllowed(k) {
@@ -13779,6 +13818,7 @@ if (typeof module !== 'undefined' && module.exports) {
     exLevelRank,
     healRoutineLevel,
     restoreWorkOrder,
+    sessionKeyRemap,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,

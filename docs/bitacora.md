@@ -4,6 +4,30 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## ⚖️ 2026-11-08 — v730: los pesos siguen a su ejercicio cuando el plan cambia
+
+**Origen:** reporte del PO: *«al mover el orden de los ejercicios en las rutinas los pesos no se mueven con el
+ejercicio, entonces si subo o cambio press de banca por elevaciones laterales los pesos de press se quedan en
+elevaciones laterales».*
+- **Reproducido** (`scripts/e2e/_repro-orden-plan.mjs`, cuenta QA, rutina real `rqa1`): 100 kg anotados en el press de
+  banca aparecían en el press militar en cuanto llegaba el plan con los dos intercambiados; y de la misma clase, un
+  ejercicio que el coach ponía en el puesto de otro QUITADO heredaba sus kilos (50 kg de la polea en el press inclinado).
+- **Causa raíz:** las claves de sesión van por POSICIÓN (`log_<rid>_<ei>_<si>_kg`) y se heredan al día siguiente como
+  sugerencia. El reorden de «Hoy» (`todayMoveEx`) mueve las claves; el del EDITOR (`moveEx`, app-3) solo cambia el plan,
+  y casi siempre desde OTRO teléfono (el del coach), así que nadie podía mover las claves en el momento.
+- **El arreglo, en el teléfono que entrena:** clave nueva `exid_<rid>_<ei>` = de qué ejercicio son las claves de ese
+  puesto (en `_SK_EX` y `MV_MUST_RE`, la regla de gotchas para toda clave nueva). Antes de pintar «Hoy»,
+  `remapSessionKeysToOwners` lee los dueños y `sessionKeyRemap` (avi-core, PURA) dice a dónde se va cada puesto: el
+  dueño conocido va a donde está su ejercicio (repetidos en orden de aparición), el que ya no está en el plan se BORRA
+  y un puesto sin dueño se queda salvo que llegue un dueño. Sin anotación (sesiones de antes de v730) el dueño sale de la
+  última sesión guardada de ESA rutina, salvo que hoy haya copia de trabajo (ahí `todayMoveEx` ya movió las claves). Corre
+  sobre la rutina BASE, antes de `applyMood` (el ánimo «cansado» quita el último ejercicio solo por hoy). El formato de
+  las claves NO cambia.
+- **QA:** suite 1562 → 1564 · sabotaje 1 (el quitado conserva sus kilos) → suite ROJA · sabotaje 2 (sin la llamada en
+  «Hoy») → harness ROJO 4 fallos · restaurado verde · `_repro-orden-plan` rojo antes del arreglo (3 fallos) y verde
+  después · cinturón de `renderClientToday`: `_guiado-suite` TODO OK y `_shot-trained` TODO OK.
+- **PENDIENTE re-verificación de Fable** (R4.1).
+
 ## 🤰 2026-11-05 — v729: cuando el embarazo termina (Laura) y la comida con embarazo (Andrés Hyp)
 
 **Origen:** radar de v728 + pedidos del PO: *«pásale el texto del embarazo a Laura»*, *«pásale lo de la nutrición a

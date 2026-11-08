@@ -25961,6 +25961,46 @@ test('🔒 v730 · la tarjeta del peso se calla con embarazo, postparto o pérdi
     '🔴 la pantalla de comida le sigue explicando «déficit» a una embarazada');
 });
 
+// ── v730 · LOS PESOS SIGUEN A SU EJERCICIO CUANDO EL PLAN CAMBIA POR DEBAJO ───────────────────
+// Reporte del PO (8-nov): reordenó press de banca y elevaciones laterales en el editor y los kilos
+// del press se quedaron en las laterales. Reproducido con `scripts/e2e/_repro-orden-plan.mjs`.
+test('🔴 v730 · sessionKeyRemap: cada puesto se va con SU ejercicio; el quitado no le deja nada al que entra', () => {
+  const R = core.sessionKeyRemap;
+  // CONTROL: el mismo orden no mueve nada (si devolviera un mapa, cada pintada reescribiría las claves).
+  assert.strictEqual(R(['press', 'lat', 'curl'], ['press', 'lat', 'curl']), null);
+  // El caso del PO: el coach intercambia los dos primeros.
+  assert.deepStrictEqual(R(['press', 'lat', 'curl'], ['lat', 'press', 'curl']), { 0: 1, 1: 0, 2: 2 },
+    '🔴 los kilos del press se quedan en el puesto donde ahora están las laterales');
+  // El coach quita uno y pone otro en su puesto: el nuevo NO hereda.
+  assert.deepStrictEqual(R(['press', 'lat', 'curl'], ['press', 'lat', 'remo']), { 0: 0, 1: 1, 2: -1 },
+    '🔴 el ejercicio nuevo hereda los kilos del que el coach quitó');
+  // Repetido en la rutina: en orden de aparición.
+  assert.deepStrictEqual(R(['a', 'b', 'a'], ['a', 'a', 'b']), { 0: 0, 1: 2, 2: 1 });
+  // Sin dueño conocido: se queda… salvo que un dueño conocido llegue a ese puesto, o que ya no exista.
+  assert.deepStrictEqual(R([null, 'b'], ['b', 'c']), { 0: -1, 1: 0 }, '🔴 se mezclan las claves sin dueño con las del dueño que llega');
+  assert.strictEqual(R([null, 'b'], ['x', 'b']), null, 'un puesto sin dueño que nadie reclama se queda como está');
+  assert.deepStrictEqual(R(['a', 'b', null], ['a', 'b']), { 0: 0, 1: 1, 2: -1 }, 'un puesto que ya no existe se borra');
+  assert.strictEqual(R([], ['a']), null);
+  assert.strictEqual(R(null, null), null);
+});
+
+test('🔒 v730 · CABLEADO: la anotación de dueño en TODAS las listas y la reubicación ANTES del ánimo', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  assert.ok(/const _SK_EX=\[[^\]]*'exid'[^\]]*\]/.test(e4), '🔴 `exid` no está en _SK_EX: el reorden de «Hoy» deja la anotación en el puesto viejo');
+  assert.ok(_MV_RE && _MV_RE.test('barra_r1_0'), 'no pude leer MV_MUST_RE (control: barra_ sí viaja)');
+  assert.ok(_MV_RE.test('exid_r1_0'), '🔴 `exid_` no viaja en la mudanza: en el teléfono nuevo los kilos no tendrían dueño');
+  // Sobre la rutina BASE y antes de `applyMood`: el ánimo «cansado» quita el último ejercicio solo por hoy.
+  const i = e4.indexOf('function renderClientToday('); const r = e4.slice(i, e4.indexOf('\nfunction ', i + 10));
+  const llamada = r.indexOf('remapSessionKeysToOwners(baseR,'), animo = r.indexOf('applyMood(baseR');
+  assert.ok(llamada > 0, '🔴 «Hoy» no reubica los kilos cuando el plan cambió');
+  assert.ok(animo > 0, 'control: renderClientToday sigue adaptando al ánimo sobre baseR');
+  assert.ok(llamada < animo, '🔴 la reubicación corre con la rutina adaptada al ánimo: un día «cansado» borraría los kilos del último ejercicio');
+  // La reubicación delega en la función pura (la regla se prueba arriba de verdad, no por texto).
+  const j = e4.indexOf('function remapSessionKeysToOwners('); const m = e4.slice(j, e4.indexOf('\nfunction ', j + 10));
+  assert.ok(/sessionKeyRemap\(/.test(m), 'la reubicación no delega en sessionKeyRemap');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
