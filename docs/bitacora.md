@@ -6,6 +6,10 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-09 (tarde) — v737 · e340 CON FOTO
+
+**Origen:** el PO, 9-nov: «sube solo las imágenes que son urgentes, las otras la vamos subiendo de a poco para no quedarnos sin tokens». Urgente = ejercicio SIN foto que está en rutinas reales: solo e340 (aducción de cadera en polea de pie), rehecha en la tanda del 9-nov con la pierna estirada (en v736 quedó fuera por la rodilla doblada). Entra la foto del FINAL: se ven el cable y la pierna cruzando por delante; la de inicio, sin cable a la vista, se podía leer como abducción. Las 26 parejas nuevas de los lotes 1-7 NO entran: son ejercicios que todavía no tienen ficha en la app.
+
 ## 2026-11-09 — v736 · 10 FOTOS QUE FALTABAN EN RUTINAS REALES
 
 **Origen:** pregunta del PO («¿solo faltan 4 fotos para que la mayoría de ejercicios queden con mínimo una foto?») → no: 375 en el catálogo, 295 con foto, 80 sin foto y **35 de esas en rutinas de gente real**; las 4 del bot eran de ejercicios NUEVOS (lotes 1-7, ~89 con fotos aprobadas que todavía no están en la app). Su orden: «hazlo y apenas estén listas las fotos meterlas a la app».

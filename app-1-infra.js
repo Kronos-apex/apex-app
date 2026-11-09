@@ -1895,6 +1895,9 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // Fuera: e238 (se lee como prensa completa, el error de v498), e291 (el banco salió inclinado), e340 (rodilla doblada),
 // e271 (no se distingue el agarre supino, como e297) y e234 (se lee como press de hombro).
 ['e320','e274','e285','e290','e237','e255','e263','e270','e283','e317'].forEach(id=>EX_IMG_IDS.add(id));
+// v737 · e340 vuelve (9-nov, el PO: «sube solo las imágenes que son urgentes»): rehecha con la pierna estirada; entra la
+// foto del FINAL, que muestra el cable y la pierna cruzando por delante (la de inicio, sin cable a la vista, se leía como abducción).
+['e340'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
