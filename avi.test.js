@@ -26111,6 +26111,53 @@ test('🔒 v732 · «Cuentas nuevas» va en el GRUPO de avisos (su sitio) y FUER
   assert.ok(!/COACH_NOTICE_FIXED/.test(c), '🔴 los avisos fijos entraron al tope');
 });
 
+// ── v733 · A UN LIBRE NO SE LE COBRA ────────────────────────────────────────────────────────────
+test('🔴 v733 · clientIsChargeable: un Libre con pagos viejos NO es cobrable; PRO vencido y coach sí', () => {
+  const ahora = new Date('2026-11-08T20:00:00Z').getTime();
+  const viejo = [{ date: '2026-07-01', dueDate: '2026-07-31', amount: 30000 }];
+  const libre = { id: 'u1', name: 'Pseudo', tier: 'libre', payments: viejo };
+  // CONTROL: los pagos SOLOS siguen diciendo «Vencido» — por eso hacía falta mirar el nivel.
+  assert.strictEqual(core.MS.getStatus(libre, ahora), 'overdue');
+  assert.strictEqual(core.clientIsChargeable(libre), false, '🔴 a un Libre se le seguía cobrando por pagos de julio');
+  assert.strictEqual(core.clientIsBillable(libre), true, 'registrados e ingresos YA cobrados sí lo cuentan');
+  assert.strictEqual(core.clientIsChargeable({ id: 'u2', tier: 'app', payments: viejo }), true, 'un PRO vencido sí es cobrable');
+  assert.strictEqual(core.clientIsChargeable({ id: 'u3', payments: viejo }), true, 'el creado por el coach sin tier sí es cobrable');
+  assert.strictEqual(core.clientIsChargeable({ id: 'u4', tier: 'app', courtesy: true }), false, 'cortesía sigue fuera');
+  assert.strictEqual(core.clientIsChargeable({ id: core.SELF_CLIENT_ID, tier: 'premium' }), false, 'el coach no se cobra');
+  assert.strictEqual(core.clientIsChargeable(null), false);
+  assert.strictEqual(core.MS.badge('free').label, 'Libre');
+});
+
+test('🔴 v733 · renovaciones y aviso de renovar: un Libre no entra aunque sus pagos digan gracia o «por vencer»', () => {
+  const ahora = new Date('2026-11-08T20:00:00Z').getTime();
+  const gracia = [{ date: '2026-10-05', dueDate: '2026-11-05', amount: 30000 }];
+  const porVencer = [{ date: '2026-10-10', dueDate: '2026-11-10', amount: 30000 }];
+  // CONTROL: el mismo pago en un PRO sí cuenta.
+  assert.deepStrictEqual(core.coachPendingRenewals([{ id: 'a', tier: 'app', payments: gracia }], ahora), { count: 1, amount: 30000 });
+  assert.deepStrictEqual(core.coachPendingRenewals([{ id: 'b', tier: 'libre', payments: gracia }], ahora), { count: 0, amount: 0 }, '🔴 contaba plata de un Libre');
+  assert.ok(core.renewalNotice({ id: 'a', tier: 'app', payments: porVencer }, ahora), 'CONTROL: al PRO sí le avisa');
+  assert.strictEqual(core.renewalNotice({ id: 'b', tier: 'libre', payments: porVencer }, ahora), null, '🔴 a un Libre le pedía renovar');
+});
+
+test('🔒 v733 · las superficies de COBRO preguntan clientIsChargeable (o el nivel), no solo los pagos', () => {
+  const fs = require('fs'), path = require('path');
+  const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const e6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
+  const cuerpo = (src, firma) => { const i = src.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const home = cuerpo(e2, 'function renderHome(');
+  assert.ok(/const expiring=DB\.clients\.filter\(clientIsChargeable\)/.test(home), '🔴 el banner de vencimientos le cobra a Libres');
+  assert.ok(/if\(!clientIsChargeable\(c\)\)return false; const s=MS\.getStatus\(c\); return s==='active'/.test(home), '🔴 «Activos» cuenta Libres');
+  assert.ok(/const _hStatus=c=>\(clientPlan\(c\)==='libre'\)\?'free':MS\.getStatus\(c\)/.test(home) && /order\[_hStatus\(a\)\]/.test(home), '🔴 los prioritarios suben a un Libre «Vencido»');
+  assert.ok(/clientIsChargeable\(client\)\|\|MS\.getStatus\(client\)!=='overdue'/.test(cuerpo(e4, 'function renderLapsedBand(')), '🔴 a un Libre le dice «tu plan venció»');
+  assert.ok(/!clientIsChargeable\(client\) \|\| MS\.getStatus\(client\)!=='grace'/.test(cuerpo(e4, 'function renderGraceBand(')), '🔴 a un Libre le pinta la gracia');
+  assert.ok(/!clientIsChargeable\(client\)\|\|st!=='expiring'/.test(cuerpo(e2, 'function renderPaymentCard(')), '🔴 tarjeta de pago a un Libre');
+  const mem = cuerpo(e6, 'function renderDetailMembership(');
+  assert.ok(/const st=_libre\?'free':MS\.getStatus\(c\)/.test(mem) && /if\(last&&!_libre\)/.test(mem), '🔴 la pestaña Pagos le pinta «Vencido» a un Libre');
+  // CONTROL: los INGRESOS ya cobrados siguen contando a todos los cobrables (un Libre que pagó en julio, pagó).
+  assert.ok(/DB\.clients\.filter\(clientIsBillable\)\.forEach\(c=>\{\s*\(c\.payments/.test(home), 'los ingresos no deben perder a quien ya pagó');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

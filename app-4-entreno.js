@@ -1727,7 +1727,9 @@ function renderLapsedBand(client){
   const el=document.getElementById('cn-grace'); if(!el)return false;
   // `renderGraceBand` puede llamarnos con client=null (su propia guarda es la misma línea):
   // sin este corte, `MS.getStatus(null)` revienta al leer `.suspended` y se lleva la pantalla.
-  if(!client||typeof MS==='undefined'||MS.getStatus(client)!=='overdue')return false;
+  // v733 · y solo a quien de verdad se le cobra: a un Libre con pagos viejos le decía «tu plan venció
+  //    hace 128 días» cada vez que entraba, aunque el coach ya lo hubiera pasado a Libre.
+  if(!client||typeof MS==='undefined'||!clientIsChargeable(client)||MS.getStatus(client)!=='overdue')return false;
   const d=MS.daysOverdue(client);
   el.innerHTML='<div class="gband">'
     +'<div class="gband-t">Estás en AVI FREE</div>'
@@ -1742,7 +1744,7 @@ function renderLapsedBand(client){
 function renderGraceBand(client){
   const el=document.getElementById('cn-grace'); if(!el)return;
   el.innerHTML='';
-  if(!client || typeof MS==='undefined' || MS.getStatus(client)!=='grace'){
+  if(!client || typeof MS==='undefined' || !clientIsChargeable(client) || MS.getStatus(client)!=='grace'){
     if(typeof renderLapsedBand==='function' && renderLapsedBand(client))return;   // guard caché vieja
     renderRenewBand(client); return;
   }

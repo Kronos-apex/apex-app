@@ -3066,14 +3066,17 @@ function renderDetailMembership(id){
     con.innerHTML='<div class="card"><div class="cb" style="font-size:13px;color:var(--t2);line-height:1.5">Esta es tu propia ficha: no te cobras a ti mismo, así que aquí no hay membresía ni pagos.</div></div>';
     return;
   }
-  const st=MS.getStatus(c);
+  // v733 · A un Libre no se le cobra: con pagos viejos esta tarjeta le pintaba «Vencido», «128 días vencidos»
+  //    y el botón de cobrar por WhatsApp. Su historial de pagos se queda (es plata que sí entró).
+  const _libre=clientPlan(c)==='libre';
+  const st=_libre?'free':MS.getStatus(c);
   const badge=MS.badge(st);
   const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   const last=pays[0]||null;
 
   // Fecha de vencimiento legible
   let dueStr='—', dateStr='—', daysLeftStr='';
-  if(last){
+  if(last&&!_libre){
     dateStr=new Date(last.date).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
     const due=new Date(last.dueDate);
     dueStr=due.toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
@@ -3126,7 +3129,9 @@ function renderDetailMembership(id){
       <div class="ch">
         <div>
           <div class="ctitle">${_gmIco('card',16,'💳')} Membresía</div>
-          ${c.courtesy
+          ${_libre
+            ? `<div style="font-size:12px;color:var(--t2);margin-top:3px">Está en AVI FREE: no tiene un plan que cobrarle ni le llegan recordatorios. Si vuelve a pagar, registra el pago y súbelo de plan.</div>`
+            : c.courtesy
             ? `<div style="font-size:12px;color:var(--t2);margin-top:3px">No se le cobra. La app no le pide pagos ni le manda recordatorios de renovación.</div>`
             : `<div style="font-size:12px;color:var(--t2);margin-top:3px">Último pago: ${dateStr} · Vence: ${dueStr}</div>
           ${daysLeftStr?`<div style="margin-top:4px">${daysLeftStr}</div>`:''}`}

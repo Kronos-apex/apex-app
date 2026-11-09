@@ -6,6 +6,14 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-08 (noche) — v733 · A UN LIBRE NO SE LE COBRA
+
+**Origen:** reporte del PO: *«esos premium app vencidos deja de mostrármelos, la verdad son usuarios de hace meses que no volvieron y sigue apareciendo una pantalla grande para cobrarles»*.
+- **Medido antes:** 8 cuentas PRO; 6 sin pagar (1 vencida, 1 inactiva, 4 sin un solo pago, último entreno entre junio y octubre) y 2 en cortesía. Por orden del PO las 6 pasaron a Libre en la nube (`profile.tier` app→libre + `updatedAt`; el coach fusiona en 3 vías con la nube y no lo revierte).
+- **Causa raíz:** `MS.getStatus` deriva el estado SOLO de los pagos. Ninguna superficie de cobro leía el nivel, así que un Libre con pagos de julio seguía «Vencido» para siempre: cambiarlo de nivel no lo sacaba del cobro.
+- **Hecho:** `clientIsChargeable` (avi-core, PURA) = `clientIsBillable` y no Libre. La usan el banner de vencimientos, «Activos» y su reporte, `coachPendingRenewals`, `renewalNotice`, los prioritarios del Inicio (`_hStatus`: el Libre va al fondo con la etiqueta «Libre», `MS.badge('free')`), las bandas de gracia y de plan vencido del asesorado, `renderPaymentCard` y la pestaña Pagos (texto «Está en AVI FREE…», sin días vencidos ni WhatsApp de cobro; el historial de pagos se queda). Los ingresos del mes y los asesorados registrados siguen con `clientIsBillable`: un Libre que pagó en julio, pagó.
+- **Verificado:** suite 1571 → 1574 (3 tests nuevos con CONTROL); sabotaje (`clientIsChargeable` = `clientIsBillable`) → 2 en ROJO. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO (`git push` + `publicar-hogar`).
+
 > ✅ **v730, v731 y v732 EN PRODUCCIÓN (8-nov, 5:19 p. m.):** publicadas con la orden del PO («publica»); `_prodcheck.mjs v732` PROD OK (arranque limpio, rótulo «versión 732» en coach y asesorado, 0 errores JS) y CI verde en `deac1f5`. Web: barra «Instala AVI» publicada (`npx vercel --prod`), `verificar-instalar.mjs https://avientrena.com` TODO OK.
 
 **Origen:** pedido del PO: *«si hay nuevos asesorados la verdad es que hoy no me doy cuenta si llegan nuevos usuarios»*.

@@ -6955,6 +6955,14 @@ function mergeOwnProfile(guardado, nuevo) {
 // recordatorio de renovación—, así que la marca se pone AQUÍ y no en cada pantalla: una
 // superficie de plata que se construya mañana la hereda sin que nadie se acuerde.
 function clientIsBillable(c) { return !!c && !isSelfClient(c) && !c.courtesy; }
+// ── v733 · 🔴 A UN LIBRE NO SE LE COBRA ───────────────────────────────────────────────────────
+// Reporte del PO (8-nov): *«son usuarios de hace meses que no volvieron y sigue apareciendo una
+// pantalla grande para cobrarles»*. Los pasó a Libre y seguían ahí, porque `MS.getStatus` mira SOLO
+// los pagos: quien pagó en julio y hoy es Libre sigue dando «Vencido» para siempre. El nivel no lo
+// leía ninguna superficie de cobro. `clientIsBillable` no es el sitio: también cuenta asesorados
+// registrados e ingresos YA cobrados, y ahí un Libre sí cuenta. Esta es la puerta de lo que se COBRA
+// HOY — banner de vencimientos, «Activos», renovaciones, prioritarios del Inicio, bandas de renovar.
+function clientIsChargeable(c) { return clientIsBillable(c) && clientPlan(c) !== 'libre'; }
 function clientIsContactable(c) { return !!c && !isSelfClient(c); }
 
 // Separa la lista para persistir: el coach JAMÁS va como fila de cliente.
@@ -7246,7 +7254,7 @@ function coachPendingRenewals(clients, now) {
   const t = now != null ? new Date(now).getTime() : Date.now();
   let count = 0, amount = 0;
   (clients || []).forEach(c => {
-    if (!c || !clientIsBillable(c)) return;
+    if (!c || !clientIsChargeable(c)) return;
     if (MS.getStatus(c, t) !== 'grace') return;
     count++;
     const pays = (c.payments || []).slice().sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
@@ -7312,6 +7320,9 @@ const MS = {
       pending:  { label: 'Sin pago',    color: 'var(--t1)',  bg: 'var(--yll)' },
       inactive: { label: 'Inactivo',    color: 'var(--t2)',  bg: 'var(--br)' },
       suspended:{ label: 'Suspendido',  color: 'var(--t2)',  bg: 'var(--br)' },
+      // v733 · No es un estado de `getStatus` (los pagos no saben del nivel): es la etiqueta que pinta una
+      // lista cuando la persona es Libre y no hay nada que cobrarle (`clientIsChargeable`).
+      free:     { label: 'Libre',       color: 'var(--t2)',  bg: 'var(--br)' },
     }[s]) || { label: 'Sin pago', color: 'var(--t2)', bg: 'var(--br)' };
   }
 };
@@ -7339,7 +7350,7 @@ const RENEW_NOTICE_DAYS = 3;
 // `now` opcional (determinismo en tests). Devuelve null o `{days, dueTs}`; el TEXTO lo arma la
 // vista — el formato de fecha depende del idioma del navegador y aquí no hay DOM ni locale.
 function renewalNotice(client, now) {
-  if (!client || !clientIsBillable(client) || client.suspended) return null;
+  if (!client || !clientIsChargeable(client) || client.suspended) return null;
   const pays = (client.payments || []).filter(p => p && p.dueDate);
   if (!pays.length) return null;
   const last = pays.reduce((a, b) => new Date(a.dueDate) > new Date(b.dueDate) ? a : b);
@@ -14164,6 +14175,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ownProfileKeys,
     mergeOwnProfile,
     clientIsBillable,
+    clientIsChargeable,
     clientIsContactable,
     splitSelfFromClients,
     rowToClient,

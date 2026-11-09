@@ -1896,7 +1896,7 @@ function renderPaymentCard(client){
   if(!con)return;
   const nequi=DB.nequi||ld('ax_nequi','');
   const st=MS.getStatus(client);
-  if(!nequi||st!=='expiring'){con.innerHTML='';return;}
+  if(!nequi||!clientIsChargeable(client)||st!=='expiring'){con.innerHTML='';return;}
   const pays=(client.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
   const last=pays[0];
   const dueStr=last?new Date(last.dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'';
@@ -1960,7 +1960,7 @@ function renderHome(){
   const elIngr=document.getElementById('h-ingr');if(elIngr)elIngr.textContent='$'+ingr.toLocaleString('es-CO');
 
   // ── Activos ── (métrica de NEGOCIO: asesorados con membresía al día → sin el coach)
-  const activos=DB.clients.filter(c=>{ if(!clientIsBillable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
+  const activos=DB.clients.filter(c=>{ if(!clientIsChargeable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
   const elActv=document.getElementById('h-actv');if(elActv)elActv.textContent=activos;
 
   // ── v583 · LA NOTA QUE LES FALTABA A ESTAS DOS CIFRAS ─────────────────────────────────
@@ -2062,7 +2062,7 @@ function renderHome(){
   const banner=document.getElementById('h-expiry-banner');
   if(banner){
     const in5days=new Date(Date.now()+5*24*60*60*1000);
-    const expiring=DB.clients.filter(clientIsBillable).filter(c=>{
+    const expiring=DB.clients.filter(clientIsChargeable).filter(c=>{
       const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
       if(!pays.length)return false;
       const due=new Date(pays[0].dueDate);
@@ -2107,15 +2107,18 @@ function renderHome(){
     list.innerHTML='<div class="empty"><div class="eico" style="color:var(--t3)">'+(typeof aviIcon==='function'?aviIcon('users',34):'👥')+'</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';
     return;
   }
+  // v733 · Un Libre no tiene membresía que cobrar: con pagos viejos daba «Vencido» y se subía al tope de
+  //    esta lista para siempre (reporte del PO, 8-nov). Se pinta su nivel y va al fondo.
+  const _hStatus=c=>(clientPlan(c)==='libre')?'free':MS.getStatus(c);
   const sorted=[...DB.clients].sort((a,b)=>{
     // `grace` (v528) va pegado a `overdue`: es el que todavía se alcanza a renovar. Sin su
     // entrada caía al `??9` y se iba al fondo, detrás de los suspendidos.
-    const order={'overdue':0,'grace':1,'expiring':2,'pending':3,'active':4,'inactive':5,'suspended':6};
-    return (order[MS.getStatus(a)]??9)-(order[MS.getStatus(b)]??9);
+    const order={'overdue':0,'grace':1,'expiring':2,'pending':3,'active':4,'inactive':5,'suspended':6,'free':8};
+    return (order[_hStatus(a)]??9)-(order[_hStatus(b)]??9);
   });
   list.innerHTML='';
   sorted.slice(0,5).forEach(c=>{
-    const st=MS.getStatus(c);
+    const st=_hStatus(c);
     const badge=MS.badge(st);
     const sessions=(DB.history&&DB.history[c.id])||[];
     const lastS=sessions[0];
@@ -2549,7 +2552,7 @@ function openCoachStat(kind){
 
   else if(kind==='activos'){
     title='Asesorados activos';
-    const act=DB.clients.filter(clientIsBillable).map(c=>({c,st:MS.getStatus(c)})).filter(x=>x.st==='active'||x.st==='expiring');
+    const act=DB.clients.filter(clientIsChargeable).map(c=>({c,st:MS.getStatus(c)})).filter(x=>x.st==='active'||x.st==='expiring');
     act.sort((a,b)=>{ if(a.st!==b.st)return a.st==='expiring'?-1:1; return _dueMs(a.c)-_dueMs(b.c); });
     const nAl=act.filter(x=>x.st==='active').length, nPv=act.filter(x=>x.st==='expiring').length;
     html=_crepHero('🟢','#3a86c8',String(act.length),`${act.length===1?'asesorado':'asesorados'} al día o por vencer`);
