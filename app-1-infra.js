@@ -1889,6 +1889,12 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // foto real y conserva la ejecución). De 17 entraron 13; fuera: un gesto ambiguo, un duplicado y una patada en polea BAJA
 // rotulada polea alta, y e297 (no se distingue el agarre supino). e362 vuelve, ahora con los brazos estirados como pide su ficha.
 ['e256','e257','e258','e259','e261','e262','e298','e299','e300','e301','e315','e316','e362'].forEach(id=>EX_IMG_IDS.add(id));
+// v736 · LOTE-8 del bot (9-nov, pedido del PO: «apenas estén listas las fotos meterlas a la app»): los ejercicios del
+// catálogo SIN foto que hoy están en rutinas REALES (35). Gemini EDITA una referencia pública (free-exercise-db) que muestra
+// el mismo aparato y la misma posición (modo «calcar»). De 15 entraron 10, revisadas a tamaño real (lección v498).
+// Fuera: e238 (se lee como prensa completa, el error de v498), e291 (el banco salió inclinado), e340 (rodilla doblada),
+// e271 (no se distingue el agarre supino, como e297) y e234 (se lee como press de hombro).
+['e320','e274','e285','e290','e237','e255','e263','e270','e283','e317'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.

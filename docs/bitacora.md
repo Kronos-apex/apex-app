@@ -6,6 +6,13 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-09 — v736 · 10 FOTOS QUE FALTABAN EN RUTINAS REALES
+
+**Origen:** pregunta del PO («¿solo faltan 4 fotos para que la mayoría de ejercicios queden con mínimo una foto?») → no: 375 en el catálogo, 295 con foto, 80 sin foto y **35 de esas en rutinas de gente real**; las 4 del bot eran de ejercicios NUEVOS (lotes 1-7, ~89 con fotos aprobadas que todavía no están en la app). Su orden: «hazlo y apenas estén listas las fotos meterlas a la app».
+- **LOTE-8** (`DOCUMENTOS/fotos-ejercicios/crear-lote-8.mjs`): 15 de las 35 con referencia pública que muestra el mismo aparato y la misma posición (free-exercise-db, dominio público), líneas escritas mirando las referencias; 20 fuera por no tener referencia del mismo aparato (lista del PO para fotografiar). Bot: 30 fotos.
+- **Revisión única a tamaño real** (lección v498): entran 10 (`e320 e274 e285 e290 e237 e255 e263 e270 e283 e317`), 720×720 como las demás. Fuera: e238 (prensa completa rotulada «talones», el mismo error de v498), e291 (banco inclinado en vez de declinado), e340 (rodilla doblada, se rehace), e271 (no se distingue el agarre supino, como e297) y e234 (se lee como press de hombro).
+- **Verificado:** `audit-catalog` 81 → 71 MAJOR («sin foto»), 0 BLOCK; suite verde.
+
 > ✅ **v733, v734 y v735 EN PRODUCCIÓN (8-nov, ~10 p. m.):** publicadas con la orden del PO («Publica la última versión»): push `09483c5` + `publicar-hogar`; `_prodcheck.mjs v735` PROD OK (arranque limpio, rótulo «versión 735» en coach y asesorado, 0 errores JS) y CI verde en `09483c5`. Re-verificación de Fable: el PO avisó que Fable no tiene créditos; queda en pausa.
 
 ## 2026-11-08 (noche) — v735 · LOS MENSAJES DEL COACH DENTRO DE LA APP
