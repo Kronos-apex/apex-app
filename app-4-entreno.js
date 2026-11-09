@@ -1690,6 +1690,23 @@ function _missMuteSet(cid,rid){
 // pueden apilarse dos bandas de plata en la misma pantalla.
 // 🔒 Quién queda fuera está decidido en la función pura, no aquí: el coach, la cortesía (v539),
 // el suspendido y el que nunca ha pagado.
+// ── v734 · LOS ÚLTIMOS DÍAS DE SU MES DE AVI PRO ──────────────────────────────────────────────
+// Solo los 5 últimos días (antes es ruido). Dice cuándo termina, qué CONSERVA y qué queda en pausa,
+// para que el día que vuelve a Libre no encuentre las gráficas apagadas sin explicación (lección v564).
+const PRO_TRIAL_BAND_DAYS = 5;
+function renderTrialEndBand(client){
+  const el=document.getElementById('cn-grace'); if(!el||typeof proTrialDaysLeft!=='function')return false;
+  const d=proTrialDaysLeft(client);
+  if(d==null||d>=PRO_TRIAL_BAND_DAYS)return false;
+  const t = d===0 ? 'Hoy termina tu mes de AVI PRO' : (d===1 ? 'Mañana termina tu mes de AVI PRO' : 'Te quedan '+d+' días de AVI PRO gratis');
+  el.innerHTML='<div class="gband gband-soft">'
+    +'<div class="gband-t">'+esc(t)+'</div>'
+    +'<div class="gband-s">Después sigues entrenando gratis: <b>tus rutinas y todo tu historial se quedan</b>. '
+      +'Lo que queda en pausa son las gráficas de progreso, las medidas, las fotos y tu plan de comida.</div>'
+    +'<button class="gband-b" onclick="abrirPlanWhatsApp(\'pro\')">Seguir con AVI PRO</button>'
+    +'</div>';
+  return true;
+}
 function renderRenewBand(client){
   const el=document.getElementById('cn-grace'); if(!el)return false;
   if(typeof renewalNotice!=='function')return false;                  // guard caché vieja
@@ -1746,6 +1763,7 @@ function renderGraceBand(client){
   el.innerHTML='';
   if(!client || typeof MS==='undefined' || !clientIsChargeable(client) || MS.getStatus(client)!=='grace'){
     if(typeof renderLapsedBand==='function' && renderLapsedBand(client))return;   // guard caché vieja
+    if(renderTrialEndBand(client))return;
     renderRenewBand(client); return;
   }
   const d=MS.daysOverdue(client);

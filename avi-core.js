@@ -6668,8 +6668,45 @@ function bfCategoryShort(key) { return BF_CAT_SHORT[key] || ''; }
 // Gating de funciones Premium. Libre = tier 'libre' (auto-registrados). Los asesorados
 // creados por el coach NO tienen tier → no son libres → acceso completo. Convertir a
 // Premium = ponerle tier 'premium' (el coach lo activa).
-function isFreeClient(client) {
-  return !!(client && client.tier === 'libre');
+function isFreeClient(client, now) {
+  return !!(client && client.tier === 'libre') && !proTrialActive(client, now);
+}
+
+// ── v734 · EL MES DE AVI PRO DE BIENVENIDA ──────────────────────────────────────────────────────
+// Decisión del PO (8-nov): *«que no sean 7 días, que por ahora sean un mes de AVI PRO»*. Medido ese
+// día: de 6 cuentas reales que se registraron solas desde octubre, 4 no habían entrenado ni una vez;
+// y los planes de comida que él les arma no los ven (la comida es PRO). Cada cuenta nueva entra con
+// `proTrialUntil` = alta + 30 días: mientras dure, la app la trata como AVI PRO (lo PREMIUM de app,
+// sin chat), no se le cobra nada y al vencer vuelve SOLA a Libre — sin que nadie escriba nada.
+// 🔒 El nivel guardado NO se toca: sigue `tier:'libre'`. Así el fin no depende de una escritura que
+//    pueda no llegar (offline-first), y el coach que la sube de plan la saca de la prueba (setClientPlan).
+const PRO_TRIAL_DAYS = 30;
+function proTrialUntilFrom(desde) {
+  const t = desde == null ? NaN : Date.parse(desde);
+  return isFinite(t) ? new Date(t + PRO_TRIAL_DAYS * 864e5).toISOString() : null;
+}
+function proTrialActive(client, now) {
+  if (!client || client.tier !== 'libre' || !client.proTrialUntil) return false;
+  const fin = Date.parse(client.proTrialUntil);
+  if (!isFinite(fin)) return false;
+  const t = now != null ? new Date(now).getTime() : Date.now();
+  return t < fin;
+}
+// Días que le quedan, por día de CALENDARIO en Colombia: 0 = termina HOY (la vista dice «hoy», no
+// «0 días»). null = no está en prueba.
+function proTrialDaysLeft(client, now) {
+  if (!proTrialActive(client, now)) return null;
+  const t = now != null ? new Date(now).getTime() : Date.now();
+  const dia = ms => Math.floor((ms - 5 * 3600e3) / 864e5);
+  return Math.max(0, dia(Date.parse(client.proTrialUntil)) - dia(t));
+}
+
+// La fecha en que termina, como la lee una persona («8 de diciembre»), en hora de Colombia.
+function proTrialEndLabel(client) {
+  const t = client && Date.parse(client.proTrialUntil);
+  if (!isFinite(t)) return '';
+  const d = new Date(t - 5 * 3600e3);
+  return d.getUTCDate() + ' de ' + SHARE_MESES[d.getUTCMonth()];
 }
 
 // ── Niveles de acceso (3): 'libre' | 'app' (Premium app, sin coach) | 'coach'
@@ -6680,7 +6717,9 @@ function isFreeClient(client) {
 // indefinido) que YA tenía chat. Así, al introducir el split, NADIE pierde el
 // chat (regla: activar/cambiar un nivel nunca debe quitar capacidades).
 function clientHasCoach(client) {
-  return !!client && !isFreeClient(client) && client.tier !== 'app';
+  // v734 · `tier:'libre'` en su mes de AVI PRO ya no es «libre» para `isFreeClient`, pero NO tiene coach:
+  // sin esta condición le abría el chat (el PRO no lo trae).
+  return !!client && !isFreeClient(client) && client.tier !== 'app' && client.tier !== 'libre';
 }
 // El chat es SOLO-COACH (`clientHasCoach`): el asesorado de plan 'libre' o 'app' NO tiene la
 // pestaña de mensajes. Escribirle igual NO falla ni avisa — el mensaje se guarda en su fila y
@@ -6711,9 +6750,9 @@ function chatViewMode(client, msgs) {
   return (Array.isArray(msgs) && msgs.length) ? 'archive' : 'lock';
 }
 // Nivel normalizado del cliente para etiquetas/UI.
-function clientPlan(client) {
-  if (!client || isFreeClient(client)) return 'libre';
-  if (client.tier === 'app') return 'app';
+function clientPlan(client, now) {
+  if (!client || isFreeClient(client, now)) return 'libre';
+  if (client.tier === 'app' || proTrialActive(client, now)) return 'app';
   return 'coach';
 }
 const PLAN_LABEL = { libre: 'Libre', app: 'Premium app', coach: 'Premium + Coach' };
@@ -6962,7 +7001,7 @@ function clientIsBillable(c) { return !!c && !isSelfClient(c) && !c.courtesy; }
 // leía ninguna superficie de cobro. `clientIsBillable` no es el sitio: también cuenta asesorados
 // registrados e ingresos YA cobrados, y ahí un Libre sí cuenta. Esta es la puerta de lo que se COBRA
 // HOY — banner de vencimientos, «Activos», renovaciones, prioritarios del Inicio, bandas de renovar.
-function clientIsChargeable(c) { return clientIsBillable(c) && clientPlan(c) !== 'libre'; }
+function clientIsChargeable(c, now) { return clientIsBillable(c) && clientPlan(c, now) !== 'libre' && !proTrialActive(c, now); }
 function clientIsContactable(c) { return !!c && !isSelfClient(c); }
 
 // Separa la lista para persistir: el coach JAMÁS va como fila de cliente.
@@ -7229,7 +7268,7 @@ const MS_GRACE_DAYS = 7;
 //    el chat sería dejarla dentro pero incomunicada, con un botón que no lleva a ninguna parte.
 function premiumLocked(client, now) {
   if (!client) return false;
-  if (isFreeClient(client)) return true;
+  if (isFreeClient(client, now)) return true;
   return MS.getStatus(client, now) === 'overdue';
 }
 
@@ -7271,6 +7310,8 @@ const MS = {
   // viejos que pasan solo `c` siguen funcionando igual.
   getStatus(c, now) {
     if (c.suspended) return 'inactive';
+    // v734 · En su mes de AVI PRO no hay nada que cobrar: ni «Sin pago» ni recordatorios.
+    if (proTrialActive(c, now)) return 'trial';
     // Cortesía ANTES que los pagos: si el coach marcó que no le cobra, el estado no se
     // deriva de un historial de pagos que no va a existir nunca. Y va DESPUÉS de
     // `suspended` a propósito: suspender es una decisión de acceso y pesa más.
@@ -7314,6 +7355,7 @@ const MS = {
       // *no se le cobra*. Dos cosas distintas merecen dos etiquetas distintas, o el coach
       // no puede distinguir de un vistazo a quién sí tiene que cobrarle.
       courtesy: { label: 'Cortesía',    color: 'var(--blt)', bg: 'var(--bll)' },
+      trial:    { label: 'Prueba PRO',  color: 'var(--blt)', bg: 'var(--bll)' },
       expiring: { label: 'Por vencer',  color: 'var(--ort)', bg: 'var(--orl)' },
       grace:    { label: 'Por renovar', color: 'var(--ort)', bg: 'var(--orl)' },
       overdue:  { label: 'Vencido',     color: 'var(--rdt)', bg: 'var(--rdl)' },
@@ -13509,7 +13551,8 @@ function settingsPlanSummary(client, now) {
   if (plan === 'libre') return { nombre, detalle: '' };
   const st = MS.getStatus(client, now);
   let detalle = '';
-  if (st === 'courtesy') detalle = 'sin costo';
+  if (st === 'trial') detalle = 'gratis hasta el ' + proTrialEndLabel(client);
+  else if (st === 'courtesy') detalle = 'sin costo';
   else if (st === 'inactive') detalle = 'en pausa';
   else if (st === 'grace') detalle = 'venció';
   // Pasada la gracia ya no tiene lo pagado: entra en AVI FREE (v564, `premiumLocked`). La fila dice
@@ -13585,6 +13628,7 @@ function detailSummary(client, sessions, now, flags) {
     const hace = n => n === 1 ? 'hace 1 día' : 'hace ' + n + ' días';
     let etiqueta = MS.badge(st).label, detalle = '';
     if (clientPlan(c) === 'libre') { etiqueta = 'AVI FREE'; detalle = 'sin plan pagado'; }
+    else if (st === 'trial') detalle = 'mes de AVI PRO gratis hasta el ' + proTrialEndLabel(c);
     else if (st === 'courtesy') detalle = 'no se le cobra';
     else if (st === 'inactive') detalle = 'en pausa';
     else if (st === 'pending') detalle = 'todavía no tiene pagos';
@@ -14176,6 +14220,11 @@ if (typeof module !== 'undefined' && module.exports) {
     mergeOwnProfile,
     clientIsBillable,
     clientIsChargeable,
+    PRO_TRIAL_DAYS,
+    proTrialUntilFrom,
+    proTrialActive,
+    proTrialDaysLeft,
+    proTrialEndLabel,
     clientIsContactable,
     splitSelfFromClients,
     rowToClient,

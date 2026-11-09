@@ -767,6 +767,8 @@ async function _provisionFreeClient(authUser, p){
     needsProfile:false, // (vestigial) la pantalla vieja "Cuéntanos de ti" fue eliminada 2026-06-09
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   };
+  // v734 · su mes de AVI PRO de bienvenida (decisión del PO, 8-nov): cuenta desde el alta y se apaga sola.
+  if(typeof proTrialUntilFrom==='function') rec.proTrialUntil=proTrialUntilFrom(rec.createdAt);
   // v728 · la nota que escribió al registrarse ya trae su fecha: su plazo de revisión cuenta desde HOY.
   if(typeof limitReviewStamp==='function') rec.limitReviewedAt=limitReviewStamp('',rec.notes,null,rec.createdAt);
   rec.coach_id=COACH_UID; // modelo de un solo coach: todo self-registro entra al pipeline del coach
@@ -2069,6 +2071,9 @@ function planControlHTML(c){
   // Colapsable (progressive disclosure): el nivel rara vez cambia → colapsado muestra el tier
   // ACTUAL en el encabezado; se expande con un toque para cambiarlo. El aviso "Pidió un coach"
   // (lead caliente) se mantiene visible aunque esté colapsado.
+  // v734 · En su mes de AVI PRO se dice hasta cuándo y qué pasa después (vuelve sola a Libre).
+  const _trial=(typeof proTrialActive==='function'&&proTrialActive(c))
+    ?`<div class="plan-wants" style="margin-top:10px">🎁 <b>Mes de AVI PRO gratis</b> hasta el ${esc(proTrialEndLabel(c))}. Al terminar vuelve sola a Libre; si te paga, súbela de plan aquí.</div>`:'';
   const _co=opts.find(o=>o[0]===cur);
   const _curSum=_co?`${_coIco(_co[1],13,_co[2])} ${_co[3]}`:'';
   return `<div class="plan-control">
@@ -2080,6 +2085,7 @@ function planControlHTML(c){
       </span>
     </div>
     ${wants?`<div style="margin-top:10px">${wants}</div>`:''}
+    ${_trial}
     <div class="planopts" style="display:none;margin-top:10px">${btns}</div>
   </div>`;
 }
@@ -2103,10 +2109,15 @@ function markLeadDone(cid){
 }
 function setClientPlan(cid,plan){
   const c=DB.clients.find(x=>x.id===cid);if(!c)return;
-  if(clientPlan(c)===plan)return;
+  // v734 · En su mes de AVI PRO `clientPlan` ya dice 'app': sin la segunda condición, tocar «Premium app»
+  //    para cobrarle no hacía NADA y al terminar el mes volvía a Libre aunque hubiera pagado.
+  const _prueba=(typeof proTrialActive==='function')&&proTrialActive(c);
+  if(clientPlan(c)===plan&&!_prueba)return;
   const labels={libre:'Libre (gratis)',app:'Premium app (sin coach)',coach:'Premium + Coach'};
-  if(!confirm(`¿Cambiar a ${c.name.split(' ')[0]} al nivel "${labels[plan]}"?`))return;
+  if(!confirm(`¿Cambiar a ${c.name.split(' ')[0]} al nivel "${labels[plan]}"?`+(_prueba?' Se termina su mes de prueba.':'')))return;
   c.tier = plan==='coach' ? 'premium' : plan;
+  // El nivel que el coach elige manda sobre la prueba: si la baja a Libre, la baja HOY.
+  if(c.proTrialUntil) c.proTrialUntil=null;
   // Cambiar el plan ES atender la solicitud, sea cual sea el plan elegido (el bug de Hugo y
   // César: se los pasó a "Premium app" y la marca quedó encendida para siempre porque solo
   // la rama 'coach' la apagaba). El registro del coach es el que manda; el flag del asesorado se

@@ -26158,6 +26158,70 @@ test('🔒 v733 · las superficies de COBRO preguntan clientIsChargeable (o el n
   assert.ok(/DB\.clients\.filter\(clientIsBillable\)\.forEach\(c=>\{\s*\(c\.payments/.test(home), 'los ingresos no deben perder a quien ya pagó');
 });
 
+// ── v734 · EL MES DE AVI PRO DE BIENVENIDA ──────────────────────────────────────────────────────
+test('🔴 v734 · proTrialUntilFrom / proTrialActive: 30 días desde el alta, solo con tier libre, y se apaga sola', () => {
+  assert.strictEqual(core.PRO_TRIAL_DAYS, 30);
+  assert.strictEqual(core.proTrialUntilFrom('2026-11-08T22:00:00Z'), '2026-12-08T22:00:00.000Z');
+  assert.strictEqual(core.proTrialUntilFrom(null), null);
+  assert.strictEqual(core.proTrialUntilFrom('no-es-fecha'), null);
+  const u = { id: 'x', tier: 'libre', proTrialUntil: '2026-12-08T22:00:00.000Z' };
+  assert.strictEqual(core.proTrialActive(u, Date.parse('2026-12-08T21:59:59Z')), true);
+  assert.strictEqual(core.proTrialActive(u, Date.parse('2026-12-08T22:00:00Z')), false, '🔴 la prueba no se apaga sola');
+  assert.strictEqual(core.proTrialActive({ ...u, tier: 'app' }, Date.parse('2026-11-10T00:00:00Z')), false, 'un PRO pagado no está «en prueba»');
+  assert.strictEqual(core.proTrialActive({ id: 'x', tier: 'libre' }, Date.parse('2026-11-10T00:00:00Z')), false, 'sin fecha no hay prueba');
+  assert.strictEqual(core.proTrialActive({ ...u, proTrialUntil: 'basura' }, Date.parse('2026-11-10T00:00:00Z')), false);
+  assert.strictEqual(core.proTrialActive(null), false);
+});
+
+test('🔴 v734 · en su mes la cuenta es AVI PRO SIN coach y sin cobro; al terminar vuelve a Libre', () => {
+  const u = { id: 'x', tier: 'libre', proTrialUntil: '2026-12-08T22:00:00.000Z' };
+  const dentro = Date.parse('2026-11-09T15:00:00Z'), fuera = Date.parse('2026-12-09T15:00:00Z');
+  assert.strictEqual(core.isFreeClient(u, dentro), false);
+  assert.strictEqual(core.clientPlan(u, dentro), 'app');
+  assert.strictEqual(core.premiumLocked(u, dentro), false, '🔴 en su mes de PRO las gráficas y la comida siguen apagadas');
+  assert.strictEqual(core.clientHasCoach(u), false, '🔴 el PRO de prueba abría el chat');
+  assert.strictEqual(core.clientHasCoach({ id: 'y' }), true, 'CONTROL: el creado por el coach sin tier sigue con chat');
+  assert.strictEqual(core.MS.getStatus(u, dentro), 'trial');
+  assert.strictEqual(core.MS.badge('trial').label, 'Prueba PRO');
+  assert.strictEqual(core.clientIsChargeable(u, dentro), false, '🔴 se le cobraba en su mes gratis');
+  assert.strictEqual(core.renewalNotice(u, dentro), null);
+  assert.deepStrictEqual(core.settingsPlanSummary(u, dentro), { nombre: 'AVI PRO', detalle: 'gratis hasta el 8 de diciembre' });
+  // y al terminar, sin que nadie escriba nada:
+  assert.strictEqual(core.isFreeClient(u, fuera), true);
+  assert.strictEqual(core.clientPlan(u, fuera), 'libre');
+  assert.strictEqual(core.premiumLocked(u, fuera), true);
+  assert.notStrictEqual(core.MS.getStatus(u, fuera), 'trial');
+});
+
+test('🔴 v734 · proTrialDaysLeft cuenta días de calendario en Colombia: 0 = termina hoy, null = no está en prueba', () => {
+  const u = { id: 'x', tier: 'libre', proTrialUntil: '2026-12-08T22:00:00.000Z' }; // 5 p. m. del 8-dic en Bogotá
+  assert.strictEqual(core.proTrialDaysLeft(u, Date.parse('2026-12-08T13:00:00Z')), 0);
+  assert.strictEqual(core.proTrialDaysLeft(u, Date.parse('2026-12-08T04:00:00Z')), 1, 'a las 11 p. m. del 7-dic en Bogotá todavía es «mañana»');
+  assert.strictEqual(core.proTrialDaysLeft(u, Date.parse('2026-12-04T15:00:00Z')), 4);
+  assert.strictEqual(core.proTrialDaysLeft(u, Date.parse('2026-12-09T15:00:00Z')), null);
+  assert.strictEqual(core.proTrialDaysLeft({ id: 'z', tier: 'libre' }), null);
+  assert.strictEqual(core.proTrialEndLabel(u), '8 de diciembre');
+});
+
+test('🔒 v734 · el registro la regala, el coach la puede terminar y la banda sale solo al final', () => {
+  const fs = require('fs'), path = require('path');
+  const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const cuerpo = (src, firma) => { const i = src.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const pv = cuerpo(e3, 'async function _provisionFreeClient(');
+  const regala = pv.indexOf('rec.proTrialUntil=proTrialUntilFrom(rec.createdAt)'), crea = pv.indexOf('UD.createFromClient(');
+  assert.ok(regala > 0 && regala < crea, '🔴 la cuenta nueva no trae su mes de AVI PRO (o llega después de crear la fila)');
+  const sp = cuerpo(e3, 'function setClientPlan(');
+  assert.ok(/if\(clientPlan\(c\)===plan&&!_prueba\)return;/.test(sp), '🔴 en su mes, subirla a PRO pagado no hacía nada');
+  assert.ok(/if\(c\.proTrialUntil\) c\.proTrialUntil=null;/.test(sp), '🔴 el plan que elige el coach no termina la prueba');
+  assert.ok(/proTrialEndLabel\(c\)/.test(cuerpo(e3, 'function planControlHTML(')), 'la ficha no dice hasta cuándo va su prueba');
+  const g = cuerpo(e4, 'function renderGraceBand(');
+  assert.ok(g.indexOf('renderTrialEndBand(client)') > 0 && g.indexOf('renderTrialEndBand(client)') < g.indexOf('renderRenewBand(client)'), '🔴 la banda del fin de la prueba no se pinta');
+  const b = cuerpo(e4, 'function renderTrialEndBand(');
+  assert.ok(/d>=PRO_TRIAL_BAND_DAYS\)return false/.test(b) && /esc\(t\)/.test(b), '🔴 la banda sale todo el mes o sin esc()');
+  assert.ok(/abrirPlanWhatsApp\(\\'pro\\'\)/.test(b), 'el botón lleva a seguir con AVI PRO');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

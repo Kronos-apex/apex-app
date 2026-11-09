@@ -6,6 +6,13 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-08 (noche) — v734 · EL MES DE AVI PRO DE BIENVENIDA
+
+**Origen:** decisión del PO, sobre la estrategia de retención propuesta: *«con los mensajes vamos a implementar todas y que no sean 7 días, que por ahora sean un mes de AVI PRO»*.
+- **Medido antes:** 6 cuentas reales autorregistradas desde octubre, 4 sin un solo entreno; los planes de comida que el coach les arma a las Libres no los ven (la comida es PRO). El estudio de retención (21-ago): las cuentas que crea el coach suman 23 veces más entrenos que las autorregistradas.
+- **Hecho:** `PRO_TRIAL_DAYS` 30, `proTrialUntilFrom`, `proTrialActive`, `proTrialDaysLeft` (calendario de Colombia: 0 = hoy, null = sin prueba) y `proTrialEndLabel` (avi-core, PURAS). `isFreeClient`, `clientPlan` y `premiumLocked` reciben `now`; en prueba la cuenta es AVI PRO, `clientHasCoach` la deja SIN chat, `MS.getStatus` da 'trial' (badge «Prueba PRO») y `clientIsChargeable` la deja fuera de todo cobro. El tier no se toca: el fin no depende de ninguna escritura. `_provisionFreeClient` la regala antes de crear la fila; `setClientPlan` la termina y ya no ignora «Premium app» durante el mes (antes: `clientPlan===plan` → return, y al vencer volvía a Libre aunque hubiera pagado); `planControlHTML` dice hasta cuándo; `renderTrialEndBand` (los 5 últimos días, en la cadena de `renderGraceBand`) dice qué conserva y qué queda en pausa, con «Seguir con AVI PRO».
+- **Verificado:** suite 1574 → 1578; sabotajes: `clientHasCoach` sin la condición de libre → 1 en ROJO; `proTrialActive` siempre falso → 3 en ROJO. ⚠️ Sin captura visual de la banda ni del selector (usan `gband`/`plan-wants`, ya probadas en los dos temas): queda para el harness. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO.
+
 ## 2026-11-08 (noche) — v733 · A UN LIBRE NO SE LE COBRA
 
 **Origen:** reporte del PO: *«esos premium app vencidos deja de mostrármelos, la verdad son usuarios de hace meses que no volvieron y sigue apareciendo una pantalla grande para cobrarles»*.
