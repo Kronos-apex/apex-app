@@ -6,19 +6,21 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+> ✅ **v733, v734 y v735 EN PRODUCCIÓN (8-nov, ~10 p. m.):** publicadas con la orden del PO («Publica la última versión»): push `09483c5` + `publicar-hogar`; `_prodcheck.mjs v735` PROD OK (arranque limpio, rótulo «versión 735» en coach y asesorado, 0 errores JS) y CI verde en `09483c5`. Re-verificación de Fable: el PO avisó que Fable no tiene créditos; queda en pausa.
+
 ## 2026-11-08 (noche) — v735 · LOS MENSAJES DEL COACH DENTRO DE LA APP
 
 **Origen:** pedido del PO: *«necesito poder dejarles mensajes o notificaciones dentro de la app invitándolos a entrenar o terminar de llenar sus datos o a conocer la app… necesitamos usuarios»*.
 - **Antes:** el chat es SOLO-COACH (`clientHasCoach`); a un Libre o a un PRO no había por dónde escribirle dentro de la app, y el push solo llega a quien activó notificaciones (la minoría).
 - **Hecho:** `COACH_NOTE_TEMPLATES`, `coachNoteText`, `coachNoteMsg`, `coachNoteToShow` (14 días, el más reciente, no apartado, nunca un botón inventado) y `coachNoteAudience` (avi-core, PURAS). El mensaje viaja por `ax_m` con `note:{cta}` (vía sancionada `svNow('ax_m')`, fusión por unión v625). En «Hoy», `renderCoachNote` en `#cn-coach-note`, fuera del gate del día 1 y en try (F9), primera en `TODAY_CARD_PRIORITY`; «Entendido» y el botón la apartan en el teléfono (`ax_cnote_seen_<id>`). Coach: ventana `#m-cnote` desde el Resumen de la ficha (solo sin chat; con chat abre el chat) y desde «Cuentas nuevas»; aviso al celular después de guardar. `_pollAuthClient` la pinta si llega con la app abierta.
-- **Verificado:** suite 1578 → 1582; sabotaje (sin vencimiento de 14 días) → ROJO. ⚠️ Sin captura visual ni harness E2E de la tarjeta y la ventana: pendiente. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO.
+- **Verificado:** suite 1578 → 1582; sabotaje (sin vencimiento de 14 días) → ROJO. ⚠️ Sin captura visual ni harness E2E de la tarjeta y la ventana: pendiente. ✅ En producción (8-nov, prodcheck v735 + CI verde). Fable en pausa (sin créditos).
 
 ## 2026-11-08 (noche) — v734 · EL MES DE AVI PRO DE BIENVENIDA
 
 **Origen:** decisión del PO, sobre la estrategia de retención propuesta: *«con los mensajes vamos a implementar todas y que no sean 7 días, que por ahora sean un mes de AVI PRO»*.
 - **Medido antes:** 6 cuentas reales autorregistradas desde octubre, 4 sin un solo entreno; los planes de comida que el coach les arma a las Libres no los ven (la comida es PRO). El estudio de retención (21-ago): las cuentas que crea el coach suman 23 veces más entrenos que las autorregistradas.
 - **Hecho:** `PRO_TRIAL_DAYS` 30, `proTrialUntilFrom`, `proTrialActive`, `proTrialDaysLeft` (calendario de Colombia: 0 = hoy, null = sin prueba) y `proTrialEndLabel` (avi-core, PURAS). `isFreeClient`, `clientPlan` y `premiumLocked` reciben `now`; en prueba la cuenta es AVI PRO, `clientHasCoach` la deja SIN chat, `MS.getStatus` da 'trial' (badge «Prueba PRO») y `clientIsChargeable` la deja fuera de todo cobro. El tier no se toca: el fin no depende de ninguna escritura. `_provisionFreeClient` la regala antes de crear la fila; `setClientPlan` la termina y ya no ignora «Premium app» durante el mes (antes: `clientPlan===plan` → return, y al vencer volvía a Libre aunque hubiera pagado); `planControlHTML` dice hasta cuándo; `renderTrialEndBand` (los 5 últimos días, en la cadena de `renderGraceBand`) dice qué conserva y qué queda en pausa, con «Seguir con AVI PRO».
-- **Verificado:** suite 1574 → 1578; sabotajes: `clientHasCoach` sin la condición de libre → 1 en ROJO; `proTrialActive` siempre falso → 3 en ROJO. ⚠️ Sin captura visual de la banda ni del selector (usan `gband`/`plan-wants`, ya probadas en los dos temas): queda para el harness. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO.
+- **Verificado:** suite 1574 → 1578; sabotajes: `clientHasCoach` sin la condición de libre → 1 en ROJO; `proTrialActive` siempre falso → 3 en ROJO. ⚠️ Sin captura visual de la banda ni del selector (usan `gband`/`plan-wants`, ya probadas en los dos temas): queda para el harness. ✅ En producción (8-nov, prodcheck v735 + CI verde). Fable en pausa (sin créditos).
 
 ## 2026-11-08 (noche) — v733 · A UN LIBRE NO SE LE COBRA
 
@@ -26,7 +28,7 @@
 - **Medido antes:** 8 cuentas PRO; 6 sin pagar (1 vencida, 1 inactiva, 4 sin un solo pago, último entreno entre junio y octubre) y 2 en cortesía. Por orden del PO las 6 pasaron a Libre en la nube (`profile.tier` app→libre + `updatedAt`; el coach fusiona en 3 vías con la nube y no lo revierte).
 - **Causa raíz:** `MS.getStatus` deriva el estado SOLO de los pagos. Ninguna superficie de cobro leía el nivel, así que un Libre con pagos de julio seguía «Vencido» para siempre: cambiarlo de nivel no lo sacaba del cobro.
 - **Hecho:** `clientIsChargeable` (avi-core, PURA) = `clientIsBillable` y no Libre. La usan el banner de vencimientos, «Activos» y su reporte, `coachPendingRenewals`, `renewalNotice`, los prioritarios del Inicio (`_hStatus`: el Libre va al fondo con la etiqueta «Libre», `MS.badge('free')`), las bandas de gracia y de plan vencido del asesorado, `renderPaymentCard` y la pestaña Pagos (texto «Está en AVI FREE…», sin días vencidos ni WhatsApp de cobro; el historial de pagos se queda). Los ingresos del mes y los asesorados registrados siguen con `clientIsBillable`: un Libre que pagó en julio, pagó.
-- **Verificado:** suite 1571 → 1574 (3 tests nuevos con CONTROL); sabotaje (`clientIsChargeable` = `clientIsBillable`) → 2 en ROJO. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO (`git push` + `publicar-hogar`).
+- **Verificado:** suite 1571 → 1574 (3 tests nuevos con CONTROL); sabotaje (`clientIsChargeable` = `clientIsBillable`) → 2 en ROJO. ✅ En producción (8-nov, prodcheck v735 + CI verde). Fable en pausa (sin créditos).
 
 > ✅ **v730, v731 y v732 EN PRODUCCIÓN (8-nov, 5:19 p. m.):** publicadas con la orden del PO («publica»); `_prodcheck.mjs v732` PROD OK (arranque limpio, rótulo «versión 732» en coach y asesorado, 0 errores JS) y CI verde en `deac1f5`. Web: barra «Instala AVI» publicada (`npx vercel --prod`), `verificar-instalar.mjs https://avientrena.com` TODO OK.
 
