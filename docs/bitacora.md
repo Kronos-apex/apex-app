@@ -6,6 +6,13 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-08 (noche) — v735 · LOS MENSAJES DEL COACH DENTRO DE LA APP
+
+**Origen:** pedido del PO: *«necesito poder dejarles mensajes o notificaciones dentro de la app invitándolos a entrenar o terminar de llenar sus datos o a conocer la app… necesitamos usuarios»*.
+- **Antes:** el chat es SOLO-COACH (`clientHasCoach`); a un Libre o a un PRO no había por dónde escribirle dentro de la app, y el push solo llega a quien activó notificaciones (la minoría).
+- **Hecho:** `COACH_NOTE_TEMPLATES`, `coachNoteText`, `coachNoteMsg`, `coachNoteToShow` (14 días, el más reciente, no apartado, nunca un botón inventado) y `coachNoteAudience` (avi-core, PURAS). El mensaje viaja por `ax_m` con `note:{cta}` (vía sancionada `svNow('ax_m')`, fusión por unión v625). En «Hoy», `renderCoachNote` en `#cn-coach-note`, fuera del gate del día 1 y en try (F9), primera en `TODAY_CARD_PRIORITY`; «Entendido» y el botón la apartan en el teléfono (`ax_cnote_seen_<id>`). Coach: ventana `#m-cnote` desde el Resumen de la ficha (solo sin chat; con chat abre el chat) y desde «Cuentas nuevas»; aviso al celular después de guardar. `_pollAuthClient` la pinta si llega con la app abierta.
+- **Verificado:** suite 1578 → 1582; sabotaje (sin vencimiento de 14 días) → ROJO. ⚠️ Sin captura visual ni harness E2E de la tarjeta y la ventana: pendiente. ⏳ PENDIENTE re-verificación de Fable. ⏳ Publicar: lo corre el PO.
+
 ## 2026-11-08 (noche) — v734 · EL MES DE AVI PRO DE BIENVENIDA
 
 **Origen:** decisión del PO, sobre la estrategia de retención propuesta: *«con los mensajes vamos a implementar todas y que no sean 7 días, que por ahora sean un mes de AVI PRO»*.

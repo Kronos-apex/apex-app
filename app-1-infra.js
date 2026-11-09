@@ -1144,6 +1144,11 @@ async function _pollAuthClient(){
     DB.msgs[cid]=mergedMsgs; touched=true;
     if(typeof renderClientMsgs==='function')renderClientMsgs(cid);
     if(typeof updateMsgBadge==='function')updateMsgBadge(cid);
+    // v735 · un mensaje en la app que llega con «Hoy» abierto se pinta sin esperar al próximo render.
+    if(fresh.some(m=>m&&m.from==='coach'&&m.note)&&typeof renderCoachNote==='function'){
+      const _yo=(DB.clients||[]).find(x=>x.id===cid);
+      if(_yo){ try{ renderCoachNote(_yo); if(typeof _applyTodayCap==='function')_applyTodayCap(); }catch(e){} }
+    }
     fresh.filter(m=>m.from==='coach').forEach(m=>{
       if(typeof notifNewMessage==='function')notifNewMessage('Tu Coach',m.text);
       const chatEl=document.getElementById('cn-messages');

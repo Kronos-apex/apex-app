@@ -1347,6 +1347,9 @@ function renderClientToday(client, overrideRoutine){
   // 🟠 Período de gracia (v528): va ARRIBA de los `return` (sale también en descanso y sin
   // rutinas) y SIN el gate de `_dia1` — es el estado de su cuenta, no un aviso que compita.
   if(typeof renderGraceBand==='function')renderGraceBand(client);
+  // ✉️ v735 · El mensaje de su coach: SIN el gate de `_dia1` — la persona nueva que no ha entrenado es
+  //    justo a quien más se le escribe. Un fallo aquí nunca se lleva el entreno (lección F9).
+  try{ if(typeof renderCoachNote==='function')renderCoachNote(client); }catch(e){ warn('AVI: mensaje del coach falló (no bloquea):',e&&e.message); }
   if(!_dia1 && typeof renderPushNudge==='function')renderPushNudge();
   // Self-heal del asesorado (v320): si ya dio permiso, re-suscribe forzado 1×/sesión (reintenta
   // si el intento de los 4s falló por la carrera del token). Guarded/idempotente.
@@ -1634,6 +1637,40 @@ function renderDeloadCard(client){
   </div>`;
 }
 
+// ── v735 · EL MENSAJE DE SU COACH EN «HOY» ─────────────────────────────────────────────────────
+// Lo escribe el coach desde su ficha o a un grupo (`sendCoachNote`). Lo que se pinta lo decide
+// `coachNoteToShow` (avi-core, PURA): el más reciente, 14 días, si no lo apartó. «Entendido» y el
+// botón lo apartan en ESTE teléfono (ax_cnote_seen_<id>); el mensaje sigue en su hilo.
+function _cnoteSeen(cid){ try{ return +localStorage.getItem('ax_cnote_seen_'+cid)||0; }catch(e){ return 0; } }
+function coachNoteSeen(cid){
+  try{ localStorage.setItem('ax_cnote_seen_'+cid,String(Date.now())); }catch(e){}
+  const el=document.getElementById('cn-coach-note'); if(el)el.innerHTML='';
+  if(typeof _applyTodayCap==='function')_applyTodayCap();
+}
+function renderCoachNote(client){
+  const el=document.getElementById('cn-coach-note'); if(!el)return;
+  el.innerHTML='';
+  if(!client||!client.id||typeof coachNoteToShow!=='function')return;
+  const n=coachNoteToShow((DB.msgs&&DB.msgs[client.id])||[],_cnoteSeen(client.id),Date.now());
+  if(!n)return;
+  const coach=(typeof coachNameForClient==='function'&&coachNameForClient())||'';
+  const cid=esc(client.id);
+  const cta=n.cta?`<button class="btn bp bsm" onclick="coachNoteGo('${cid}','${esc(n.cta)}')" style="flex:1;min-height:36px">${esc(n.ctaLabel)}</button>`:'';
+  el.innerHTML=`<div class="card" data-cnote="1" style="padding:14px 15px;margin-bottom:12px;border-left:3px solid var(--g)">
+    <div style="font-size:12px;font-weight:700;color:var(--gt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('chat',14):'✉️'} ${coach?'Mensaje de '+esc(coach):'Mensaje de tu coach'}</div>
+    <div style="font-size:13.5px;color:var(--t1);line-height:1.55;white-space:pre-line;overflow-wrap:anywhere">${esc(n.text)}</div>
+    <div style="display:flex;gap:8px;margin-top:12px">${cta}<button class="btn bg bsm" onclick="coachNoteSeen('${cid}')" style="${cta?'':'flex:1;'}min-height:36px">Entendido</button></div>
+  </div>`;
+}
+// El botón lo lleva a HACERLO, no a leer más. Primero se aparta (ya lo atendió).
+function coachNoteGo(cid,cta){
+  coachNoteSeen(cid);
+  if(cta==='datos'){ cnTab('cn-profile',_cnTabEl('cn-profile')); if(typeof perfilAbrir==='function')perfilAbrir('datos'); return; }
+  if(cta==='app'){ cnTab('cn-history',_cnTabEl('cn-history')); return; }
+  const fr=document.getElementById('cn-firstrun');
+  const dest=(fr&&fr.innerHTML.trim())?fr:document.getElementById('cn-today-body');
+  if(dest&&dest.scrollIntoView)dest.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function renderCoachCard(client){
   const el=document.getElementById('cn-coach-card');if(!el)return;
   const cid=client&&client.id;

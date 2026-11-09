@@ -6822,6 +6822,76 @@ function newAccountPush(c) {
   return { title: '🆕 ' + nombre + ' se registró en AVI', body: partes.join(' · ') || 'Tiene su rutina lista. Mira su ficha.' };
 }
 
+// ── v735 · LOS MENSAJES DEL COACH DENTRO DE LA APP, PARA TODOS ────────────────────────────────
+// Pedido del PO (8-nov): *«necesito poder dejarles mensajes o notificaciones dentro de la app
+// invitándolos a entrenar o terminar de llenar sus datos o a conocer la app»*. El chat es SOLO-COACH:
+// a un Libre o a un PRO no había por dónde escribirle (y lo que se le escribía por el chat no le
+// llegaba nunca, v584). Un «mensaje en la app» viaja por el MISMO hilo (`ax_m`, la fila de la
+// persona) con la marca `note`, y su «Hoy» lo pinta como tarjeta con un botón que lo lleva a hacerlo.
+// No abre el chat: quien no tiene coach sigue sin poder responder (eso no cambia).
+// 🔒 Vive COACH_NOTE_DIAS en «Hoy»; después queda solo en el hilo. «Entendido» lo aparta (local).
+const COACH_NOTE_DIAS = 14;
+const COACH_NOTE_CTA = { entrenar: 'Ver mi entreno', datos: 'Completar mis datos', app: 'Ver mi progreso' };
+const COACH_NOTE_TEMPLATES = [
+  { id: 'entrenar', titulo: 'Invitar a entrenar', cta: 'entrenar',
+    texto: '{nombre}, tu rutina ya está lista en la app 💪 ¿Qué día arrancamos? La app te guía serie por serie: qué hacer, con cuánto peso y cuántas repeticiones.' },
+  { id: 'datos', titulo: 'Completar sus datos', cta: 'datos',
+    texto: '{nombre}, para ajustar tu rutina y tu plan de comida a tu cuerpo me faltan unos datos tuyos. Te toma un minuto.' },
+  { id: 'app', titulo: 'Conocer la app', cta: 'app',
+    texto: '{nombre}, en la app tienes más que la rutina: tu historial, tus récords y cómo vas semana a semana. Date una vuelta y me cuentas qué te parece.' },
+];
+const COACH_NOTE_MAX = 600;
+// El texto que le llega: {nombre} = su PRIMER nombre; sin nombre, la frase arranca sin él.
+function coachNoteText(texto, client) {
+  const nombre = String((client && client.name) || '').trim().split(/\s+/)[0] || '';
+  let t = String(texto || '');
+  t = nombre ? t.replace(/\{nombre\}/g, nombre) : t.replace(/\{nombre\},?\s*/g, '');
+  t = t.trim();
+  if (!nombre && t) t = t.charAt(0).toUpperCase() + t.slice(1);
+  return t.slice(0, COACH_NOTE_MAX);
+}
+// El mensaje que se guarda en su hilo. `cta` fuera de la lista → sin botón (nunca un botón que no hace nada).
+function coachNoteMsg(texto, cta, now) {
+  const t = (now instanceof Date) ? now : new Date(now == null ? Date.now() : now);
+  return { from: 'coach', text: String(texto || ''), date: t.toISOString(), note: { cta: COACH_NOTE_CTA[cta] ? cta : null } };
+}
+// ¿Qué mensaje del coach pinta su «Hoy»? Solo el MÁS RECIENTE con marca `note`, si tiene menos de
+// COACH_NOTE_DIAS y es posterior a lo que ya apartó (`seenTs`). Uno solo: el nuevo reemplaza al viejo.
+function coachNoteToShow(msgs, seenTs, now) {
+  const t = (now instanceof Date) ? now.getTime() : Number(now == null ? Date.now() : now);
+  const lista = Array.isArray(msgs) ? msgs : [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const m = lista[i];
+    if (!m || m.from !== 'coach' || !m.note || !m.text) continue;
+    const at = Date.parse(m.date);
+    if (!isFinite(at) || at > t + 60e3 || t - at > COACH_NOTE_DIAS * 864e5) return null;
+    if (at <= (Number(seenTs) || 0)) return null;
+    const cta = (m.note && COACH_NOTE_CTA[m.note.cta]) ? m.note.cta : null;
+    return { text: String(m.text), cta, ctaLabel: cta ? COACH_NOTE_CTA[cta] : '', date: m.date };
+  }
+  return null;
+}
+// A quién se le puede mandar, en tres grupos. Solo quien NO tiene chat (Libre, PRO y su mes de prueba):
+// a quien entrena con el coach se le escribe por el chat, como siempre. Nunca el propio coach.
+//   nuevos   → se registró sola hace ≤14 días y no ha entrenado
+//   dormidos → lleva ≥14 días sin entrenar (o nunca) y su cuenta tiene ≥7 días
+//   todos    → todos los anteriores y el resto de Libres y PRO
+function coachNoteAudience(clients, history, now) {
+  const t = (now instanceof Date) ? now.getTime() : Number(now == null ? Date.now() : now);
+  const out = { nuevos: [], dormidos: [], todos: [] };
+  (clients || []).forEach(c => {
+    if (!c || !c.id || isSelfClient(c) || clientHasCoach(c)) return;
+    out.todos.push(c.id);
+    const ses = ((history && history[c.id]) || []).filter(s => s && (s.doneSets || 0) > 0);
+    const ult = ses.reduce((m, s) => Math.max(m, Date.parse(s.date) || 0), 0);
+    const alta = Date.parse(c.createdAt);
+    const edad = isFinite(alta) ? t - alta : Infinity;
+    if (c.selfReg && !ses.length && edad >= 0 && edad <= 14 * 864e5) out.nuevos.push(c.id);
+    if (edad >= 7 * 864e5 && (!ult || t - ult >= 14 * 864e5)) out.dormidos.push(c.id);
+  });
+  return out;
+}
+
 // ── La SALIDA de un candado y de una banda de cuenta, según el plan (v696, R18) ──────────────
 // La web vende AVI PRO (la app entera, sin coach) y la app solo conocía «Premium = un coach»: el
 // candado decía «Disponible con un coach (Premium)» y su único botón pedía un coach. Quien quería PRO
@@ -10775,6 +10845,7 @@ function workoutStartCollapsed(o) {
 // El orden es de VALOR, no de antigüedad: primero lo que cambia lo que hace hoy, después lo
 // que le dice algo sobre ella, y de últimas lo que le pedimos nosotros.
 const TODAY_CARD_PRIORITY = [
+  'cn-coach-note',    // 0. v735 · su coach le escribió (una persona, no un aviso automático)
   'cn-deload',        // 1. la semana de descarga cambia CÓMO entrena hoy
   'cn-missday',       // 2. recuperar un día de ESTA semana: acción concreta sobre su plan
   'cn-coach-card',    // 3. alguien pendiente de ella (récord, racha, inactividad)
@@ -13953,6 +14024,13 @@ if (typeof module !== 'undefined' && module.exports) {
     newAccountsList,
     newAccountWhen,
     newAccountPush,
+    COACH_NOTE_DIAS,
+    COACH_NOTE_CTA,
+    COACH_NOTE_TEMPLATES,
+    coachNoteText,
+    coachNoteMsg,
+    coachNoteToShow,
+    coachNoteAudience,
     COACH_NOTICE_FIXED,
     parseLimitations,
     warmupContraindicated,

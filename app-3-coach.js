@@ -2194,7 +2194,10 @@ function renderDetailSummary(c){
   const rev=s.revisar.length
     ? s.revisar.map(r=>`<button class="dt-rev-row" onclick="detailTab('${r.tab}')"><span style="flex:1;min-width:0">${esc(r.texto)}</span><span class="dt-go">${_DT_NOMBRE[r.tab]} ›</span></button>`).join('')
     : '<div class="dt-rev-nada">Nada pendiente por ahora.</div>';
-  el.innerHTML=`<div class="dt-tiles${s.plan?'':' solo'}">${semana}${plan}</div><div class="dt-rev"><span class="dt-k">Para revisar</span>${rev}</div>`;
+  // v735 · A quien no tiene chat se le escribe en su app (al que tiene coach, el chat de siempre).
+  const _nota=(typeof clientHasCoach==='function'&&!clientHasCoach(c)&&!(typeof isSelfClient==='function'&&isSelfClient(c))&&typeof coachNoteMsg==='function')
+    ?`<button class="btn bg" style="width:100%;min-height:40px;margin-top:10px" onclick="openCoachNote('${esc(c.id)}')">✉️ Escribirle en su app</button>`:'';
+  el.innerHTML=`<div class="dt-tiles${s.plan?'':' solo'}">${semana}${plan}</div><div class="dt-rev"><span class="dt-k">Para revisar</span>${rev}</div>${_nota}`;
   // Un punto en la pestaña donde hay algo por revisar (y el lector de pantalla lo dice).
   document.querySelectorAll('#d-tabs .dt-tab').forEach(b=>{
     const t=b.getAttribute('data-t'); let d=b.querySelector('.dt-dot');
@@ -4570,7 +4573,71 @@ function renderNewAccountsCard(){
       <span aria-hidden="true" style="flex-shrink:0;color:var(--t3);font-size:20px;line-height:1">›</span>
     </div>`; }).join('')}
     ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Asesorados → Libres</div>`:''}
+    <button class="btn bg bsm" style="width:100%;min-height:36px;margin-top:8px" onclick="openCoachNote(null,'nuevos')">✉️ Escribirles en su app</button>
   </div>`;
+}
+// ── v735 · MENSAJE EN SU APP ───────────────────────────────────────────────────────────────────
+// A una persona (desde su ficha) o a un grupo (desde Inicio). Solo a quien NO tiene chat: a quien
+// entrena con el coach se le escribe por el chat de siempre. Los grupos y los textos salen de avi-core
+// (`coachNoteAudience`, `COACH_NOTE_TEMPLATES`, `coachNoteText`, `coachNoteMsg`): aquí solo se pinta y se guarda.
+let _cnoteOne=null;
+function _cnoteGroups(){ return (typeof coachNoteAudience==='function')?coachNoteAudience(DB.clients,DB.history,new Date()):{nuevos:[],dormidos:[],todos:[]}; }
+function openCoachNote(clientId,grupo){
+  if(typeof coachNoteAudience!=='function'){ toast('Actualiza la app para usar esto'); return; }
+  const c=clientId?(DB.clients||[]).find(x=>x.id===clientId):null;
+  if(c&&typeof clientHasCoach==='function'&&clientHasCoach(c)){ openCoachChat(c.id); return; }
+  _cnoteOne=c?c.id:null;
+  const g=_cnoteGroups(), sel=document.getElementById('cnote-to'); if(!sel)return;
+  const op=(v,t)=>`<option value="${v}">${esc(t)}</option>`;
+  sel.innerHTML=(c?op('uno','Solo a '+String(c.name||'').split(' ')[0]):'')
+    +op('nuevos',`Cuentas nuevas sin entrenar (${g.nuevos.length})`)
+    +op('dormidos',`Llevan 14 días o más sin entrenar (${g.dormidos.length})`)
+    +op('todos',`Todos los Libres y PRO (${g.todos.length})`);
+  sel.value=c?'uno':(grupo||'nuevos');
+  const tp=document.getElementById('cnote-tpls');
+  if(tp)tp.innerHTML=COACH_NOTE_TEMPLATES.map((t,i)=>`<button type="button" class="btn bg bsm" style="min-height:36px" onclick="cnoteTpl(${i})">${esc(t.titulo)}</button>`).join('');
+  document.getElementById('cnote-txt').value='';
+  document.getElementById('cnote-cta').value='';
+  cnoteCount();
+  om('m-cnote');
+}
+function cnoteTpl(i){
+  const t=COACH_NOTE_TEMPLATES[i]; if(!t)return;
+  document.getElementById('cnote-txt').value=t.texto;
+  document.getElementById('cnote-cta').value=t.cta||'';
+}
+function _cnoteTargets(){
+  const v=(document.getElementById('cnote-to')||{}).value;
+  if(v==='uno')return _cnoteOne?[_cnoteOne]:[];
+  return (_cnoteGroups()[v]||[]).slice();
+}
+function cnoteCount(){
+  const el=document.getElementById('cnote-n'); if(!el)return;
+  const n=_cnoteTargets().length;
+  el.textContent=n?`Le llega a ${n} ${n===1?'persona':'personas'}.`:'Nadie en este grupo por ahora.';
+}
+async function sendCoachNote(){
+  const raw=(document.getElementById('cnote-txt').value||'').trim();
+  const cta=document.getElementById('cnote-cta').value||null;
+  const ids=_cnoteTargets();
+  if(!raw){ toast('✏️ Escribe el mensaje'); return; }
+  if(!ids.length){ toast('Nadie en este grupo por ahora'); return; }
+  const btn=document.getElementById('cnote-send'); if(btn)btn.disabled=true;
+  const now=new Date(), salen=[];
+  ids.forEach(id=>{
+    const c=(DB.clients||[]).find(x=>x.id===id); if(!c)return;
+    const text=coachNoteText(raw,c); if(!text)return;
+    if(!DB.msgs[id])DB.msgs[id]=[];
+    DB.msgs[id].push(coachNoteMsg(text,cta,now));
+    salen.push({id,text});
+  });
+  try{ await svNow('ax_m',DB.msgs); }catch(e){ warn('AVI: mensaje en la app falló:',e&&e.message); }
+  if(btn)btn.disabled=false;
+  const n0=getCoachName(), titulo=(n0&&n0!=='Mi Coach')?('Mensaje de '+n0):'Mensaje de tu coach';
+  salen.forEach(x=>pushToClient(x.id,'✉️ '+titulo,x.text.length>80?x.text.slice(0,77)+'…':x.text,{type:'note',tag:'avi-note-'+x.id}));
+  cm('m-cnote');
+  toast(salen.length===1?'✉️ Mensaje enviado':`✉️ Mensaje enviado a ${salen.length} personas`);
+  if(CUR.clientId&&typeof renderDetailMsgs==='function'&&document.getElementById('p-detail').classList.contains('on'))renderDetailMsgs(CUR.clientId);
 }
 function _coachQrList(){ let v=null; try{ v=JSON.parse(localStorage.getItem('ax_cqr')||'null'); }catch(e){} return (typeof coachQuickReplies==='function')?coachQuickReplies(v):[]; }
 function renderCoachQr(){

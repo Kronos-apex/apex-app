@@ -26222,6 +26222,76 @@ test('🔒 v734 · el registro la regala, el coach la puede terminar y la banda 
   assert.ok(/abrirPlanWhatsApp\(\\'pro\\'\)/.test(b), 'el botón lleva a seguir con AVI PRO');
 });
 
+// ── v735 · LOS MENSAJES DEL COACH DENTRO DE LA APP ──────────────────────────────────────────────
+test('🔴 v735 · coachNoteText / coachNoteMsg: su primer nombre, sin nombre no deja «{nombre},», y nunca un botón que no existe', () => {
+  assert.strictEqual(core.coachNoteText('{nombre}, ¿arrancamos?', { name: 'Ana María Pérez' }), 'Ana, ¿arrancamos?');
+  assert.strictEqual(core.coachNoteText('{nombre}, para ajustar tu plan', {}), 'Para ajustar tu plan');
+  assert.strictEqual(core.coachNoteText('x'.repeat(900), { name: 'Ana' }).length, 600);
+  assert.strictEqual(core.coachNoteText('   ', { name: 'Ana' }), '');
+  const m = core.coachNoteMsg('Hola', 'entrenar', Date.parse('2026-11-08T23:00:00Z'));
+  assert.deepStrictEqual(m, { from: 'coach', text: 'Hola', date: '2026-11-08T23:00:00.000Z', note: { cta: 'entrenar' } });
+  assert.strictEqual(core.coachNoteMsg('Hola', 'borrar-todo', 0).note.cta, null, '🔴 un botón inventado llegaba a su pantalla');
+  // Las plantillas existen, usan {nombre} y su botón es uno de los tres.
+  assert.strictEqual(core.COACH_NOTE_TEMPLATES.length, 3);
+  core.COACH_NOTE_TEMPLATES.forEach(t => { assert.ok(/\{nombre\}/.test(t.texto), t.id); assert.ok(core.COACH_NOTE_CTA[t.cta], t.id); });
+});
+
+test('🔴 v735 · coachNoteToShow: el MÁS RECIENTE, 14 días, si no lo apartó; el chat normal no cuenta', () => {
+  const now = Date.parse('2026-11-08T23:00:00Z');
+  const nota = (d, txt) => ({ from: 'coach', text: txt || 'nota', date: d, note: { cta: 'datos' } });
+  const chat = { from: 'coach', text: 'chat normal', date: '2026-11-08T22:00:00Z' };
+  // CONTROL: un mensaje de chat sin marca no se pinta como tarjeta.
+  assert.strictEqual(core.coachNoteToShow([chat], 0, now), null);
+  const r = core.coachNoteToShow([nota('2026-11-05T00:00:00Z', 'vieja'), nota('2026-11-08T20:00:00Z', 'nueva'), chat], 0, now);
+  assert.deepStrictEqual(r, { text: 'nueva', cta: 'datos', ctaLabel: 'Completar mis datos', date: '2026-11-08T20:00:00Z' });
+  assert.strictEqual(core.coachNoteToShow([nota('2026-10-20T00:00:00Z')], 0, now), null, '🔴 una nota de hace 19 días seguía en «Hoy»');
+  assert.strictEqual(core.coachNoteToShow([nota('2026-11-08T20:00:00Z')], Date.parse('2026-11-08T21:00:00Z'), now), null, 'la que apartó no vuelve');
+  assert.strictEqual(core.coachNoteToShow([nota('2026-11-20T00:00:00Z')], 0, now), null, 'una fecha del futuro no se pinta');
+  assert.strictEqual(core.coachNoteToShow([{ from: 'client', text: 'x', date: '2026-11-08T20:00:00Z', note: {} }], 0, now), null);
+  assert.strictEqual(core.coachNoteToShow(null, 0, now), null);
+});
+
+test('🔴 v735 · coachNoteAudience: solo quien NO tiene chat (Libre, PRO y su prueba), nunca el coach', () => {
+  const now = Date.parse('2026-11-08T23:00:00Z');
+  const cl = [
+    { id: 'nueva', tier: 'libre', selfReg: true, createdAt: '2026-11-06T00:00:00Z' },
+    { id: 'prueba', tier: 'libre', selfReg: true, createdAt: '2026-11-07T00:00:00Z', proTrialUntil: '2026-12-07T00:00:00Z' },
+    { id: 'pro-dormido', tier: 'app', createdAt: '2026-08-01T00:00:00Z' },
+    { id: 'pro-activo', tier: 'app', createdAt: '2026-08-01T00:00:00Z' },
+    { id: 'con-coach', createdAt: '2026-08-01T00:00:00Z' },
+    { id: core.SELF_CLIENT_ID, tier: 'premium' },
+  ];
+  const h = { 'pro-dormido': [{ date: '2026-10-01', doneSets: 4 }], 'pro-activo': [{ date: '2026-11-07', doneSets: 4 }], 'con-coach': [] };
+  const a = core.coachNoteAudience(cl, h, now);
+  assert.deepStrictEqual(a.todos, ['nueva', 'prueba', 'pro-dormido', 'pro-activo'], '🔴 entraba quien tiene chat o el coach');
+  assert.deepStrictEqual(a.nuevos, ['nueva', 'prueba']);
+  assert.deepStrictEqual(a.dormidos, ['pro-dormido'], 'a la cuenta de 2 días no se le dice «llevas 14 días sin entrenar»');
+});
+
+test('🔒 v735 · la tarjeta sale en «Hoy» (también el día 1), primera en el tope, con esc(); y el coach la manda por la vía sancionada', () => {
+  const fs = require('fs'), path = require('path');
+  assert.strictEqual(core.TODAY_CARD_PRIORITY[0], 'cn-coach-note', 'el mensaje de una persona va primero en el tope');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(/id="cn-coach-note"/.test(html) && /id="m-cnote"/.test(html), 'faltan el contenedor o la ventana');
+  const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const cuerpo = (src, firma) => { const i = src.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const hoy = cuerpo(e4, 'function renderClientToday(');
+  const llama = hoy.indexOf('renderCoachNote(client)');
+  assert.ok(llama > 0, '🔴 «Hoy» no pinta el mensaje del coach');
+  assert.ok(!/!_dia1 && typeof renderCoachNote/.test(hoy), '🔴 el modo día 1 apagaba el mensaje justo a quien no ha entrenado');
+  assert.ok(/try\{ if\(typeof renderCoachNote==='function'\)renderCoachNote\(client\); \}catch/.test(hoy), '🔴 un fallo del mensaje se llevaría el entreno (F9)');
+  const card = cuerpo(e4, 'function renderCoachNote(');
+  assert.ok(/coachNoteToShow\(/.test(card) && /esc\(n\.text\)/.test(card) && /esc\(coach\)/.test(card), '🔴 la tarjeta no delega en la pura o pinta sin esc()');
+  const env = cuerpo(e3, 'async function sendCoachNote(');
+  assert.ok(/coachNoteText\(raw,c\)/.test(env) && /coachNoteMsg\(text,cta,now\)/.test(env), 'el texto y el mensaje salen de las puras');
+  assert.ok(env.indexOf("svNow('ax_m',DB.msgs)") > 0 && env.indexOf("svNow('ax_m',DB.msgs)") < env.indexOf('pushToClient('), '🔴 el aviso al celular salía antes de guardar el mensaje');
+  const ab = cuerpo(e3, 'function openCoachNote(');
+  assert.ok(/clientHasCoach\(c\)\)\{ openCoachChat\(c\.id\); return; \}/.test(ab), 'a quien tiene coach se le escribe por el chat');
+  const res = cuerpo(e3, 'function renderDetailSummary(');
+  assert.ok(/!clientHasCoach\(c\)/.test(res) && /openCoachNote\('\$\{esc\(c\.id\)\}'\)/.test(res), 'la ficha ofrece escribirle en su app solo a quien no tiene chat');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
