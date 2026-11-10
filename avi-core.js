@@ -8383,6 +8383,14 @@ function nutEmbFloorBase(base, client, weightKg) {
   });
 }
 
+// v740 · peso bajo en un adulto (IMC < 18,5, el corte de la OMS). Los menores ya tienen su regla y su banda.
+const NUT_IMC_BAJO = 18.5;
+const NUT_IMC_BAJO_LABEL = 'Mantenimiento: con tu peso de hoy, tu plan no baja de lo que gastas. Para cambiar tu cuerpo, el entrenamiento hace el trabajo.';
+function nutImcBajo(client, w) {
+  const h = parseFloat(client && client.height) / 100;
+  return !isMenor(client) && w > 0 && h > 0 && w / (h * h) < NUT_IMC_BAJO;
+}
+
 // ── Estimación nutricional AUTOMÁTICA (Premium self-serve): compone el pipeline
 // TMB(Mifflin-St Jeor) → TDEE(×actividad) → objetivo calórico por meta → macros.
 // weightKg opcional (si no, usa client.weight). Devuelve null si faltan datos
@@ -8426,6 +8434,15 @@ function nutritionEstimate(client, weightKg) {
     t.kcalObj = tdee;
     t.deficit = 0;
     t.label = 'Mantenimiento: estás creciendo, así que tu plan no baja de lo que gastas';
+  }
+  // 🔴 v740 · CON PESO BAJO TAMPOCO HAY DÉFICIT (Fable, 10-nov). Una mujer de 46 kg y 1,65 m (IMC 16,9) que eligió
+  // «Perder grasa» recibía «Déficit de 500 kcal/día»: la app no tenía freno por peso, solo por edad. Misma regla que la
+  // de menores, en adultos con IMC < 18,5: su mantenimiento, y el TEXTO lo dice sin nombrarle un diagnóstico. Solo el
+  // plan AUTOMÁTICO; el que escribe el coach es suyo. ⚠️ Decisión del PO hasta que Andrés Hyp la revise.
+  if (t.deficit < 0 && nutImcBajo(client, w)) {
+    t.kcalObj = tdee;
+    t.deficit = 0;
+    t.label = NUT_IMC_BAJO_LABEL;
   }
   // El objetivo NUNCA baja del piso fisiológico. Y si lo tocó, el texto tiene que decir la
   // verdad: seguir anunciando «Déficit de 500 kcal/día» mientras se entrega el basal sería

@@ -13573,7 +13573,9 @@ const _PERFILES_TIPICOS = [
 // Va en el test a propósito: un guardián que solo mira los casos cómodos no es un guardián.
 const _PERFILES_EXTREMOS = _PERFILES_TIPICOS.concat([
   { sex: 'F', age: 30, weight: 55, height: 170, activityFactor: 1.2, goal: 'Perder grasa' },
-  { sex: 'F', age: 30, weight: 45, height: 160, activityFactor: 1.2, goal: 'Perder grasa' },
+  // v740 · era 45 kg (IMC 17,6) y desde v740 un adulto con IMC < 18,5 no recibe déficit: ese caso ya no existe. Se
+  // reemplaza por la persona MÁS LIVIANA que todavía puede recibirlo (48 kg, IMC 18,75), que sigue tocando el piso.
+  { sex: 'F', age: 30, weight: 48, height: 160, activityFactor: 1.2, goal: 'Perder grasa' },
   { sex: 'M', age: 30, weight: 65, height: 160, activityFactor: 1.55, goal: 'Ganar músculo' },
 ]);
 
@@ -26386,6 +26388,27 @@ test('🔒 v739 · los controles: lo que NO es una lesión no filtra, y una pala
   // 🔒 Sin lookbehind (Safari < 16.4 tumba avi-core entero).
   core.GEN_LIMIT_KWS.forEach(k => assert.ok(!/\(\?<[!=]/.test(k.re.source), 'lookbehind en ' + (k.zone || k.area)));
   assert.ok(!/\(\?<[!=]/.test(core.GEN_EMBARAZO_RE.source));
+});
+
+// v740 · CON PESO BAJO NO HAY DÉFICIT (Fable, 10-nov: 46 kg y 1,65 m con «Perder grasa» recibía «Déficit de 500 kcal/día»).
+test('🔴 v740 · un adulto con IMC < 18,5 no recibe déficit: su mantenimiento, y el rótulo lo dice', () => {
+  const flaca = { sex: 'F', age: 22, height: 165, weight: 46, goal: 'Perder grasa', activityFactor: 1.55 };
+  const e = core.nutritionEstimate(flaca);
+  assert.ok(e.kcalObj >= e.tdee, `🔴 IMC 16,9 con déficit: ${e.kcalObj} contra un gasto de ${e.tdee}`);
+  assert.ok(e.deficit >= 0);
+  assert.ok(/no baja de lo que gastas/.test(e.label) && !/D[ée]ficit/.test(e.label), 'el rótulo no puede seguir anunciando un déficit');
+  const flaco = core.nutritionEstimate({ sex: 'M', age: 20, height: 178, weight: 54, goal: 'Perder grasa', activityFactor: 1.55 });
+  assert.ok(flaco.kcalObj >= flaco.tdee, 'también en hombres');
+  // El mismo número llega al plato (nutBaseFor lee nutritionEstimate).
+  const base = core.nutBaseFor(flaca, null);
+  assert.ok(base && base.kcalObj >= e.tdee, 'el plato tiene que servir lo mismo que dice la estimación');
+  // Controles: con IMC 18,5 o más el déficit sigue; ganar músculo con peso bajo sigue con su superávit; el menor sigue con su regla.
+  const normal = core.nutritionEstimate({ sex: 'F', age: 30, height: 165, weight: 51, goal: 'Perder grasa', activityFactor: 1.55 });
+  assert.ok(normal.kcalObj < normal.tdee && /D[ée]ficit/.test(normal.label), 'IMC 18,7: el déficit sigue');
+  const gana = core.nutritionEstimate(Object.assign({}, flaca, { goal: 'Ganar músculo' }));
+  assert.ok(gana.kcalObj > gana.tdee, 'con peso bajo, ganar músculo conserva su superávit');
+  const menor = core.nutritionEstimate({ sex: 'F', age: 16, height: 160, weight: 42, goal: 'Perder grasa', activityFactor: 1.55 });
+  assert.ok(/est[áa]s creciendo/.test(menor.label), 'el menor conserva su propio rótulo');
 });
 
 // ══════════════════════════════════════════════════════
