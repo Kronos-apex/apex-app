@@ -26342,6 +26342,52 @@ test('🔒 v738 · el aviso reemplaza las instrucciones falsas y se aparta al ab
   assert.ok(/CIN_WELCOME_EXTRAS = \[[^\]]*'inapp-hint'/.test(app2), '🔴 el aviso se quedaría encima del formulario (gotcha v571)');
 });
 
+// v739 · LA NOTA COMO LA ESCRIBE LA GENTE (Fable, 10-nov: 64 de 133 frases reales no se leían).
+test('🔴 v739 · parseLimitations lee las 133 frases como las escribe la gente (ortografía, sin tildes, con sus palabras)', () => {
+  const F = {
+    rodilla: ['me duele la rodilla', 'tengo las rodillas malas', 'me operaron de los meniscos', 'rodiya derecha', 'condromalacia', 'desgaste de cartilago', 'me suena la rodilla y duele', 'ligamento cruzado', 'me truena la rodila', 'artrosis de rodilla', 'las rodillas no me dan'],
+    hombro: ['me duele el hombro', 'ombro derecho lesionado', 'tendinitis en el hombro', 'se me sale el hombro', 'manguito rotador roto', 'bursitis', 'me operaron del supraespinoso', 'luxacion de clavicula', 'el brazo no me sube bien', 'pinzamiento subacromial'],
+    lumbar: ['dolor lumbar', 'me duele la cintura', 'sufro de la columna', 'dolor de columna', 'tengo la columna desviada', 'dolor en la espalda', 'me duele la parte baja de la espalda', 'tengo discos desgastados', 'me operaron de la columna', 'tornillos en la columna', 'lumbalgia cronica', 'dolor de espalda', 'la espalda me molesta', 'tengo mala la espalda', 'problemas de espalda', 'discopatia', 'artrodesis', 'me duele el rabo/coxis',
+      'hernia discal', 'ernia discal', 'tengo una ernia', 'hernia l5 s1', 'dos hernias en la columna', 'me operaron de una hernia', 'abombamiento discal', 'hernea lumbar', 'ernias',
+      'ciatica', 'siatica', 'me da la ciatica', 'el nervio ciatico', 'nervio siatico pinzado', 'dolor que baja por la pierna'],
+    cuello: ['dolor cervical', 'me duele el cuello', 'cervicales', 'servical', 'hernia cervical', 'rectificacion cervical', 'me duele la nuca', 'tortícolis'],
+    embarazo: ['estoy embarazada', 'estoy en embarazo', 'tengo 5 meses de embarazo', 'embarasada', 'enbarazada', 'en estado', 'estoy en cinta', 'estoy encinta', 'voy a ser mama', 'espero bebe', 'tengo 20 semanas', 'estoy esperando', 'embarazo de 3 meses', 'preñada', 'gestando'],
+    presion: ['presion alta', 'tengo la presion alta', 'soy hipertenso', 'hipertensa', 'ipertension', 'sufro de la presion', 'sufro de tension', 'tension alta', 'la presion se me sube', 'tomo pastillas para la presion', 'tomo losartan', 'soy hipertenza', 'presión arterial alta', 'tengo la tension alta', 'presion', 'problemas de presion',
+      'sufro del corazon', 'problemas del corazon', 'me operaron del corazon', 'tuve un infarto', 'tengo un soplo', 'soplo en el corazon', 'arritmia', 'tengo marcapasos', 'soy cardiaco', 'operado a corazon abierto', 'preinfarto', 'enfermo del corazon', 'tengo un stent', 'cateterismo', 'falla cardiaca'],
+    hueso: ['osteoporosis', 'osteoporocis', 'osteopenia', 'tengo los huesos debiles', 'descalcificacion', 'me falta calcio en los huesos', 'huesos de cristal', 'osteoporósis en la columna'],
+    core_central: ['piso pelvico debil', 'incontinencia', 'se me sale la orina', 'se me escapa la orina al saltar', 'prolapso', 'vejiga caida', 'diastasis', 'diastasis de rectos', 'tuve cesarea hace 3 meses', 'cesaria hace 2 meses', 'matriz caida', 'me orino cuando toso', 'tuve bebe hace 2 meses', 'hernia umbilical', 'ernia umbilical', 'me operaron de la matriz', 'histerectomia'],
+  };
+  let total = 0;
+  const malas = [];
+  for (const [zona, frases] of Object.entries(F)) for (const f of frases) {
+    total++;
+    const k = core.parseLimitations(f).keys;
+    if (k.indexOf(zona) < 0) malas.push(`«${f}» → ${k.join(',') || 'NADA'} (esperaba ${zona})`);
+  }
+  assert.strictEqual(total, 133);
+  assert.deepStrictEqual(malas, [], '🔴 frases que la persona escribe y la app no lee:\n' + malas.join('\n'));
+  // El embarazo trae SIEMPRE el abdomen (Laura E1).
+  assert.deepStrictEqual(core.parseLimitations('embarasada').keys.sort(), ['core_central', 'embarazo']);
+  // «Siatica» sigue siendo nervio: la derivación médica no depende de la ortografía.
+  assert.ok(core.parseLimitations('siatica').nerve && core.parseLimitations('dolor que baja por la pierna, en la espalda').nerve);
+});
+test('🔒 v739 · los controles: lo que NO es una lesión no filtra, y una palabra bien escrita nunca cambia', () => {
+  const sin = ['quiero bajar de cintura', 'reducir cintura y abdomen', 'tengo 3 semanas entrenando', 'me caso en 3 semanas', 'ninguna', 'no tengo', 'nada',
+    'presion baja', 'tengo la presion baja', 'soplo de aire', 'quiero marcar abdomen', 'huevos de codorniz', 'clases de ingles', 'es necesaria'];
+  sin.forEach(f => assert.deepStrictEqual(core.parseLimitations(f).keys, [], `«${f}» no es una lesión`));
+  const sinEmb = ['estoy esperando cirugia de rodilla', 'tengo 2 semanas con dolor de rodilla', 'estoy esperando la cita del medico'];
+  sinEmb.forEach(f => assert.ok(!core.parseLimitations(f).embarazo, `«${f}» no es un embarazo`));
+  assert.ok(core.parseLimitations('presion en el pecho al correr').keys.indexOf('presion') < 0, '«presión en el pecho» es bandera roja, no hipertensión');
+  assert.ok(core.parseLimitations('presion en el pecho al correr').cardiac);
+  assert.ok(core.parseLimitations('me duele la espalda alta').keys.indexOf('lumbar') < 0, 'la espalda ALTA es cuello, no columna baja');
+  core.LIM_CANON.forEach(w => assert.strictEqual(core._limCanon(w), w, `«${w}» bien escrita no puede cambiar`));
+  assert.strictEqual(core._limCanon('quiero bajar de peso y ganar fuerza en las piernas'), 'quiero bajar de peso y ganar fuerza en las piernas');
+  assert.strictEqual(core._limCanon('ernia en la servical y siatica'), 'hernia en la cervical y ciatica');
+  // 🔒 Sin lookbehind (Safari < 16.4 tumba avi-core entero).
+  core.GEN_LIMIT_KWS.forEach(k => assert.ok(!/\(\?<[!=]/.test(k.re.source), 'lookbehind en ' + (k.zone || k.area)));
+  assert.ok(!/\(\?<[!=]/.test(core.GEN_EMBARAZO_RE.source));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

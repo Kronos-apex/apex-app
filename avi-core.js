@@ -384,7 +384,7 @@ const GEN_SPLITS = {
 // 🔒 Sin lookbehind en ninguna (`(?<!…)` revienta el parseo en Safari < 16.4 y tumba avi-core entero;
 // la suite lo verifica). Cada término corto con su borde de palabra y su CONTROL en la suite.
 // Una sola constante para la palabra embarazo: la usan `core_central`, `embarazo` y `lim.embarazo`.
-const GEN_EMBARAZO_RE = /embaraz(?!os[oa])|gestante|gestacion|prenada|dulce espera|futura mama|bebe (viene )?en camino|(estoy|ando|vamos|estamos) esperando (un |mi |a mi |al )?(bebe|hij[oa]|nino|nina)|espero (un |mi )?(bebe|hij[oa]|nino|nina)|(voy|vamos) a (tener (un |una |mi |nuestro |nuestra )(bebe|hij[oa])|ser (mama|madre))/;
+const GEN_EMBARAZO_RE = /embaraz(?!os[oa])|gestante|gestacion|prenada|dulce espera|futura mama|bebe (viene )?en camino|(estoy|ando|vamos|estamos) esperando (un |mi |a mi |al )?(bebe|hij[oa]|nino|nina)|espero (un |mi )?(bebe|hij[oa]|nino|nina)|(voy|vamos) a (tener (un |una |mi |nuestro |nuestra )(bebe|hij[oa])|ser (mama|madre))|\bencinta\b|\ben cinta\b|gestando|(estoy|ando|esta) en estado(?! de (salud|animo|forma|shock|coma|alerta))|^ *en estado *$|en estado de (gravidez|buena esperanza)|estoy esperando *([.,;!)]|$)|(tengo|llevo|voy en|voy por|ya tengo|ya voy en|ya llevo) \d+ semanas *([.,;!)]|$)/;
 // ── v729 · CUANDO EL EMBARAZO TERMINA (Laura, 5-nov noche: `docs/poblaciones-2026-11-05/laura-postparto.md`) ──
 // 🔴 El texto de v727 le pedía al coach «si el embarazo ya terminó, quita la frase», y quitarla apagaba TAMBIÉN el
 // filtro del abdomen y del suelo pélvico justo en el postparto. Y las formas naturales de anotar el parto («ya nació
@@ -475,11 +475,11 @@ const GEN_MIN_REPS8_KEYS = ['presion', 'core_central', 'embarazo'];
 //    («de pie») y sin `gemelo`.
 // 🔒 `lumbar` ya no se come «me duele la espalda ALTA»: esa frase es cuello, no columna baja.
 const GEN_LIMIT_KWS = [
-  { zone: 'rodilla', re: /rodilla|menisco|patela|rotula|ligamento|\blca\b|\blcl\b/ },
-  { zone: 'lumbar', re: /lumbar|lumbago|espalda baja|lumbalgia|hernia|ciatic|disco|escolios|espondil|protusi|protrusi|estenosis|sacroil|dolor de espalda(?! alta)|me duele la espalda(?! alta)|\bl4\b|\bl5\b|\bs1\b/ },
-  { zone: 'hombro', re: /hombro|manguito|rotador|deltoid/ },
+  { zone: 'rodilla', re: /rodilla|menisco|patela|rotula|ligamento|\blca\b|\blcl\b|condromalac|condropat|cartilago|osgood/ },
+  { zone: 'lumbar', re: /lumbar|lumbago|espalda baja|lumbalgia|hernia|ciatic|disco|escolios|espondil|protusi|protrusi|estenosis|sacroil|dolor de espalda(?! alta)|me duele la espalda(?! alta)|\bl4\b|\bl5\b|\bs1\b|columna|me duele (la |mi )?cintura|dolor\w* (de|en) (la |mi )?cintura|cintura (adolorida|lastimada|mala)|(dolor|problema|molestia|lesion)\w* (de|en|con) (la |mi )?espalda(?! alta)|espalda (me (molesta|duele)|mala|lastimada|lesionada|adolorida)(?! alta)|(mala|lastimada|lesionada) (la |mi )?espalda(?! alta)|parte baja de (la |mi )?espalda|artrodesis|coxis|coccix|rabadilla|discal|discopat|abombamiento|(dolor|corrientazo)\w* que (me )?(baja|corre|recorre|se va) (por|a) (la |las |mi |mis )?pierna/ },
+  { zone: 'hombro', re: /hombro|manguito|rotador|deltoid|supraespinos|subacromial|pinzamiento|clavicula|bursitis|(el |los |mi |mis )?brazos? no (me )?(sube|suben|levanta|levantan)|no (puedo|logro) (subir|levantar) (el |los |mi |mis )?brazo/ },
   { zone: 'generic', re: /lesion|operad|postoperat|posoperat|tendon|cirugia|protesis|fractura/ },
-  { area: 'cuello', re: /cuello|cervical|torticolis/ },
+  { area: 'cuello', re: /cuello|cervical|torticolis|\bnuca\b/ },
   { area: 'espalda alta', re: /espalda alta|parte alta de la espalda|trapecio|interescapular|omoplato/ },
   { area: 'codo', re: /\bcodos?\b|epicondil|epitrocle/ },
   { area: 'muñeca o mano', re: /muneca|carpian|quervain|(dolor|lesion|fractura|molestia)\w* (de |en )?(la |las )?manos?\b/ },
@@ -494,9 +494,9 @@ const GEN_LIMIT_KWS = [
   // v727 · condiciones (Laura, 5-nov Q1; 60 frases medidas, 0 discrepancias). `parto` suelto NO entra
   // («parto de cero», «reparto»); `presion` a secas NO entra jamás («presión en el pecho» es bandera
   // roja, no hipertensión); `bypass` solo con «gastric» o «coronari»; `\bstent\b` («consistente»).
-  { zone: 'core_central', re: /post ?parto|pos ?parto|despues (de|del) (mi |el )?parto|(tuve|tras) (un |mi )?parto|parto (natural|vaginal|por cesarea)|(^| )(di|dio|dieron|dar) a luz( |$)|diastasis|separacion (abdominal|de (los )?(rectos|abdominales))|cesarea|(piso|suelo) pelvic|prolapso|incontinencia|hernias? (umbilical|abdominal|ventral|epigastric|incisional|inguinal|hiatal)|hernias? (en |de |del )(el |mi )?(ombligo|abdomen|vientre|estomago)|eventracion|histerectom|abdominoplast|bariatric|manga gastric|bypass gastric|laparotom|(cirugia|operacion) (abdominal|de abdomen)/ },
-  { zone: 'hueso', re: /osteopeni|osteopor|descalcifi|densidad osea|huesos (fragiles|debiles|porosos)|fragilidad osea|fractura (vertebral|por compresion|por fragilidad|de (la )?columna)|aplastamiento vertebral|vertebra aplastada/ },
-  { zone: 'presion', re: /hipertens|(presion|tension) (arterial )?(alta|elevada)(?! en )|\bhta\b|cardiopat|arritmia|taquicardia|infarto|angina de pecho|\bstent\b|marcapaso|angioplast|bypass coronari|insuficiencia cardiac|enfermedad (del )?corazon|problemas? (del |de |en el )?(el )?corazon|problemas? cardiac|soplo cardiac|valvulopat|losartan|enalapril|amlodipin|captopril|metoprolol|atenolol|carvedilol|hidroclorotiazida|valsartan|preeclampsia/ },
+  { zone: 'core_central', re: /post ?parto|pos ?parto|despues (de|del) (mi |el )?parto|(tuve|tras) (un |mi )?parto|parto (natural|vaginal|por cesarea)|(^| )(di|dio|dieron|dar) a luz( |$)|diastasis|separacion (abdominal|de (los )?(rectos|abdominales))|cesarea|(piso|suelo) pelvic|prolapso|incontinencia|hernias? (umbilical|abdominal|ventral|epigastric|incisional|inguinal|hiatal)|hernias? (en |de |del )(el |mi )?(ombligo|abdomen|vientre|estomago)|eventracion|histerectom|abdominoplast|bariatric|manga gastric|bypass gastric|laparotom|(cirugia|operacion) (abdominal|de abdomen)|(se me|me) (sale|escapa|salen|escapan) (la )?(orina|pipi|chichi)|escapes? de orina|perdidas? de orina|me orino|me hago (pipi|chichi)|(vejiga|matriz|utero) caid|caida de (la )?(vejiga|matriz|utero)|(operaron|operada|operado|operacion|cirugia|sacaron|quitaron|extirparon)\w* (de |del )?(la |el )?(matriz|utero)/ },
+  { zone: 'hueso', re: /osteopeni|osteopor|descalcifi|densidad osea|huesos (fragiles|debiles|porosos)|fragilidad osea|fractura (vertebral|por compresion|por fragilidad|de (la )?columna)|aplastamiento vertebral|vertebra aplastada|huesos de cristal|(falta|perdida|poco|bajo|baja)\w* (de )?calcio|calcio (bajo|en los huesos)/ },
+  { zone: 'presion', re: /hipertens|(presion|tension) (arterial )?(alta|elevada)(?! en )|\bhta\b|cardiopat|arritmia|taquicardia|infarto|angina de pecho|\bstent\b|marcapaso|angioplast|bypass coronari|insuficiencia cardiac|enfermedad (del )?corazon|problemas? (del |de |en el )?(el )?corazon|problemas? cardiac|soplo cardiac|valvulopat|losartan|enalapril|amlodipin|captopril|metoprolol|atenolol|carvedilol|hidroclorotiazida|valsartan|preeclampsia|(sufro|padezco|sufre|padece)\w* (de |del )?(la )?(presion|tension)(?! (baja|en ))|(presion|tension) (se me|me) (sube|dispara|pone alta)|se me (sube|dispara) la (presion|tension)|(pastilla|medicamento|medicina|remedio|droga)s? (para|de) la (presion|tension)|problemas? (de|con) (la )?(presion|tension)(?! (baja|en ))|^ *(la |mi )?(presion|tension)( arterial)? *$|(sufro|padezco|sufre|padece|enferm[oa])\w* del corazon|(tengo|tiene) un soplo|soplo (en el |del |al )?corazon|^ *soplo *$|(opera\w*|cirugia) (del |al |a |de )?(corazon|cardiac)|corazon abierto|cateterism|(falla|insuficiencia|enfermedad) cardiac|(soy|es) cardiac|paciente cardiac|preinfarto/ },
   // 🔒 EMBARAZO = `embarazo` + `core_central`, SIEMPRE juntas (Laura E1): el abdomen, el impacto y los
   // lastres los quita `core_central`; `embarazo` suma boca arriba, boca abajo, caídas y esfuerzo
   // máximo. El trimestre NO se lee (E1): un número en la nota casi nunca es la edad gestacional y
@@ -535,7 +535,7 @@ function _dedupCondKeys(keys) {
 // Síntomas que sugieren compromiso NERVIOSO (radiculopatía). No cambian qué se excluye —
 // cambian lo que la app le dice al coach: esto es criterio de DERIVACIÓN médica antes de
 // cargar, no de sustituir un ejercicio por otro. (Veredicto de Laura, fisio, 2026-08-02.)
-const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerza|debilidad/;
+const GEN_NERVE_RE = /ciatic|irradia|hormigueo|adormec|se me duerme|pierda fuerza|debilidad|que (me )?(baja|corre|recorre) por (la |las |mi |mis )?pierna/;
 // Ejercicios a EXCLUIR por zona (match contra nombre normalizado). Preferimos variantes seguras
 // dejando que el fallback elija otras del mismo músculo.
 //
@@ -1384,9 +1384,42 @@ function _condAdviceCoach(keys, n) {
   return out.join(' ');
 }
 
+// ── v739 · LA NOTA COMO LA ESCRIBE LA GENTE (Fable, 10-nov) ──────────────────────────────────────
+// 🔴 Quien se registra sola escribe sus lesiones en UN campo libre que le promete «tu plan evita los
+// ejercicios que puedan agravarla», y el lector solo reconocía la ortografía de un médico: de 133
+// frases reales, 64 no daban NADA — «embarasada», «ernia discal», «siatica», «servical», «rodiya»,
+// «ipertension». La causa no era una lista corta: cada regla está escrita con la forma CORRECTA de la
+// palabra y la gente escribe como suena. Se arregla la clase, no la lista: antes de leer, cada palabra
+// que SUENA igual que una palabra de salud se reescribe con su forma correcta (h muda, ll/y, b/v,
+// s/z/c, n/m antes de b y p, letras dobles). Solo se toca una palabra si su sonido coincide EXACTO
+// con una del diccionario; las bien escritas no cambian, así que ninguna regla vieja cambia de
+// resultado. Las frases que no son errores de ortografía («me duele la cintura», «sufro de la
+// presión», «estoy encinta») van en sus reglas. Candado: las 133 frases y sus controles en la suite.
+const LIM_CANON = ['hernia', 'hernias', 'embarazada', 'embarazado', 'embarazo', 'hipertension', 'hipertenso',
+  'hipertensa', 'hombro', 'hombros', 'cervical', 'cervicales', 'ciatica', 'ciatico', 'rodilla', 'rodillas',
+  'columna', 'cintura', 'corazon', 'cardiaco', 'cardiaca', 'presion', 'tension', 'osteoporosis', 'osteopenia',
+  'tendinitis', 'artrosis', 'artritis', 'bursitis', 'menisco', 'meniscos', 'lumbar', 'lumbago', 'lumbalgia',
+  'escoliosis', 'rotula', 'tobillo', 'tobillos', 'codo', 'codos', 'cadera', 'prolapso', 'incontinencia',
+  'diastasis', 'cesarea', 'ligamento', 'espalda', 'cirugia', 'lesion', 'lesionado', 'lesionada', 'fractura',
+  'tendon', 'manguito', 'rotador', 'arritmia', 'taquicardia', 'infarto', 'marcapasos', 'cuadriceps',
+  'esguince', 'luxacion', 'vertebra', 'vertebras', 'matriz', 'vejiga', 'orina', 'descalcificacion',
+  'clavicula', 'cartilago', 'cervicalgia'];
+// Errores que NO son de sonido (una vocal cambiada, una ele que falta).
+const LIM_ALIAS = { hernea: 'hernia', herneas: 'hernias', rodila: 'rodilla', rodilas: 'rodillas', cesaria: 'cesarea' };
+function _limSonido(w) {
+  return w.replace(/ch/g, '\u0001').replace(/h/g, '').replace(/\u0001/g, 'ch')
+    .replace(/ll/g, 'y').replace(/v/g, 'b').replace(/z/g, 's').replace(/c([ei])/g, 's$1')
+    .replace(/qu/g, 'k').replace(/c/g, 'k').replace(/x/g, 'ks').replace(/n([bp])/g, 'm$1').replace(/(.)\1+/g, '$1');
+}
+const LIM_POR_SONIDO = LIM_CANON.reduce((m, w) => { m[_limSonido(w)] = w; return m; }, {});
+// Recibe texto YA normalizado (`_norm`). Devuelve el mismo texto con cada palabra de salud mal escrita corregida.
+function _limCanon(n) {
+  return String(n || '').replace(/[a-z]+/g, w => LIM_ALIAS[w] || LIM_POR_SONIDO[_limSonido(w)] || w);
+}
+
 // Parsea las notas del cliente → limitaciones detectadas. Exportada para tests.
 function parseLimitations(notes) {
-  const n = _norm(notes);
+  const n = _limCanon(_norm(notes));
   const keys = [];
   // v729 · el embarazo se busca en la nota SIN las frases de pérdida ni de fin («perdí el embarazo», «ya no estoy
   // embarazada»), y con una pérdida anotada solo cuenta si HOY hay uno («estoy embarazada de nuevo»).
@@ -14040,6 +14073,8 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_ZONE_EXCL,
     GEN_EXCL_IDS,
     GEN_LIMIT_KWS,
+    _limCanon,
+    LIM_CANON,
     GEN_EMBARAZO_RE,
     GEN_POSTPARTO_RE,
     GEN_PERDIDA_RE,
