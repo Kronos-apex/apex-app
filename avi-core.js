@@ -765,7 +765,9 @@ const GEN_EXCL_IDS = {
   abductor: ['e93'],
   muneca: ['e127', 'e307'],
   codo: ['e264', 'e275', 'e276', 'e307'],
-  hombro: ['e313', 'e314', 'e325', 'e290', 'e291', 'e242'],
+  // v741 · `e274` EXTENSIÓN DE TRÍCEPS A UNA MANO: su ficha dice «extensión sobre la cabeza» y la regla de hombro ya
+  //    caza `sobre la cabeza`; el nombre no lo dice (Fable, 10-nov: salía 40 veces en casa con hombro).
+  hombro: ['e313', 'e314', 'e325', 'e290', 'e291', 'e242', 'e274'],
   // LUMBAR (lote 3)
   //  · `e335` SENTADILLA ZERCHER: la barra va en el pliegue de los codos, o sea carga FRONTAL —la
   //    lista ya caza `sentadilla frontal` por eso mismo— y exige aún más de la lumbar para no irse
@@ -782,7 +784,12 @@ const GEN_EXCL_IDS = {
   //  · `e364` ELEVACIÓN DE RODILLAS COLGADO: hermano de `e48 Elevación de Piernas Colgado`, que
   //    SÍ cae por `elevacion de piernas`. Con las rodillas dobladas pesa menos, pero es el mismo
   //    patrón de enrollar la pelvis colgado.
-  lumbar: ['e305', 'e306', 'e247', 'e244', 'e335', 'e333', 'e360', 'e361', 'e367', 'e364'],
+  // LUMBAR y RODILLA (v741, Fable 10-nov) — el IMPACTO de carrera que el texto promete quitar y el nombre no delata:
+  //  · `e182` RODILLAS ALTAS y `e183` TALONES AL GLÚTEO: correr en el sitio, el mismo impacto por el que `sprint` y
+  //    `carrera` están en la lista. En rodilla `e182` ya caía por `rodillas altas`; `e183` no.
+  // ⏭️ PENDIENTE DE CONFIRMACIÓN DE LAURA: se cae del lado de EXCLUIR, como los de codo del lote 1.
+  lumbar: ['e305', 'e306', 'e247', 'e244', 'e335', 'e333', 'e360', 'e361', 'e367', 'e364', 'e182', 'e183'],
+  rodilla: ['e183'],
   // ADUCTOR (lote 3)
   //  · `e336` SENTADILLA COSACO: base MUY abierta y descenso sobre una pierna con la otra
   //    extendida — la posición de máximo estiramiento del aductor. El mecanismo que Laura nombró
@@ -795,6 +802,12 @@ const GEN_EXCL_IDS = {
   // `e332` Curl Femoral a una Pierna (la máquina es la tumbada).
   embarazo: ['e72', 'e110', 'e246', 'e309', 'e322', 'e332', 'e334'],
 };
+// 🔴 v741 · POR TIPO, NO SOLO POR NOMBRE (Fable, 10-nov). La regla de Laura para presión arterial dice «explosivos y
+// HIIT» y la del embarazo «el esfuerzo máximo (HIIT…)», pero el filtro buscaba la PALABRA «hiit» en el nombre: a una
+// persona con hipertensión le llegaban `e182` Rodillas Altas (80 de 1.440 planes), `e183` Talones al Glúteo y `e294`
+// Flexiones con Palmada, los tres del tipo HIIT del catálogo, y el rápido «HIIT sin equipo» se le ofrecía con 3 de 5.
+// El tipo es el dato que dice lo que el nombre no: se excluye todo ejercicio de tipo HIIT para esas dos condiciones.
+const GEN_EXCL_TYPES = { presion: ['HIIT'], embarazo: ['HIIT'] };
 // 🔴 v676 · LO QUE LA REGLA ANCHA SE LLEVABA Y LAURA DICTÓ QUE NO SE BORRA. `rodilla` conserva
 // `sentadilla` a secas A PROPÓSITO (el riesgo vive en rango y alineación, y el sistema no controla
 // ninguno), pero el MISMO párrafo del dictamen (`dictamen-laura-dolor-2026-08-08.md` §3.2) dice:
@@ -1136,18 +1149,22 @@ function warmupWarnText(zonas, propio) {
 function exerciseContraindicated(ex, limKeys, lib) {
   if (!ex || !limKeys || !limKeys.length) return false;
   const nombres = [_norm(ex.name)];
+  const tipos = ex.type ? [ex.type] : [];
   if (lib && ex.id) {
     const canon = (Array.isArray(lib) ? lib : []).find(x => x && x.id === ex.id);
     if (canon && canon.name) {
       const nc = _norm(canon.name);
       if (nombres.indexOf(nc) < 0) nombres.push(nc);
     }
+    if (canon && canon.type && tipos.indexOf(canon.type) < 0) tipos.push(canon.type);
   }
   return limKeys.some(z => {
     const keep = GEN_KEEP_IDS[z];
     if (keep && ex.id && keep.indexOf(ex.id) >= 0) return false;
     const ids = GEN_EXCL_IDS[z];
     if (ids && ex.id && ids.indexOf(ex.id) >= 0) return true;
+    const porTipo = GEN_EXCL_TYPES[z];
+    if (porTipo && tipos.some(t => porTipo.indexOf(t) >= 0)) return true;
     const re = GEN_ZONE_EXCL[z];
     return !!re && nombres.some(n => re.test(n));
   });
@@ -5914,6 +5931,9 @@ function quickWorkoutFit(items, limKeys, lib) {
     if (!it || !it.id) return;
     const copias = L.filter(e => e && e.id === it.id);
     if (!copias.length) copias.push({ id: it.id, name: it.name || '' });
+    // v741 · en un rápido con protocolo HIIT (`hiit: {work, rest}`) el ejercicio se hace en HIIT aunque su tipo no lo sea:
+    // con presión arterial o embarazo, «HIIT sin equipo» seguía ofreciéndose con los escaladores a 30 s fuerte / 15 s.
+    if (it.hiit) copias.push({ id: it.id, name: copias[copias.length - 1].name || '', type: 'HIIT' });
     const zonas = keys.filter(z => copias.some(ex => exerciseContraindicated(ex, [z], L)));
     if (zonas.length) quitados.push({ id: it.id, name: copias[copias.length - 1].name || it.id, zonas });
     else keep.push(it);
@@ -14091,6 +14111,7 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_EXCL_IDS,
     GEN_LIMIT_KWS,
     _limCanon,
+    GEN_EXCL_TYPES,
     LIM_CANON,
     GEN_EMBARAZO_RE,
     GEN_POSTPARTO_RE,

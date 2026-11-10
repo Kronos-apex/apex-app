@@ -25269,8 +25269,10 @@ test('🔒 v726 · candado 13: ningún rápido ofrece un ejercicio contraindicad
     }
     // CONTROL DE DISCRIMINACIÓN: la biblioteca SIN filtrar sí trae contraindicados para esta zona.
     for (const w of _QW_REAL) {
-      const ids = w.cardio ? core.QUICK_CARDIO_OPTIONS.map(o => o.id) : w.items.map(i => i.id);
-      sinFiltroContra += ids.filter(id => core.exerciseContraindicated(_LIB_REAL.find(e => e.id === id), [z], _LIB_REAL)).length;
+      const its = w.cardio ? core.QUICK_CARDIO_OPTIONS.map(o => ({ id: o.id })) : w.items;
+      // v741 · un ejercicio hecho con protocolo HIIT cuenta como HIIT para las condiciones que lo excluyen por tipo.
+      const hiitPorTipo = (core.GEN_EXCL_TYPES[z] || []).indexOf('HIIT') >= 0;
+      sinFiltroContra += its.filter(it => (it.hiit && hiitPorTipo) || core.exerciseContraindicated(_LIB_REAL.find(e => e.id === it.id), [z], _LIB_REAL)).length;
     }
   }
   assert.ok(sinFiltroContra > 20, `CONTROL · la biblioteca sin filtro casi no choca con ninguna zona (${sinFiltroContra}): la prueba no discrimina`);
@@ -25400,15 +25402,17 @@ test('🔒 v727 · candado 2 · sin lookbehind en avi-core (revienta Safari < 16
   assert.ok(!tiene(src), '🔴 avi-core.js tiene un lookbehind en el código');
 });
 
-test('🔒 v727 · candado 3 · los ejercicios que caen por condición quedan FIJADOS (65 · 31 · 44 · 60; juntas embarazo 124)', () => {
+test('🔒 v727 · candado 3 · los ejercicios que caen por condición quedan FIJADOS (65 · 31 · 47 · 75; juntas embarazo 124)', () => {
   const caen = zs => _LIB_REAL.filter(e => core.exerciseContraindicated(e, zs, _LIB_REAL)).map(e => e.id).sort();
   const FIJO = {
     core_central: 'e17 e18 e47 e48 e62 e63 e20 e66 e69 e75 e76 e81 e131 e132 e136 e157 e168 e176 e182 e183 e184 e185 e186 e187 e188 e189 e190 e191 e192 e193 e194 e195 e196 e197 e198 e200 e201 e202 e203 e204 e205 e240 e241 e277 e304 e347 e360 e361 e362 e363 e364 e365 e366 e367 e368 e369 e370 e371 e376 e377 e378 e379 e380 e381 e382',
     hueso: 'e50 e18 e47 e48 e62 e63 e75 e131 e132 e167 e176 e187 e198 e202 e203 e240 e241 e360 e361 e362 e363 e364 e366 e367 e368 e369 e370 e378 e379 e380 e382',
-    presion: 'e17 e49 e63 e74 e69 e75 e128 e136 e157 e164 e184 e185 e186 e187 e188 e189 e190 e191 e192 e193 e196 e197 e198 e200 e201 e202 e203 e204 e205 e211 e277 e304 e347 e365 e367 e368 e371 e376 e377 e378 e379 e380 e381 e382',
-    embarazo: 'e1 e110 e71 e12 e57 e15 e42 e43 e73 e72 e74 e82 e83 e91 e92 e97 e106 e109 e112 e116 e123 e137 e146 e149 e154 e215 e216 e217 e219 e220 e222 e242 e243 e246 e264 e273 e275 e276 e291 e293 e294 e295 e296 e307 e309 e312 e322 e332 e333 e334 e335 e337 e345 e348 e349 e350 e357 e359 e373 e380',
+    presion: 'e17 e49 e63 e74 e69 e75 e128 e136 e157 e164 e184 e185 e186 e187 e188 e189 e190 e191 e192 e193 e196 e197 e198 e200 e201 e202 e203 e204 e205 e211 e277 e304 e347 e365 e367 e368 e371 e376 e377 e378 e379 e380 e381 e382 e182 e183 e294',
+    embarazo: 'e1 e110 e71 e12 e57 e15 e42 e43 e73 e72 e74 e82 e83 e91 e92 e97 e106 e109 e112 e116 e123 e137 e146 e149 e154 e215 e216 e217 e219 e220 e222 e242 e243 e246 e264 e273 e275 e276 e291 e293 e294 e295 e296 e307 e309 e312 e322 e332 e333 e334 e335 e337 e345 e348 e349 e350 e357 e359 e373 e380 e182 e183 e184 e185 e186 e187 e189 e193 e198 e200 e202 e203 e205 e378 e379',
   };
-  const cuenta = { core_central: 65, hueso: 31, presion: 44, embarazo: 60 };
+  // v741 · presión 44 → 47 y embarazo 60 → 75: los de TIPO HIIT que el nombre no delataba (su regla dice «HIIT»).
+  // La unión del embarazo sigue en 124: esos ya caían por `core_central`. ⏭️ Pendiente de que Laura lo revise.
+  const cuenta = { core_central: 65, hueso: 31, presion: 47, embarazo: 75 };
   for (const z of _COND) {
     const fijo = FIJO[z].split(' ').sort();
     assert.strictEqual(fijo.length, cuenta[z], `CONTROL · la lista fijada de ${z} no tiene ${cuenta[z]}`);
@@ -26409,6 +26413,31 @@ test('🔴 v740 · un adulto con IMC < 18,5 no recibe déficit: su mantenimiento
   assert.ok(gana.kcalObj > gana.tdee, 'con peso bajo, ganar músculo conserva su superávit');
   const menor = core.nutritionEstimate({ sex: 'F', age: 16, height: 160, weight: 42, goal: 'Perder grasa', activityFactor: 1.55 });
   assert.ok(/est[áa]s creciendo/.test(menor.label), 'el menor conserva su propio rótulo');
+});
+
+// v741 · POR TIPO, NO SOLO POR NOMBRE (Fable, 10-nov).
+test('🔴 v741 · presión arterial y embarazo excluyen TODO lo de tipo HIIT, y el rápido en protocolo HIIT no se ofrece', () => {
+  const hiit = _LIB_REAL.filter(e => e.type === 'HIIT');
+  assert.ok(hiit.length >= 15, `CONTROL · el catálogo tenía 18 de tipo HIIT, leí ${hiit.length}`);
+  for (const z of ['presion', 'embarazo']) {
+    const pasan = hiit.filter(e => !core.exerciseContraindicated(e, [z], _LIB_REAL)).map(e => e.id + ' ' + e.name);
+    assert.deepStrictEqual(pasan, [], `🔴 con ${z} pasan ejercicios de tipo HIIT`);
+  }
+  // Rodillas Altas, Talones al Glúteo y Flexiones con Palmada: los tres que Fable vio en planes de hipertensión.
+  ['e182', 'e183', 'e294'].forEach(id => assert.ok(core.exerciseContraindicated(_LIB_REAL.find(e => e.id === id), ['presion'], _LIB_REAL), id));
+  const pres = core.quickWorkoutsFor(_QW_REAL, ['presion'], _LIB_REAL);
+  ['qw_hiit_casa', 'qw_hiit_maquina', 'qw_plio'].forEach(id => assert.strictEqual(_qwDe(pres, id).oculto, true, `🔴 con presión alta se ofrece ${id}`));
+  // Controles: sin condición el HIIT sigue entero; con presión, «Cardio a tu ritmo» y la movilidad siguen.
+  const libre = core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL);
+  assert.strictEqual(_qwDe(libre, 'qw_hiit_casa').quedan, 5);
+  assert.strictEqual(_qwDe(pres, 'qw_cardio').oculto, false);
+  assert.strictEqual(_qwDe(pres, 'qw_movilidad').oculto, false);
+  // Impacto de carrera en lumbar y rodilla, y lo de por encima de la cabeza en hombro (lo que el nombre no delata).
+  assert.ok(core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e183'), ['rodilla'], _LIB_REAL));
+  ['e182', 'e183'].forEach(id => assert.ok(core.exerciseContraindicated(_LIB_REAL.find(e => e.id === id), ['lumbar'], _LIB_REAL), id + ' con lumbar'));
+  assert.ok(core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e274'), ['hombro'], _LIB_REAL), 'e274 va sobre la cabeza');
+  // Control: el tipo solo pesa en las condiciones que lo nombran. Hueso conserva sus HIIT de impacto moderado.
+  assert.ok(!core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e182'), ['hueso'], _LIB_REAL));
 });
 
 // ══════════════════════════════════════════════════════
