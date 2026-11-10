@@ -26292,6 +26292,56 @@ test('🔒 v735 · la tarjeta sale en «Hoy» (también el día 1), primera en e
   assert.ok(/!clientHasCoach\(c\)/.test(res) && /openCoachNote\('\$\{esc\(c\.id\)\}'\)/.test(res), 'la ficha ofrece escribirle en su app solo a quien no tiene chat');
 });
 
+// ══════ DENTRO DE THREADS/INSTAGRAM/FACEBOOK LA APP NO SE INSTALA (v738) ═══════════════════
+// 🔴 Medido el 9-nov: de 6 cuentas llegadas por Threads, 5 no volvieron a abrir la app. Se registraron en el
+// navegador interno de la red social (sin «Instalar», sin avisos, con la sesión guardada dentro de esa app) y la
+// bienvenida les daba instrucciones FALSAS para ese caso. Las agentes de usuario son reales de cada app.
+test('🔒 v738 · reconoce el navegador interno de Threads, Instagram y Facebook, y NO el de un navegador de verdad', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('function aviNavegadorInterno('), j = html.indexOf('(function(){', i);
+  assert.ok(i > 0 && j > i, '🔴 falta la detección inline en la bienvenida');
+  const { aviNavegadorInterno: nav, aviIntentChrome: intent } = new Function(html.slice(i, j) + '\nreturn { aviNavegadorInterno, aviIntentChrome };')();
+  const UA = {
+    threadsIos: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Barcelona 341.0.0.25.80 (iPhone15,3; iOS 17_5; es_CO; es; scale=3.00; 1290x2796; 624193215)',
+    threadsAndroid: 'Mozilla/5.0 (Linux; Android 14; SM-A146M Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.71 Mobile Safari/537.36 Barcelona 341.0.0.38.89 Android (34/14; 450dpi; 1080x2208; samsung; SM-A146M; a14x; mt6833; es_CO; 625087398)',
+    instagram: 'Mozilla/5.0 (Linux; Android 13; SM-A145M Build/TP1A.220624.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.71 Mobile Safari/537.36 Instagram 339.0.0.30.105 Android (33/13; 420dpi; 1080x2186; samsung; SM-A145M; a14; mt6769; es_CO; 618018562)',
+    facebookIos: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/473.0.0.37.106;FBBV/625617447;FBDV/iPhone15,3;FBMD/iPhone;FBSN/iOS;FBSV/17.5;FBSS/3;FBID/phone;FBLC/es_LA;FBOP/5]',
+    chrome: 'Mozilla/5.0 (Linux; Android 13; SM-A145M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+    safari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+    webviewGenerico: 'Mozilla/5.0 (Linux; Android 13; SM-A145M Build/TP1A.220624.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.71 Mobile Safari/537.36',
+  };
+  assert.strictEqual(nav(UA.threadsIos), 'Threads', '🔴 Threads en iPhone no se reconoce: ahí llegan las cuentas de la serie Día N');
+  assert.strictEqual(nav(UA.threadsAndroid), 'Threads', '🔴 Threads en Android no se reconoce');
+  assert.strictEqual(nav(UA.instagram), 'Instagram');
+  assert.strictEqual(nav(UA.facebookIos), 'Facebook');
+  // CONTROL: un navegador de verdad y el WebView sin nombre (puede ser la propia app instalada) no reciben el aviso.
+  assert.strictEqual(nav(UA.chrome), null, '🔴 a quien ya está en Chrome se le diría que abra Chrome');
+  assert.strictEqual(nav(UA.safari), null, '🔴 a quien ya está en Safari se le diría que abra el navegador');
+  assert.strictEqual(nav(UA.webviewGenerico), null, '🔴 el WebView sin nombre también es la app instalada');
+  assert.strictEqual(nav(''), null);
+  // El enlace a Chrome lleva la MISMA dirección: sin ?canal se pierde por dónde llegó la persona.
+  const href = 'https://app.avientrena.com/?canal=threads&origen=web';
+  const it = intent(href);
+  assert.ok(it.startsWith('intent://app.avientrena.com/?canal=threads&origen=web#Intent;scheme=https;package=com.android.chrome;'), '🔴 el enlace a Chrome no lleva la dirección completa: ' + it);
+  assert.ok(it.includes('S.browser_fallback_url=' + encodeURIComponent(href) + ';end'), 'sin Chrome tiene que volver a la dirección normal');
+});
+
+test('🔒 v738 · el aviso reemplaza las instrucciones falsas y se aparta al abrir el formulario', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  assert.ok(/\.av-inapp #install-hint\{display:none!important\}/.test(css), '🔴 dentro de Threads seguirían saliendo «la barra de Safari» y «el menú ⋮»');
+  const ini = html.indexOf('(function(){', html.indexOf('function aviNavegadorInterno('));
+  const iife = html.slice(ini, html.indexOf('</script>', ini));
+  const marca = iife.indexOf("classList.add('av-inapp')"), primerRet = iife.indexOf('if(!box) return');
+  assert.ok(marca > 0 && marca < primerRet, '🔴 la marca de la raíz tiene que ir antes de cualquier return (gotcha v701)');
+  assert.ok(/a\.href=aviIntentChrome\(location\.href\)/.test(iife), 'el botón abre en Chrome la dirección actual, con su ?canal');
+  assert.ok(html.indexOf('id="inapp-hint"') > 0 && html.indexOf('id="inapp-hint"') < html.indexOf('id="cin-cta"'), 'el aviso va antes de «Crear cuenta»');
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  assert.ok(/CIN_WELCOME_EXTRAS = \[[^\]]*'inapp-hint'/.test(app2), '🔴 el aviso se quedaría encima del formulario (gotcha v571)');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

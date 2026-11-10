@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=737">
+<link rel="stylesheet" href="styles.css?v=738">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -202,6 +202,58 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div class="cin-tag">Entrenamiento con <b>nombre propio.</b></div>
       <div class="cin-sub2">Gratis para empezar: la app te arma la rutina y te guía serie por serie. Si después quieres un coach, se suma sin perder nada.</div>
     </div>
+
+    <!-- v738 · DENTRO DE THREADS, INSTAGRAM O FACEBOOK LA APP NO SE PUEDE INSTALAR (pedido del PO, 9-nov).
+         Medido ese día: de las 6 cuentas que llegaron por Threads, 5 no volvieron a abrir la app. Se registraron en
+         el navegador interno de la red social, donde no existe «Instalar» ni «Añadir a pantalla de inicio», los avisos
+         al celular no llegan y la sesión queda guardada dentro de esa app. Las instrucciones de #install-hint eran
+         FALSAS ahí (hablan de la barra de Safari y del menú ⋮ de Chrome): este recuadro las reemplaza y ofrece abrir
+         la MISMA dirección (con ?canal y ?origen, para no perder por dónde llegó) en Chrome. En iPhone ninguna app
+         puede forzar Safari: se dice dónde tocar. Inline y aquí por la misma razón que los scripts de abajo: corre
+         aunque un módulo no cargue y antes de que se pinte nada. -->
+    <div id="inapp-hint" class="cin-inapp" hidden>
+      <div class="ttl">Estás viendo AVI dentro de <span id="inapp-app">otra app</span></div>
+      <div class="txt">Ábrela en tu navegador: así la instalas en tu celular y te avisa cuando te toca entrenar.</div>
+      <a id="inapp-open" class="ibtn" href="#" hidden>Abrir en Chrome</a>
+      <div id="inapp-ios" class="txt" hidden>Toca <strong>•••</strong> arriba a la derecha y elige abrir en <strong>Safari</strong> o en el navegador.</div>
+      <button type="button" id="inapp-copy" class="ibtn ibtn-linea">Copiar el enlace</button>
+    </div>
+    <script>
+    // Nombre de la red social cuyo navegador interno abrió la app, o null si es un navegador de verdad.
+    // Threads se identifica con su nombre en clave («Barcelona»); se pregunta antes que Instagram por si algún día
+    // trae las dos marcas. Solo apps con nombre: un WebView genérico («; wv)») también es la app instalada en
+    // Android, y decirle a quien ya la instaló que la abra en Chrome sería mentira.
+    function aviNavegadorInterno(ua){
+      ua=String(ua||'');
+      if(/Barcelona/.test(ua)) return 'Threads';
+      if(/Instagram/.test(ua)) return 'Instagram';
+      if(/FBAN|FBAV|FB_IAB|FBIOS/.test(ua)) return 'Facebook';
+      if(/musical_ly|BytedanceWebview|TikTok/i.test(ua)) return 'TikTok';
+      return null;
+    }
+    // La misma dirección como enlace que Android abre en Chrome; si no hay Chrome, vuelve a la dirección normal.
+    function aviIntentChrome(href){
+      var u=new URL(href);
+      return 'intent://'+u.host+u.pathname+u.search+u.hash+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(u.href)+';end';
+    }
+    (function(){ try{
+      var app=aviNavegadorInterno(navigator.userAgent); if(!app) return;
+      // La marca va en la RAÍZ y antes de cualquier return: apaga #install-hint (styles.css), que aún no existe aquí.
+      document.documentElement.classList.add('av-inapp');
+      var box=document.getElementById('inapp-hint'); if(!box) return;
+      document.getElementById('inapp-app').textContent=app;
+      if(/iPad|iPhone|iPod/.test(navigator.userAgent)) document.getElementById('inapp-ios').hidden=false;
+      else { var a=document.getElementById('inapp-open'); a.href=aviIntentChrome(location.href); a.hidden=false; }
+      var copiar=document.getElementById('inapp-copy');
+      copiar.addEventListener('click',function(){
+        var listo=function(){ copiar.textContent='✓ Copiado: pégalo en Chrome o Safari'; };
+        // Sin permiso de portapapeles, la dirección queda escrita en el botón para copiarla a mano.
+        var aMano=function(){ copiar.textContent=location.href; copiar.style.userSelect='all'; };
+        try{ navigator.clipboard.writeText(location.href).then(listo,aMano); }catch(e){ aMano(); }
+      });
+      box.hidden=false;
+    }catch(e){} })();
+    </script>
 
     <!-- Bienvenida: dos opciones (estilo elegante, sin volcar toda la info) -->
     <div class="cin-cta" id="cin-cta">
@@ -1444,19 +1496,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=737"></script>
-<script src="muscle-map.js?v=737"></script>
-<script src="exercise-muscles.js?v=737"></script>
+<script src="avi-core.js?v=738"></script>
+<script src="muscle-map.js?v=738"></script>
+<script src="exercise-muscles.js?v=738"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=737"></script>
-<script src="app-2-login.js?v=737"></script>
-<script src="app-3-coach.js?v=737"></script>
-<script src="app-4-entreno.js?v=737"></script>
-<script src="app-5-salud.js?v=737"></script>
-<script src="app-6-extra.js?v=737"></script>
-<script src="app-7-community.js?v=737"></script>
+<script src="app-1-infra.js?v=738"></script>
+<script src="app-2-login.js?v=738"></script>
+<script src="app-3-coach.js?v=738"></script>
+<script src="app-4-entreno.js?v=738"></script>
+<script src="app-5-salud.js?v=738"></script>
+<script src="app-6-extra.js?v=738"></script>
+<script src="app-7-community.js?v=738"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

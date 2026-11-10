@@ -6,6 +6,10 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-09 (noche) — v738 · ÁBRELA EN TU NAVEGADOR
+
+**Origen:** el PO aprobó atacar «la fuga» después del registro (9-nov, «sí, arranca»). Medido ese día: de 6 cuentas llegadas por Threads, 5 no volvieron a abrir la app; se registraron dentro del navegador de la red social, donde no se puede instalar, no llegan los avisos y la sesión queda presa en esa app. **Hecho:** aviso en la bienvenida con «Abrir en Chrome» (Android, misma dirección con ?canal) o dónde tocar para pasar a Safari (iPhone), más «Copiar el enlace»; apaga las instrucciones de instalar, que ahí eran falsas. **Pendiente (siguiente paso de la fuga):** quien YA se registró dentro de Threads no ve nada nuevo (el aviso solo está en la bienvenida); los correos automáticos día 1 y día 3 cubren ese caso.
+
 ## 2026-11-09 (tarde) — v737 · e340 CON FOTO
 
 **Origen:** el PO, 9-nov: «sube solo las imágenes que son urgentes, las otras la vamos subiendo de a poco para no quedarnos sin tokens». Urgente = ejercicio SIN foto que está en rutinas reales: solo e340 (aducción de cadera en polea de pie), rehecha en la tanda del 9-nov con la pierna estirada (en v736 quedó fuera por la rodilla doblada). Entra la foto del FINAL: se ven el cable y la pierna cruzando por delante; la de inicio, sin cable a la vista, se podía leer como abducción. Las 26 parejas nuevas de los lotes 1-7 NO entran: son ejercicios que todavía no tienen ficha en la app.

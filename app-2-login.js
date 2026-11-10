@@ -2650,7 +2650,7 @@ function openCoachStat(kind){
 // 🔒 Con CLASE propia y no con `style.display`: `#install-hint` ya lo apaga el flujo de
 //    instalación (app-6), y dos mecanismos peleando la misma propiedad se tapan (v505). Quitar la
 //    clase devuelve el mando a app-6 en vez de encender algo que él había apagado.
-const CIN_WELCOME_EXTRAS = ['install-hint'];
+const CIN_WELCOME_EXTRAS = ['install-hint','inapp-hint'];
 function cinFormMode(on){
   CIN_WELCOME_EXTRAS.forEach(id=>{
     const el=document.getElementById(id);

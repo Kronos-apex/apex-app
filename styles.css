@@ -2364,6 +2364,16 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 #su-mail-box{margin-top:16px}
 /* R22 · quien llega desde la web no ve «Instala la app» en la bienvenida (clase propia: app-6 maneja el display). */
 .av-desde-web #install-hint{display:none!important}
+/* v738 · dentro de Threads, Instagram o Facebook las instrucciones de instalar son falsas: las reemplaza #inapp-hint */
+.av-inapp #install-hint{display:none!important}
+.cin-inapp{margin:0 0 14px;padding:12px 14px;background:rgba(16,224,160,.10);border:1px solid rgba(16,224,160,.32);border-radius:12px;text-align:left}
+.cin-inapp[hidden]{display:none}
+.cin-inapp .ttl{font-size:13px;font-weight:800;color:#10E0A0;margin-bottom:6px;line-height:1.35}
+.cin-inapp .txt{font-size:13px;color:rgba(242,245,244,.78);line-height:1.55}
+.cin-inapp strong{color:#10E0A0}
+.cin-inapp .ibtn{display:block;box-sizing:border-box;margin-top:10px;width:100%;min-height:44px;padding:11px;background:#10E0A0;border:1px solid #10E0A0;border-radius:10px;color:#06120D;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;overflow-wrap:anywhere}
+.cin-inapp .ibtn[hidden]{display:none}
+.cin-inapp .ibtn-linea{background:transparent;color:#10E0A0}
 /* Consentimiento Habeas Data (paso 7 del wizard): 3 casillas separadas, ninguna pre-marcada */
 .wz-consent{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
 /* v565 · APAGAR UNA RAMA DEL CONSENTIMIENTO.
