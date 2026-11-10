@@ -23567,8 +23567,12 @@ test('🔒 R22 · un error del paso 7 se VE: el aviso vive arriba y el botón ab
   assert.ok(/e\.classList\.add\('on'\);\s*try\{\s*e\.scrollIntoView\(\{block:'nearest'\}\);/.test(err), 'el aviso no se trae a la vista');
   const go = coach.slice(coach.indexOf('function wzGoogle('), coach.indexOf('function wzGoogle(') + 2600);
   assert.ok(/if\(!consent\)\{ WZ\._err\(_wzConsentError\(\)\); return; \}/.test(go), 'Google sin casillas no avisa por la función que se ve');
-  // _sync() borra el aviso: el del nombre va DESPUÉS, o se pinta y se borra en el acto.
-  assert.ok(/WZ\._sync\(\); WZ\._err\('Escribe tu nombre/.test(go), 'el aviso del nombre se borra en el acto');
+  // _sync() borra el aviso. v744: el nombre vive en ESTE paso, así que su aviso ya no se devuelve al paso 1
+  // (antes `WZ.cur=0; WZ._sync()`): lo da `_valid()` en el sitio, que no llama a `_sync`.
+  assert.ok(/if\(!name\)\{ if\(!WZ\._valid\(\)\)return; \}/.test(go), 'Google sin nombre no avisa por _valid');
+  assert.ok(!/WZ\.cur=0/.test(go), 'Google sin nombre se devuelve al paso 1, donde ya no está el nombre');
+  const va = coach.slice(coach.indexOf('  _valid(){'), coach.indexOf('  _valid(){') + 900);
+  assert.ok(/'wz-s-account'[\s\S]*?this\._err\('Escribe tu nombre/.test(va) && !/_sync\(/.test(va), 'el aviso del nombre se borra en el acto');
   const su = coach.slice(coach.indexOf('async function signupClient('), coach.indexOf('async function signupClient(') + 5000);
   assert.ok(!/err\.classList\.add\('on'\)/.test(su), 'signupClient pinta un aviso que puede quedar fuera de la vista');
   assert.ok((su.match(/WZ\._err\(/g) || []).length >= 5, 'signupClient dejó de avisar en algún caso');
@@ -26523,6 +26527,78 @@ test('v743 · con un formulario abierto no hay marca: el registro y el entrar us
   assert.ok(/\.cin-form-on #cin-signup\{max-height:calc\(100vh - 64px\)!important/.test(css), 'el registro usa el alto que dejó la marca');
   // la portada (sin formulario) no cambia: ninguna regla nueva sin el prefijo
   assert.ok(/\.cin-hero\{margin-top:auto;margin-bottom:22px\}/.test(css));
+});
+
+// ══════ v744 · EL REGISTRO «TU SEMANA SE ARMA EN VIVO» (dirección B, elegida por el PO viendo las tres) ══════
+test('🔴 v744 · el objetivo primero y el nombre al final: el paso del nombre era donde se iban 9 de 30', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const m = coach.match(/steps:\[([^\]]+)\]/);
+  assert.ok(m, 'no encontré los pasos del asistente');
+  assert.deepStrictEqual(m[1].split(',').map(x => x.trim().replace(/'/g, '')), ['wz-s-goal', 'wz-s-place', 'wz-s-level', 'wz-s-when', 'wz-s-body', 'wz-s-account']);
+  assert.ok(!/id="wz-s-name"/.test(html), 'volvió el paso del nombre');
+  // El nombre y el WhatsApp viven en la cuenta, ANTES de las casillas y de los dos caminos.
+  const i = html.indexOf('id="wz-s-account"'), cuenta = html.slice(i, html.indexOf('<!-- ══ REVEAL', i));
+  const p = x => { const k = cuenta.indexOf(x); assert.ok(k > 0, 'no está en la cuenta: ' + x); return k; };
+  assert.ok(p('id="su-name"') < p('id="su-ck-general"') && p('id="su-ck-general"') < p('onclick="wzGoogle()"'));
+  assert.ok(p('id="su-phone-toggle"') < p('<div id="su-phone-box" class="cx-off">') && p('<div id="su-phone-box" class="cx-off">') < p('id="su-phone"'), 'el WhatsApp no empieza plegado');
+  assert.strictEqual((html.match(/id="su-name"/g) || []).length, 1);
+  assert.strictEqual((html.match(/id="su-phone"/g) || []).length, 1);
+  // El contador del encabezado arranca en el número real de pasos.
+  assert.ok(/id="wz-count">01\/06</.test(html));
+});
+
+test('🔴 v744 · lesiones con botones: cada frase la entiende la app, y van al mismo campo que leen las dos vías', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const i = html.indexOf('id="wz-s-body"'), cuerpo = html.slice(i, html.indexOf('id="wz-s-account"', i));
+  assert.ok(/<input type="hidden" id="su-notes" value="">/.test(cuerpo), 'su-notes dejó de ser el campo compuesto del paso del cuerpo');
+  const frases = [...cuerpo.matchAll(/data-frase="([^"]+)"/g)].map(x => x[1]);
+  assert.strictEqual(frases.length, 5, 'control: esperaba 5 botones con frase, leí ' + frases.length);
+  const espera = { 'dolor de rodilla': 'rodilla', 'dolor de espalda baja': 'lumbar', 'dolor de hombro': 'hombro', 'presión alta o problemas del corazón': 'presion', 'embarazo': 'embarazo' };
+  for (const f of frases) {
+    assert.ok(espera[f], 'frase sin expectativa: ' + f);
+    assert.ok(core.parseLimitations(f).keys.includes(espera[f]), '🔴 la app no entiende «' + f + '»: el botón no filtraría nada');
+  }
+  // CONTROL de que la sonda discrimina: una frase cualquiera no da esas zonas.
+  assert.ok(!core.parseLimitations('me gusta correr').keys.includes('rodilla'));
+  assert.ok(/data-nada="1"/.test(cuerpo) && /data-otra="1"/.test(cuerpo) && /id="su-notes-otra"/.test(cuerpo));
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const ls = coach.slice(coach.indexOf('  _limSync(){'), coach.indexOf('  _limSync(){') + 600);
+  assert.ok(/\[data-frase\]\[aria-pressed="true"\]/.test(ls) && /\[data-otra\]\[aria-pressed="true"\]/.test(ls) && /out\.value=frases\.join\(', '\)/.test(ls), 'las lesiones marcadas no llegan a su-notes');
+  // «Embarazo» no se le ofrece a quien marcó «Hombre», y si estaba marcado se suelta.
+  const sy = coach.slice(coach.indexOf('  _sync(){'), coach.indexOf('  _sync(){') + 2400);
+  assert.ok(/\[data-frase="embarazo"\]/.test(sy) && /value==='M'/.test(sy) && /setAttribute\('aria-pressed','false'\)/.test(sy));
+});
+
+test('🔴 v744 · «Tu semana» muestra la semana que se le va a armar, y nunca contesta por la persona', () => {
+  const fs = require('fs'), path = require('path');
+  const coach = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const pv = coach.slice(coach.indexOf('function _wzPreviewWeek('), coach.indexOf('function wzShowPhone('));
+  assert.ok(/_autoGenerateWeek\(c\)/.test(pv), 'la muestra no sale de la misma función que arma la semana');
+  assert.ok(/id:'wz-preview'/.test(pv) && /routines:\[\]/.test(pv), 'la muestra no usa una ficha propia');
+  assert.ok(/notes:\(g\('su-notes'\)\|\|''\)\.trim\(\)/.test(pv), 'la muestra no tiene en cuenta las lesiones (la semana real sí)');
+  assert.ok(/catch\(e\)\{ return null; \}/.test(pv), 'un fallo de la muestra rompería el registro');
+  const pl = coach.slice(coach.indexOf('  _plan(){'), coach.indexOf('  _valid(){'));
+  assert.ok(/const diasOk=this\.cur>=iw;/.test(pl) && /const rut=diasOk\?_wzPreviewWeek\(\):null;/.test(pl), 'los días se muestran antes de que la persona los elija');
+  assert.ok(/\$\{esc\(dia\)\}/.test(pl) && /\$\{esc\(nom\)\}/.test(pl), 'innerHTML sin esc()');
+  // La casilla se llena en el toque, antes del auto-avance.
+  const pk = coach.slice(coach.indexOf('  pick(field,val,btn){'), coach.indexOf('  lim(btn){'));
+  assert.ok(pk.indexOf('this._plan();') > 0 && pk.indexOf('this._plan();') < pk.indexOf('WZ.next()'));
+});
+
+test('⚖️ v744 · el consentimiento conserva su texto aprobado: solo se pliega a 3 líneas', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  for (const frase of ['y autorizo a AVI a tratar mis datos', 'Autorizo <b>de forma expresa</b> el tratamiento de mis <b>datos de salud y estado físico</b>', 'Es voluntario: puedo revocarlo']) {
+    assert.ok(html.includes(frase), 'cambió el texto legal: ' + frase);
+  }
+  // «Leer todo» va FUERA de la etiqueta: dentro, tocarlo marcaría la casilla.
+  assert.strictEqual((html.match(/<\/label><button type="button" class="wz-cklee" aria-expanded="false" onclick="wzCkLeer\(this\)">Leer todo<\/button>/g) || []).length, 2);
+  assert.ok(/\.wz-ck span\{display:-webkit-box;-webkit-line-clamp:3;/.test(css) && /\.wz-ck\.abierto span\{display:block;-webkit-line-clamp:unset;overflow:visible\}/.test(css));
+  assert.ok(/\.wz-cklee\{[^}]*min-height:36px/.test(css), '«Leer todo» es un objetivo táctil chico');
 });
 
 // ══════════════════════════════════════════════════════

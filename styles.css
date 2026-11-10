@@ -2390,6 +2390,40 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .cin-inapp .ibtn[hidden]{display:none}
 .cin-inapp .ibtn-linea{background:transparent;color:#10E0A0}
 /* Consentimiento Habeas Data (paso 7 del wizard): 3 casillas separadas, ninguna pre-marcada */
+/* v744 · «TU SEMANA» SE ARMA EN VIVO (dirección B, elegida por el PO viendo las tres). La pantalla de entrada es oscura
+   en los dos temas (cinematográfica), por eso usa su paleta propia como el resto de #cin-signup. */
+.wz-plan{margin:0 0 18px;padding:14px 16px;border-radius:20px;background:linear-gradient(160deg,#0F241B,#08130E);border:1px solid #23402F}
+.wz-plan-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wz-plan-h .k{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#F2C94C}
+.wz-plan-h .n{font-size:11.5px;color:rgba(242,245,244,.66);text-align:right}
+.wz-plan-t{margin-top:6px;font-family:'Anton',sans-serif;font-size:30px;line-height:1;letter-spacing:1px;text-transform:uppercase;color:#fff}
+.wz-plan-slots{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.wz-slot{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wz-slot .l{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:rgba(242,245,244,.6)}
+.wz-slot .v{height:32px;border-radius:9px;border:1.5px dashed rgba(242,245,244,.2);display:flex;align-items:center;padding:0 10px;font-size:13px;font-weight:700;color:rgba(242,245,244,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wz-slot.on .v{border:1.5px solid rgba(16,224,160,.5);background:rgba(16,224,160,.10);color:#fff}
+.wz-plan-week{margin-top:12px;display:flex;justify-content:space-between}
+.wz-plan-week span{width:32px;height:32px;border-radius:50%;border:1.5px dashed rgba(242,245,244,.2);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:rgba(242,245,244,.55);transition:background .25s,color .25s,border-color .25s}
+.wz-plan-week span.on{border:1.5px solid #10E0A0;background:#10E0A0;color:#04140E}
+.wz-plan-days{display:none}
+.wz-plan[data-modo="compacto"] .wz-plan-slots{display:none}
+.wz-plan[data-modo="listo"] .wz-plan-week{display:none}
+.wz-plan[data-modo="listo"] .wz-plan-days{display:block;margin-top:10px}
+.wz-plan-days .d{display:flex;align-items:center;gap:10px;min-height:38px;border-top:1px solid rgba(242,245,244,.08)}
+.wz-plan-days .dn{width:38px;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:#10E0A0}
+.wz-plan-days .dt{flex:1;min-width:0;font-size:14px;font-weight:700;color:#fff}
+.wz-plan-days .ds{font-size:11.5px;color:rgba(242,245,244,.6);flex-shrink:0}
+@media (prefers-reduced-motion:reduce){.wz-plan-week span{transition:none}}
+/* v744 · lesiones con botones (escriben en su-notes) */
+.wz-lq{margin-top:18px;font-size:15px;font-weight:800;color:#fff}
+.wz-lchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.wz-lchip{min-height:42px;padding:0 15px;border-radius:21px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.03);color:rgba(242,245,244,.92);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.wz-lchip[aria-pressed="true"]{border-color:#10E0A0;background:#10E0A0;color:#04140E}
+#wz-lim-otra{margin-top:12px}
+/* v744 · el consentimiento conserva su texto COMPLETO; solo se pliega a 3 líneas («Leer todo» lo abre) */
+.wz-ck span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.wz-ck.abierto span{display:block;-webkit-line-clamp:unset;overflow:visible}
+.wz-cklee{align-self:flex-end;min-height:36px;margin:-8px 4px -4px 0;padding:0 6px;background:none;border:0;color:#10E0A0;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .wz-consent{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
 /* v565 · APAGAR UNA RAMA DEL CONSENTIMIENTO.
    El atributo `hidden` del HTML vale `display:none` como regla del NAVEGADOR, asi que

@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=743">
+<link rel="stylesheet" href="styles.css?v=744">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -362,9 +362,25 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div class="wz-head">
         <button type="button" class="wz-back" onclick="WZ.back()" aria-label="Atrás">←</button>
         <div class="wz-prog"><div class="wz-prog-fill" id="wz-fill"></div></div>
-        <div class="wz-count" id="wz-count">01/07</div>
+        <div class="wz-count" id="wz-count">01/06</div>
       </div>
       <div id="su-err" class="lerr">Revisa los datos</div>
+      <!-- v744 · «TU SEMANA» SE ARMA EN VIVO (PO, 10-nov: «hacer del ingreso una atracción… que se sienta bien»; eligió la
+           dirección B viendo las tres en el lienzo). Cada respuesta llena su casilla y, desde los días, la semana que se
+           pinta es la que arma `_autoGenerateWeek` con esas mismas respuestas (`_wzPreviewWeek`). Solo MUESTRA: los
+           valores siguen viviendo en los controles ocultos de arriba. La llena `WZ._plan()`. -->
+      <div class="wz-plan" id="wz-plan" data-modo="armando" aria-live="polite">
+        <div class="wz-plan-h"><span class="k" id="wz-plan-k">Tu plan AVI</span><span class="n" id="wz-plan-n">Se arma con tus respuestas</span></div>
+        <div class="wz-plan-t">Tu semana</div>
+        <div class="wz-plan-slots">
+          <div class="wz-slot" id="wz-slot-goal"><span class="l">Objetivo</span><span class="v">—</span></div>
+          <div class="wz-slot" id="wz-slot-place"><span class="l">Dónde</span><span class="v">—</span></div>
+          <div class="wz-slot" id="wz-slot-level"><span class="l">Nivel</span><span class="v">—</span></div>
+          <div class="wz-slot" id="wz-slot-days"><span class="l">Días</span><span class="v">—</span></div>
+        </div>
+        <div class="wz-plan-week" id="wz-plan-week" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+        <div class="wz-plan-days" id="wz-plan-days"></div>
+      </div>
 
       <!-- Controles ocultos (los chips/steppers escriben aquí) -->
       <select id="su-goal" hidden><option>Perder grasa</option><option>Ganar músculo</option><option>Recomposición</option><option>Fuerza</option><option>Resistencia</option><option>Salud general</option></select>
@@ -373,21 +389,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <select id="su-days" hidden><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
       <select id="su-sex" hidden><option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option></select>
 
-      <!-- PASO 1 · Nombre -->
-      <div class="wz-step on" id="wz-s-name">
-        <div class="wz-eyebrow">Paso 01 · Tú</div>
-        <div class="wz-q">¿Cómo te <b>llamas?</b></div>
-        <div class="wz-help">Tu plan llevará tu nombre. En AVI entrenas con nombre propio.</div>
-        <label class="cin-lbl" for="su-name">Tu nombre</label>
-        <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Ej: Camilo" onkeydown="if(event.key==='Enter')WZ.next()">
-        <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
-      </div>
-
-      <!-- PASO 2 · Objetivo -->
+      <!-- PASO 1 · Objetivo (v744: antes iba el nombre, y ahí se iban 9 de 30) -->
       <div class="wz-step" id="wz-s-goal">
-        <div class="wz-eyebrow">Paso 02 · Objetivo</div>
-        <div class="wz-q">¿Cuál es tu <b>objetivo?</b></div>
-        <div class="wz-help">Con esto definimos tu enfoque, tus series y tu progresión.</div>
+        <div class="wz-eyebrow">Paso 01 · Objetivo</div>
+        <div class="wz-q">¿Qué quieres <b>lograr?</b></div>
+        <div class="wz-help">Toca una opción: con esto se arma tu plan.</div>
         <div class="wz-chips" data-wzgroup>
           <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-goal','Perder grasa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-fire"/></svg></span><span class="lab">Perder grasa<span class="sub">Bajar de peso y marcarte</span></span><span class="tick">✓</span></button>
           <button type="button" class="wz-chip" style="--c:#10E0A0" onclick="WZ.pick('su-goal','Ganar músculo',this)"><span class="wz-ic"><svg class="ic"><use href="#i-muscle"/></svg></span><span class="lab">Ganar músculo<span class="sub">Que se te note el músculo</span></span><span class="tick">✓</span></button>
@@ -398,11 +404,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         </div>
       </div>
 
-      <!-- PASO 3 · Lugar -->
+      <!-- PASO 2 · Lugar -->
       <div class="wz-step" id="wz-s-place">
-        <div class="wz-eyebrow">Paso 03 · Lugar</div>
+        <div class="wz-eyebrow">Paso 02 · Lugar</div>
         <div class="wz-q">¿Dónde vas a <b>entrenar?</b></div>
-        <div class="wz-help">Ajustamos cada ejercicio al equipo que tengas a mano.</div>
+        <div class="wz-help">Cada ejercicio se ajusta al equipo que tengas a mano.</div>
         <div class="wz-chips" data-wzgroup>
           <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-place','gym',this)"><span class="wz-ic"><svg class="ic"><use href="#i-dumbbell"/></svg></span><span class="lab">Gym completo<span class="sub">Máquinas y peso libre</span></span><span class="tick">✓</span></button>
           <button type="button" class="wz-chip" style="--c:#FF8A5B" onclick="WZ.pick('su-place','casa',this)"><span class="wz-ic"><svg class="ic"><use href="#i-home"/></svg></span><span class="lab">En casa<span class="sub">Bandas / mancuernas</span></span><span class="tick">✓</span></button>
@@ -411,11 +417,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         </div>
       </div>
 
-      <!-- PASO 4 · Nivel -->
+      <!-- PASO 3 · Nivel -->
       <div class="wz-step" id="wz-s-level">
-        <div class="wz-eyebrow">Paso 04 · Nivel</div>
+        <div class="wz-eyebrow">Paso 03 · Nivel</div>
         <div class="wz-q">¿Cuál es tu <b>nivel?</b></div>
-        <div class="wz-help">Sé honesto: con esto calibramos la carga y la técnica para ti.</div>
+        <div class="wz-help">Con esto se calibran la carga y la técnica para ti.</div>
         <div class="wz-chips" data-wzgroup>
           <button type="button" class="wz-chip" style="--c:#7FD1A8" onclick="WZ.pick('su-level','Principiante',this)"><span class="wz-ic"><svg class="ic"><use href="#i-sprout"/></svg></span><span class="lab">Principiante<span class="sub">Empezando o volviendo</span></span><span class="tick">✓</span></button>
           <button type="button" class="wz-chip" style="--c:#F2C94C" onclick="WZ.pick('su-level','Intermedio',this)"><span class="wz-ic"><svg class="ic"><use href="#i-bolt"/></svg></span><span class="lab">Intermedio<span class="sub">Entreno hace meses</span></span><span class="tick">✓</span></button>
@@ -423,11 +429,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         </div>
       </div>
 
-      <!-- PASO 5 · Días + Sexo -->
+      <!-- PASO 4 · Días + Sexo -->
       <div class="wz-step" id="wz-s-when">
-        <div class="wz-eyebrow">Paso 05 · Frecuencia</div>
+        <div class="wz-eyebrow">Paso 04 · Frecuencia</div>
         <div class="wz-q">¿Cuántos <b>días</b> por semana?</div>
-        <div class="wz-help">Elige lo realista. Vale más constante que perfecto.</div>
+        <div class="wz-help">Elige lo realista: vale más constante que perfecto. Mira cómo queda tu semana arriba.</div>
         <div class="wz-grid" data-wzgroup style="grid-template-columns:repeat(6,1fr)">
           <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','1',this)">1</button>
           <button type="button" class="wz-gchip" data-adv="0" onclick="WZ.pick('su-days','2',this)">2</button>
@@ -445,11 +451,11 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
 
-      <!-- PASO 6 · Cuerpo -->
+      <!-- PASO 5 · Cuerpo -->
       <div class="wz-step" id="wz-s-body">
-        <div class="wz-eyebrow">Paso 06 · Tu cuerpo</div>
-        <div class="wz-q">Cuéntanos de <b>ti</b></div>
-        <div class="wz-help">La <b>edad</b> nos dice qué permiso pedirte. El peso y la altura afinan tus cargas y puedes dejarlos en blanco.</div>
+        <div class="wz-eyebrow">Paso 05 · Tu cuerpo</div>
+        <div class="wz-q">Tu <b>cuerpo</b></div>
+        <div class="wz-help">Solo la <b>edad</b> es obligatoria: con ella sabemos qué permiso pedirte. El peso y la estatura afinan tus cargas y los puedes dejar en blanco.</div>
         <div class="wz-stepper" style="--c:#F2C94C">
           <span class="lab"><span class="lic"><svg class="ic"><use href="#i-cal"/></svg></span>Edad</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-age',-1,12,99)">−</button>
@@ -463,42 +469,58 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
             <button type="button" class="wz-pm" onclick="WZ.step('su-weight',0.5,30,300)">+</button></div>
         </div>
         <div class="wz-stepper" style="--c:#5FE3D0">
-          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-ruler"/></svg></span>Altura</span>
+          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-ruler"/></svg></span>Estatura</span>
           <div class="ctl"><button type="button" class="wz-pm" onclick="WZ.step('su-height',-1,100,250)">−</button>
             <input id="su-height" class="wz-num" type="number" inputmode="numeric" min="100" max="250" placeholder="—"><span class="wz-unit">cm</span>
             <button type="button" class="wz-pm" onclick="WZ.step('su-height',1,100,250)">+</button></div>
         </div>
-        <!-- Teléfono (2026-07-31): 15 de 22 asesorados eran IMPOSIBLES de contactar por no
-             tenerlo. WhatsApp es el único canal que alcanza a quien no activó notificaciones.
-             OPCIONAL a propósito: exigirlo en el registro espanta más de lo que suma. -->
-        <div class="wz-row">
-          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-chat"/></svg></span>WhatsApp <span class="wz-opt">(opcional)</span></span>
-          <div class="ctl"><input id="su-phone" class="wz-tel" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="300 123 4567"></div>
+        <!-- v744 · LESIONES CON BOTONES (antes, texto libre: 2026-08-01 se agregó porque el registro nunca las preguntaba).
+             Cada botón escribe una frase que `parseLimitations` lee (probado el 10-nov: rodilla, zona lumbar, hombro,
+             presión, embarazo) en `su-notes`, que sigue siendo lo que leen las DOS vías del registro (correo y Google).
+             «Otra cosa…» abre el texto libre de siempre. OPCIONAL. -->
+        <div class="wz-lq" id="wz-lq">¿Algo que tu plan deba <b>cuidar?</b> <span class="wz-opt">(opcional)</span></div>
+        <div class="wz-lchips" id="wz-lchips" role="group" aria-labelledby="wz-lq">
+          <button type="button" class="wz-lchip" data-nada="1" aria-pressed="false" onclick="WZ.lim(this)">Nada</button>
+          <button type="button" class="wz-lchip" data-frase="dolor de rodilla" aria-pressed="false" onclick="WZ.lim(this)">Rodilla</button>
+          <button type="button" class="wz-lchip" data-frase="dolor de espalda baja" aria-pressed="false" onclick="WZ.lim(this)">Espalda baja</button>
+          <button type="button" class="wz-lchip" data-frase="dolor de hombro" aria-pressed="false" onclick="WZ.lim(this)">Hombro</button>
+          <button type="button" class="wz-lchip" data-frase="presión alta o problemas del corazón" aria-pressed="false" onclick="WZ.lim(this)">Presión o corazón</button>
+          <button type="button" class="wz-lchip" data-frase="embarazo" aria-pressed="false" onclick="WZ.lim(this)">Embarazo</button>
+          <button type="button" class="wz-lchip" data-otra="1" aria-pressed="false" onclick="WZ.lim(this)">Otra cosa…</button>
         </div>
-        <p class="wz-help">Tu coach lo usa para escribirte si algo no te llega a la app. No se comparte con nadie más.</p>
-        <!-- Lesiones (2026-08-01): el registro NUNCA las preguntaba (`notes:''` a pelo), así que
-             el motor de exclusiones era CÓDIGO MUERTO para los 13 que se registraron solos. Y el
-             consentimiento ya le decía al usuario que autorizaba el tratamiento de sus «lesiones»
-             — texto que afirmaba algo que el código no hacía. OPCIONAL, como el teléfono. -->
-        <div class="wz-row">
-          <span class="lab"><span class="lic"><svg class="ic"><use href="#i-alert"/></svg></span>Lesiones <span class="wz-opt">(opcional)</span></span>
-          <div class="ctl"><input id="su-notes" class="wz-tel" type="text" maxlength="200" placeholder="Ej: hernia discal, dolor de rodilla"></div>
+        <div id="wz-lim-otra" class="cx-off">
+          <label class="cin-lbl" for="su-notes-otra">Cuéntanos qué tienes</label>
+          <input id="su-notes-otra" class="cin-in" type="text" maxlength="200" placeholder="Ej: hernia discal, tendinitis" oninput="WZ._limSync()">
         </div>
-        <p class="wz-help">Si tienes alguna molestia o lesión, escríbela: tu plan evita los ejercicios que puedan agravarla.</p>
+        <input type="hidden" id="su-notes" value="">
+        <p class="wz-help" style="margin:10px 0 0">Tu plan evita los ejercicios que puedan agravarlo.</p>
         <div class="wz-foot"><button class="cin-btn" onclick="WZ.next()">Continuar →</button></div>
       </div>
 
-      <!-- PASO 7 · Cuenta -->
+      <!-- PASO 6 · Cuenta -->
       <div class="wz-step" id="wz-s-account">
-        <div class="wz-eyebrow">Paso 07 · Tu cuenta</div>
-        <div class="wz-q">Ya casi: crea tu <b>cuenta</b></div>
-        <div class="wz-help">Guardamos tu progreso para que nunca lo pierdas. Empiezas con tu <b style="color:#10E0A0">rutina automática</b> hecha con criterio.</div>
+        <div class="wz-eyebrow">Paso 06 · Tu cuenta</div>
+        <div class="wz-q">Guárdalo y <b>entrena hoy</b></div>
+        <div class="wz-help">Tu plan ya está armado. Crea tu cuenta para no perderlo y guardar tu progreso.</div>
+        <!-- v744 · EL NOMBRE SE PIDE AL FINAL. Era el paso 1 y ahí se iban 9 de 30 (la mayor fuga del registro, medida en
+             signup_funnel desde el 6-oct): teclado en el primer toque, antes de ver nada. Lo leen signupClient y wzGoogle
+             por el mismo id, y lo exige `WZ._valid()` en este paso. -->
+        <label class="cin-lbl" for="su-name">¿Cómo te llamas?</label>
+        <input id="su-name" maxlength="60" class="cin-in" type="text" placeholder="Tu nombre" autocomplete="given-name">
+        <!-- Teléfono (2026-07-31): 15 de 22 asesorados eran IMPOSIBLES de contactar por no tenerlo; WhatsApp es el único
+             canal que alcanza a quien no activó notificaciones. OPCIONAL a propósito. v744: plegado aquí, a un toque. -->
+        <button type="button" class="wz-mailtoggle" id="su-phone-toggle" aria-expanded="false" aria-controls="su-phone-box" onclick="wzShowPhone()">+ Agregar mi WhatsApp (opcional)</button>
+        <div id="su-phone-box" class="cx-off">
+          <label class="cin-lbl" for="su-phone">WhatsApp <span class="wz-opt">(opcional)</span></label>
+          <input id="su-phone" class="cin-in" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="300 123 4567">
+          <div class="wz-help" style="margin:6px 0 0">Tu coach lo usa para escribirte si algo no te llega a la app. No se comparte con nadie más.</div>
+        </div>
         <!-- Consentimiento Habeas Data (Ley 1581/2012): 3 casillas SEPARADAS, ninguna
              pre-marcada (legal/autorizacion-consentimiento.md §E). signupClient y wzGoogle
              exigen las 3 y guardan la evidencia (fecha/versión) en el perfil. -->
         <div class="wz-consent">
-          <label class="wz-ck"><input type="checkbox" id="su-ck-general"><span>He leído y acepto los <a href="#" onclick="showLegalDoc('terminos');return false">Términos y Condiciones</a> y la <a href="#" onclick="showLegalDoc('politica');return false">Política de Tratamiento de Datos</a>, y autorizo a AVI a tratar mis datos para crear mi cuenta, generar mis rutinas y guardar mi progreso.</span></label>
-          <label class="wz-ck"><input type="checkbox" id="su-ck-salud"><span>Autorizo <b>de forma expresa</b> el tratamiento de mis <b>datos de salud y estado físico</b> (peso, medidas, edad, sexo, lesiones y fotos de progreso) para personalizar mis rutinas y seguir mi evolución. Es voluntario: puedo revocarlo y pedir eliminar mis datos cuando quiera.</span></label>
+          <label class="wz-ck"><input type="checkbox" id="su-ck-general"><span>He leído y acepto los <a href="#" onclick="showLegalDoc('terminos');return false">Términos y Condiciones</a> y la <a href="#" onclick="showLegalDoc('politica');return false">Política de Tratamiento de Datos</a>, y autorizo a AVI a tratar mis datos para crear mi cuenta, generar mis rutinas y guardar mi progreso.</span></label><button type="button" class="wz-cklee" aria-expanded="false" onclick="wzCkLeer(this)">Leer todo</button>
+          <label class="wz-ck"><input type="checkbox" id="su-ck-salud"><span>Autorizo <b>de forma expresa</b> el tratamiento de mis <b>datos de salud y estado físico</b> (peso, medidas, edad, sexo, lesiones y fotos de progreso) para personalizar mis rutinas y seguir mi evolución. Es voluntario: puedo revocarlo y pedir eliminar mis datos cuando quiera.</span></label><button type="button" class="wz-cklee" aria-expanded="false" onclick="wzCkLeer(this)">Leer todo</button>
           <!-- v565 · La 3ª casilla CAMBIA según la edad declarada en el paso 6. Hasta v564 solo
                existía la de adulto y era obligatoria: un menor no tenía más salida que mentir, y esa
                mentira quedaba archivada como prueba de autorización. Las dos ramas viven en el
@@ -1509,19 +1531,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=743"></script>
-<script src="muscle-map.js?v=743"></script>
-<script src="exercise-muscles.js?v=743"></script>
+<script src="avi-core.js?v=744"></script>
+<script src="muscle-map.js?v=744"></script>
+<script src="exercise-muscles.js?v=744"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=743"></script>
-<script src="app-2-login.js?v=743"></script>
-<script src="app-3-coach.js?v=743"></script>
-<script src="app-4-entreno.js?v=743"></script>
-<script src="app-5-salud.js?v=743"></script>
-<script src="app-6-extra.js?v=743"></script>
-<script src="app-7-community.js?v=743"></script>
+<script src="app-1-infra.js?v=744"></script>
+<script src="app-2-login.js?v=744"></script>
+<script src="app-3-coach.js?v=744"></script>
+<script src="app-4-entreno.js?v=744"></script>
+<script src="app-5-salud.js?v=744"></script>
+<script src="app-6-extra.js?v=744"></script>
+<script src="app-7-community.js?v=744"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">

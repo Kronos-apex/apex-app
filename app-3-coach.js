@@ -1771,7 +1771,9 @@ function _wzConsentError(){
 }
 
 const WZ={
-  steps:['wz-s-name','wz-s-goal','wz-s-place','wz-s-level','wz-s-when','wz-s-body','wz-s-account'],
+  // v744 · el objetivo primero y el nombre al final (dentro de la cuenta). El paso del nombre era el 1 y ahí se iban
+  // 9 de 30 (signup_funnel, 6-oct a 10-nov): teclado en el primer toque, antes de ver nada a cambio.
+  steps:['wz-s-goal','wz-s-place','wz-s-level','wz-s-when','wz-s-body','wz-s-account'],
   cur:0,
   open(){
     this.cur=0;
@@ -1782,6 +1784,12 @@ const WZ={
     // R22 · el correo vuelve a quedar plegado: quien abre el asistente otra vez empieza por Google.
     const mb=document.getElementById('su-mail-box'); if(mb)mb.classList.add('cx-off');
     const mt=document.getElementById('su-mail-toggle'); if(mt)mt.setAttribute('aria-expanded','false');
+    // v744 · lesiones con botones y WhatsApp plegado: se reabren limpios, igual que los chips.
+    document.querySelectorAll('#wz-lchips .wz-lchip').forEach(b=>b.setAttribute('aria-pressed','false'));
+    const lo=document.getElementById('wz-lim-otra'); if(lo)lo.classList.add('cx-off');
+    const pb=document.getElementById('su-phone-box'); if(pb)pb.classList.add('cx-off');
+    const pt=document.getElementById('su-phone-toggle'); if(pt)pt.setAttribute('aria-expanded','false');
+    this._limSync();
     this._sync();
   },
   _sync(){
@@ -1795,6 +1803,10 @@ const WZ={
     // v565: la rama de consentimiento se decide con la edad del paso 6, así que se resuelve
     // AL PINTAR el paso de la cuenta (no al teclear: puede volver atrás y corregirla).
     if(typeof wzSyncConsentAge==='function')wzSyncConsentAge();
+    // v744 · «Embarazo» no se le ofrece a quien marcó «Hombre» (y si estaba marcado, se suelta).
+    const em=document.querySelector('#wz-lchips [data-frase="embarazo"]');
+    if(em){ const h=((document.getElementById('su-sex')||{}).value==='M'); em.classList.toggle('cx-off',h); if(h&&em.getAttribute('aria-pressed')==='true'){ em.setAttribute('aria-pressed','false'); this._limSync(); } }
+    this._plan();
   },
   next(){
     if(!this._valid())return;
@@ -1816,7 +1828,64 @@ const WZ={
     const grp=btn.closest('[data-wzgroup]');
     if(grp)grp.querySelectorAll('.wz-chip,.wz-gchip').forEach(c=>c.classList.remove('on'));
     btn.classList.add('on');
+    this._plan(); // v744 · la casilla se llena en el toque, antes de avanzar
     if(btn.dataset.adv!=='0'){ setTimeout(()=>WZ.next(),230); } // auto-avanza en selección simple
+  },
+  // v744 · LESIONES CON BOTONES. «Nada» suelta los demás; cualquier otro suelta «Nada»; «Otra cosa…» abre el texto.
+  // Lo que queda marcado se escribe en `su-notes` (`_limSync`), el campo que leen las dos vías del registro.
+  lim(btn){
+    const box=document.getElementById('wz-lchips'); if(!box||!btn)return;
+    const on=btn.getAttribute('aria-pressed')!=='true';
+    if(btn.dataset.nada){ box.querySelectorAll('.wz-lchip').forEach(b=>b.setAttribute('aria-pressed','false')); }
+    else { const n=box.querySelector('[data-nada]'); if(n)n.setAttribute('aria-pressed','false'); }
+    btn.setAttribute('aria-pressed',on?'true':'false');
+    const otra=box.querySelector('[data-otra]');
+    const abierta=!!(otra&&otra.getAttribute('aria-pressed')==='true');
+    const ob=document.getElementById('wz-lim-otra'); if(ob)ob.classList.toggle('cx-off',!abierta);
+    if(btn===otra&&abierta){ const i=document.getElementById('su-notes-otra'); if(i){ try{ i.focus({preventScroll:true}); }catch(e){ i.focus(); } } }
+    this._limSync();
+  },
+  _limSync(){
+    const box=document.getElementById('wz-lchips'), out=document.getElementById('su-notes'); if(!box||!out)return;
+    const frases=[...box.querySelectorAll('.wz-lchip[data-frase][aria-pressed="true"]')].map(b=>b.dataset.frase);
+    if(box.querySelector('[data-otra][aria-pressed="true"]')){
+      const t=((document.getElementById('su-notes-otra')||{}).value||'').trim(); if(t)frases.push(t);
+    }
+    out.value=frases.join(', ').slice(0,300);
+  },
+  // v744 · «TU SEMANA» SE ARMA EN VIVO. Solo pinta: los valores siguen en los controles ocultos (su-goal, su-place…).
+  // Una casilla se llena cuando su paso tiene un chip marcado; los días, desde su paso (el 3 viene marcado de fábrica
+  // y mostrarlo antes sería contestar por la persona). La semana es la de `_wzPreviewWeek`, la misma que se le arma.
+  _plan(){
+    try{
+      const g=id=>document.getElementById(id);
+      const card=g('wz-plan'); if(!card)return;
+      const step=this.steps[this.cur], iw=this.steps.indexOf('wz-s-when');
+      const marcado=id=>{const st=g(id);return !!(st&&st.querySelector('.wz-chip.on,.wz-gchip.on'));};
+      const texto=id=>{const el=g(id);if(!el)return '';const o=el.options&&el.options[el.selectedIndex];return o?o.textContent:el.value;};
+      const diasOk=this.cur>=iw;
+      const nd=parseInt((g('su-days')||{}).value)||3;
+      const slots=[['wz-slot-goal',marcado('wz-s-goal'),texto('su-goal')],['wz-slot-place',marcado('wz-s-place'),texto('su-place')],
+        ['wz-slot-level',marcado('wz-s-level'),texto('su-level')],['wz-slot-days',diasOk,nd+' por semana']];
+      let listos=0;
+      slots.forEach(([id,ok,t])=>{const el=g(id);if(!el)return;el.classList.toggle('on',!!ok);const v=el.querySelector('.v');if(v)v.textContent=ok?t:'—';if(ok)listos++;});
+      const modo=step==='wz-s-account'?'listo':(step==='wz-s-body'?'compacto':'armando');
+      card.dataset.modo=modo;
+      const rut=diasOk?_wzPreviewWeek():null;
+      const idx={'Lunes':0,'Martes':1,'Miércoles':2,'Miercoles':2,'Jueves':3,'Viernes':4,'Sábado':5,'Sabado':5,'Domingo':6};
+      const on=new Set((rut||[]).map(r=>idx[r.day]));
+      const wk=g('wz-plan-week'); if(wk)[...wk.children].forEach((d,i)=>d.classList.toggle('on',on.has(i)));
+      const k=g('wz-plan-k'), n=g('wz-plan-n');
+      if(k)k.textContent=modo==='listo'?'Tu plan está listo':'Tu plan AVI';
+      if(n)n.textContent=modo==='listo'?(rut?rut.length+' entrenos por semana':'Listo para empezar'):(listos?listos+' de 4 listos':'Se arma con tus respuestas');
+      const dd=g('wz-plan-days');
+      if(dd)dd.innerHTML=(modo==='listo'&&rut)?rut.map(r=>{
+        const dia=(typeof _RV_DAY!=='undefined'&&_RV_DAY[r.day])||String(r.day||'').slice(0,3).toUpperCase();
+        const nom=String(r.name||'').replace(/\s+(?:[A-Z]|\d+)$/,'');
+        const ne=(r.exercises||[]).length;
+        return `<div class="d"><span class="dn">${esc(dia)}</span><span class="dt">${esc(nom)}</span><span class="ds">${ne} ejercicios</span></div>`;
+      }).join(''):'';
+    }catch(e){}
   },
   step(field,delta,min,max){
     const el=document.getElementById(field); if(!el)return;
@@ -1829,9 +1898,10 @@ const WZ={
   // vista, el botón parecía no hacer nada (lo cazó Lucas). `nearest` no mueve nada si ya se ve.
   _err(msg){ const e=document.getElementById('su-err'); if(e){e.textContent=msg;e.classList.add('on'); try{ e.scrollIntoView({block:'nearest'}); }catch(_e){} } },
   _valid(){
-    if(this.steps[this.cur]==='wz-s-name'){
+    // v744 · el nombre vive en el paso de la cuenta: lo piden Google y el correo antes de salir.
+    if(this.steps[this.cur]==='wz-s-account'){
       const n=document.getElementById('su-name');
-      if(!n||!n.value.trim()){ this._err('Escribe tu nombre para continuar'); return false; }
+      if(!n||!n.value.trim()){ this._err('Escribe tu nombre para guardar tu plan'); if(n)n.focus(); return false; }
     }
     // v565 · LA EDAD DEJA DE SER OPCIONAL, y es lo único obligatorio de este paso.
     // Es el dato que DECIDE qué autorización se pide: en blanco, `consentNeedsGuardian`
@@ -1869,6 +1939,7 @@ async function signupClient(){
     // registraba solo. Va como texto libre, igual que las notas que escribe el coach.
     notes:(g('su-notes')&&g('su-notes').value||'').trim(),
   };
+  if(!data.name&&!WZ._valid())return; // v744 · el nombre está en este paso: aviso y foco ahí
   const v=validateSignup(data,[],getCoachEmail()); // unicidad la valida Supabase Auth
   if(!v.ok){WZ._err(v.error);return;}
   const consent=_wzConsent();
@@ -1912,7 +1983,7 @@ async function signupClient(){
 function wzGoogle(){
   const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
   const name=(g('su-name')||'').trim();
-  if(!name){ WZ.cur=0; WZ._sync(); WZ._err('Escribe tu nombre antes de continuar con Google'); return; }
+  if(!name){ if(!WZ._valid())return; }
   // Mismo gate de consentimiento que el registro por email: sin las 3 casillas no se
   // redirige a Google (la evidencia viaja en ax_wz_pending porque OAuth nos saca de la página).
   const consent=_wzConsent();
@@ -1938,6 +2009,39 @@ function wzGoogle(){
 // R22 · El correo a un toque: Google va primero porque es el camino que termina (medido: 6 de 6
 // contra 2 de 4), pero quien no tiene Gmail no puede quedarse sin salida. Abre los mismos campos
 // que lee signupClient, en el sitio, y lleva el foco al correo.
+// v744 · LA SEMANA QUE VE MIENTRAS SE REGISTRA ES LA QUE SE LE VA A ARMAR: la misma función (`_autoGenerateWeek`) con
+// las mismas respuestas. Medido el 10-nov en el navegador, 5 perfiles × 7 personas distintas: los días, los nombres y
+// la cantidad de ejercicios salen iguales para cualquier persona con las mismas respuestas (la semilla de cada cuenta no
+// los cambia), y tarda entre 5 y 25 ms. Si algo falla, devuelve null y la tarjeta solo no pinta días.
+function _wzPreviewWeek(){
+  try{
+    if(typeof _autoGenerateWeek!=='function'||typeof DB==='undefined'||!DB||!Array.isArray(DB.exercises)||!DB.exercises.length)return null;
+    const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+    const c={id:'wz-preview',name:'',selfReg:true,tier:'libre',goal:g('su-goal')||'Perder grasa',place:g('su-place')||'gym',
+      level:g('su-level')||'Principiante',days:parseInt(g('su-days'))||3,sex:g('su-sex')||null,age:parseInt(g('su-age'))||null,
+      weight:parseFloat(g('su-weight'))||null,height:parseFloat(g('su-height'))||null,notes:(g('su-notes')||'').trim(),routines:[]};
+    _autoGenerateWeek(c);
+    return (c.routines&&c.routines.length)?c.routines:null;
+  }catch(e){ return null; }
+}
+
+// v744 · El WhatsApp va plegado en el último paso: opcional de verdad, sin pesar en la pantalla. Mismo patrón que el correo.
+function wzShowPhone(){
+  const box=document.getElementById('su-phone-box'), tg=document.getElementById('su-phone-toggle');
+  if(box)box.classList.remove('cx-off');
+  if(tg)tg.setAttribute('aria-expanded','true');
+  const i=document.getElementById('su-phone'); if(i){ try{ i.focus({preventScroll:true}); }catch(e){ i.focus(); } }
+}
+
+// v744 · El consentimiento conserva su texto COMPLETO (el aprobado, sin cambiar una palabra); solo se pliega a 3 líneas.
+// El lector de pantalla lo lee entero igual: el pliegue es solo visual.
+function wzCkLeer(btn){
+  const lab=btn&&btn.previousElementSibling; if(!lab)return;
+  const ab=lab.classList.toggle('abierto');
+  btn.setAttribute('aria-expanded',ab?'true':'false');
+  btn.textContent=ab?'Leer menos':'Leer todo';
+}
+
 function wzShowMail(){
   const box=document.getElementById('su-mail-box');
   const tg=document.getElementById('su-mail-toggle');
