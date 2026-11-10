@@ -730,6 +730,9 @@ function _profileFromMeta(authUser){
     phone:m.phone||w.phone||'',
     notes:m.notes||w.notes||'',
     consent:m.consent||w.consent||null, // evidencia Habeas Data (email: metadata; Google: ax_wz_pending)
+    // v743 · el canal de llegada (el registro lo deja en la metadata): sin este eslabón, el arreglo no guardaba nada,
+    // la misma trampa que el teléfono de v418. `_provisionFreeClient` lo pasa por `canalRecord`.
+    canal:m.canal||null,
     _complete:!!(goal&&level), // email trae estos del form; Google los toma del wizard guardado
   };
 }
@@ -752,6 +755,16 @@ function _selfRegNewAlert(c){
 }
 
 async function _provisionFreeClient(authUser, p){
+  // 🔴 v743 · EL CANAL SOBREVIVE A LA CONFIRMACIÓN DEL CORREO (Fable, 10-nov). Quien se registra con correo dentro de
+  // Threads confirma desde su correo, que abre OTRO navegador: ahí se crea la cuenta, `ax_canal` no existe y el perfil
+  // y la fila del embudo (paso 10) salían sin canal. El registro lo deja en la metadata de la cuenta; aquí, si este
+  // navegador no lo tiene, se repone desde ahí (pasado por la misma regla de forma y 30 días) y sigue el camino de siempre.
+  try{
+    if(!_canalDeLlegada() && p && p.canal && typeof canalRecord==='function'){
+      const cm=canalRecord(p.canal, Date.now());
+      if(cm) localStorage.setItem('ax_canal', JSON.stringify(cm));
+    }
+  }catch(e){}
   const complete = !!(p && p._complete); // ¿el usuario YA eligió objetivo/nivel? (registro por correo)
   const rec={
     id:authUser.id, name:p.name, email:authUser.email||p.email,
@@ -1865,7 +1878,9 @@ async function signupClient(){
   if(btn){btn.disabled=true;}
   try{
     // 1. Crear cuenta en Supabase Auth (la contraseña la maneja Auth; el perfil va en metadata)
-    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,notes:data.notes,selfReg:true,consent};
+    const meta={name:data.name,goal:data.goal,level:data.level,days:data.days,sex:data.sex,age:data.age,weight:data.weight,height:data.height,place:data.place,phone:data.phone,notes:data.notes,selfReg:true,consent,
+      // v743 · el canal viaja en la CUENTA: si confirma el correo en otro navegador, allá no existe `ax_canal`.
+      canal:_canalDeLlegada()};
     let res;
     try{ res=await AUTH.signUpEmail(data.email,data.password,meta); }
     catch(e){ WZ._err('No se pudo crear la cuenta. Intenta de nuevo.');return; }

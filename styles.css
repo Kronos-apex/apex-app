@@ -2193,6 +2193,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .cin-tag{margin-top:18px;font-size:17px;font-weight:600;color:#fff;max-width:300px;line-height:1.32;text-shadow:0 1px 10px rgba(0,0,0,.9)}
 .cin-tag b{color:#10E0A0;font-weight:800}
 .cin-sub2{margin-top:10px;font-size:13.5px;font-weight:500;color:rgba(242,245,244,.80);max-width:320px;line-height:1.45;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+/* v743 · CON UN FORMULARIO ABIERTO NO HAY MARCA (PO, 10-nov: «la sola marca ocupa casi la mitad de la pantalla… no veo la
+   necesidad de mostrar la marca en esa pantalla»). Medido a 390×844: el héroe se comía ~470 px y el registro arrancaba a
+   mitad de pantalla en una ventanita con scroll propio. `cinFormMode` pone la clase; la portada sin formulario no cambia. */
+.cin-form-on .cin-brand,.cin-form-on .cin-hero{display:none}
+.cin-form-on #cin-signup{max-height:calc(100vh - 64px)!important;max-height:calc(100dvh - 64px)!important}
 .cin-card{background:linear-gradient(180deg,rgba(10,14,12,.55),rgba(6,9,8,.84));backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid rgba(242,245,244,.12);border-radius:22px;padding:20px 18px 18px;box-shadow:0 -12px 54px rgba(0,0,0,.5)}
 .cin-card .lerr{display:none;background:rgba(230,57,70,.16);border:1px solid rgba(230,57,70,.5);color:#FF6B78;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px}
 .cin-card .lerr.on{display:block}
@@ -2366,6 +2371,16 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .av-desde-web #install-hint{display:none!important}
 /* v738 · dentro de Threads, Instagram o Facebook las instrucciones de instalar son falsas: las reemplaza #inapp-hint */
 .av-inapp #install-hint{display:none!important}
+/* v743 · dentro del navegador de una app: Google no deja iniciar sesión ahí, y el aviso vuelve al formulario. */
+#wz-inapp{display:none}
+.av-inapp #wz-inapp{display:block}
+.av-inapp .wz-gbtn-main,.av-inapp .wz-ghint,.av-inapp .av-g-login{display:none!important}
+/* sin Google, el correo es EL camino: abierto de una vez y sin el «o crear…» que lo presentaba como alternativa */
+.av-inapp #su-mail-box.cx-off{display:block!important}
+.av-inapp #su-mail-toggle{display:none!important}
+.wz-inapp-ios{display:none}
+.av-inapp-ios .wz-inapp-ios{display:block}
+.av-inapp-ios #wz-inapp .wz-inapp-and{display:none}
 .cin-inapp{margin:0 0 14px;padding:12px 14px;background:rgba(16,224,160,.10);border:1px solid rgba(16,224,160,.32);border-radius:12px;text-align:left}
 .cin-inapp[hidden]{display:none}
 .cin-inapp .ttl{font-size:13px;font-weight:800;color:#10E0A0;margin-bottom:6px;line-height:1.35}

@@ -26468,6 +26468,63 @@ test('🔒 v742 · nextPlanDay: por defecto salta el festivo; con {festivos:fals
   assert.strictEqual(sin.enDias, 2);
 });
 
+// v743 · EL REGISTRO DENTRO DE THREADS (Fable, 10-nov: el aviso se apartaba, Google era el botón principal y el canal se perdía).
+test('🔴 v743 · el canal viaja en la cuenta y se repone en el navegador donde se confirma el correo (los 3 eslabones)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8');
+  // 1) el registro lo deja en la metadata
+  const iS = src.indexOf('const meta={name:data.name');
+  assert.ok(iS > 0 && /canal:_canalDeLlegada\(\)\}/.test(src.slice(iS, iS + 600)), '🔴 la metadata de la cuenta no lleva el canal');
+  // 2) la metadata llega al alta (el eslabón que en v418 rompió el teléfono)
+  const iP = src.indexOf('function _profileFromMeta(');
+  assert.ok(/canal:m\.canal\|\|null/.test(src.slice(iP, src.indexOf('\n}\n', iP))), '🔴 _profileFromMeta no devuelve el canal: el arreglo no guardaría nada');
+  // 3) el alta lo repone ANTES de armar el perfil y de la fila del embudo, pasado por canalRecord
+  const iA = src.indexOf('async function _provisionFreeClient(');
+  const alta = src.slice(iA, src.indexOf('\n}\n', iA));
+  const repone = alta.indexOf("localStorage.setItem('ax_canal'");
+  assert.ok(repone > 0 && repone < alta.indexOf('canal:_canalDeLlegada()') && repone < alta.indexOf('_wzFunnel(10)'), '🔴 el canal se repone tarde');
+  assert.ok(/canalRecord\(p\.canal, Date\.now\(\)\)/.test(alta), 'el canal de la metadata pasa por la regla de forma y 30 días');
+  assert.ok(/!_canalDeLlegada\(\) && p && p\.canal/.test(alta), 'el canal de ESTE navegador manda; la metadata solo cubre su ausencia');
+  // La regla que lo valida: un canal viejo o con forma rara no entra.
+  const hoy = new Date('2026-11-10T15:00:00Z');
+  assert.deepStrictEqual(core.canalRecord({ c: 'threads', at: '2026-11-09T15:00:00Z' }, hoy), { c: 'threads', at: '2026-11-09T15:00:00.000Z' });
+  assert.strictEqual(core.canalRecord({ c: 'threads', at: '2026-09-01T15:00:00Z' }, hoy), null);
+  assert.strictEqual(core.canalRecord({ c: '<script>', at: '2026-11-09T15:00:00Z' }, hoy), null);
+});
+test('🔴 v743 · dentro de una app el formulario de registro conserva el aviso y no ofrece Google', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const iW = html.indexOf('id="wz-inapp"'), iG = html.indexOf('onclick="wzGoogle()"');
+  assert.ok(iW > 0 && iW < iG, 'el aviso va en el formulario, antes de los caminos');
+  assert.ok(/#wz-inapp\{display:none\}/.test(css) && /\.av-inapp #wz-inapp\{display:block\}/.test(css), 'fuera de una app el aviso no se ve; dentro, sí');
+  assert.ok(/\.av-inapp \.wz-gbtn-main,\.av-inapp \.wz-ghint,\.av-inapp \.av-g-login\{display:none!important\}/.test(css), '🔴 dentro de una app se seguiría ofreciendo Google');
+  assert.ok(/class="av-g-login" onclick="loginWithGoogle\(\)"/.test(html), 'también el Google de la pantalla de entrar');
+  assert.ok(/class="av-g-login" style="display:flex/.test(html), 'el «o» que separaba el Google de entrar también se va (quedaba huérfano)');
+  assert.ok(/\.av-inapp #su-mail-box\.cx-off\{display:block!important\}/.test(css) && /\.av-inapp #su-mail-toggle\{display:none!important\}/.test(css), '🔴 dentro de una app el correo quedaría plegado detrás de «o crear la cuenta con mi correo»');
+  assert.ok(/onclick="location\.href=aviIntentChrome\(location\.href\)"/.test(html.slice(iW, iG)), 'el botón abre la MISMA dirección en Chrome');
+  // En iPhone no hay Chrome que abrir: `.cin-inapp .ibtn{display:block}` le ganaba a una regla de 2 clases (lo cazó el navegador).
+  assert.ok(/\.av-inapp-ios #wz-inapp \.wz-inapp-and\{display:none\}/.test(css), '🔴 en iPhone se vería «Abrir en Chrome»');
+  // La marca de iPhone va en la raíz junto a la de la app, antes de cualquier return (gotcha v701).
+  const ini = html.indexOf('(function(){', html.indexOf('function aviNavegadorInterno('));
+  const iife = html.slice(ini, html.indexOf('</script>', ini));
+  assert.ok(iife.indexOf("classList.add('av-inapp-ios')") > 0 && iife.indexOf("classList.add('av-inapp-ios')") < iife.indexOf('if(!box) return'));
+  // El correo sigue: los mismos ids que lee signupClient.
+  assert.ok(html.indexOf('id="su-email"') > iG && html.indexOf('id="su-pass"') > iG);
+});
+
+test('v743 · con un formulario abierto no hay marca: el registro y el entrar usan la pantalla (PO, 10-nov)', () => {
+  const fs = require('fs'), path = require('path');
+  const app2 = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+  const i = app2.indexOf('function cinFormMode('), cuerpo = app2.slice(i, app2.indexOf('\n}', i));
+  assert.ok(/querySelector\('\.cin-wrap'\)/.test(cuerpo) && /classList\.toggle\('cin-form-on', !!on\)/.test(cuerpo), 'cinFormMode pone y QUITA la clase (al volver, la portada recupera su marca)');
+  assert.ok(/\.cin-form-on \.cin-brand,\.cin-form-on \.cin-hero\{display:none\}/.test(css), '🔴 la marca volvería a ocupar media pantalla encima del formulario');
+  assert.ok(/\.cin-form-on #cin-signup\{max-height:calc\(100vh - 64px\)!important/.test(css), 'el registro usa el alto que dejó la marca');
+  // la portada (sin formulario) no cambia: ninguna regla nueva sin el prefijo
+  assert.ok(/\.cin-hero\{margin-top:auto;margin-bottom:22px\}/.test(css));
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

@@ -2656,4 +2656,7 @@ function cinFormMode(on){
     const el=document.getElementById(id);
     if(el)el.classList.toggle('cin-hide-onform', !!on);
   });
+  // v743 · con un formulario abierto la marca se va (PO, 10-nov: «la sola marca ocupa casi la mitad de la pantalla»,
+  // «no veo la necesidad de mostrar la marca en esa pantalla»). La portada sin formulario no cambia.
+  const w=document.querySelector('.cin-wrap'); if(w)w.classList.toggle('cin-form-on', !!on);
 }

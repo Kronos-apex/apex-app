@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=742">
+<link rel="stylesheet" href="styles.css?v=743">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -240,6 +240,8 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       var app=aviNavegadorInterno(navigator.userAgent); if(!app) return;
       // La marca va en la RAÍZ y antes de cualquier return: apaga #install-hint (styles.css), que aún no existe aquí.
       document.documentElement.classList.add('av-inapp');
+      // v743 · el sistema también en la raíz: el aviso del formulario de registro elige su texto con CSS (aún no existe aquí).
+      if(/iPad|iPhone|iPod/.test(navigator.userAgent)) document.documentElement.classList.add('av-inapp-ios');
       var box=document.getElementById('inapp-hint'); if(!box) return;
       document.getElementById('inapp-app').textContent=app;
       if(/iPad|iPhone|iPod/.test(navigator.userAgent)) document.getElementById('inapp-ios').hidden=false;
@@ -346,8 +348,8 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <button type="button" id="l-forgot" class="cin-forgot" onclick="pedirResetPass()">¿Olvidaste tu contraseña?</button>
       <div id="l-forgot-msg" class="cin-forgot-msg" style="display:none"></div>
       <button class="cin-btn lbtn" onclick="doLogin()">Entrar →</button>
-      <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:rgba(255,255,255,.45);font-size:12px"><div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div>o<div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div></div>
-      <button onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.25);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">
+      <div class="av-g-login" style="display:flex;align-items:center;gap:10px;margin:14px 0;color:rgba(255,255,255,.45);font-size:12px"><div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div>o<div style="flex:1;height:1px;background:rgba(255,255,255,.18)"></div></div>
+      <button class="av-g-login" onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:40px;border:1px solid rgba(255,255,255,.25);background:#fff;color:#1F1F1F;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">
         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
         Entrar con Google
       </button>
@@ -518,6 +520,17 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
              correo y la contraseña iban primero y Google al final, debajo del borde del recuadro.
              🔒 Las casillas van ARRIBA de los dos caminos: la ley las pide para los dos (wzGoogle ya las exigía).
              🔒 El correo NO desaparece: `wzShowMail()` lo abre en el sitio, y signupClient lee los mismos ids. -->
+        <!-- v743 · DENTRO DE THREADS, INSTAGRAM O FACEBOOK (Fable, 10-nov). El aviso de v738 se aparta al abrir el formulario,
+             así que quien se registraba ahí ya no lo veía; y el botón principal era «Continuar con Google», que Google
+             no deja usar dentro del navegador de una app. Aquí: el aviso vuelve DENTRO del formulario, Google se
+             esconde (styles.css, `.av-inapp`) y el correo queda como camino. Solo se ve con la marca `av-inapp`. -->
+        <div id="wz-inapp" class="cin-inapp wz-inapp">
+          <div class="ttl">Estás dentro de otra app</div>
+          <div class="txt">Para que tu cuenta y tus avisos queden en tu celular, ábrela en tu navegador antes de crearla.</div>
+          <button type="button" class="ibtn wz-inapp-and" onclick="location.href=aviIntentChrome(location.href)">Abrir en Chrome</button>
+          <div class="txt wz-inapp-ios">Toca <strong>•••</strong> arriba a la derecha y elige abrir en <strong>Safari</strong> o en el navegador.</div>
+          <div class="txt" style="margin-top:8px">Si prefieres seguir aquí, crea la cuenta con tu correo 👇</div>
+        </div>
         <button type="button" class="wz-gbtn wz-gbtn-main" onclick="wzGoogle()">
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c3.9-3.6 6.1-8.9 6.1-15.1 0-1.2-.1-2.3-.4-3.5z"/></svg>
           Continuar con Google
@@ -1496,19 +1509,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=742"></script>
-<script src="muscle-map.js?v=742"></script>
-<script src="exercise-muscles.js?v=742"></script>
+<script src="avi-core.js?v=743"></script>
+<script src="muscle-map.js?v=743"></script>
+<script src="exercise-muscles.js?v=743"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=742"></script>
-<script src="app-2-login.js?v=742"></script>
-<script src="app-3-coach.js?v=742"></script>
-<script src="app-4-entreno.js?v=742"></script>
-<script src="app-5-salud.js?v=742"></script>
-<script src="app-6-extra.js?v=742"></script>
-<script src="app-7-community.js?v=742"></script>
+<script src="app-1-infra.js?v=743"></script>
+<script src="app-2-login.js?v=743"></script>
+<script src="app-3-coach.js?v=743"></script>
+<script src="app-4-entreno.js?v=743"></script>
+<script src="app-5-salud.js?v=743"></script>
+<script src="app-6-extra.js?v=743"></script>
+<script src="app-7-community.js?v=743"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
