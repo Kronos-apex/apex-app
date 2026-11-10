@@ -1,0 +1,16 @@
+import { readFileSync } from 'node:fs'; import { join } from 'node:path'; import { createRequire } from 'node:module'; import vm from 'node:vm';
+const RAIZ = 'C:/Users/KRONOS/Desktop/AVI/apex-app';
+const core = createRequire(join(RAIZ, 'x.js'))('./avi-core.js');
+const infra = readFileSync(join(RAIZ, 'app-1-infra.js'), 'utf8');
+const ini = infra.indexOf('const defaultExercises=['); const fin = infra.indexOf('\n];', ini);
+const LIB = vm.runInNewContext('(' + infra.slice(ini + 23, fin + 2) + ')');
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const show = (tit, keys, re) => { console.log('\n## ' + tit); LIB.filter(e => !core.exerciseContraindicated(e, keys)).forEach(e => { const f = norm(e.name + ' · ' + e.desc + ' · ' + e.descSimple); const m = f.match(re); if (m) console.log(` ${e.id} ${e.name} [${e.type}|${(e.env||[]).join(',')}] «…${f.slice(Math.max(0, m.index - 50), m.index + 70)}…»`); }); };
+show('EMBARAZO no excluidos con posición tumbada', ['embarazo', 'core_central'], /boca arriba|boca abajo|tumbad|tumbat|acostad|acuestat|recostad|recuestat|de espaldas|sobre el vientre|en el suelo|banco plano/);
+show('EMBARAZO no excluidos explosivos/HIIT por tipo', ['embarazo', 'core_central'], /explosiv|maxima intensidad|a toda|lo mas rapido/);
+console.log('\n## PRESION no excluidos de tipo HIIT o Isométrico o explosivos');
+LIB.filter(e => !core.exerciseContraindicated(e, ['presion'])).filter(e => e.type === 'HIIT' || e.type === 'Isométrico' || /explosiv|palmada|pliometr|maxima intensidad|aguanta la respiracion/.test(norm(e.name + e.desc + e.descSimple))).forEach(e => console.log(` ${e.id} ${e.name} [${e.type}|${(e.env||[]).join(',')}] ${norm(e.desc).slice(0, 110)}`));
+console.log('\n## LUMBAR no excluidos de tipo HIIT / impacto en ficha');
+LIB.filter(e => !core.exerciseContraindicated(e, ['lumbar'])).filter(e => e.type === 'HIIT' || /\bsalt|impacto alto|aterriza/.test(norm(e.name + e.desc))).forEach(e => console.log(` ${e.id} ${e.name} [${e.type}] ${norm(e.desc).slice(0, 110)}`));
+console.log('\n## RODILLA no excluidos de tipo HIIT / salto');
+LIB.filter(e => !core.exerciseContraindicated(e, ['rodilla'])).filter(e => e.type === 'HIIT' || /\bsalt|aterriza|sentadilla|zancada/.test(norm(e.name + e.desc))).forEach(e => console.log(` ${e.id} ${e.name} [${e.type}] ${norm(e.desc).slice(0, 90)}`));
