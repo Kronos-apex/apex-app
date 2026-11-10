@@ -1088,10 +1088,17 @@ function renderFirstRun(client, routine, opts){
 // entrar y no sabe todavía cómo funciona la app.
 // 🔴 Nada de inventar: si el plan no tiene ningún día en los próximos 7, esto devuelve false y
 // manda el banner de siempre. Es preferible el mensaje genérico a una fecha falsa.
+// 🔴 v742 · SIN ENTRENADOR NO SE ESPERA (Fable, 10-nov). Quien se registraba sola un sábado, domingo o festivo leía «Tu plan
+// va de lunes a viernes, que es cuando tu entrenador está en el gimnasio. Tu primer entreno es el miércoles» —sin tener
+// entrenador— y la única salida era «Ver mi plan completo»: hasta 4 días sin poder entrenar con las ganas del registro.
+// Medido: 6 de las 11 cuentas de registro propio desde el 15-oct llegaron un fin de semana, y ninguna entrenó. A quien
+// no tiene coach se le ofrece el primer entreno HOY, con un toque; quien entrena en el gimnasio sigue igual (la regla
+// de lunes a viernes es del gimnasio y es real para esa persona).
 function _firstRunEspera(el, client, opts){
   if(typeof nextPlanDay!=='function') return false;
   const prox=nextPlanDay(client.routines||[], new Date());
   if(!prox) return false;
+  if(typeof clientHasCoach==='function'&&!clientHasCoach(client)) return _firstRunHoySinCoach(el, client, nextPlanDay(client.routines||[], new Date(), {festivos:false})||prox);
   const nombre=((client.name||'').trim().split(' ')[0])||'';
   const coach=(typeof coachNameForClient==='function'?coachNameForClient():((typeof getCoachName==='function'&&getCoachName())||''));
   const quien=(coach&&coach!=='Mi Coach')?(esc(coach)+' te lo armó. '):'';
@@ -1121,6 +1128,30 @@ function _firstRunEspera(el, client, opts){
     '</div>'+
     '<button type="button" class="fr-cta" onclick="cnTab(\'cn-routines\',document.querySelectorAll(\'.cntab\')[1])">Ver mi plan completo →</button>'+
     '<div class="fr-foot">Mientras tanto puedes ir mirando en qué consiste.</div>'+
+  '</div>';
+  return true;
+}
+function _firstRunHoySinCoach(el, client, prox){
+  const nombre=((client.name||'').trim().split(' ')[0])||'';
+  const cuando=prox.enDias===1?'mañana'
+    :(prox.enDias<=7?('el '+prox.dia.toLowerCase()):('el '+prox.dia.toLowerCase()+' de la otra semana'));
+  const r=prox.rutina, exN=(r.exercises||[]).length;
+  const mins=(typeof estimateWorkoutMinutes==='function')?estimateWorkoutMinutes(r,{secsPerSet:_secsPerSetDe(client)}):null;
+  const chips=[exN+' ejercicio'+(exN===1?'':'s')]
+    .concat(mins?['~'+mins+' min']:[])
+    .map(t=>'<span class="fr-chip">'+esc(t)+'</span>').join('');
+  const rid=esc(String(r.id));
+  el.innerHTML='<div class="fr-wrap">'+
+    '<div class="ic-circle" aria-hidden="true">'+(typeof aviIcon==='function'?aviIcon('barbell',22):'💪')+'</div>'+
+    '<h2 class="fr-h">'+(nombre?esc(nombre)+', tu plan está listo':'Tu plan está listo')+'</h2>'+
+    '<p class="fr-sub">No tienes que esperar: tu primer entreno lo puedes hacer hoy. Si prefieres arrancar con tu plan, el próximo día es <b>'+esc(cuando)+'</b>.</p>'+
+    '<div class="fr-card">'+
+      '<div class="fr-eyebrow">'+(typeof aviIcon==='function'?aviIcon('dumbbell',12):'⚡')+' TU PRIMER ENTRENO</div>'+
+      '<div class="fr-name">'+esc(r.name||'Entrenamiento')+'</div>'+
+      '<div class="fr-chips">'+chips+'</div>'+
+    '</div>'+
+    '<button type="button" class="fr-cta" onclick="startRoutineNow(\''+rid+'\');firstRunGo()">Empezar mi primer entreno →</button>'+
+    '<div class="fr-foot">Lo demás aparece cuando termines este.</div>'+
   '</div>';
   return true;
 }
@@ -1410,7 +1441,11 @@ function renderClientToday(client, overrideRoutine){
   // salida por encima de la limpieza que vive más abajo (`_todayOrder`). Aquí no se abre ninguna.
   // ⚠️ Si el asesorado eligió a mano otra rutina (`overrideRoutine`), manda su decisión: el
   // festivo apaga la programación automática, no le prohíbe entrenar si él quiere.
-  const _festivoHoy=(!isOverride&&typeof nombreFestivoCO==='function')?nombreFestivoCO(new Date()):null;
+  // 🔴 v742 · y SOLO para quien entrena con el coach (`clientHasCoach`). Una cuenta sin entrenador no depende del horario
+  // del gimnasio: antes, quien se registraba sola y su lunes caía festivo perdía ese día y leía «tu entrenador no
+  // acompaña sesiones» sin tener entrenador (Fable, 10-nov).
+  const _conCoach=typeof clientHasCoach!=='function'||clientHasCoach(client);
+  const _festivoHoy=(_conCoach&&!isOverride&&typeof nombreFestivoCO==='function')?nombreFestivoCO(new Date()):null;
   if(_festivoHoy)baseR=null;
   // Recordamos la rutina mostrada para que el check-in (pickMood/changeMood)
   // re-renderice SIN perder la selección manual (ej. abrir una rutina de otro día).

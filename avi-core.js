@@ -292,13 +292,14 @@ function esDiaLaboralCO(fecha) {
 // Quien pinte el texto tiene que mirar `enDias`: por encima de 7, «el lunes» a secas MIENTE.
 const _DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const NEXT_PLAN_WINDOW_DAYS = 14;
-function nextPlanDay(routines, now) {
+// v742 · `opts.festivos === false`: para quien no entrena con el coach, el festivo NO salta el día (no depende del gimnasio).
+function nextPlanDay(routines, now, opts) {
   const base = now != null ? new Date(now) : new Date();
   if (isNaN(base)) return null;
   for (let i = 1; i <= NEXT_PLAN_WINDOW_DAYS; i++) {
     const d = new Date(base.getTime());
     d.setDate(d.getDate() + i);
-    if (esFestivoCO(d)) continue;
+    if ((!opts || opts.festivos !== false) && esFestivoCO(d)) continue;
     const nombre = _DIAS_ES[d.getDay()];
     const r = (routines || []).find(x => x && x.day === nombre);
     if (r) return { dia: nombre, enDias: i, rutina: r };

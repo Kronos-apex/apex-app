@@ -650,7 +650,8 @@ test('🔴 v515 · el festivo sale por la MISMA puerta que el día de descanso (
   assert.ok(puerta.indexOf('_todayOrder') < puerta.indexOf('innerHTML'),
     '_todayOrder quedó DESPUÉS de pintar: es el orden exacto que causó el defecto de v508');
   // el override manual del asesorado gana sobre el festivo: apaga la programación, no le prohíbe entrenar
-  assert.ok(/const _festivoHoy=\(!isOverride&&/.test(src),
+  // v742 · delante va `_conCoach&&` (el festivo solo apaga el plan de quien entrena con el coach); el override sigue mandando.
+  assert.ok(/const _festivoHoy=\(_conCoach&&!isOverride&&/.test(src),
     'el festivo dejó de respetar la rutina que el asesorado eligió a mano');
 });
 
@@ -26438,6 +26439,33 @@ test('🔴 v741 · presión arterial y embarazo excluyen TODO lo de tipo HIIT, y
   assert.ok(core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e274'), ['hombro'], _LIB_REAL), 'e274 va sobre la cabeza');
   // Control: el tipo solo pesa en las condiciones que lo nombran. Hueso conserva sus HIIT de impacto moderado.
   assert.ok(!core.exerciseContraindicated(_LIB_REAL.find(e => e.id === 'e182'), ['hueso'], _LIB_REAL));
+});
+
+// v742 · SIN ENTRENADOR NO SE ESPERA (Fable, 10-nov: quien se registraba sola un fin de semana o festivo no podía entrenar).
+test('🔴 v742 · sin entrenador, la portada del día 1 ofrece el primer entreno HOY y no habla de un entrenador', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  const ini = src.indexOf('function _firstRunEspera(');
+  const esp = src.slice(ini, src.indexOf('\n}\n', ini));
+  assert.ok(/!clientHasCoach\(client\)\) return _firstRunHoySinCoach\(/.test(esp), '🔴 sin coach tiene que ir a la portada de «empieza hoy»');
+  const i2 = src.indexOf('function _firstRunHoySinCoach(');
+  assert.ok(i2 > 0, 'falta la portada de quien no tiene coach');
+  const hoy = src.slice(i2, src.indexOf('\n}\n', i2));
+  assert.ok(/onclick="startRoutineNow\(\\''\+rid\+'\\'\);firstRunGo\(\)"/.test(hoy), '🔴 el botón tiene que ARRANCAR el entreno, en un toque');
+  assert.ok(/Empezar mi primer entreno/.test(hoy));
+  assert.ok(!/entrenador|gimnasio|festivo/i.test(hoy), '🔴 a quien no tiene entrenador no se le habla de su entrenador ni del gimnasio');
+  assert.ok(/esc\(String\(r\.id\)\)/.test(hoy), 'el id va escapado');
+  // El festivo es la regla del gimnasio: solo apaga el plan de quien entrena con el coach.
+  assert.ok(/const _festivoHoy=\(_conCoach&&!isOverride/.test(src), '🔴 el festivo no puede apagar el plan de una cuenta sin entrenador');
+});
+test('🔒 v742 · nextPlanDay: por defecto salta el festivo; con {festivos:false} no', () => {
+  // Sábado 14-nov-2026; el lunes 16 es festivo (Independencia de Cartagena).
+  const rut = [{ day: 'Lunes', id: 'a', exercises: [] }, { day: 'Miércoles', id: 'b', exercises: [] }];
+  const sab = new Date('2026-11-14T15:00:00Z');
+  assert.strictEqual(core.nextPlanDay(rut, sab).dia, 'Miércoles', 'con coach el festivo se salta');
+  const sin = core.nextPlanDay(rut, sab, { festivos: false });
+  assert.strictEqual(sin.dia, 'Lunes');
+  assert.strictEqual(sin.enDias, 2);
 });
 
 // ══════════════════════════════════════════════════════
