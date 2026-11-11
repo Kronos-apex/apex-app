@@ -365,6 +365,142 @@ const GEN_SPLITS = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// PLANTILLAS DE INICIO (v746) — la rutina del COACH para quien empieza
+// ─────────────────────────────────────────────────────────────────────
+// 🔴 POR QUÉ EXISTEN. Dato del 11-nov-2026: de 20 personas con rutina GENERADA, 10 no registraron ni
+// un entreno; de 16 con rutina del coach, 15 entrenaron. El coach borraba lo que armaba la app y ponía
+// sus plantillas (la app traía máquinas que el gimnasio no tiene y el orden no era el suyo). Ahora lo
+// que él aprobó SALE de la app, sin semilla ni rotación: dos personas iguales reciben exactamente lo
+// mismo, en el orden escrito.
+// FORMA: PLANTILLAS_INICIO[lugar][sexo 'F'|'M'][días] = { id, nombre, dias:[{ nombre, ejercicios:[
+//   { id:'eNN' (del catálogo), series:N, reps:N, alternativa?:'eNN' } ] }] }
+//   · `reps` de un ejercicio de tiempo son SEGUNDOS y los de cardio, MINUTOS (igual que el catálogo).
+//   · Solo se usa con nivel 'Principiante'. Sin plantilla para la combinación → generador de siempre.
+//   · El nivel NO la frena (decisión del director): solo la saca una regla de salud. El filtro de
+//     lesiones es el MISMO de siempre (`_genMakeExcluder`): un ejercicio excluido se cambia por su
+//     `alternativa` si ESTA pasa el filtro y, si no, por lo que el generador elegiría para ese hueco.
+//   · Cómo añadir más: docs/plantillas-inicio.md. `validarPlantillasInicio` las revisa contra el catálogo.
+const _PI_GLUTEO = { nombre: 'Glúteo', ejercicios: [
+  { id: 'e42', series: 4, reps: 10 },                          // Hip Thrust con Barra
+  { id: 'e61', series: 4, reps: 10, alternativa: 'e73' },      // Sentadilla Sumo → Puente de Glúteo (propuesta, el coach la confirma)
+  { id: 'e37', series: 4, reps: 15, alternativa: 'e36' },      // Extensión de Cuádriceps en Máquina → Prensa de Pierna (propuesta)
+  { id: 'e15', series: 3, reps: 15 },                          // Curl Femoral Tumbado en Máquina
+  { id: 'e60', series: 4, reps: 15 },                          // Aducción de Cadera en Máquina
+  { id: 'e45', series: 4, reps: 15 },                          // Abducción de Cadera en Máquina
+] };
+const _PI_TREN_SUP = { nombre: 'Tren superior', ejercicios: [
+  { id: 'e6', series: 4, reps: 12 },                           // Jalón al Pecho en Polea
+  { id: 'e83', series: 3, reps: 15 },                          // Lagartijas (Push-up)
+  { id: 'e51', series: 4, reps: 12 },                          // Remo Gironda en Polea
+  { id: 'e84', series: 4, reps: 10 },                          // Press en Máquina Hammer (Pecho)
+  { id: 'e24', series: 3, reps: 12 },                          // Pullover en Polea
+] };
+const _PI_PIERNA = { nombre: 'Pierna', ejercicios: [
+  { id: 'e80', series: 3, reps: 15 },                          // Sentadilla de Peso Corporal
+  { id: 'e35', series: 3, reps: 12 },                          // Desplantes / Zancada
+  { id: 'e36', series: 4, reps: 12 },                          // Prensa de Pierna
+  { id: 'e15', series: 3, reps: 15 },                          // Curl Femoral Tumbado en Máquina
+  { id: 'e37', series: 4, reps: 15 },                          // Extensión de Cuádriceps en Máquina
+  { id: 'e64', series: 1, reps: 15 },                          // Bicicleta Estática (15 min)
+] };
+const _PI_BRAZO_ABD = { nombre: 'Brazo y abdomen', ejercicios: [
+  { id: 'e23', series: 4, reps: 10 },                          // Press Militar en Máquina
+  { id: 'e8', series: 4, reps: 15 },                           // Elevaciones Laterales
+  { id: 'e29', series: 3, reps: 12 },                          // Curl de Bíceps con Mancuernas
+  { id: 'e10', series: 3, reps: 12 },                          // Curl Martillo con Mancuernas
+  { id: 'e11', series: 4, reps: 15 },                          // Extensión de Tríceps con Cuerda en Polea
+  { id: 'e164', series: 3, reps: 30 },                         // Plancha en Rodillas (30 s)
+  { id: 'e134', series: 3, reps: 10 },                         // Bird Dog
+  { id: 'e72', series: 3, reps: 10 },                          // Dead Bug
+] };
+const PLANTILLAS_INICIO = {
+  gym: {
+    F: {
+      3: { id: 'inicio-gym-F-3', nombre: 'Inicio · mujer · gimnasio · 3 días', dias: [_PI_GLUTEO, _PI_TREN_SUP, _PI_PIERNA] },
+      4: { id: 'inicio-gym-F-4', nombre: 'Inicio · mujer · gimnasio · 4 días', dias: [_PI_GLUTEO, _PI_TREN_SUP, _PI_PIERNA, _PI_BRAZO_ABD] },
+    },
+  },
+};
+
+// ¿Hay plantilla de inicio para esta persona? PURA. Solo Principiante; sin sexo declarado (cae a 'M')
+// y sin plantilla para la combinación → null y el generador sigue como siempre.
+function plantillaInicioFor(place, sexKey, days, level, plantillas) {
+  if (level !== 'Principiante') return null;
+  const t = (plantillas || PLANTILLAS_INICIO)[place];
+  const s = t && t[sexKey];
+  return (s && s[days]) || null;
+}
+
+// Revisa una tabla de plantillas contra el catálogo (para cuando se peguen las del coach). PURA.
+// Devuelve la lista de problemas ([] = bien): id inexistente, ejercicio que no se hace en ese lugar,
+// alternativa inexistente, días que no cuadran con la clave, series/reps no positivos, repetidos en un día.
+function validarPlantillasInicio(plantillas, lib) {
+  const errs = [], porId = {};
+  (lib || []).forEach(e => { if (e && e.id) porId[e.id] = e; });
+  Object.keys(plantillas || {}).forEach(place => Object.keys(plantillas[place] || {}).forEach(sx => Object.keys(plantillas[place][sx] || {}).forEach(n => {
+    const p = plantillas[place][sx][n], tag = place + '/' + sx + '/' + n;
+    if (!p || !p.id) errs.push(tag + ': falta id');
+    if (!p || !Array.isArray(p.dias) || p.dias.length !== +n) { errs.push(tag + ': los días no cuadran con ' + n); return; }
+    p.dias.forEach((d, i) => {
+      const vistos = {};
+      if (!d || !d.nombre || !Array.isArray(d.ejercicios) || !d.ejercicios.length) { errs.push(tag + ' día ' + (i + 1) + ': sin nombre o sin ejercicios'); return; }
+      d.ejercicios.forEach(it => {
+        const ex = porId[it.id];
+        if (!ex) errs.push(tag + ' día ' + (i + 1) + ': ' + it.id + ' no está en el catálogo');
+        else if (!(ex.env || ['gym']).includes(place)) errs.push(tag + ' día ' + (i + 1) + ': ' + it.id + ' no se hace en ' + place);
+        if (vistos[it.id]) errs.push(tag + ' día ' + (i + 1) + ': ' + it.id + ' repetido');
+        vistos[it.id] = 1;
+        if (!(it.series > 0) || !(it.reps > 0)) errs.push(tag + ' día ' + (i + 1) + ': ' + it.id + ' sin series o repeticiones válidas');
+        if (it.alternativa && !porId[it.alternativa]) errs.push(tag + ' día ' + (i + 1) + ': la alternativa ' + it.alternativa + ' no está en el catálogo');
+      });
+    });
+  })));
+  return errs;
+}
+
+// Arma los días de una plantilla pasando cada ejercicio por el filtro de siempre (`st.exclude`, la
+// lista negra del coach y el lugar). Pura salvo `st` (cursores/usados, como `_genPick`).
+//   1) el ejercicio de la plantilla, si pasa;  2) su `alternativa`, si pasa y no está ya en el día;
+//   3) lo que el generador elegiría para ese hueco (mismo músculo y tipo del original).
+// Series y repeticiones son las del coach; la ÚNICA regla que las toca es la de salud de 8 repeticiones
+// mínimas (presión, abdomen y piso pélvico, embarazo), que ya vale en el generador.
+function _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8) {
+  const porId = new Map(lib.map(e => [e.id, e]));
+  const pasa = e => !!e && !st.exclude(e) && !st.excludeIds.has(e.id) && (e.env || ['gym']).includes(st.place);
+  const ajustar = (c, it) => {
+    c.sets = it.series;
+    c.reps = (minReps8 && !_genKeepNatural(c) && it.reps < 8) ? 8 : it.reps;
+    return c;
+  };
+  return pl.dias.map(dia => {
+    st.usedInDay = new Set(); st.usedFamiliesInDay = new Set();
+    const delDia = new Set(dia.ejercicios.map(i => i.id));
+    const sel = dia.ejercicios.map(it => {
+      const ex = porId.get(it.id);
+      if (pasa(ex)) return { ex, it };
+      const alt = it.alternativa ? porId.get(it.alternativa) : null;
+      if (pasa(alt) && !delDia.has(alt.id)) return { ex: alt, it, reemplaza: it.id };
+      return { ex: null, it, orig: ex };
+    });
+    sel.forEach(s => { if (s.ex) st.usedInDay.add(s.ex.id); });
+    const out = [];
+    sel.forEach(s => {
+      let c;
+      if (s.ex) {
+        c = ajustar(_genMaterialize(s.ex, schemeTpl), s.it);
+        if (s.reemplaza) c.plantillaReemplazo = s.reemplaza;
+      } else if (s.orig) {
+        const f = _genPick(lib, s.orig.muscle, s.orig.type, st);
+        if (!f) return;
+        c = _genMaterialize(f, schemeTpl); c.plantillaReemplazo = s.it.id;
+      } else return;
+      out.push(c);
+    });
+    return { nombre: dia.nombre, exs: out };
+  });
+}
+
 // Detección de limitaciones físicas en `notes` (lo que hace Laura, codificado).
 // `lumbar` ampliada 2026-08-02 con las formas que la gente SÍ escribe (lumbago, espondilo-,
 // protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1).
@@ -3156,14 +3292,45 @@ function generarRutinas(client, lib, opts) {
     preferIds: new Set(opts.preferIds || []),   // ⭐ priorizados manuales (Fase C)
   };
 
-  const codes = _genResolveSplit(sexKey, days, level, place);
+  // 📋 v746 · PLANTILLA DE INICIO: si hay una para (lugar, sexo, días) y la persona es Principiante, el
+  // plan ES la plantilla del coach (sin semilla ni rotación). `opts.plantillas` solo lo usan las pruebas;
+  // `opts.sinPlantilla` fuerza el generador de siempre.
+  let pl = opts.sinPlantilla ? null : plantillaInicioFor(place, sexKey, days, level, opts.plantillas);
+  // Una biblioteca a la que le falta algún ejercicio de la plantilla (la del coach, recortada o sin el
+  // catálogo) no puede armarla entera: mejor el generador de siempre que un día con huecos.
+  if (pl) { const ids = new Set(lib.map(e => e.id)); if (!pl.dias.every(d => d.ejercicios.every(i => ids.has(i.id)))) pl = null; }
+  const codes = pl ? pl.dias.map(d => d.nombre) : _genResolveSplit(sexKey, days, level, place);
   // En qué días de la semana cae el plan. `opts.startDay` = nombre del día en que la persona
   // ARRANCA (lo usa el auto-registro para que el día 1 tenga entreno). Sin él, lunes: es lo que
   // el coach espera al generar desde su panel.
   const _startIdx = opts.startDay ? Math.max(0, GEN_WEEK_DAYS.indexOf(opts.startDay)) : 0;
   const _genDays = genWeekDays(codes.length, _startIdx);
   const nameCount = {};
+  // La plantilla NO pasa por la fase de adaptación (15 reps, 3 series): el coach ve las series y
+  // repeticiones que él escribió. Descanso por tipo y objetivo como en una rutina normal.
+  let diasPl = null;
+  if (pl) {
+    const schemeTpl = genSchemeFor(client.goal || '', level, false);
+    const minReps8 = (lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0);
+    if (minReps8) schemeTpl.repsN = Math.max(schemeTpl.repsN, 8);
+    diasPl = _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8);
+    scheme.restSec = schemeTpl.restSec;
+  }
   const routines = codes.map((code, idx) => {
+    if (diasPl) {
+      const exs = diasPl[idx].exs;
+      const note = exs.length === 0
+        ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
+        : (lim.detected || lim.cardiac)
+        ? genLimitationNote(lim, opts.audience)
+        : '📋 Rutina de inicio armada por el coach. Las primeras semanas usa poco peso y sin llegar al fallo: la técnica primero; las cargas suben cuando el movimiento salga limpio.';
+      return {
+        id: idFn(), name: diasPl[idx].nombre, day: _genDays[idx] || ('Día ' + (idx + 1)), shift: null,
+        note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
+        createdAt: now, generated: true, reviewed: false, origen: 'plantilla-inicio', plantillaId: pl.id,
+        needsReview: lim.detected || !!lim.cardiac || exs.length === 0,
+      };
+    }
     const tpl = GEN_DAYS[code] || GEN_DAYS.FULL_BODY;
     st.usedInDay = new Set();
     st.usedFamiliesInDay = new Set();
@@ -3251,7 +3418,7 @@ function generarRutinas(client, lib, opts) {
   // Eleva la revisión global si hay huecos de entorno o algún día sin ejercicios (antes solo
   // lo hacían las limitaciones, así que un plan a medio cubrir pasaba sin bandera).
   const anyEmpty = routines.some(r => !(r.exercises || []).length);
-  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation, loadProfile };
+  return { routines, needsReview: lim.detected || envGaps.length > 0 || anyEmpty, limitations: lim, place, envGaps, adaptation: !!scheme.adaptation && !pl, plantilla: pl ? pl.id : null, loadProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -14509,6 +14676,9 @@ if (typeof module !== 'undefined' && module.exports) {
     wuRecipeCode,
     wuResolveRecipe,
     GEN_SPLITS,
+    PLANTILLAS_INICIO,
+    plantillaInicioFor,
+    validarPlantillasInicio,
     mergeCoachMsgs,
     ROUTINE_PROMISES,
     routinePromiseGap,

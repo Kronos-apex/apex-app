@@ -26602,6 +26602,147 @@ test('⚖️ v744 · el consentimiento conserva su texto aprobado: solo se plieg
 });
 
 // ══════════════════════════════════════════════════════
+// v746 · PLANTILLAS DE INICIO — la rutina del coach para quien empieza
+// ══════════════════════════════════════════════════════
+section('v746 · Plantillas de inicio');
+
+const _T_NOW = '2026-11-11T12:00:00Z';
+const _t_mujer = (id, extra) => Object.assign({ id, name: 'P', sex: 'F', age: 30, weight: 65, height: 165, goal: 'Perder grasa', level: 'Principiante', days: 3, place: 'gym', notes: '' }, extra || {});
+const _t_gen = (c, seed, extra) => core.generarRutinas(c, _LIB_REAL, Object.assign({ seed, now: _T_NOW, idFn: () => 'r', place: c.place, adaptation: true }, extra || {}));
+const _t_ids = r => r.routines.map(x => x.exercises.filter(e => !e.corrective).map(e => e.id));
+// Lo que el coach aprobó, escrito aquí a mano (NO leído de PLANTILLAS_INICIO: si alguien cambia la tabla, esto cae).
+const _T_GLUTEO = ['e42', 'e61', 'e37', 'e15', 'e60', 'e45'];
+const _T_TREN = ['e6', 'e83', 'e51', 'e84', 'e24'];
+const _T_PIERNA = ['e80', 'e35', 'e36', 'e15', 'e37', 'e64'];
+const _T_BRAZO = ['e23', 'e8', 'e29', 'e10', 'e11', 'e164', 'e134', 'e72'];
+
+test('v746 · dos mujeres principiantes de gym, 3 días, con ids y semillas distintos → la MISMA rutina, en el orden escrito', () => {
+  const a = _t_gen(_t_mujer('uuid-aaaa'), 11), b = _t_gen(_t_mujer('uuid-zzzz-otro'), 987654);
+  assert.deepStrictEqual(_t_ids(a), [_T_GLUTEO, _T_TREN, _T_PIERNA]);
+  assert.deepStrictEqual(_t_ids(b), _t_ids(a));
+  assert.deepStrictEqual(a.routines.map(r => r.name), ['Glúteo', 'Tren superior', 'Pierna']);
+  assert.ok(a.routines.every(r => r.origen === 'plantilla-inicio' && r.plantillaId === 'inicio-gym-F-3'));
+  assert.strictEqual(a.plantilla, 'inicio-gym-F-3');
+  // Control: con 4 días, el cuarto es «Brazo y abdomen».
+  const c4 = _t_gen(_t_mujer('x', { days: 4 }), 3);
+  assert.deepStrictEqual(_t_ids(c4), [_T_GLUTEO, _T_TREN, _T_PIERNA, _T_BRAZO]);
+});
+
+test('v746 · sin limitaciones, el día Glúteo abre con Hip Thrust con Barra 4×10 aunque sea «Intermedio» (la plantilla manda sobre el nivel)', () => {
+  assert.strictEqual(core.exLevel(_LIB_REAL.find(e => e.id === 'e42')), 'I', 'control: el catálogo sí lo marca Intermedio');
+  const r = _t_gen(_t_mujer('u1'), 5).routines[0];
+  const e0 = r.exercises[0];
+  assert.strictEqual(e0.id, 'e42'); assert.strictEqual(e0.name, 'Hip Thrust con Barra');
+  assert.strictEqual(e0.sets, 4); assert.strictEqual(e0.reps, 10);
+});
+
+test('v746 · la fase de adaptación NO pisa las series y repeticiones del coach', () => {
+  const con = _t_gen(_t_mujer('u2'), 5, { adaptation: true }), sin = _t_gen(_t_mujer('u2'), 5, { adaptation: false });
+  const sr = out => out.routines.map(r => r.exercises.filter(e => !e.corrective).map(e => e.sets + 'x' + e.reps));
+  assert.deepStrictEqual(sr(con), sr(sin));
+  assert.deepStrictEqual(sr(con)[0], ['4x10', '4x10', '4x15', '3x15', '4x15', '4x15']);
+  assert.strictEqual(con.adaptation, false, 'el aviso «15-20 reps» no debe salir sobre una plantilla');
+  // Control: sin plantilla (casa) la adaptación sí manda 3×15.
+  const casa = _t_gen(_t_mujer('u2', { place: 'casa' }), 5, { adaptation: true });
+  assert.strictEqual(casa.adaptation, true);
+});
+
+test('v746 · con una limitación que excluye un ejercicio de la plantilla: entra su alternativa, nunca el prohibido', () => {
+  // Hernia lumbar: la lista de Laura saca «sentadilla sumo» (e61). Su alternativa es el puente de glúteo (e73).
+  const out = _t_gen(_t_mujer('u3', { notes: 'Hernia discal L4-L5 diagnosticada, dolor lumbar al flexionar' }), 5);
+  const g = out.routines[0].exercises.filter(e => !e.corrective);
+  assert.ok(!g.some(e => e.id === 'e61'), 'entregó la sentadilla sumo con lumbar declarada');
+  assert.deepStrictEqual(g.map(e => e.id), ['e42', 'e73', 'e37', 'e15', 'e60', 'e45']);
+  assert.strictEqual(g[1].plantillaReemplazo, 'e61');
+  assert.strictEqual(g[1].sets, 4); assert.strictEqual(g[1].reps, 10);
+  assert.ok(out.needsReview);
+});
+
+test('v746 · si la alternativa TAMBIÉN está prohibida, entra lo que el generador elegiría — nunca algo prohibido', () => {
+  // Rodilla: «extensión de cuádriceps» y «desplante» caen; la alternativa pedida es el desplante.
+  const mini = { gym: { F: { 3: { id: 'prueba', nombre: 'p', dias: [0, 1, 2].map(() => ({ nombre: 'D', ejercicios: [
+    { id: 'e37', series: 4, reps: 15, alternativa: 'e35' }, { id: 'e36', series: 4, reps: 12 }, { id: 'e15', series: 3, reps: 15 }] })) } } } };
+  const c = _t_mujer('u4', { notes: 'dolor de rodilla, operada del menisco' });
+  const lim = core.limitationsFor(c, Date.parse(_T_NOW));
+  assert.ok(lim.keys.indexOf('rodilla') >= 0);
+  for (const seed of [1, 2, 3, 40, 500]) {
+    const out = core.generarRutinas(c, _LIB_REAL, { seed, now: _T_NOW, idFn: () => 'r', place: 'gym', plantillas: mini });
+    out.routines.forEach(r => {
+      const ex = r.exercises.filter(e => !e.corrective);
+      assert.strictEqual(ex.length, 3, 'el hueco debe llenarse');
+      assert.ok(!ex.some(e => e.id === 'e37' || e.id === 'e35'));
+      assert.ok(!ex.some(e => core.exerciseContraindicated(e, lim.keys, _LIB_REAL)), 'entregó algo prohibido: ' + ex.map(e => e.name));
+      assert.strictEqual(ex[0].plantillaReemplazo, 'e37');
+      assert.strictEqual(new Set(ex.map(e => e.id)).size, 3, 'duplicó un ejercicio del día');
+    });
+  }
+});
+
+test('v746 · la plantilla pasa por el MISMO filtro: ningún ejercicio prohibido por ninguna zona, ni por menor de edad, ni por la lista negra', () => {
+  const notas = ['hernia lumbar', 'dolor de rodilla', 'lesión de hombro', 'desgarro de aductor', 'dolor de cuello', 'esguince de tobillo', 'desgarre de isquios',
+    'estoy embarazada', 'tengo la presión alta', 'dolor en la muñeca', 'dolor de codo'];
+  let barridos = 0, sustituidos = 0;
+  for (const nota of notas) for (const days of [3, 4]) for (const seed of [1, 77]) {
+    const c = _t_mujer('z' + barridos, { notes: nota, days });
+    const lim = core.limitationsFor(c, Date.parse(_T_NOW));
+    const out = _t_gen(c, seed);
+    out.routines.forEach(r => r.exercises.forEach(e => {
+      assert.ok(!core.exerciseContraindicated(e, lim.keys, _LIB_REAL), nota + ' → ' + e.name);
+      if (e.plantillaReemplazo) sustituidos++;
+    }));
+    barridos++;
+  }
+  assert.ok(sustituidos > 10, 'control: el barrido debe sustituir algo (hay un filtro que muerde): ' + sustituidos);
+  // Menor de 16: sin sentadilla con barra ni peso muerto (sumo es sentadilla).
+  const menor = _t_gen(_t_mujer('m', { age: 14 }), 3).routines[0].exercises;
+  assert.ok(!menor.some(e => e.id === 'e61'), 'sentadilla sumo a una menor');
+  // Lista negra del coach.
+  const neg = _t_gen(_t_mujer('n'), 3, { excludeIds: ['e45'] }).routines[0].exercises;
+  assert.ok(!neg.some(e => e.id === 'e45'));
+  assert.strictEqual(neg.filter(e => !e.corrective).length, 6);
+});
+
+test('v746 · la regla de salud de 8 repeticiones mínimas SÍ toca la plantilla; sin ella, no', () => {
+  const mini = { gym: { F: { 3: { id: 'p6', nombre: 'p', dias: [0, 1, 2].map(() => ({ nombre: 'D', ejercicios: [{ id: 'e36', series: 4, reps: 6 }, { id: 'e64', series: 1, reps: 15 }] })) } } } };
+  const f = nota => core.generarRutinas(_t_mujer('r', { notes: nota }), _LIB_REAL, { seed: 1, now: _T_NOW, idFn: () => 'r', place: 'gym', plantillas: mini }).routines[0].exercises;
+  const hta = f('hipertensión, presión alta');
+  assert.strictEqual(hta.find(e => e.id === 'e36').reps, 8);
+  assert.strictEqual(hta.find(e => e.id === 'e64').reps, 15, 'el cardio son minutos, no repeticiones');
+  assert.strictEqual(f('').find(e => e.id === 'e36').reps, 6);
+});
+
+test('v746 · sin plantilla para la combinación, el generador sigue funcionando (hombre, casa, intermedia, 5 días, sin catálogo completo)', () => {
+  const casos = [
+    { sex: 'M', level: 'Principiante', days: 3, place: 'gym' },
+    { sex: 'M', level: 'Principiante', days: 3, place: 'casa' },
+    { sex: 'F', level: 'Principiante', days: 3, place: 'casa' },
+    { sex: 'F', level: 'Intermedio', days: 3, place: 'gym' },
+    { sex: 'F', level: 'Principiante', days: 5, place: 'gym' },
+    { sex: 'F', level: 'Principiante', days: 2, place: 'gym' },
+  ];
+  casos.forEach(k => {
+    const out = _t_gen(_t_mujer('s', k), 9);
+    assert.strictEqual(out.routines.length, Math.min(k.days, 5));
+    assert.ok(out.routines.every(r => r.origen === undefined && r.exercises.length > 0), JSON.stringify(k));
+    assert.strictEqual(out.plantilla, null);
+  });
+  // Y con una biblioteca a la que le faltan ejercicios de la plantilla (la del test de siempre), no arma días con huecos.
+  const pobre = core.generarRutinas(_t_mujer('p'), LIB, FIXED);
+  assert.ok(pobre.routines.length === 3 && pobre.routines.every(r => r.origen === undefined && r.exercises.length));
+});
+
+test('v746 · las plantillas sembradas son válidas contra el catálogo real, y el validador SÍ caza lo malo', () => {
+  assert.deepStrictEqual(core.validarPlantillasInicio(core.PLANTILLAS_INICIO, _LIB_REAL), []);
+  const mala = { gym: { F: { 3: { id: 'x', dias: [
+    { nombre: 'A', ejercicios: [{ id: 'e999', series: 3, reps: 10 }, { id: 'e42', series: 0, reps: 10 }, { id: 'e42', series: 3, reps: 10, alternativa: 'e888' }] },
+    { nombre: 'B', ejercicios: [] }, { nombre: 'C', ejercicios: [{ id: 'e2', series: 3, reps: 10 }] }] } } },
+    casa: { F: { 3: { id: 'y', dias: [0, 1, 2].map(() => ({ nombre: 'D', ejercicios: [{ id: 'e42', series: 3, reps: 10 }] })) } } } };
+  const errs = core.validarPlantillasInicio(mala, _LIB_REAL).join('|');
+  for (const quiza of ['e999 no está', 'sin series', 'repetido', 'e888', 'sin nombre o sin ejercicios', 'no se hace en casa'])
+    assert.ok(errs.includes(quiza), 'no cazó: ' + quiza);
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
