@@ -6,6 +6,13 @@
 
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
+## 2026-11-11 — v745 · 19 FOTOS DEL LOTE-9
+
+**Origen:** el PO, tras la revisión única del LOTE-9 («sube las 20 fotos completas a la app»). El bot paró por el límite de Gemini con 57 de 60; la revisión (`DOCUMENTOS/fotos-ejercicios/revision-11nov.mjs`) aprobó 47 y dejó 20 ejercicios con sus dos fotos; las 10 malas vuelven a la cola del bot (6 parejas editando la buena, 2 ejercicios otra vez con calcar).
+- **Una foto por ejercicio:** la app muestra `media/exercises/{id}.jpg` (y `{id}_f.jpg` es la versión de mujer, no el final). Se eligió el momento que mejor se lee y se revisó a tamaño real (lección v498): entran 19, 720×720.
+- **Fuera e297** (jalón supino) otra vez: de espaldas no se ve que las palmas miren hacia él.
+- **Verificado:** `audit-catalog` 70 → 51 «sin foto», 0 BLOCK. Control: sin la línea de `EX_IMG_IDS` la sonda marca e366 «tiene foto pero no está registrado → no se muestra».
+
 ## 2026-11-09 (noche) — v738 · ÁBRELA EN TU NAVEGADOR
 
 **Origen:** el PO aprobó atacar «la fuga» después del registro (9-nov, «sí, arranca»). Medido ese día: de 6 cuentas llegadas por Threads, 5 no volvieron a abrir la app; se registraron dentro del navegador de la red social, donde no se puede instalar, no llegan los avisos y la sesión queda presa en esa app. **Hecho:** aviso en la bienvenida con «Abrir en Chrome» (Android, misma dirección con ?canal) o dónde tocar para pasar a Safari (iPhone), más «Copiar el enlace»; apaga las instrucciones de instalar, que ahí eran falsas. **Pendiente (siguiente paso de la fuga):** quien YA se registró dentro de Threads no ve nada nuevo (el aviso solo está en la bienvenida); los correos automáticos día 1 y día 3 cubren ese caso.

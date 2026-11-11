@@ -1898,6 +1898,10 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // v737 · e340 vuelve (9-nov, el PO: «sube solo las imágenes que son urgentes»): rehecha con la pierna estirada; entra la
 // foto del FINAL, que muestra el cable y la pierna cruzando por delante (la de inicio, sin cable a la vista, se leía como abducción).
 ['e340'].forEach(id=>EX_IMG_IDS.add(id));
+// v745 · LOTE-9 del bot (11-nov, el PO: «sube las 20 fotos completas a la app»): 20 ejercicios del catálogo sin foto con sus
+// dos fotos aprobadas (modo «calcar» sobre free-exercise-db). La app muestra UNA por ejercicio: la del momento que mejor
+// se lee, revisada a tamaño real (lección v498). Entran 19; fuera e297 otra vez: de espaldas no se ve el agarre supino.
+['e222','e266','e267','e268','e273','e275','e277','e280','e281','e282','e292','e294','e296','e308','e312','e314','e325','e338','e366'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.
