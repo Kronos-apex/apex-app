@@ -3087,7 +3087,9 @@ function _genPick(lib, muscle, type, st, slotOpts) {
 
     && exLevelRank(e) <= cap // gate por nivel: el ejercicio no puede exceder el tope del cliente
     && (!st.tier || (e.tier || 'premium') === st.tier)
-    && (e.env || ['gym']).includes(st.place); // entorno: el ejercicio debe ser realizable ahí
+    && (e.env || ['gym']).includes(st.place) // entorno: el ejercicio debe ser realizable ahí
+    // v746 · equipo poco común: solo si la persona declaró que su gimnasio lo tiene o el coach lo priorizó a propósito
+    && (st.fullEquip || !exUncommon(e) || !!(st.preferIds && st.preferIds.has(e.id)));
   // ⭐ Priorizados (Fase C): si el coach marcó un ejercicio de este músculo/tipo, va PRIMERO
   // (cubre "impulsar" y "asegurar que entre"). Respeta ok() (nivel/entorno/tier/exclusión) y
   // el tipo del slot; si no pasa esos filtros, simplemente no se fuerza.
@@ -3205,6 +3207,33 @@ const GEN_HIIMPACT_RE = /salto|jump|burpee|pliometr|plyo|sprint|saltar|box jump|
 // que caerían son de banda, ya borrados por la línea de arriba. Fuera del gym sigue entrando.
 const GEN_GYM_SUB_IDS = ['e219'];
 
+// ── EQUIPO POCO COMÚN (v746) ──────────────────────────────────────────────────────────────────────
+// 🔴 POR QUÉ: la app armaba rutinas con máquinas que muchos gimnasios NO tienen (hip thrust en máquina,
+// sentadilla hack, pendular, variantes de multipower…) y la persona llegaba al gimnasio sin poder
+// hacer su primer entreno; el coach terminaba borrándolo todo. Es un dato por id, como `EX_LEVEL`:
+// vive aquí y no en el catálogo guardado de cada teléfono (`ax_e` solo refresca ciertos campos, y un
+// campo nuevo no llegaría a los ejercicios ya guardados). Un ejercicio propio del coach puede traer
+// `uncommon:true`. Lista propuesta por el equipo: EL COACH LA CORRIGE (docs/plantillas-inicio.md).
+// El generador NO los elige salvo que la persona declare `gymFullEquip:true` en su perfil (campo
+// preparado, todavía sin pantalla) o que el coach los priorice a propósito (⭐).
+const EX_UNCOMMON = {
+  e43: 'hip thrust en máquina', e348: 'hip thrust a una pierna en máquina',
+  e58: 'sentadilla hack', e250: 'sentadilla en máquina pendular', e345: 'prensa vertical',
+  // multipower (la misma máquina Smith: su sentadilla e33 se deja como común, ver el informe)
+  e242: 'multipower', e243: 'multipower', e244: 'multipower', e245: 'multipower', e251: 'multipower',
+  e290: 'multipower', e291: 'multipower', e320: 'multipower', e342: 'multipower', e353: 'multipower',
+  // máquinas específicas de un solo uso
+  e229: 'remo con apoyo pectoral', e285: 'press de pecho convergente', e287: 'aperturas en máquina inclinada',
+  e232: 'pullover en máquina', e239: 'patada de glúteo en máquina', e346: 'extensión de cadera en máquina',
+  e352: 'abducción con torso inclinado', e311: 'hiperextensión en máquina', e310: 'encogimientos en máquina',
+  e302: 'remo en máquina a una mano', e286: 'press de pecho en máquina a una mano',
+  e326: 'press de hombro en máquina a una mano', e278: 'extensión de tríceps en máquina a una mano',
+  // barra especial y cardio de equipo grande
+  e338: 'barra hexagonal', e135: 'escaladora', e372: 'ski erg', e373: 'bicicleta de asalto',
+  e374: 'escalador vertical', e376: 'trineo', e377: 'trineo',
+};
+function exUncommon(ex) { return !!ex && (ex.uncommon === true || !!EX_UNCOMMON[ex.id]); }
+
 function _genMakeExcluder(lim, minor, avoidHighImpact, place) {
   const res = [];
   if (minor) res.push(/sentadilla|peso muerto|militar con barra|volteo de llanta|tire flip/); // §2.2 <16: sin carga axial con barra (incluye press de barra sobre la cabeza)
@@ -3283,6 +3312,7 @@ function generarRutinas(client, lib, opts) {
   const st = {
     cursors: {}, seed: opts.seed || 0, tier: opts.tier || null, place,
     levelCap: _gate.cap, preferP: _gate.preferP,
+    fullEquip: opts.fullEquip === true || client.gymFullEquip === true, // v746 · su gimnasio SÍ tiene el equipo poco común
     preferType: methodBias === 'calistenia' ? 'Bodyweight' : methodBias === 'funcional' ? 'Funcional' : null,
     preferName: highLoad ? GEN_ASSISTED_RE : null, // perfil alto → variantes guiadas/asistidas primero
     // usedInDay/usedFamiliesInDay se reinician CADA día; usedInWeek NO — es la memoria que
@@ -14677,6 +14707,8 @@ if (typeof module !== 'undefined' && module.exports) {
     wuResolveRecipe,
     GEN_SPLITS,
     PLANTILLAS_INICIO,
+    EX_UNCOMMON,
+    exUncommon,
     plantillaInicioFor,
     validarPlantillasInicio,
     mergeCoachMsgs,

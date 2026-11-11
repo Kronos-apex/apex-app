@@ -26743,6 +26743,79 @@ test('v746 · las plantillas sembradas son válidas contra el catálogo real, y 
 });
 
 // ══════════════════════════════════════════════════════
+// v746 · EQUIPO POCO COMÚN — el generador no elige máquinas que muchos gimnasios no tienen
+// ══════════════════════════════════════════════════════
+section('v746 · Equipo poco común');
+
+const _u_perfiles = [];
+for (const sex of ['M', 'F']) for (const level of ['Principiante', 'Intermedio', 'Avanzado']) for (const days of [3, 4, 5])
+  _u_perfiles.push({ id: 'u-' + sex + level + days, name: 'P', sex, age: 30, weight: 70, height: 170, goal: 'Ganar músculo', level, days, place: 'gym', notes: '' });
+const _u_barrido = (extraPerfil, extraOpts) => {
+  const vistos = new Set(); let dias = 0, vacios = 0;
+  _u_perfiles.forEach(p => { for (let seed = 1; seed <= 50; seed++) {
+    const out = core.generarRutinas(Object.assign({}, p, extraPerfil), _LIB_REAL, Object.assign({ seed: seed * 7919, now: _T_NOW, idFn: () => 'r', place: 'gym', sinPlantilla: true }, extraOpts));
+    out.routines.forEach(r => { dias++; if (!r.exercises.length) vacios++; r.exercises.forEach(e => vistos.add(e.id)); });
+  } });
+  return { vistos, dias, vacios };
+};
+
+test('v746 · el dato de equipo poco común: ids reales de gimnasio, y los candidatos del coach están marcados', () => {
+  const ids = Object.keys(core.EX_UNCOMMON);
+  assert.ok(ids.length >= 30, 'lista demasiado corta: ' + ids.length);
+  ids.forEach(i => {
+    const ex = _LIB_REAL.find(e => e.id === i);
+    assert.ok(ex, i + ' no existe en el catálogo');
+    assert.ok(!(ex.env || ['gym']).some(v => v !== 'gym'), i + ' se hace fuera del gimnasio; no es equipo de gimnasio');
+  });
+  for (const n of ['Hip Thrust en Máquina', 'Sentadilla Hack', 'Sentadilla en Máquina Pendular', 'Press de Banca en Multipower'])
+    assert.ok(core.exUncommon(_LIB_REAL.find(e => e.name === n)), n + ' debe ser poco común');
+  // Controles: lo común NO está marcado.
+  for (const n of ['Hip Thrust con Barra', 'Prensa de Pierna', 'Jalón al Pecho en Polea', 'Extensión de Cuádriceps en Máquina', 'Sentadilla en Smith'])
+    assert.ok(!core.exUncommon(_LIB_REAL.find(e => e.name === n)), n + ' es común');
+  assert.ok(core.exUncommon({ id: 'custom1', uncommon: true }), 'un ejercicio propio puede traer uncommon:true');
+});
+
+test('v746 · ningún ejercicio poco común sale por defecto: 18 perfiles × 50 semillas, sin días vacíos', () => {
+  const { vistos, dias, vacios } = _u_barrido({});
+  assert.ok(dias > 2500, 'barrido corto: ' + dias);
+  const malos = [...vistos].filter(i => core.exUncommon(_LIB_REAL.find(e => e.id === i)));
+  assert.deepStrictEqual(malos, [], 'salieron por defecto: ' + malos.join(','));
+  assert.strictEqual(vacios, 0, 'el filtro dejó días vacíos');
+});
+
+test('v746 · CONTROL: quien declara que su gimnasio sí los tiene (gymFullEquip) vuelve a recibirlos', () => {
+  const { vistos } = _u_barrido({ gymFullEquip: true });
+  const salen = [...vistos].filter(i => core.exUncommon(_LIB_REAL.find(e => e.id === i)));
+  assert.ok(salen.length >= 5, 'sin el filtro el barrido debería traer varios poco comunes: ' + salen.length);
+});
+
+test('v746 · un ejercicio poco común que el coach PRIORIZA (⭐) sí entra: lo decide él', () => {
+  const p = _u_perfiles.find(x => x.sex === 'F' && x.level === 'Intermedio' && x.days === 3);
+  let salio = false;
+  for (let seed = 1; seed <= 20 && !salio; seed++) {
+    const out = core.generarRutinas(p, _LIB_REAL, { seed, now: _T_NOW, idFn: () => 'r', place: 'gym', preferIds: ['e43'] });
+    salio = out.routines.some(r => r.exercises.some(e => e.id === 'e43'));
+  }
+  assert.ok(salio);
+});
+
+test('v746 · la plantilla de inicio no lleva equipo poco común, y si el filtro la sustituye tampoco entra uno', () => {
+  Object.values(core.PLANTILLAS_INICIO).forEach(po => Object.values(po).forEach(ps => Object.values(ps).forEach(pl => pl.dias.forEach(d => d.ejercicios.forEach(it => {
+    assert.ok(!core.EX_UNCOMMON[it.id] && !core.EX_UNCOMMON[it.alternativa], it.id);
+  })))));
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    const out = _t_gen(_t_mujer('q', { notes: 'dolor de rodilla, hernia lumbar, desgarro de aductor', days: 4 }), seed);
+    out.routines.forEach(r => r.exercises.forEach(e => assert.ok(!core.EX_UNCOMMON[e.id], e.name)));
+  }
+});
+
+test('v746 · el campo del perfil gymFullEquip viaja con el cliente (sin pantalla todavía)', () => {
+  const row = core.clientToRow({ id: 'x', name: 'N', gymFullEquip: true, routines: [] }, {});
+  assert.strictEqual(row.profile.gymFullEquip, true);
+  assert.strictEqual(core.rowToClient(row).gymFullEquip, true);
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
