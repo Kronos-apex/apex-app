@@ -323,6 +323,9 @@ const _isPull = ex => { const f = _genMoveFamily(ex); return f === 'jalon' || f 
 
 // Plantillas de bloque: cada slot = [muscle, type|null, n] (4º opcional = {avoid|prefer:RegExp}
 // para filtrar por nombre dentro del slot). type null = cualquiera de ese músculo.
+// `focus` (v746) = el/los músculos OBJETIVO del día: el primer ejercicio es el compuesto de uno de ellos
+// (`_genOrdenar`). Día de glúteo → compuesto de glúteo. La PIERNA del hombre trae además un compuesto
+// de glúteo (cadera) como segundo puesto: antes podía salir sin ninguno.
 const GEN_DAYS = {
   // 🔴 PUESTO DE GLÚTEO (2026-08-03, decisión del PO validada por Valery). El Full Body —lo que
   // recibe TODO principiante, y también quien entrena ≤2 días— no tenía puesto dedicado de
@@ -336,16 +339,16 @@ const GEN_DAYS = {
   // apariciones). `Aislamiento` entrega 100% nivel P en los 4 entornos. Para TODOS, sin
   // condicionar por sexo: el hombre intermedio ya tiene su glúteo en PIERNA, y `sexKey` cae a
   // 'M' cuando no se declaró sexo → colgar el beneficio de un campo opcional fabrica un defecto.
-  FULL_BODY:      { name: 'Full Body', slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
-  GP_A:           { name: 'Glúteo y Piernas A', slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
-  GP_B:           { name: 'Glúteo y Piernas B', slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
-  TREN_SUP:       { name: 'Tren Superior', slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
-  EMP_BRAZOS:     { name: 'Empuje y Brazos', slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
+  FULL_BODY:      { name: 'Full Body', focus: ['piernas'], slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
+  GP_A:           { name: 'Glúteo y Piernas A', focus: ['gluteo'], slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
+  GP_B:           { name: 'Glúteo y Piernas B', focus: ['piernas', 'gluteo'], slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
+  TREN_SUP:       { name: 'Tren Superior', focus: ['pecho', 'espalda'], slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
+  EMP_BRAZOS:     { name: 'Empuje y Brazos', focus: ['pecho', 'hombros'], slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
   CORE_CARDIO:    { name: 'Core y Cardio', slots: [['core', null, 2], ['cardio', null, 2]] },
-  EMPUJE:         { name: 'Empuje', slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: _isRearDelt }], ['triceps', 'Aislamiento', 2]] },
-  TRACCION:       { name: 'Tracción', slots: [['espalda', 'Compuesto', 2, { prefer: _isPull }], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
-  PIERNA:         { name: 'Pierna', slots: [['piernas', 'Compuesto', 2], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
-  HOMBROS_BRAZOS: { name: 'Hombros y Brazos', slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
+  EMPUJE:         { name: 'Empuje', focus: ['pecho'], slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: _isRearDelt }], ['triceps', 'Aislamiento', 2]] },
+  TRACCION:       { name: 'Tracción', focus: ['espalda'], slots: [['espalda', 'Compuesto', 2, { prefer: _isPull }], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
+  PIERNA:         { name: 'Pierna', focus: ['piernas'], slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Compuesto', 1], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
+  HOMBROS_BRAZOS: { name: 'Hombros y Brazos', focus: ['hombros'], slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
   CARDIO_CORE:    { name: 'Cardio y Core', slots: [['cardio', null, 2], ['core', null, 2]] },
 };
 
@@ -2766,6 +2769,36 @@ function _genMaterialize(ex, scheme) {
   return c;
 }
 
+// v746 · ORDEN DEL DÍA. Además del §2.5 (abajo), dos reglas que se definen con datos del catálogo
+// (músculo y tipo) y no con listas de nombres:
+//  1) APERTURA: el primer ejercicio es un Compuesto de un músculo objetivo del día (`focus`), si el día
+//     tiene alguno. Antes salía el que cayera primero en el orden de los puestos.
+//  2) SIN GEMELOS SEGUIDOS: dos Compuestos del mismo músculo y del mismo patrón (misma familia de
+//     movimiento, o ambas sin familia: dos presses de pecho) no van pegados si hay otro compuesto
+//     distinto del mismo bloque para ponerlo en medio. No cruza bloques: el orden Compuesto → Funcional
+//     → Aislamiento → Cardio/Core se conserva.
+function _genGemelos(a, b) {
+  return !!a && !!b && a.type === 'Compuesto' && b.type === 'Compuesto' && a.muscle === b.muscle
+    && _genMoveFamily(a) === _genMoveFamily(b);
+}
+function _genOrdenar(exs, focus) {
+  const out = exs.slice().sort((a, b) => _genRank(a) - _genRank(b));
+  if (focus && focus.length && out.length) {
+    const k = out.findIndex(e => e.type === 'Compuesto' && focus.indexOf(e.muscle) >= 0);
+    if (k > 0) out.unshift(out.splice(k, 1)[0]);
+  }
+  for (let i = 0; i + 1 < out.length; i++) {
+    if (!_genGemelos(out[i], out[i + 1])) continue;
+    const r = _genRank(out[i + 1]);
+    let j = -1;
+    for (let q = i + 2; q < out.length; q++) {
+      if (_genRank(out[q]) === r && !_genGemelos(out[i], out[q])) { j = q; break; }
+    }
+    if (j > 0) out.splice(i + 1, 0, out.splice(j, 1)[0]);
+  }
+  return out;
+}
+
 // Orden §2.5: Compuesto → Funcional → Aislamiento → Cardio/Core al final (sort estable).
 function _genRank(e) {
   if (e.muscle === 'cardio' || e.muscle === 'core' || _genKeepNatural(e)) return 5;
@@ -3378,7 +3411,7 @@ function generarRutinas(client, lib, opts) {
     if (scheme.coreClose && !exs.some(e => e.muscle === 'core')) {
       const f = _genPick(lib, 'core', null, st); if (f) exs.push(_genMaterialize(f, scheme));
     }
-    exs = exs.slice().sort((a, b) => _genRank(a) - _genRank(b));
+    exs = _genOrdenar(exs, tpl.focus);
 
     let nm = tpl.name;
     nameCount[nm] = (nameCount[nm] || 0) + 1;
@@ -14708,6 +14741,9 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_SPLITS,
     PLANTILLAS_INICIO,
     EX_UNCOMMON,
+    GEN_DAYS,
+    _genOrdenar,
+    _genGemelos,
     exUncommon,
     plantillaInicioFor,
     validarPlantillasInicio,

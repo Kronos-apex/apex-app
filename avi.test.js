@@ -26816,6 +26816,87 @@ test('v746 · el campo del perfil gymFullEquip viaja con el cliente (sin pantall
 });
 
 // ══════════════════════════════════════════════════════
+// v746 · ORDEN — el día abre con el compuesto de su músculo objetivo y sin gemelos seguidos
+// ══════════════════════════════════════════════════════
+section('v746 · Orden del día');
+
+const _o_nombreDia = n => n.replace(/ \d+$/, '');
+const _o_focusDe = r => { const t = Object.values(core.GEN_DAYS).find(d => d.name === _o_nombreDia(r.name)); return t ? t.focus : null; };
+const _o_perfiles = [];
+for (const sex of ['M', 'F']) for (const level of ['Principiante', 'Intermedio', 'Avanzado']) for (const days of [3, 4, 5]) for (const place of ['gym', 'casa'])
+  _o_perfiles.push({ id: 'o', name: 'P', sex, age: 30, weight: 70, height: 170, goal: 'Ganar músculo', level, days, place, notes: '' });
+const _o_recorrer = (fn, extra) => {
+  _o_perfiles.forEach(p => { for (let seed = 1; seed <= 50; seed++) {
+    const out = core.generarRutinas(Object.assign({}, p, extra), _LIB_REAL, { seed: seed * 104729, now: _T_NOW, idFn: () => 'r', place: p.place, sinPlantilla: true });
+    out.routines.forEach(r => fn(r, p, seed));
+  } });
+};
+
+test('v746 · todo día generado abre con el compuesto de su músculo objetivo (36 perfiles × 50 semillas)', () => {
+  let dias = 0, conCompuesto = 0; const malos = [];
+  _o_recorrer((r, p, seed) => {
+    const f = _o_focusDe(r); if (!f || !f.length || !r.exercises.length) return;
+    dias++;
+    const ex = r.exercises.filter(e => !e.corrective);
+    if (!ex.some(e => e.type === 'Compuesto' && f.indexOf(e.muscle) >= 0)) return; // el catálogo del sitio no trae uno (control abajo)
+    conCompuesto++;
+    const e0 = ex[0];
+    if (!(e0.type === 'Compuesto' && f.indexOf(e0.muscle) >= 0)) malos.push(p.sex + p.level + p.days + p.place + '#' + seed + ' ' + r.name + ' abre con ' + e0.name);
+  });
+  assert.deepStrictEqual(malos.slice(0, 5), [], malos.length + ' días no abren con su compuesto');
+  assert.ok(conCompuesto / dias > 0.7, 'control: casi todos los días deberían tener un compuesto objetivo (' + conCompuesto + '/' + dias + ')');
+});
+
+test('v746 · la pierna del hombre en gimnasio trae un compuesto de glúteo/cadera además del de pierna', () => {
+  let dias = 0; const sin = [];
+  _o_recorrer((r, p, seed) => {
+    if (p.sex !== 'M' || p.place !== 'gym' || _o_nombreDia(r.name) !== 'Pierna') return;
+    dias++;
+    if (!r.exercises.some(e => e.type === 'Compuesto' && e.muscle === 'gluteo')) sin.push(p.level + p.days + '#' + seed);
+  });
+  assert.ok(dias >= 250, 'barrido corto: ' + dias);
+  assert.deepStrictEqual(sin.slice(0, 5), [], sin.length + ' días de pierna sin compuesto de glúteo');
+});
+
+test('v746 · el día de empuje no deja dos presses de pecho seguidos (50 semillas × perfiles), y el de glúteo abre con glúteo', () => {
+  let empujes = 0, gp = 0; const juntos = [], gpMal = [];
+  _o_recorrer((r, p, seed) => {
+    const ex = r.exercises;
+    if (_o_nombreDia(r.name) === 'Empuje') {
+      empujes++;
+      for (let i = 0; i + 1 < ex.length; i++) if (ex[i].muscle === 'pecho' && ex[i + 1].muscle === 'pecho' && ex[i].type === 'Compuesto' && ex[i + 1].type === 'Compuesto') juntos.push(p.level + p.days + p.place + '#' + seed + ' ' + ex[i].name + ' / ' + ex[i + 1].name);
+    }
+    if (_o_nombreDia(r.name) === 'Glúteo y Piernas A' && p.place === 'gym') {
+      gp++;
+      if (ex[0].muscle !== 'gluteo' || ex[0].type !== 'Compuesto') gpMal.push(ex[0].name);
+    }
+  });
+  assert.ok(empujes >= 100 && gp >= 100, 'barrido corto');
+  assert.deepStrictEqual(juntos.slice(0, 3), [], juntos.length + ' días con dos presses de pecho seguidos');
+  assert.deepStrictEqual(gpMal.slice(0, 3), []);
+});
+
+test('v746 · _genOrdenar: apertura y gemelos con piezas a mano (con su control)', () => {
+  const E = (id, muscle, type, name) => ({ id, muscle, type, name });
+  const p1 = E('p1', 'pecho', 'Compuesto', 'Press de Banca con Barra'), p2 = E('p2', 'pecho', 'Compuesto', 'Press Inclinado con Barra');
+  const h1 = E('h1', 'hombros', 'Compuesto', 'Press Militar en Máquina'), a1 = E('a1', 'triceps', 'Aislamiento', 'Extensión de Tríceps con Cuerda');
+  assert.deepStrictEqual(core._genOrdenar([p1, p2, h1, a1], ['pecho']).map(e => e.id), ['p1', 'h1', 'p2', 'a1'], 'dos presses seguidos');
+  // Sin otro compuesto para ponerlo en medio, no inventa nada ni cruza de bloque.
+  assert.deepStrictEqual(core._genOrdenar([p1, p2, a1], ['pecho']).map(e => e.id), ['p1', 'p2', 'a1']);
+  // Apertura: el compuesto del músculo objetivo pasa al frente aunque llegue segundo.
+  assert.deepStrictEqual(core._genOrdenar([h1, p1, a1], ['pecho']).map(e => e.id), ['p1', 'h1', 'a1']);
+  // Sin músculo objetivo (core/cardio) no reordena de más.
+  assert.deepStrictEqual(core._genOrdenar([h1, p1], []).map(e => e.id), ['h1', 'p1']);
+  // Un aislamiento nunca pasa delante de un compuesto.
+  const g = core._genOrdenar([a1, p1, h1], ['pecho']).map(e => e.id);
+  assert.strictEqual(g[0], 'p1'); assert.strictEqual(g[g.length - 1], 'a1');
+  // Patrones distintos del mismo músculo (jalón y remo) NO son gemelos.
+  const ja = E('ja', 'espalda', 'Compuesto', 'Jalón al Pecho en Polea'), re = E('re', 'espalda', 'Compuesto', 'Remo Sentado en Máquina');
+  assert.strictEqual(core._genGemelos(ja, re), false);
+  assert.strictEqual(core._genGemelos(p1, p2), true);
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 
