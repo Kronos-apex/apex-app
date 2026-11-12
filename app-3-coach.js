@@ -435,7 +435,8 @@ async function saveClient(){
       // ¿Cambiaron datos que afectan la rutina de un usuario LIBRE (auto-generada)?
       const trainingChanged=isFreeClient(existing)&&(existing.place!==data.place||existing.goal!==data.goal||existing.level!==data.level||existing.days!==data.days);
       DB.clients[i]={...existing,...data};
-      if(trainingChanged&&confirm('Corregiste datos de entrenamiento de un usuario en modo libre. ¿Regenerar su rutina automática para que coincida?')){
+      const _avisoEd=trainingChanged?regenerarAviso(regenerarMotivos(existing,DB.history&&DB.history[existing.id]),'coach'):null;
+      if(trainingChanged&&confirm('Corregiste datos de entrenamiento de un usuario en modo libre. ¿Regenerar su rutina automática para que coincida?'+(_avisoEd?'\n\n'+_avisoEd:''))){
         try{ _autoGenerateWeek(DB.clients[i]); toast('✨ Rutina regenerada con los nuevos datos'); }catch(e){ warn('AVI: regen tras editar falló:',e&&e.message); }
       }
     }
@@ -2079,6 +2080,8 @@ function _wzFunnel(paso){
 // Regenerar la semana desde la vista del asesorado (solo modo libre).
 function clientSelfGenerate(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
+  const _aviso=regenerarAviso(regenerarMotivos(c,DB.history&&DB.history[c.id]),'client');
+  if(_aviso&&!confirm(_aviso))return;
   try{
     const res=_autoGenerateWeek(c);
     svNow('ax_c',DB.clients);
@@ -4109,6 +4112,19 @@ function renderDetailRoutines(c){
     div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${_coIco('timer',11,'⏱')}${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Guardar como plantilla" aria-label="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">${_coIco('folder',14,'📂')}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar rutina" aria-label="Editar rutina" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar rutina" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div>${_exWarnChip(e,_limKeys,c.id==='_self')}</div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
+  // v746 · lo que la persona cambió por su cuenta en el entreno (🔄): qué por cuál y cuándo. Un cambio repetido del
+  // mismo ejercicio suele ser una máquina que su gimnasio no tiene.
+  const _sw=(Array.isArray(c.swapLog)?c.swapLog:[]).slice(-8).reverse();
+  if(_sw.length){
+    const box=document.createElement('div');
+    box.style.cssText='margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--br);border-radius:var(--rsm)';
+    box.innerHTML='<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Cambios que hizo en el entreno</div>'
+      +_sw.map(s=>{
+        const f=s.at?new Date(s.at).toLocaleDateString('es-CO',{day:'numeric',month:'short'}):'';
+        return `<div style="font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--br)"><span style="color:var(--t3)">${esc(f)}${s.rn?' · '+esc(s.rn):''}</span><br>${esc((s.from||{}).name||'')} → <b>${esc((s.to||{}).name||'')}</b></div>`;
+      }).join('');
+    con.appendChild(box);
+  }
 }
 
 // 🔴 v590 · EL FORMULARIO DE RUTINA SE VACÍA EN UN SOLO SITIO (hallazgo D2-4).
@@ -4211,6 +4227,9 @@ function renderGenPreview(c,res){
 }
 function confirmGenRutinas(){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
+  // v746 · regenerar REEMPLAZA: si ya hay algo que valía la pena (revisado, de plantilla, con entrenos), se pregunta.
+  const _aviso=regenerarAviso(regenerarMotivos(c,DB.history&&DB.history[c.id]),'coach');
+  if(_aviso&&!confirm(_aviso))return;
   const n=CUR.genDraft.routines.length;
   // REEMPLAZA la semana, no la acumula: antes hacía push y regenerar daba 3+3=6 días
   // (bug reportado por Camilo 2026-06-23). Consistente con _autoGenerateWeek/clientSelfGenerate,
@@ -4470,6 +4489,8 @@ function saveRoutine(){
   if(CUR.editRoutineIdx!==null){
     const existing=c.routines[CUR.editRoutineIdx];
     c.routines[CUR.editRoutineIdx]={...existing,...rutData};
+    // v746 · el coach guardó una rutina que armó la app: ya la revisó (regenerar le va a preguntar antes de pisarla).
+    if(existing&&existing.generated&&CUR.loggedAs!=='client')Object.assign(c.routines[CUR.editRoutineIdx],{reviewed:true,reviewedAt:new Date().toISOString()});
     toast(`✅ Rutina "${name}" actualizada`);
   } else {
     c.routines.push({id:uid(),...rutData,createdAt:new Date().toISOString()});

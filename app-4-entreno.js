@@ -2886,6 +2886,11 @@ function _applySubstitute(newEx){
   const w=_todayWork(); if(!w)return; const ei=CUR.subEi; const old=w.exercises[ei]; if(!old)return;
   // Conserva el VOLUMEN planeado (series/reps/descanso); cambia el movimiento.
   w.exercises[ei]={...newEx,sets:old.sets,reps:old.reps,restSec:old.restSec};
+  // v746 · queda una línea para el coach: qué cambió por cuál y cuándo (sin tablas nuevas, viaja en el perfil).
+  try{
+    const _cs=DB.clients.find(x=>x.id===CUR.clientId);
+    if(_cs&&typeof swapLogAdd==='function'&&swapLogAdd(_cs,{rid:w.id,rn:w.name,from:old,to:newEx}))sv('ax_c',DB.clients);
+  }catch(e){ warn('AVI: registro del cambio de ejercicio falló (no bloquea):',e&&e.message); }
   delete w.exercises[ei].ssNext; // no heredar la pareja de biserie del anterior
   if(typeof normalizeBisets==='function')normalizeBisets(w.exercises);
   _clearSessionKeys(w.id,ei); // ejercicio nuevo → empieza limpio

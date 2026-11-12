@@ -26897,6 +26897,141 @@ test('v746 · _genOrdenar: apertura y gemelos con piezas a mano (con su control)
 });
 
 // ══════════════════════════════════════════════════════
+// v746 · REGENERAR NO BORRA SIN PREGUNTAR · y el registro de cambios de ejercicio
+// ══════════════════════════════════════════════════════
+section('v746 · Regenerar con confirmación y cambios de ejercicio');
+
+const _r_rut = extra => Object.assign({ id: 'r1', name: 'Glúteo', day: 'Lunes', exercises: [{ id: 'e42', name: 'Hip Thrust con Barra' }], generated: true, reviewed: false }, extra || {});
+
+test('v746 · regenerarMotivos: cuándo hay que preguntar y cuándo no (con controles)', () => {
+  const m = (rutinas, hist) => core.regenerarMotivos({ id: 'c', routines: rutinas }, hist);
+  assert.deepStrictEqual(m([], []), [], 'sin rutinas no hay nada que perder');
+  assert.deepStrictEqual(m([_r_rut()], []), [], 'borrador sin revisar y sin entrenos: se regenera sin preguntar');
+  assert.deepStrictEqual(m([_r_rut({ reviewed: true })], []), ['revisadas']);
+  assert.deepStrictEqual(m([_r_rut({ generated: undefined })], []), ['del_coach'], 'armada a mano por el coach');
+  assert.deepStrictEqual(m([_r_rut({ origen: 'plantilla-inicio', plantillaId: 'inicio-gym-F-3' })], []), ['plantilla']);
+  assert.deepStrictEqual(m([_r_rut()], [{ date: '2026-11-10' }]), ['entrenos']);
+  assert.deepStrictEqual(m([_r_rut({ reviewed: true, origen: 'plantilla-inicio' })], [{ date: 'x' }]), ['revisadas', 'plantilla', 'entrenos']);
+  assert.deepStrictEqual(core.regenerarMotivos({ id: 'c' }, undefined), []);
+  assert.deepStrictEqual(core.regenerarMotivos(null, null), []);
+});
+
+test('v746 · regenerarAviso: texto para el coach y para la persona, null si no hace falta', () => {
+  assert.strictEqual(core.regenerarAviso([], 'coach'), null);
+  const t = core.regenerarAviso(['revisadas', 'plantilla', 'entrenos'], 'coach');
+  assert.ok(/rutinas que ya revisaste, la rutina de inicio de tu plantilla y entrenos registrados/.test(t) && /no se puede deshacer/.test(t), t);
+  const p = core.regenerarAviso(['entrenos'], 'client');
+  assert.ok(/^Ya tienes entrenos registrados/.test(p), p);
+});
+
+// Corre la función REAL de app-3-coach.js con el entorno mínimo de mentira.
+const _r_correr = (nombre, c, hist, respuesta, extra) => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n');
+  const i = src.indexOf('function ' + nombre + '(');
+  assert.ok(i >= 0, nombre + ' no existe');
+  const j = src.indexOf('\nfunction ', i + 10);
+  const cuerpo = src.slice(i, j);
+  const calls = { confirm: 0, sv: 0 };
+  const DBf = { clients: [c], history: { [c.id]: hist }, exercises: [] };
+  const entorno = Object.assign({
+    DB: DBf, CUR: { clientId: c.id, genDraft: { routines: [_r_rut({ id: 'nuevo', name: 'Nueva' })] } },
+    regenerarMotivos: core.regenerarMotivos, regenerarAviso: core.regenerarAviso,
+    confirm: () => { calls.confirm++; return respuesta; },
+    sortRoutinesByDay: x => x, sv: () => { calls.sv++; }, svNow: () => { calls.sv++; }, cm: () => {}, renderDetailRoutines: () => {}, renderHome: () => {},
+    renderClientAllRoutines: () => {}, toast: () => {}, warn: () => {},
+    _autoGenerateWeek: cc => { cc.routines = [_r_rut({ id: 'auto' })]; return { routines: cc.routines }; },
+    _selfRegLimAlert: () => {}, _selfRegMinorAlert: () => {},
+  }, extra || {});
+  const names = Object.keys(entorno);
+  new Function(...names, cuerpo + '\n' + nombre + '();')(...names.map(k => entorno[k]));
+  return { calls, c };
+};
+
+test('v746 · el botón de confirmar el borrador del coach: con rutinas revisadas PREGUNTA y, si dice que no, no borra nada', () => {
+  const mk = () => ({ id: 'c1', name: 'N', routines: [_r_rut({ id: 'vieja', reviewed: true })] });
+  const no = _r_correr('confirmGenRutinas', mk(), [], false);
+  assert.strictEqual(no.calls.confirm, 1);
+  assert.strictEqual(no.c.routines[0].id, 'vieja', 'borró sin permiso');
+  const si = _r_correr('confirmGenRutinas', mk(), [], true);
+  assert.strictEqual(si.c.routines[0].id, 'nuevo');
+  // CONTROL: un borrador sin revisar y sin entrenos se reemplaza SIN preguntar.
+  const libre = _r_correr('confirmGenRutinas', { id: 'c2', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [], false);
+  assert.strictEqual(libre.calls.confirm, 0);
+  assert.strictEqual(libre.c.routines[0].id, 'nuevo');
+  // Con entrenos registrados también pregunta.
+  const ent = _r_correr('confirmGenRutinas', { id: 'c3', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [{ date: '2026-11-09' }], false);
+  assert.strictEqual(ent.calls.confirm, 1); assert.strictEqual(ent.c.routines[0].id, 'vieja');
+  // Y la rutina que vino de la plantilla.
+  const pl = _r_correr('confirmGenRutinas', { id: 'c4', name: 'N', routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] }, [], false);
+  assert.strictEqual(pl.calls.confirm, 1); assert.strictEqual(pl.c.routines[0].id, 'vieja');
+});
+
+test('v746 · «✨ Regenerar mi semana» de la persona también pregunta antes de pisar lo que ya tiene', () => {
+  const mk = () => ({ id: 'c5', name: 'N', routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] });
+  const no = _r_correr('clientSelfGenerate', mk(), [], false);
+  assert.strictEqual(no.calls.confirm, 1); assert.strictEqual(no.c.routines[0].id, 'vieja', 'regeneró sin permiso');
+  const si = _r_correr('clientSelfGenerate', mk(), [], true);
+  assert.strictEqual(si.c.routines[0].id, 'auto');
+  const libre = _r_correr('clientSelfGenerate', { id: 'c6', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [], false);
+  assert.strictEqual(libre.calls.confirm, 0); assert.strictEqual(libre.c.routines[0].id, 'auto');
+});
+
+test('v746 · cuando el coach guarda una rutina que armó la app, queda REVISADA (y si el asesorado la guarda por sí mismo, no)', () => {
+  const fs = require('fs'), path = require('path');
+  const sinC = t => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const src = sinC(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n'));
+  const i = src.indexOf('function saveRoutine('), cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
+  assert.ok(/existing&&existing\.generated&&CUR\.loggedAs!=='client'\)Object\.assign\(c\.routines\[CUR\.editRoutineIdx\],\{reviewed:true/.test(cuerpo));
+  // Ejecutada de verdad: el coach guarda → reviewed:true; en la vista del asesorado → no.
+  const correr = loggedAs => {
+    const c = { id: 'k', name: 'N', routines: [_r_rut({ id: 'r9' })] };
+    const els = { 'rf-name': { value: 'Glúteo' }, 'rf-day': { value: 'Lunes' }, 'rf-shift': { value: '' }, 'rf-note': { value: 'nota' }, 'r-why': { value: '' } };
+    const ent = { document: { getElementById: id => els[id] || null }, CUR: { routineExs: [{ id: 'e42' }], clientId: 'k', editRoutineIdx: 0, restSec: 60, routineWarmup: null, loggedAs },
+      DB: { clients: [c] }, toast: () => {}, sortRoutinesByDay: x => x, sv: () => {}, cm: () => {}, renderDetailRoutines: () => {}, renderHome: () => {}, detailTab: () => {},
+      routinePromiseGap: () => [], routinePromiseText: () => '', renderClientAllRoutines: () => {}, renderClientToday: () => {}, setTimeout: () => {}, autoRoutineNote: () => 'n', uid: () => 'u' };
+    const n = Object.keys(ent);
+    new Function(...n, cuerpo + '\nsaveRoutine();')(...n.map(k => ent[k]));
+    return c.routines[0];
+  };
+  assert.strictEqual(correr('coach').reviewed, true);
+  assert.strictEqual(correr('client').reviewed, false);
+});
+
+test('v746 · swapLogAdd: una línea por cambio (qué por cuál y cuándo), sin duplicar el mismo, tope de 40', () => {
+  const c = { id: 'c' };
+  const e = core.swapLogAdd(c, { rid: 'r1', rn: 'Glúteo', from: { id: 'e43', name: 'Hip Thrust en Máquina' }, to: { id: 'e42', name: 'Hip Thrust con Barra' }, at: '2026-11-11T15:00:00.000Z' });
+  assert.deepStrictEqual(c.swapLog, [e]);
+  assert.deepStrictEqual([e.from.id, e.to.id, e.at, e.rn], ['e43', 'e42', '2026-11-11T15:00:00.000Z', 'Glúteo']);
+  assert.strictEqual(core.swapLogAdd(c, { from: { id: 'e1' }, to: { id: 'e1' } }), null, 'cambiar por el mismo no es un cambio');
+  assert.strictEqual(core.swapLogAdd(c, { from: { id: 'e1' } }), null);
+  assert.strictEqual(core.swapLogAdd(null, { from: { id: 'a' }, to: { id: 'b' } }), null);
+  for (let i = 0; i < 60; i++) core.swapLogAdd(c, { from: { id: 'a' + i, name: 'x' }, to: { id: 'b' + i, name: 'y' } });
+  assert.strictEqual(c.swapLog.length, core.SWAP_LOG_MAX);
+  assert.strictEqual(c.swapLog[c.swapLog.length - 1].from.id, 'a59', 'se queda con los más recientes');
+});
+
+test('v746 · el cambio de ejercicio del entreno deja su registro, y el coach lo ve en la ficha', () => {
+  const fs = require('fs'), path = require('path');
+  const sinC = t => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const ent = sinC(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8').replace(/\r\n/g, '\n'));
+  const i = ent.indexOf('function _applySubstitute('), cuerpo = ent.slice(i, ent.indexOf('\nfunction ', i + 10));
+  // Ejecutada: con el entorno mínimo, el cambio llega a client.swapLog.
+  const c = { id: 'k', routines: [] };
+  const w = { id: 'r1', name: 'Glúteo', exercises: [{ id: 'e43', name: 'Hip Thrust en Máquina', sets: 4, reps: 10, restSec: 90 }] };
+  const e = { _todayWork: () => w, CUR: { subEi: 0, clientId: 'k' }, DB: { clients: [c] }, swapLogAdd: core.swapLogAdd, sv: () => {}, warn: () => {},
+    normalizeBisets: () => {}, _clearSessionKeys: () => {}, _saveTodayWork: () => {}, cm: () => {}, _gmIsEmbedded: () => false, _gmLiveTimer: () => false,
+    _gmKeepAnchor: (a, f) => f(), renderClientToday: () => {}, document: { getElementById: () => null }, gmRebuild: () => {}, toast: () => {} };
+  const n = Object.keys(e);
+  new Function(...n, cuerpo + '\n_applySubstitute({id:"e42",name:"Hip Thrust con Barra",muscle:"gluteo"});')(...n.map(k => e[k]));
+  assert.strictEqual(c.swapLog.length, 1);
+  assert.deepStrictEqual([c.swapLog[0].from.id, c.swapLog[0].to.id, c.swapLog[0].rn], ['e43', 'e42', 'Glúteo']);
+  const coach = sinC(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n'));
+  const k = coach.indexOf('function renderDetailRoutines('), det = coach.slice(k, coach.indexOf('\nfunction ', k + 10));
+  assert.ok(/c\.swapLog/.test(det) && /Cambios que hizo en el entreno/.test(det) && /esc\(\(s\.to\|\|\{\}\)\.name/.test(det), 'la ficha del coach no muestra los cambios (con esc)');
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

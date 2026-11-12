@@ -504,6 +504,55 @@ function _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8) {
   });
 }
 
+// ── REGENERAR NO BORRA SIN PREGUNTAR (v746) ───────────────────────────────────────────────────────
+// 🔴 Regenerar sobrescribía `c.routines` sin avisar: lo que el coach había revisado, lo puesto desde su
+// plantilla de inicio y hasta una semana con entrenos registrados desaparecían con un toque.
+// `regenerarMotivos` dice POR QUÉ habría que preguntar (PURA): rutinas revisadas por el coach
+// (`reviewed:true`, que se marca cuando él guarda una rutina generada), armadas por él a mano (sin
+// `generated`), puestas desde plantilla (`origen:'plantilla-inicio'`) o con entrenos registrados.
+// `regenerarAviso` arma el texto (para quien lee: 'coach' o 'client'); null = no hace falta preguntar.
+function regenerarMotivos(client, history) {
+  const rs = (client && Array.isArray(client.routines)) ? client.routines.filter(r => r && typeof r === 'object') : [];
+  const out = [];
+  if (!rs.length) return out;
+  if (rs.some(r => r.reviewed === true)) out.push('revisadas');
+  if (rs.some(r => !r.generated)) out.push('del_coach');
+  if (rs.some(r => r.origen === 'plantilla-inicio')) out.push('plantilla');
+  if (Array.isArray(history) && history.length) out.push('entrenos');
+  return out;
+}
+function regenerarAviso(motivos, audience) {
+  if (!motivos || !motivos.length) return null;
+  const coach = audience !== 'client';
+  const txt = {
+    revisadas: coach ? 'rutinas que ya revisaste' : 'rutinas que tu entrenador ya revisó',
+    del_coach: coach ? 'rutinas armadas por ti' : 'rutinas que armó tu entrenador',
+    plantilla: coach ? 'la rutina de inicio de tu plantilla' : 'la rutina de inicio que armó tu entrenador',
+    entrenos: 'entrenos registrados',
+  };
+  const lista = motivos.map(m => txt[m]).filter(Boolean);
+  const unida = lista.length > 1 ? lista.slice(0, -1).join(', ') + ' y ' + lista[lista.length - 1] : lista[0];
+  return (coach ? 'Esta persona ya tiene ' : 'Ya tienes ') + unida + '. Regenerar las reemplaza por un borrador nuevo y no se puede deshacer. ¿Quieres continuar?';
+}
+
+// ── CAMBIOS DE EJERCICIO EN EL ENTRENO (v746) ─────────────────────────────────────────────────────
+// Cuando alguien cambia un ejercicio de HOY (🔄) queda UNA línea para que el coach lo vea después: qué
+// cambió por cuál y cuándo. Viaja en el perfil de la persona (sin tablas nuevas) y se poda a 40.
+// Dice más que cualquier encuesta: un cambio repetido del mismo ejercicio es una máquina que no hay.
+const SWAP_LOG_MAX = 40;
+function swapLogAdd(client, ev) {
+  if (!client || !ev || !ev.from || !ev.to || !ev.from.id || !ev.to.id || ev.from.id === ev.to.id) return null;
+  const e = {
+    at: ev.at || new Date().toISOString(), rid: ev.rid || '', rn: String(ev.rn || '').slice(0, 60),
+    from: { id: ev.from.id, name: String(ev.from.name || '').slice(0, 80) },
+    to: { id: ev.to.id, name: String(ev.to.name || '').slice(0, 80) },
+  };
+  const lista = Array.isArray(client.swapLog) ? client.swapLog.slice() : [];
+  lista.push(e);
+  client.swapLog = lista.slice(-SWAP_LOG_MAX);
+  return e;
+}
+
 // Detección de limitaciones físicas en `notes` (lo que hace Laura, codificado).
 // `lumbar` ampliada 2026-08-02 con las formas que la gente SÍ escribe (lumbago, espondilo-,
 // protrusión, estenosis, sacroilíaco, "me duele la espalda", L4/L5/S1).
@@ -14741,6 +14790,10 @@ if (typeof module !== 'undefined' && module.exports) {
     GEN_SPLITS,
     PLANTILLAS_INICIO,
     EX_UNCOMMON,
+    regenerarMotivos,
+    regenerarAviso,
+    swapLogAdd,
+    SWAP_LOG_MAX,
     GEN_DAYS,
     _genOrdenar,
     _genGemelos,
