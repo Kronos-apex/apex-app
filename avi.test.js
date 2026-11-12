@@ -26876,20 +26876,16 @@ test('v746 · el día de empuje no deja dos presses de pecho seguidos (50 semill
   assert.deepStrictEqual(gpMal.slice(0, 3), []);
 });
 
-test('v746 · _genOrdenar: apertura y gemelos con piezas a mano (con su control)', () => {
+test('v746 · _genOrdenar: sin gemelos seguidos, con piezas a mano (y su control)', () => {
   const E = (id, muscle, type, name) => ({ id, muscle, type, name });
   const p1 = E('p1', 'pecho', 'Compuesto', 'Press de Banca con Barra'), p2 = E('p2', 'pecho', 'Compuesto', 'Press Inclinado con Barra');
   const h1 = E('h1', 'hombros', 'Compuesto', 'Press Militar en Máquina'), a1 = E('a1', 'triceps', 'Aislamiento', 'Extensión de Tríceps con Cuerda');
-  assert.deepStrictEqual(core._genOrdenar([p1, p2, h1, a1], ['pecho']).map(e => e.id), ['p1', 'h1', 'p2', 'a1'], 'dos presses seguidos');
+  assert.deepStrictEqual(core._genOrdenar([p1, p2, h1, a1]).map(e => e.id), ['p1', 'h1', 'p2', 'a1'], 'dos presses seguidos');
   // Sin otro compuesto para ponerlo en medio, no inventa nada ni cruza de bloque.
-  assert.deepStrictEqual(core._genOrdenar([p1, p2, a1], ['pecho']).map(e => e.id), ['p1', 'p2', 'a1']);
-  // Apertura: el compuesto del músculo objetivo pasa al frente aunque llegue segundo.
-  assert.deepStrictEqual(core._genOrdenar([h1, p1, a1], ['pecho']).map(e => e.id), ['p1', 'h1', 'a1']);
-  // Sin músculo objetivo (core/cardio) no reordena de más.
-  assert.deepStrictEqual(core._genOrdenar([h1, p1], []).map(e => e.id), ['h1', 'p1']);
+  assert.deepStrictEqual(core._genOrdenar([p1, p2, a1]).map(e => e.id), ['p1', 'p2', 'a1']);
   // Un aislamiento nunca pasa delante de un compuesto.
-  const g = core._genOrdenar([a1, p1, h1], ['pecho']).map(e => e.id);
-  assert.strictEqual(g[0], 'p1'); assert.strictEqual(g[g.length - 1], 'a1');
+  const g = core._genOrdenar([a1, p1, h1]).map(e => e.id);
+  assert.strictEqual(g[g.length - 1], 'a1');
   // Patrones distintos del mismo músculo (jalón y remo) NO son gemelos.
   const ja = E('ja', 'espalda', 'Compuesto', 'Jalón al Pecho en Polea'), re = E('re', 'espalda', 'Compuesto', 'Remo Sentado en Máquina');
   assert.strictEqual(core._genGemelos(ja, re), false);
@@ -27029,6 +27025,28 @@ test('v746 · el cambio de ejercicio del entreno deja su registro, y el coach lo
   const coach = sinC(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n'));
   const k = coach.indexOf('function renderDetailRoutines('), det = coach.slice(k, coach.indexOf('\nfunction ', k + 10));
   assert.ok(/c\.swapLog/.test(det) && /Cambios que hizo en el entreno/.test(det) && /esc\(\(s\.to\|\|\{\}\)\.name/.test(det), 'la ficha del coach no muestra los cambios (con esc)');
+});
+
+// ══════════════════════════════════════════════════════
+// v746 · sbSet (blob global apex_data) también respeta el sello de localhost
+// ══════════════════════════════════════════════════════
+test('🔒 v746 · sbSet NO escribe desde localhost/harness (sello), y en producción sigue escribiendo', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8').replace(/\r\n/g, '\n');
+  const i = src.indexOf('async function sbSet('), cuerpo = src.slice(i, src.indexOf('\n}\n', i) + 3);
+  const correr = (hostname, allow) => {
+    let posts = 0;
+    const loc = { protocol: 'https:', hostname };
+    const win = { AVI_ALLOW_CLOUD_WRITE: allow };
+    const ent = { location: loc, window: win, AUTH_MODE: false, cloudWriteSealed: core.cloudWriteSealed, canCloudWrite: () => true,
+      document: { getElementById: () => null }, SB_URL: 'https://x', SB_KEY: 'k', _pendingPush: {}, warn: () => {}, setTimeout: () => {},
+      fetch: async () => { posts++; return { ok: true }; } };
+    const n = Object.keys(ent);
+    new Function(...n, cuerpo + '\nsbSet("ax_c",[{id:"a"}]);')(...n.map(k => ent[k]));
+    return posts; // el fetch se llama de forma síncrona dentro de sbSet
+  };
+  const r = [correr('localhost'), correr('127.0.0.1'), correr('app.avientrena.com'), correr('localhost', true)];
+  assert.deepStrictEqual(r, [0, 0, 1, 1], 'localhost no debe escribir; producción y el escape hatch sí: ' + r);
 });
 
 // ══════════════════════════════════════════════════════

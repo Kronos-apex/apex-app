@@ -1707,6 +1707,8 @@ async function _persistCoachWrite(k,v){
 function canCloudWrite(){return location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';}
 async function sbSet(k,v){
   if(!canCloudWrite()){return;}
+  // v746 · el sello de localhost/harness también cubre ESTE camino (una sonda local mandó 7 POST a apex_data de producción).
+  if(typeof cloudWriteSealed==='function'&&cloudWriteSealed(location.hostname,window.AVI_ALLOW_CLOUD_WRITE)){return;}
   if(AUTH_MODE){return;} // en modo auth los datos van a user_data (UD), no al blob global
   // Anti-borrado: nunca subir vacíos ax_c (asesorados) ni ax_e (biblioteca) — casi siempre es un bug, no intención.
   if((k==='ax_c'||k==='ax_e')&&Array.isArray(v)&&v.length===0){warn('AVI: push vacío bloqueado para',k,'(anti-borrado masivo)');return;}

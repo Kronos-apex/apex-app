@@ -2818,24 +2818,19 @@ function _genMaterialize(ex, scheme) {
   return c;
 }
 
-// v746 · ORDEN DEL DÍA. Además del §2.5 (abajo), dos reglas que se definen con datos del catálogo
-// (músculo y tipo) y no con listas de nombres:
-//  1) APERTURA: el primer ejercicio es un Compuesto de un músculo objetivo del día (`focus`), si el día
-//     tiene alguno. Antes salía el que cayera primero en el orden de los puestos.
-//  2) SIN GEMELOS SEGUIDOS: dos Compuestos del mismo músculo y del mismo patrón (misma familia de
-//     movimiento, o ambas sin familia: dos presses de pecho) no van pegados si hay otro compuesto
-//     distinto del mismo bloque para ponerlo en medio. No cruza bloques: el orden Compuesto → Funcional
-//     → Aislamiento → Cardio/Core se conserva.
+// v746 · ORDEN DEL DÍA. Además del §2.5 (abajo): SIN GEMELOS SEGUIDOS. Dos Compuestos del mismo músculo
+// y del mismo patrón (misma familia de movimiento, o ambas sin familia: dos presses de pecho) no van
+// pegados si hay otro compuesto distinto del mismo bloque para ponerlo en medio. No cruza bloques: el
+// orden Compuesto → Funcional → Aislamiento → Cardio/Core se conserva.
+// (La «apertura» —el primer ejercicio es el compuesto del músculo objetivo, `GEN_DAYS.focus`— ya la
+// cumplen los puestos de cada día: medido, 0 de 221.550 días la necesitaban. Se QUITÓ el código que la
+// forzaba y queda como propiedad vigilada por la prueba de barrido.)
 function _genGemelos(a, b) {
   return !!a && !!b && a.type === 'Compuesto' && b.type === 'Compuesto' && a.muscle === b.muscle
     && _genMoveFamily(a) === _genMoveFamily(b);
 }
-function _genOrdenar(exs, focus) {
+function _genOrdenar(exs) {
   const out = exs.slice().sort((a, b) => _genRank(a) - _genRank(b));
-  if (focus && focus.length && out.length) {
-    const k = out.findIndex(e => e.type === 'Compuesto' && focus.indexOf(e.muscle) >= 0);
-    if (k > 0) out.unshift(out.splice(k, 1)[0]);
-  }
   for (let i = 0; i + 1 < out.length; i++) {
     if (!_genGemelos(out[i], out[i + 1])) continue;
     const r = _genRank(out[i + 1]);
@@ -3460,7 +3455,7 @@ function generarRutinas(client, lib, opts) {
     if (scheme.coreClose && !exs.some(e => e.muscle === 'core')) {
       const f = _genPick(lib, 'core', null, st); if (f) exs.push(_genMaterialize(f, scheme));
     }
-    exs = _genOrdenar(exs, tpl.focus);
+    exs = _genOrdenar(exs);
 
     let nm = tpl.name;
     nameCount[nm] = (nameCount[nm] || 0) + 1;
