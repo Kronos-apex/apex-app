@@ -36,8 +36,15 @@ PLANTILLAS_INICIO[lugar][sexo][días] = {
 - **El nivel NO frena a la plantilla.** Hip Thrust con Barra, Desplantes, Lagartijas, Press Inclinado con Mancuernas y Remo con Barra son «Intermedio» en `EX_LEVEL` y SALEN igual:
   lo que el coach puso manda. Solo los saca una regla de salud.
 - **Salud: el MISMO filtro de siempre** (`_genMakeExcluder`: zonas de Laura, menores de 16, perfil de carga alto, lista negra del coach, bandas en gym). Un ejercicio excluido se cambia por su
-  `alternativa` si ESTA pasa el filtro (y no está ya ese día); si no, por lo que el generador elegiría para ese hueco (mismo músculo y tipo del original). El ejercicio cambiado lleva `plantillaReemplazo: '<id original>'`.
-  Nunca se entrega uno prohibido. El correctivo por zona y los avisos de limitación siguen igual.
+  `alternativa` (si el coach la escribió, pasa el filtro y no repite patrón); si no hay, por un ejercicio del MISMO MÚSCULO que cumpla las reglas de relleno (abajo); si no hay ninguno válido, el hueco
+  se queda VACÍO (un día de 5 es mejor que uno con 3 prensas). Hoy NO hay alternativas sembradas: las dos que propuso el equipo (e61→e73, e37→e36) se quitaron hasta que el coach diga cuáles.
+  Lo cambiado lleva `plantillaReemplazo` (id), `plantillaReemplazoNombre` y `plantillaMotivo` ('salud' | 'carga') y **se ve** en la ficha del coach y en la vista previa («↔ Cambia X de tu plantilla…»).
+- **Reglas del relleno** (`_genDiasPlantilla`): el reemplazo no repite un patrón de movimiento del día (`_genPatron` = familia de siempre + prensa + elevación de talones), no es «casi igual» (mismo músculo,
+  tipo y patrón) a otro del día, no es equipo poco común (salvo `gymFullEquip`/⭐), respeta el tope de nivel del generador, no es movilidad y no es el ejercicio reservado del correctivo de la zona.
+  Si algo se reemplazó y el día tiene un compuesto de sus músculos objetivo (`focus` del día), ese compuesto abre.
+- **Perfil de carga alto** (IMC ≥ 30 —borde incluido—, cintura-talla o grasa): lo que no es guiado o de máquina se cambia por su variante guiada del mismo músculo (y patrón si existe), con las series y
+  repeticiones del coach y su orden; si no existe ninguna guiada se queda la del coach. Sin el equipo poco común (hip thrust en máquina…) la sentadilla sumo y algún curl se quedan sin variante guiada.
+- **Días de pierna** (`piernas:true` en el día): Glúteo y Pierna nunca caen en días seguidos de la semana, sea cual sea el día de registro (`genSepararPiernas`); el primer entreno sigue siendo el de hoy.
 - **Fase de adaptación: NO se aplica encima.** Para un principiante la adaptación convertiría todo en 3×15 y el coach no vería lo que escribió. La plantilla ya es su rutina de inicio; la nota de la rutina pide
   poco peso y técnica primero. La única regla que toca series/reps es la de salud de **8 repeticiones mínimas** (presión, abdomen y piso pélvico, embarazo): sube a 8 lo que esté por debajo (el tiempo y el cardio no).
 - **Descanso**: por tipo y objetivo, como en cualquier rutina normal (no el 60 s uniforme de la adaptación).

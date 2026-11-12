@@ -175,6 +175,37 @@ function genWeekDays(n, startIdx) {
 }
 
 
+// v746 · DÍAS DE PIERNA NO SEGUIDOS. `genWeekDays` reparte los días en la semana sin saber qué se entrena
+// en cada uno: quien se registra de martes a viernes quedaba con Pierna y Glúteo en días consecutivos
+// (el 3-4 días de la mujer: Glúteo en el día de inicio, Pierna donde cayera). `dias` = los días del plan en
+// orden (`dias[0]` es el de hoy y NO se mueve), `piernas` = si ese puesto es de pierna/glúteo. Reordena
+// SOLO los demás entre los mismos días de la semana, con el menor número de cambios, para que dos días de
+// pierna no queden pegados (lunes-martes sí cuenta; viernes-lunes no). Sin solución, devuelve lo mismo.
+function genSepararPiernas(dias, piernas) {
+  const n = (dias || []).length;
+  if (n < 3 || !piernas || piernas.filter(Boolean).length < 2) return (dias || []).slice();
+  const ix = d => GEN_WEEK_DAYS.indexOf(d);
+  const valida = arr => {
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+      if (piernas[i] && piernas[j] && Math.abs(ix(arr[i]) - ix(arr[j])) === 1) return false;
+    return true;
+  };
+  const resto = dias.slice(1);
+  let mejor = null, mejorCosto = Infinity;
+  const permutar = (acc, libres) => {
+    if (!libres.length) {
+      const arr = [dias[0]].concat(acc);
+      if (!valida(arr)) return;
+      const costo = acc.reduce((t, d, k) => t + (d === resto[k] ? 0 : 1), 0);
+      if (costo < mejorCosto) { mejorCosto = costo; mejor = arr; }
+      return;
+    }
+    libres.forEach((d, k) => permutar(acc.concat(d), libres.slice(0, k).concat(libres.slice(k + 1))));
+  };
+  permutar([], resto);
+  return mejor || dias.slice();
+}
+
 // ── FESTIVOS DE COLOMBIA ─────────────────────────────────────────────────────────────
 // Camilo (2026-08-22): *«no trabajo sábados ni domingos ni festivos con el calendario
 // colombiano»*. Los fines de semana los resuelve `genWeekDays` porque son días de la SEMANA;
@@ -340,14 +371,14 @@ const GEN_DAYS = {
   // condicionar por sexo: el hombre intermedio ya tiene su glúteo en PIERNA, y `sexKey` cae a
   // 'M' cuando no se declaró sexo → colgar el beneficio de un campo opcional fabrica un defecto.
   FULL_BODY:      { name: 'Full Body', focus: ['piernas'], slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['core', null, 1]] },
-  GP_A:           { name: 'Glúteo y Piernas A', focus: ['gluteo'], slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
-  GP_B:           { name: 'Glúteo y Piernas B', focus: ['piernas', 'gluteo'], slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
+  GP_A:           { name: 'Glúteo y Piernas A', focus: ['gluteo'], legs: true, slots: [['gluteo', 'Compuesto', 2], ['piernas', 'Compuesto', 1], ['gluteo', 'Aislamiento', 1], ['piernas', 'Aislamiento', 2], ['core', null, 1]] },
+  GP_B:           { name: 'Glúteo y Piernas B', focus: ['piernas', 'gluteo'], legs: true, slots: [['piernas', 'Compuesto', 2], ['gluteo', 'Compuesto', 1], ['gluteo', 'Aislamiento', 2], ['piernas', 'Aislamiento', 1], ['core', null, 1]] },
   TREN_SUP:       { name: 'Tren Superior', focus: ['pecho', 'espalda'], slots: [['pecho', 'Compuesto', 1], ['espalda', 'Compuesto', 1, { prefer: _isPull }], ['hombros', 'Compuesto', 1], ['biceps', 'Aislamiento', 1], ['triceps', 'Aislamiento', 1]] },
   EMP_BRAZOS:     { name: 'Empuje y Brazos', focus: ['pecho', 'hombros'], slots: [['pecho', 'Compuesto', 1], ['hombros', 'Compuesto', 1], ['triceps', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2]] },
   CORE_CARDIO:    { name: 'Core y Cardio', slots: [['core', null, 2], ['cardio', null, 2]] },
   EMPUJE:         { name: 'Empuje', focus: ['pecho'], slots: [['pecho', 'Compuesto', 2], ['hombros', 'Compuesto', 1], ['pecho', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { avoid: _isRearDelt }], ['triceps', 'Aislamiento', 2]] },
   TRACCION:       { name: 'Tracción', focus: ['espalda'], slots: [['espalda', 'Compuesto', 2, { prefer: _isPull }], ['espalda', 'Aislamiento', 1], ['hombros', 'Aislamiento', 1, { prefer: _isRearDelt }], ['biceps', 'Aislamiento', 2]] },
-  PIERNA:         { name: 'Pierna', focus: ['piernas'], slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Compuesto', 1], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
+  PIERNA:         { name: 'Pierna', focus: ['piernas'], legs: true, slots: [['piernas', 'Compuesto', 1], ['gluteo', 'Compuesto', 1], ['piernas', 'Funcional', 1], ['piernas', 'Aislamiento', 2], ['gluteo', 'Aislamiento', 1], ['core', null, 1]] },
   HOMBROS_BRAZOS: { name: 'Hombros y Brazos', focus: ['hombros'], slots: [['hombros', 'Compuesto', 1], ['hombros', 'Aislamiento', 2], ['biceps', 'Aislamiento', 2], ['triceps', 'Aislamiento', 2]] },
   CARDIO_CORE:    { name: 'Cardio y Core', slots: [['cardio', null, 2], ['core', null, 2]] },
 };
@@ -377,29 +408,31 @@ const GEN_SPLITS = {
 // que él aprobó SALE de la app, sin semilla ni rotación: dos personas iguales reciben exactamente lo
 // mismo, en el orden escrito.
 // FORMA: PLANTILLAS_INICIO[lugar][sexo 'F'|'M'][días] = { id, nombre, dias:[{ nombre, ejercicios:[
-//   { id:'eNN' (del catálogo), series:N, reps:N, alternativa?:'eNN' } ] }] }
+//   { id:'eNN' (del catálogo), series:N, reps:N, alternativa?:'eNN' } ], focus?:[músculos objetivo], piernas?:true } ] }
+//   · `focus`: el compuesto de uno de esos músculos abre el día si se reemplazó algo. `piernas`: día de pierna/glúteo
+//     (no cae en días seguidos).
 //   · `reps` de un ejercicio de tiempo son SEGUNDOS y los de cardio, MINUTOS (igual que el catálogo).
 //   · Solo se usa con nivel 'Principiante'. Sin plantilla para la combinación → generador de siempre.
 //   · El nivel NO la frena (decisión del director): solo la saca una regla de salud. El filtro de
 //     lesiones es el MISMO de siempre (`_genMakeExcluder`): un ejercicio excluido se cambia por su
 //     `alternativa` si ESTA pasa el filtro y, si no, por lo que el generador elegiría para ese hueco.
 //   · Cómo añadir más: docs/plantillas-inicio.md. `validarPlantillasInicio` las revisa contra el catálogo.
-const _PI_GLUTEO = { nombre: 'Glúteo', ejercicios: [
+const _PI_GLUTEO = { nombre: 'Glúteo', focus: ['gluteo'], piernas: true, ejercicios: [
   { id: 'e42', series: 4, reps: 10 },                          // Hip Thrust con Barra
-  { id: 'e61', series: 4, reps: 10, alternativa: 'e73' },      // Sentadilla Sumo → Puente de Glúteo (propuesta, el coach la confirma)
-  { id: 'e37', series: 4, reps: 15, alternativa: 'e36' },      // Extensión de Cuádriceps en Máquina → Prensa de Pierna (propuesta)
+  { id: 'e61', series: 4, reps: 10 },                          // Sentadilla Sumo
+  { id: 'e37', series: 4, reps: 15 },                          // Extensión de Cuádriceps en Máquina
   { id: 'e15', series: 3, reps: 15 },                          // Curl Femoral Tumbado en Máquina
   { id: 'e60', series: 4, reps: 15 },                          // Aducción de Cadera en Máquina
   { id: 'e45', series: 4, reps: 15 },                          // Abducción de Cadera en Máquina
 ] };
-const _PI_TREN_SUP = { nombre: 'Tren superior', ejercicios: [
+const _PI_TREN_SUP = { nombre: 'Tren superior', focus: ['espalda', 'pecho'], ejercicios: [
   { id: 'e6', series: 4, reps: 12 },                           // Jalón al Pecho en Polea
   { id: 'e83', series: 3, reps: 15 },                          // Lagartijas (Push-up)
   { id: 'e51', series: 4, reps: 12 },                          // Remo Gironda en Polea
   { id: 'e84', series: 4, reps: 10 },                          // Press en Máquina Hammer (Pecho)
   { id: 'e24', series: 3, reps: 12 },                          // Pullover en Polea
 ] };
-const _PI_PIERNA = { nombre: 'Pierna', ejercicios: [
+const _PI_PIERNA = { nombre: 'Pierna', focus: ['piernas'], piernas: true, ejercicios: [
   { id: 'e80', series: 3, reps: 15 },                          // Sentadilla de Peso Corporal
   { id: 'e35', series: 3, reps: 12 },                          // Desplantes / Zancada
   { id: 'e36', series: 4, reps: 12 },                          // Prensa de Pierna
@@ -407,7 +440,7 @@ const _PI_PIERNA = { nombre: 'Pierna', ejercicios: [
   { id: 'e37', series: 4, reps: 15 },                          // Extensión de Cuádriceps en Máquina
   { id: 'e64', series: 1, reps: 15 },                          // Bicicleta Estática (15 min)
 ] };
-const _PI_BRAZO_ABD = { nombre: 'Brazo y abdomen', ejercicios: [
+const _PI_BRAZO_ABD = { nombre: 'Brazo y abdomen', focus: ['hombros'], ejercicios: [
   { id: 'e23', series: 4, reps: 10 },                          // Press Militar en Máquina
   { id: 'e8', series: 4, reps: 15 },                           // Elevaciones Laterales
   { id: 'e29', series: 3, reps: 12 },                          // Curl de Bíceps con Mancuernas
@@ -462,44 +495,102 @@ function validarPlantillasInicio(plantillas, lib) {
   return errs;
 }
 
+// Patrón de movimiento para RELLENAR una plantilla: la familia de siempre (`_genMoveFamily`) más dos que el
+// generador no distinguía y que aquí sí importan —la prensa (horizontal, vertical, de pies altos…) y la
+// elevación de talones (de pie, sentado, en prensa)— porque con rodilla o aductor el filtro sacaba lo
+// demás y el relleno caía una y otra vez en ellas (3 prensas, 2 gemelos, un día que abría con gemelo).
+function _genPatron(ex) {
+  const f = _genMoveFamily(ex);
+  if (f) return f;
+  const n = _norm((ex && ex.name) || '');
+  if (/elevacion de talones/.test(n)) return 'talones';
+  if (/prensa/.test(n)) return 'prensa';
+  return null;
+}
+
 // Arma los días de una plantilla pasando cada ejercicio por el filtro de siempre (`st.exclude`, la
-// lista negra del coach y el lugar). Pura salvo `st` (cursores/usados, como `_genPick`).
-//   1) el ejercicio de la plantilla, si pasa;  2) su `alternativa`, si pasa y no está ya en el día;
-//   3) lo que el generador elegiría para ese hueco (mismo músculo y tipo del original).
+// lista negra del coach y el lugar). Pura salvo `st` (como `_genPick`). Los ejercicios del coach que
+// pasan SALEN TAL CUAL, en su sitio, con sus series y repeticiones. Lo que no pasa se reemplaza así:
+//   · POR SALUD (el filtro lo sacó): su `alternativa` si pasa; si no, un ejercicio del mismo músculo
+//     que cumpla lo de abajo; si no hay ninguno, el hueco QUEDA VACÍO (un día de 5 es mejor que uno con
+//     3 prensas) — salvo que el hueco sea la apertura del día, que se intenta con cualquier compuesto
+//     de los músculos objetivo del día.
+//   · POR PERFIL DE CARGA ALTO (IMC ≥ 30…): lo que no sea guiado o de máquina se cambia por su variante
+//     guiada del mismo músculo (y del mismo patrón si existe) — lo que hacía el generador. Si no hay
+//     ninguna guiada, se queda el ejercicio del coach (es una preferencia, no una prohibición).
+//   Un reemplazo NUNCA repite un patrón de movimiento (`_genPatron`) que ya esté en el día, ni es
+//   «casi igual» (mismo músculo, mismo tipo y mismo patrón) a uno que ya está; no es equipo poco común
+//   (salvo que se haya declarado), no pasa el tope de nivel del generador ni es movilidad, y no es el
+//   correctivo reservado de la zona. Es determinista: el primero que cumpla en el orden del catálogo.
+//   Si algo se reemplazó y el día tiene un compuesto de sus músculos objetivo, ese compuesto abre.
 // Series y repeticiones son las del coach; la ÚNICA regla que las toca es la de salud de 8 repeticiones
 // mínimas (presión, abdomen y piso pélvico, embarazo), que ya vale en el generador.
-function _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8) {
+function _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8, opt) {
+  opt = opt || {};
+  const reservados = opt.reservados || new Set();
+  const altaCarga = !!opt.altaCarga;
   const porId = new Map(lib.map(e => [e.id, e]));
   const pasa = e => !!e && !st.exclude(e) && !st.excludeIds.has(e.id) && (e.env || ['gym']).includes(st.place);
+  const guiado = e => GEN_ASSISTED_RE.test(_norm(e.name));
+  const deFuerza = e => !_genKeepNatural(e) && e.muscle !== 'core' && e.muscle !== 'cardio';
+  const candidato = e => pasa(e) && e.type !== 'Movilidad' && exLevelRank(e) <= (st.levelCap == null ? 2 : st.levelCap)
+    && (st.fullEquip || !exUncommon(e) || st.preferIds.has(e.id)) && !reservados.has(e.id);
   const ajustar = (c, it) => {
     c.sets = it.series;
     c.reps = (minReps8 && !_genKeepNatural(c) && it.reps < 8) ? 8 : it.reps;
     return c;
   };
   return pl.dias.map(dia => {
-    st.usedInDay = new Set(); st.usedFamiliesInDay = new Set();
-    const delDia = new Set(dia.ejercicios.map(i => i.id));
+    const foco = dia.focus || [];
+    const usados = new Set(), patrones = new Set(), enDia = [];
+    const registrar = e => { usados.add(e.id); const p = _genPatron(e); if (p) patrones.add(p); enDia.push(e); };
+    // Fase 1: lo del coach que se queda tal cual.
     const sel = dia.ejercicios.map(it => {
       const ex = porId.get(it.id);
-      if (pasa(ex)) return { ex, it };
-      const alt = it.alternativa ? porId.get(it.alternativa) : null;
-      if (pasa(alt) && !delDia.has(alt.id)) return { ex: alt, it, reemplaza: it.id };
-      return { ex: null, it, orig: ex };
+      const porSalud = !pasa(ex);
+      const porCarga = !porSalud && altaCarga && deFuerza(ex) && !guiado(ex);
+      if (!porSalud && !porCarga) { registrar(ex); return { it, ex, tal: true }; }
+      return { it, orig: ex, porSalud, tal: false };
     });
-    sel.forEach(s => { if (s.ex) st.usedInDay.add(s.ex.id); });
+    // Fase 2: los que hay que cambiar, en el orden del coach.
+    sel.forEach((s, k) => {
+      if (s.tal) return;
+      const orig = s.orig;
+      const valido = c => candidato(c) && !usados.has(c.id) && (!_genPatron(c) || !patrones.has(_genPatron(c)))
+        && !enDia.some(d => d.muscle === c.muscle && d.type === c.type && _genPatron(d) === _genPatron(c));
+      const primero = (lista) => lista.find(valido) || null;
+      const mismo = lib.filter(c => c.muscle === orig.muscle);
+      // Con carga alta: primero la guiada; si el cambio es por salud y no hay guiada, cualquiera; si es solo por carga, solo guiadas.
+      const ord = f => !altaCarga ? [f] : s.porSalud ? [c => f(c) && guiado(c), f] : [c => f(c) && guiado(c)];
+      let nuevo = null;
+      const alt = s.it.alternativa ? porId.get(s.it.alternativa) : null;
+      if (alt && valido(alt) && (!altaCarga || guiado(alt) || !deFuerza(alt))) nuevo = alt;
+      const tiers = [c => c.type === orig.type && _genPatron(c) === _genPatron(orig), c => c.type === orig.type, c => true];
+      for (let t = 0; !nuevo && t < tiers.length; t++) for (const f of ord(tiers[t])) { nuevo = primero(mismo.filter(f)); if (nuevo) break; }
+      // Si el hueco es la apertura del día (primer puesto o compuesto objetivo), cualquier compuesto de los músculos objetivo.
+      if (!nuevo && s.porSalud && foco.length && (k === 0 || (orig.type === 'Compuesto' && foco.indexOf(orig.muscle) >= 0)))
+        nuevo = (altaCarga && primero(lib.filter(c => c.type === 'Compuesto' && foco.indexOf(c.muscle) >= 0 && guiado(c))))
+          || primero(lib.filter(c => c.type === 'Compuesto' && foco.indexOf(c.muscle) >= 0));
+      if (!nuevo && !s.porSalud) nuevo = orig; // carga alta sin variante guiada: se queda la del coach
+      if (nuevo) registrar(nuevo);
+      s.ex = nuevo; s.nuevo = !!nuevo && nuevo !== orig;
+    });
     const out = [];
     sel.forEach(s => {
-      let c;
-      if (s.ex) {
-        c = ajustar(_genMaterialize(s.ex, schemeTpl), s.it);
-        if (s.reemplaza) c.plantillaReemplazo = s.reemplaza;
-      } else if (s.orig) {
-        const f = _genPick(lib, s.orig.muscle, s.orig.type, st);
-        if (!f) return;
-        c = _genMaterialize(f, schemeTpl); c.plantillaReemplazo = s.it.id;
-      } else return;
+      if (!s.ex) return;
+      const c = ajustar(_genMaterialize(s.ex, schemeTpl), s.it);
+      if (s.nuevo) {
+        c.plantillaReemplazo = s.it.id;
+        c.plantillaReemplazoNombre = (porId.get(s.it.id) || {}).name || '';
+        c.plantillaMotivo = s.porSalud ? 'salud' : 'carga';
+      }
       out.push(c);
     });
+    // Si algo se reemplazó, el compuesto de un músculo objetivo abre el día (como en el resto del generador).
+    if (out.some(c => c.plantillaReemplazo) && foco.length && out.length) {
+      const k = out.findIndex(c => c.type === 'Compuesto' && foco.indexOf(c.muscle) >= 0);
+      if (k > 0) out.unshift(out.splice(k, 1)[0]);
+    }
     return { nombre: dia.nombre, exs: out };
   });
 }
@@ -523,16 +614,22 @@ function regenerarMotivos(client, history) {
 }
 function regenerarAviso(motivos, audience) {
   if (!motivos || !motivos.length) return null;
-  const coach = audience !== 'client';
+  // Tres lectores: 'coach' (tú), 'client' (la persona SIN entrenador: no hay nadie a quien nombrar) y
+  // 'client_coach' (la persona con entrenador). Nunca dice que se borren los entrenos (no se borran).
+  const quien = audience === 'coach' ? 'coach' : audience === 'client_coach' ? 'client_coach' : 'client';
   const txt = {
-    revisadas: coach ? 'rutinas que ya revisaste' : 'rutinas que tu entrenador ya revisó',
-    del_coach: coach ? 'rutinas armadas por ti' : 'rutinas que armó tu entrenador',
-    plantilla: coach ? 'la rutina de inicio de tu plantilla' : 'la rutina de inicio que armó tu entrenador',
-    entrenos: 'entrenos registrados',
-  };
-  const lista = motivos.map(m => txt[m]).filter(Boolean);
+    coach:        { revisadas: 'rutinas que ya revisaste', del_coach: 'rutinas armadas por ti', plantilla: 'la rutina de inicio de tu plantilla' },
+    client:       { revisadas: 'una semana que ya ajustaste', del_coach: 'rutinas que armaste tú', plantilla: 'tu rutina de inicio' },
+    client_coach: { revisadas: 'rutinas que tu entrenador ya revisó', del_coach: 'rutinas que armó tu entrenador', plantilla: 'tu rutina de inicio' },
+  }[quien];
+  const lista = motivos.filter(m => m !== 'entrenos').map(m => txt[m]).filter(Boolean);
   const unida = lista.length > 1 ? lista.slice(0, -1).join(', ') + ' y ' + lista[lista.length - 1] : lista[0];
-  return (coach ? 'Esta persona ya tiene ' : 'Ya tienes ') + unida + '. Regenerar las reemplaza por un borrador nuevo y no se puede deshacer. ¿Quieres continuar?';
+  const sujeto = quien === 'coach' ? 'Esta persona ya tiene ' : 'Ya tienes ';
+  const suya = quien === 'coach' ? 'su' : 'tu';
+  const entrenos = motivos.indexOf('entrenos') >= 0;
+  const cola = entrenos ? (quien === 'coach' ? ' Sus entrenos registrados se conservan.' : ' Tus entrenos registrados se conservan.') : '';
+  if (!unida) return sujeto + 'entrenos registrados. Si sigues, ' + suya + ' semana se reemplaza por una nueva; los entrenos quedan guardados.';
+  return sujeto + unida + '. Si sigues, se reemplazan por una semana nueva y no se puede deshacer.' + cola;
 }
 
 // ── CAMBIOS DE EJERCICIO EN EL ENTRENO (v746) ─────────────────────────────────────────────────────
@@ -2787,7 +2884,8 @@ function bodyLoadProfile(client, waistCm, weightKg, bfPct) {
   const bf = parseFloat(bfPct);
   const usaBf = !!sexo && isFinite(bf) && bf >= BF_MIN_PCT && bf <= BF_MAX_PCT;
   const corte = sexo === 'F' ? BF_LOAD_HIGH_F : BF_LOAD_HIGH_M;
-  const masa = usaBf ? (bf >= corte) : (bmi != null && bmi >= 30);
+  // v746 · `>= 30 - 1e-9`: 76,8 kg y 1,60 m dan 29,99999999999999 en flotante y la regla dice «30 o más».
+  const masa = usaBf ? (bf >= corte) : (bmi != null && bmi >= 30 - 1e-9);
   if (masa || (rct != null && rct >= 0.60)) return 'high';
   return 'normal';
 }
@@ -3411,8 +3509,21 @@ function generarRutinas(client, lib, opts) {
   // ARRANCA (lo usa el auto-registro para que el día 1 tenga entreno). Sin él, lunes: es lo que
   // el coach espera al generar desde su panel.
   const _startIdx = opts.startDay ? Math.max(0, GEN_WEEK_DAYS.indexOf(opts.startDay)) : 0;
-  const _genDays = genWeekDays(codes.length, _startIdx);
+  const _legs = pl ? pl.dias.map(d => !!d.piernas) : codes.map(c => !!(GEN_DAYS[c] || {}).legs);
+  const _genDays = genSepararPiernas(genWeekDays(codes.length, _startIdx), _legs);
   const nameCount = {};
+  const _nowTs = Date.parse(now) || Date.now();
+  const _bloquea = painCareActive(client.painCare, _nowTs).some(p => p && p.level === 3);
+  // 🔴 Las zonas del CORRECTIVO no son las del filtro: viven 8 semanas y sobreviven a que el
+  // reporte caduque o a que la persona toque «Ya estoy bien». El filtro protege del dolor de HOY;
+  // el correctivo trabaja el déficit que lo causó, y ese tarda 6-8 semanas.
+  const _corrKeys = correctiveZoneKeys(client, _nowTs);
+  const _corr = _bloquea ? null : correctiveFor([...new Set([...lim.keys, ..._corrKeys])], lib, place, {
+    painKeys: painZoneKeys(client, _nowTs),   // dolor VIGENTE: manda sobre la nota vieja (F5)
+    corrKeys: _corrKeys,                      // reportes de hasta 8 semanas → texto de mantenimiento
+    levelCap: _gate.cap,                      // el correctivo pasa el mismo gate que el resto (F4)
+    fases: correctivePhases(client, _nowTs),  // agudo/subagudo por zona (aductor y abductor)
+  });
   // La plantilla NO pasa por la fase de adaptación (15 reps, 3 series): el coach ve las series y
   // repeticiones que él escribió. Descanso por tipo y objetivo como en una rutina normal.
   let diasPl = null;
@@ -3420,7 +3531,7 @@ function generarRutinas(client, lib, opts) {
     const schemeTpl = genSchemeFor(client.goal || '', level, false);
     const minReps8 = (lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0);
     if (minReps8) schemeTpl.repsN = Math.max(schemeTpl.repsN, 8);
-    diasPl = _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8);
+    diasPl = _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8, { reservados: new Set(_corr ? [_corr.ex.id] : []), altaCarga: highLoad });
     scheme.restSec = schemeTpl.restSec;
   }
   const routines = codes.map((code, idx) => {
@@ -3430,7 +3541,7 @@ function generarRutinas(client, lib, opts) {
         ? '⚠️ REVISAR — no se pudieron generar ejercicios para este día con la biblioteca/entorno actual. Agrega ejercicios manualmente antes de asignar.'
         : (lim.detected || lim.cardiac)
         ? genLimitationNote(lim, opts.audience)
-        : '📋 Rutina de inicio armada por el coach. Las primeras semanas usa poco peso y sin llegar al fallo: la técnica primero; las cargas suben cuando el movimiento salga limpio.';
+        : (opts.audience === 'client' ? '📋 Tu rutina de inicio. ' : '📋 Rutina de inicio (tu plantilla). ') + 'Las primeras semanas usa poco peso y sin llegar al fallo: la técnica primero; las cargas suben cuando el movimiento salga limpio.';
       return {
         id: idFn(), name: diasPl[idx].nombre, day: _genDays[idx] || ('Día ' + (idx + 1)), shift: null,
         note, why: client.goal || '', restSec: scheme.restSec, exercises: exs,
@@ -3484,18 +3595,7 @@ function generarRutinas(client, lib, opts) {
   // nivel la sesión no debería existir, y añadirle un ejercicio a quien acabamos de decirle que
   // pare es contradecirnos en la misma pantalla. (Mapeo provisional: cuando exista el triaje de
   // 5 niveles, esto pasa a ser N3 y N4.)
-  const _nowTs = Date.parse(now) || Date.now();
-  const _bloquea = painCareActive(client.painCare, _nowTs).some(p => p && p.level === 3);
-  // 🔴 Las zonas del CORRECTIVO no son las del filtro: viven 8 semanas y sobreviven a que el
-  // reporte caduque o a que la persona toque «Ya estoy bien». El filtro protege del dolor de HOY;
-  // el correctivo trabaja el déficit que lo causó, y ese tarda 6-8 semanas.
-  const _corrKeys = correctiveZoneKeys(client, _nowTs);
-  const _corr = _bloquea ? null : correctiveFor([...new Set([...lim.keys, ..._corrKeys])], lib, place, {
-    painKeys: painZoneKeys(client, _nowTs),   // dolor VIGENTE: manda sobre la nota vieja (F5)
-    corrKeys: _corrKeys,                      // reportes de hasta 8 semanas → texto de mantenimiento
-    levelCap: _gate.cap,                      // el correctivo pasa el mismo gate que el resto (F4)
-    fases: correctivePhases(client, _nowTs),  // agudo/subagudo por zona (aductor y abductor)
-  });
+  // (el correctivo se calcula arriba, antes de armar los días: la plantilla reserva su ejercicio)
   if (_corr) routines.forEach(r => {
     if (!r.exercises || !r.exercises.length) return;          // un día vacío no se «arregla» con esto
     if (r.exercises.some(e => e.id === _corr.ex.id)) return;  // ya lo tiene: no duplicar
@@ -14784,6 +14884,8 @@ if (typeof module !== 'undefined' && module.exports) {
     wuResolveRecipe,
     GEN_SPLITS,
     PLANTILLAS_INICIO,
+    genSepararPiernas,
+    _genPatron,
     EX_UNCOMMON,
     regenerarMotivos,
     regenerarAviso,

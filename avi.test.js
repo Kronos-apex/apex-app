@@ -26647,14 +26647,16 @@ test('v746 · la fase de adaptación NO pisa las series y repeticiones del coach
   assert.strictEqual(casa.adaptation, true);
 });
 
-test('v746 · con una limitación que excluye un ejercicio de la plantilla: entra su alternativa, nunca el prohibido', () => {
-  // Hernia lumbar: la lista de Laura saca «sentadilla sumo» (e61). Su alternativa es el puente de glúteo (e73).
+test('v746 · con una limitación que excluye un ejercicio de la plantilla: nunca llega el prohibido y el hueco se llena o se queda vacío', () => {
+  // Hernia lumbar: la lista de Laura saca «sentadilla sumo» (e61).
   const out = _t_gen(_t_mujer('u3', { notes: 'Hernia discal L4-L5 diagnosticada, dolor lumbar al flexionar' }), 5);
   const g = out.routines[0].exercises.filter(e => !e.corrective);
   assert.ok(!g.some(e => e.id === 'e61'), 'entregó la sentadilla sumo con lumbar declarada');
-  assert.deepStrictEqual(g.map(e => e.id), ['e42', 'e73', 'e37', 'e15', 'e60', 'e45']);
-  assert.strictEqual(g[1].plantillaReemplazo, 'e61');
-  assert.strictEqual(g[1].sets, 4); assert.strictEqual(g[1].reps, 10);
+  assert.deepStrictEqual(g.slice(0, 1).map(e => e.id), ['e42'], 'el Hip Thrust del coach sigue abriendo');
+  assert.deepStrictEqual(g.filter(e => !e.plantillaReemplazo).map(e => e.id), ['e42', 'e37', 'e15', 'e60', 'e45']);
+  assert.strictEqual(g.filter(e => e.plantillaReemplazo).length, 1);
+  const r = g.find(e => e.plantillaReemplazo);
+  assert.strictEqual(r.plantillaReemplazo, 'e61'); assert.strictEqual(r.plantillaMotivo, 'salud');
   assert.ok(out.needsReview);
 });
 
@@ -26912,65 +26914,102 @@ test('v746 · regenerarMotivos: cuándo hay que preguntar y cuándo no (con cont
   assert.deepStrictEqual(core.regenerarMotivos(null, null), []);
 });
 
-test('v746 · regenerarAviso: texto para el coach y para la persona, null si no hace falta', () => {
+test('v746 · regenerarAviso: texto para el coach, para quien no tiene entrenador y para quien sí; null si no hace falta', () => {
   assert.strictEqual(core.regenerarAviso([], 'coach'), null);
   const t = core.regenerarAviso(['revisadas', 'plantilla', 'entrenos'], 'coach');
-  assert.ok(/rutinas que ya revisaste, la rutina de inicio de tu plantilla y entrenos registrados/.test(t) && /no se puede deshacer/.test(t), t);
-  const p = core.regenerarAviso(['entrenos'], 'client');
-  assert.ok(/^Ya tienes entrenos registrados/.test(p), p);
+  assert.ok(/rutinas que ya revisaste y la rutina de inicio de tu plantilla\. Si sigues, se reemplazan por una semana nueva y no se puede deshacer\. Sus entrenos registrados se conservan\./.test(t), t);
+  const solo = core.regenerarAviso(['entrenos'], 'client');
+  assert.ok(/^Ya tienes entrenos registrados\./.test(solo) && /los entrenos quedan guardados/.test(solo), solo);
+  for (const aud of ['coach', 'client', 'client_coach']) for (const m of [['revisadas'], ['del_coach'], ['plantilla'], ['entrenos'], ['revisadas', 'entrenos']]) {
+    const x = core.regenerarAviso(m, aud);
+    assert.ok(!/borrador/i.test(x) && !/(borra|borran|borrar|elimina)/i.test(x), aud + ' ' + m + ': ' + x);
+  }
+  const sinCoach = ['revisadas', 'del_coach', 'plantilla', 'entrenos'].map(m => core.regenerarAviso([m], 'client')).join(' ');
+  assert.ok(!/entrenador|coach/i.test(sinCoach), sinCoach);
+  assert.ok(/tu entrenador/.test(core.regenerarAviso(['del_coach'], 'client_coach')));
 });
 
-// Corre la función REAL de app-3-coach.js con el entorno mínimo de mentira.
-const _r_correr = (nombre, c, hist, respuesta, extra) => {
+
+// Corre la función REAL de app-3-coach.js con el entorno mínimo de mentira: un botón que guarda su texto y su estado.
+const _r_correr = (nombre, c, hist, toques, extra) => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n');
-  const i = src.indexOf('function ' + nombre + '(');
-  assert.ok(i >= 0, nombre + ' no existe');
-  const j = src.indexOf('\nfunction ', i + 10);
-  const cuerpo = src.slice(i, j);
-  const calls = { confirm: 0, sv: 0 };
-  const DBf = { clients: [c], history: { [c.id]: hist }, exercises: [] };
+  const tomar = n => { const i = src.indexOf('function ' + n + '('); assert.ok(i >= 0, n + ' no existe'); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  const cuerpo = tomar('_regenDosToques') + '\n' + tomar(nombre);
+  const llamadas = { toast: [], timers: [], confirm: 0 };
+  const btn = { dataset: {}, textContent: 'TEXTO', isConnected: true };
   const entorno = Object.assign({
-    DB: DBf, CUR: { clientId: c.id, genDraft: { routines: [_r_rut({ id: 'nuevo', name: 'Nueva' })] } },
-    regenerarMotivos: core.regenerarMotivos, regenerarAviso: core.regenerarAviso,
-    confirm: () => { calls.confirm++; return respuesta; },
-    sortRoutinesByDay: x => x, sv: () => { calls.sv++; }, svNow: () => { calls.sv++; }, cm: () => {}, renderDetailRoutines: () => {}, renderHome: () => {},
-    renderClientAllRoutines: () => {}, toast: () => {}, warn: () => {},
+    DB: { clients: [c], history: { [c.id]: hist }, exercises: [] }, CUR: { clientId: c.id, genDraft: { routines: [_r_rut({ id: 'nuevo', name: 'Nueva' })] } },
+    regenerarMotivos: core.regenerarMotivos, regenerarAviso: core.regenerarAviso, clientHasCoach: core.clientHasCoach,
+    confirm: () => { llamadas.confirm++; return true; },
+    sortRoutinesByDay: x => x, sv: () => {}, svNow: () => {}, cm: () => {}, renderDetailRoutines: () => {}, renderHome: () => {},
+    renderClientAllRoutines: () => {}, toast: (m, ms) => { llamadas.toast.push(m); }, warn: () => {}, setTimeout: f => { llamadas.timers.push(f); },
     _autoGenerateWeek: cc => { cc.routines = [_r_rut({ id: 'auto' })]; return { routines: cc.routines }; },
     _selfRegLimAlert: () => {}, _selfRegMinorAlert: () => {},
   }, extra || {});
   const names = Object.keys(entorno);
-  new Function(...names, cuerpo + '\n' + nombre + '();')(...names.map(k => entorno[k]));
-  return { calls, c };
+  const f = new Function('btn', ...names, cuerpo + '\nreturn ' + nombre + ';')(btn, ...names.map(k => entorno[k]));
+  for (let k = 0; k < toques; k++) f(btn);
+  return { llamadas, c, btn };
 };
 
-test('v746 · el botón de confirmar el borrador del coach: con rutinas revisadas PREGUNTA y, si dice que no, no borra nada', () => {
+test('v746 · el botón de crear el plan del coach: con rutinas revisadas pide DOS toques, sin confirm(), y se desarma solo', () => {
   const mk = () => ({ id: 'c1', name: 'N', routines: [_r_rut({ id: 'vieja', reviewed: true })] });
-  const no = _r_correr('confirmGenRutinas', mk(), [], false);
-  assert.strictEqual(no.calls.confirm, 1);
-  assert.strictEqual(no.c.routines[0].id, 'vieja', 'borró sin permiso');
-  const si = _r_correr('confirmGenRutinas', mk(), [], true);
-  assert.strictEqual(si.c.routines[0].id, 'nuevo');
-  // CONTROL: un borrador sin revisar y sin entrenos se reemplaza SIN preguntar.
-  const libre = _r_correr('confirmGenRutinas', { id: 'c2', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [], false);
-  assert.strictEqual(libre.calls.confirm, 0);
-  assert.strictEqual(libre.c.routines[0].id, 'nuevo');
-  // Con entrenos registrados también pregunta.
-  const ent = _r_correr('confirmGenRutinas', { id: 'c3', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [{ date: '2026-11-09' }], false);
-  assert.strictEqual(ent.calls.confirm, 1); assert.strictEqual(ent.c.routines[0].id, 'vieja');
-  // Y la rutina que vino de la plantilla.
-  const pl = _r_correr('confirmGenRutinas', { id: 'c4', name: 'N', routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] }, [], false);
-  assert.strictEqual(pl.calls.confirm, 1); assert.strictEqual(pl.c.routines[0].id, 'vieja');
+  const uno = _r_correr('confirmGenRutinas', mk(), [], 1);
+  assert.strictEqual(uno.c.routines[0].id, 'vieja', 'el primer toque ya reemplazó');
+  assert.strictEqual(uno.llamadas.confirm, 0, 'confirm() está prohibido');
+  assert.strictEqual(uno.btn.dataset.armed, '1'); assert.strictEqual(uno.btn.textContent, 'Toca otra vez para reemplazar');
+  assert.ok(/rutinas que ya revisaste/.test(uno.llamadas.toast[0]), uno.llamadas.toast[0]);
+  // Se desarma solo: el botón vuelve a su texto.
+  uno.llamadas.timers[0](); assert.strictEqual(uno.btn.dataset.armed, ''); assert.strictEqual(uno.btn.textContent, 'TEXTO');
+  const dos = _r_correr('confirmGenRutinas', mk(), [], 2);
+  assert.strictEqual(dos.c.routines[0].id, 'nuevo'); assert.strictEqual(dos.btn.textContent, 'TEXTO');
+  // CONTROL: un plan sin revisar y sin entrenos se reemplaza de un toque.
+  const libre = _r_correr('confirmGenRutinas', { id: 'c2', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [], 1);
+  assert.strictEqual(libre.c.routines[0].id, 'nuevo'); assert.ok(!libre.llamadas.toast.some(m => /Si sigues/.test(m)), 'preguntó sin necesidad');
+  // Con entrenos registrados o rutina de plantilla también pide dos.
+  const ent = _r_correr('confirmGenRutinas', { id: 'c3', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [{ date: '2026-11-09' }], 1);
+  assert.strictEqual(ent.c.routines[0].id, 'vieja');
+  const pl = _r_correr('confirmGenRutinas', { id: 'c4', name: 'N', routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] }, [], 1);
+  assert.strictEqual(pl.c.routines[0].id, 'vieja');
 });
 
-test('v746 · «✨ Regenerar mi semana» de la persona también pregunta antes de pisar lo que ya tiene', () => {
-  const mk = () => ({ id: 'c5', name: 'N', routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] });
-  const no = _r_correr('clientSelfGenerate', mk(), [], false);
-  assert.strictEqual(no.calls.confirm, 1); assert.strictEqual(no.c.routines[0].id, 'vieja', 'regeneró sin permiso');
-  const si = _r_correr('clientSelfGenerate', mk(), [], true);
-  assert.strictEqual(si.c.routines[0].id, 'auto');
-  const libre = _r_correr('clientSelfGenerate', { id: 'c6', name: 'N', routines: [_r_rut({ id: 'vieja' })] }, [], false);
-  assert.strictEqual(libre.calls.confirm, 0); assert.strictEqual(libre.c.routines[0].id, 'auto');
+test('v746 · «✨ Regenerar mi semana» de la persona: dos toques, y su texto no inventa un entrenador ni dice que se borran los entrenos', () => {
+  const mk = (extra) => Object.assign({ id: 'c5', name: 'N', tier: 'libre', selfReg: true, routines: [_r_rut({ id: 'vieja', origen: 'plantilla-inicio' })] }, extra || {});
+  const uno = _r_correr('clientSelfGenerate', mk(), [{ date: '2026-11-08' }], 1);
+  assert.strictEqual(uno.c.routines[0].id, 'vieja', 'regeneró sin permiso'); assert.strictEqual(uno.llamadas.confirm, 0);
+  const msg = uno.llamadas.toast[0];
+  assert.ok(!/entrenador|coach/i.test(msg), 'a quien no tiene entrenador se le habla de uno: ' + msg);
+  assert.ok(!/borrador/i.test(msg) && /se conservan/.test(msg) && !/se borran|borra/i.test(msg), msg);
+  assert.strictEqual(_r_correr('clientSelfGenerate', mk(), [], 2).c.routines[0].id, 'auto');
+  // Con entrenador sí puede nombrarlo.
+  const conCoach = _r_correr('clientSelfGenerate', mk({ tier: 'premium', routines: [_r_rut({ id: 'vieja', reviewed: true })] }), [], 1);
+  assert.ok(/tu entrenador ya revisó/.test(conCoach.llamadas.toast[0]), conCoach.llamadas.toast[0]);
+  // CONTROL: sin nada que cuidar, de un toque.
+  const libre = _r_correr('clientSelfGenerate', mk({ routines: [_r_rut({ id: 'vieja' })] }), [], 1);
+  assert.strictEqual(libre.c.routines[0].id, 'auto');
+});
+
+test('🔒 v746 · regenerar NO usa confirm(): ni el borrador del coach, ni «Regenerar mi semana», ni la edición de un usuario libre', () => {
+  const fs = require('fs'), path = require('path');
+  const sinC = tx => tx.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const src = sinC(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n'));
+  const tomar = n => { const i = src.indexOf('function ' + n + '('); assert.ok(i >= 0, n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
+  for (const n of ['confirmGenRutinas', 'clientSelfGenerate', '_regenDosToques']) assert.ok(!/\bconfirm\(/.test(tomar(n)), n + ' volvió al confirm() nativo');
+  const g = src.indexOf('const trainingChanged'), edit = src.slice(g, g + 900);
+  assert.ok(g > 0 && !/\bconfirm\(/.test(edit) && !/_autoGenerateWeek\(/.test(edit), 'editar a un usuario libre sigue regenerando con confirm()');
+  assert.ok(/_regenDosToques\(btn,/.test(tomar('confirmGenRutinas')) && /_regenDosToques\(btn,/.test(tomar('clientSelfGenerate')));
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.ok(html.includes('onclick="confirmGenRutinas(this)"'), 'el botón no le pasa el botón a la función: no puede armarse');
+  const ent = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8');
+  assert.ok(/regen\.onclick=function\(\)\{ clientSelfGenerate\(this\); \}/.test(ent));
+});
+
+test('v746 · la nota de la rutina de inicio no dice «armada por el coach» a quien no tiene coach', () => {
+  const sin = _t_gen(_t_mujer('n1'), 5, { audience: 'client' }).routines[0].note;
+  const con = _t_gen(_t_mujer('n1'), 5).routines[0].note;
+  assert.ok(/^📋 Tu rutina de inicio\./.test(sin) && !/coach|entrenador/i.test(sin), sin);
+  assert.ok(/tu plantilla/.test(con), con);
 });
 
 test('v746 · cuando el coach guarda una rutina que armó la app, queda REVISADA (y si el asesorado la guarda por sí mismo, no)', () => {
@@ -27047,6 +27086,194 @@ test('🔒 v746 · sbSet NO escribe desde localhost/harness (sello), y en produc
   };
   const r = [correr('localhost'), correr('127.0.0.1'), correr('app.avientrena.com'), correr('localhost', true)];
   assert.deepStrictEqual(r, [0, 0, 1, 1], 'localhost no debe escribir; producción y el escape hatch sí: ' + r);
+});
+
+// ══════════════════════════════════════════════════════
+// v746 · CORRECCIONES DEL VERIFICADOR: carga alta, patrones del relleno, días de pierna, correctivo
+// ══════════════════════════════════════════════════════
+section('v746 · Plantilla: carga alta, patrones y días');
+
+const _V_GUIADO = /maquina|polea|cable|prensa|smith|hack|peck|contractora|hammer|multipower|jaca|asistid|guiad|sentado|banda/;
+const _v_fuerza = e => !e.corrective && e.muscle !== 'core' && e.muscle !== 'cardio' && e.type !== 'Isométrico';
+const _v_norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const _v_cuenta = out => { let g = 0, t = 0; out.routines.forEach(r => r.exercises.filter(_v_fuerza).forEach(e => { t++; if (_V_GUIADO.test(_v_norm(e.name))) g++; })); return { g, t }; };
+const _v_foco = nombre => { for (const po of Object.values(core.PLANTILLAS_INICIO)) for (const ps of Object.values(po)) for (const pl of Object.values(ps)) { const d = pl.dias.find(x => x.nombre === nombre); if (d) return d.focus || []; } return []; };
+
+test('v746 · perfil de carga ALTO: la plantilla no pierde lo guiado (contra el comportamiento de antes), con orden y series del coach', () => {
+  const c = _t_mujer('pesada', { weight: 98, height: 160 });
+  assert.strictEqual(core.bodyLoadProfile(c, null, 98, null), 'high');
+  const o = { loadProfile: 'high' };
+  for (const days of [3, 4]) {
+    const antes = _v_cuenta(_t_gen(Object.assign({}, c, { days, gymFullEquip: true }), 3, Object.assign({ sinPlantilla: true }, o)));   // el generador de antes de las plantillas
+    const hoy = _v_cuenta(_t_gen(Object.assign({}, c, { days }), 3, o));
+    const gen = _v_cuenta(_t_gen(Object.assign({}, c, { days }), 3, Object.assign({ sinPlantilla: true }, o)));
+    assert.ok(antes.g / antes.t >= 0.9, 'control: el generador de antes SÍ entregaba casi todo guiado: ' + antes.g + '/' + antes.t);
+    assert.ok(hoy.g / hoy.t >= gen.g / gen.t, 'la plantilla entrega menos guiado que el generador actual: ' + hoy.g + '/' + hoy.t + ' vs ' + gen.g + '/' + gen.t);
+    assert.ok(hoy.g / hoy.t >= 0.9, 'carga alta: ' + hoy.g + '/' + hoy.t + ' guiados');
+    // Con el equipo completo declarado, TODA la fuerza es guiada (igual que antes).
+    const full = _v_cuenta(_t_gen(Object.assign({}, c, { days, gymFullEquip: true }), 3, o));
+    assert.ok(full.g >= full.t - 1, 'con equipo completo: ' + full.g + '/' + full.t);
+  }
+  // El orden y las series del coach se conservan en lo que NO se cambió; el compuesto objetivo abre.
+  const out = _t_gen(c, 3, o);
+  out.routines.forEach(r => {
+    const ex = r.exercises.filter(e => !e.corrective);
+    const foco = _v_foco(r.name);
+    assert.ok(ex[0].type === 'Compuesto' && foco.indexOf(ex[0].muscle) >= 0, r.name + ' abre con ' + ex[0].name);
+    ex.filter(e => !e.plantillaReemplazo).forEach(e => {
+      const it = Object.values(core.PLANTILLAS_INICIO.gym.F[3].dias).flatMap(d => d.ejercicios).find(i => i.id === e.id);
+      assert.ok(it && e.sets === it.series && e.reps === it.reps, 'cambió las series de ' + e.name);
+    });
+  });
+  // CONTROL: con perfil normal sale la plantilla exacta (lo guiado lo causa la carga, no otra cosa).
+  assert.deepStrictEqual(_t_ids(_t_gen(c, 3, { loadProfile: 'normal' })), [_T_GLUTEO, _T_TREN, _T_PIERNA]);
+  assert.ok(_t_gen(c, 3, o).routines.some(r => r.exercises.some(e => e.plantillaMotivo === 'carga')));
+});
+
+test('v746 · el borde del IMC 30: justo en 30,0 es carga alta (con el decimal flotante), en 29,9 no', () => {
+  const justo = { weight: 76.8, height: 160 };      // 76,8 / 1,6² = 30,0 (en flotante sale 29,99999999999999)
+  const debajo = { weight: 76.7, height: 160 };
+  assert.strictEqual(core.bodyLoadProfile(justo, null, 76.8, null), 'high');
+  assert.strictEqual(core.bodyLoadProfile(debajo, null, 76.7, null), 'normal');
+  const plan = (c, lp) => _t_ids(_t_gen(_t_mujer('b', c), 3, { loadProfile: lp }));
+  assert.notDeepStrictEqual(plan(justo, core.bodyLoadProfile(justo, null, 76.8, null)), [_T_GLUTEO, _T_TREN, _T_PIERNA], 'en 30,0 la plantilla debe adaptarse');
+  assert.deepStrictEqual(plan(debajo, core.bodyLoadProfile(debajo, null, 76.7, null)), [_T_GLUTEO, _T_TREN, _T_PIERNA]);
+});
+
+test('v746 · el relleno de la plantilla no repite patrón ni deja un día que abra con gemelo (barrido de condiciones)', () => {
+  const notas = ['dolor de rodilla', 'hernia lumbar', 'desgarro de aductor', 'esguince de tobillo', 'lesión de hombro', 'dolor de muñeca',
+    'dolor de rodilla, desgarro de aductor', 'dolor de rodilla y hernia lumbar', 'dolor de rodilla, aductor y tobillo', 'estoy embarazada'];
+  let dias = 0, reemplazos = 0, huecos = 0; const malos = [];
+  for (const nota of notas) for (const days of [3, 4]) for (const lp of ['normal', 'high']) {
+    const c = _t_mujer('r' + dias, { notes: nota, days });
+    const lim = core.limitationsFor(c, Date.parse(_T_NOW));
+    const out = _t_gen(c, 5, { loadProfile: lp });
+    out.routines.forEach(r => {
+      const ex = r.exercises.filter(e => !e.corrective);
+      dias++;
+      const pl = core.PLANTILLAS_INICIO.gym.F[days].dias.find(d => d.nombre === r.name);
+      huecos += pl.ejercicios.length - ex.length;
+      reemplazos += ex.filter(e => e.plantillaReemplazo).length;
+      const vistos = {};
+      ex.forEach(e => { const p = core._genPatron(e); if (p) { if (vistos[p]) malos.push(nota + '/' + r.name + ': patrón repetido ' + p + ' (' + e.name + ')'); vistos[p] = 1; } });
+      // «casi iguales» = mismo músculo, tipo y patrón. Solo cuenta si el reemplazo LO CREÓ (el par curl + martillo ya es del coach).
+      const igual = (a, b) => a.muscle === b.muscle && a.type === b.type && core._genPatron(a) === core._genPatron(b);
+      ex.forEach((e, i) => ex.forEach((d, k) => { if (k < i && (e.plantillaReemplazo || d.plantillaReemplazo) && igual(e, d)) {
+        const dEra = d.plantillaReemplazo ? _LIB_REAL.find(x => x.id === d.plantillaReemplazo) : d, eEra = e.plantillaReemplazo ? _LIB_REAL.find(x => x.id === e.plantillaReemplazo) : e;
+        if (!igual(dEra, eEra)) malos.push(nota + '/' + r.name + ': casi iguales ' + d.name + ' / ' + e.name); } }));
+      if (ex.some(e => e.plantillaReemplazo)) {
+        const foco = _v_foco(r.name);
+        if (ex.some(e => e.type === 'Compuesto' && foco.indexOf(e.muscle) >= 0) && !(ex[0].type === 'Compuesto' && foco.indexOf(ex[0].muscle) >= 0))
+          malos.push(nota + '/' + r.name + ': abre con ' + ex[0].name);
+      }
+      assert.ok(!ex.some(e => core.exerciseContraindicated(e, lim.keys, _LIB_REAL)), nota + ' prohibido');
+      assert.ok(new Set(ex.map(e => e.id)).size === ex.length, 'repetido');
+    });
+  }
+  assert.deepStrictEqual(malos.slice(0, 6), [], malos.length + ' problemas');
+  assert.ok(reemplazos > 50, 'control: el barrido debe reemplazar cosas: ' + reemplazos);
+  assert.ok(huecos > 0, 'control: alguna vez el hueco se queda vacío antes de repetir patrón: ' + huecos);
+});
+
+test('v746 · los casos medidos por el verificador: sin Hip Thrust + Puente, sin 2 prensas ni 2 gemelos, abre con compuesto', () => {
+  // Rodilla: la Pierna de antes salía Talones / Prensa horizontal / Prensa / Curl / Talones en prensa / Bici.
+  const rod = _t_gen(_t_mujer('x1', { notes: 'dolor de rodilla' }), 1).routines.find(r => r.name === 'Pierna').exercises.filter(e => !e.corrective);
+  assert.ok(rod.filter(e => core._genPatron(e) === 'prensa').length <= 1 && rod.filter(e => core._genPatron(e) === 'talones').length <= 1, rod.map(e => e.name).join(' / '));
+  assert.strictEqual(rod[0].type, 'Compuesto');
+  // Rodilla + aductor: antes llegaban 3 prensas.
+  const dos = _t_gen(_t_mujer('x2', { notes: 'dolor de rodilla, desgarro de aductor', days: 4 }), 1);
+  dos.routines.forEach(r => assert.ok(r.exercises.filter(e => !e.corrective && core._genPatron(e) === 'prensa').length <= 1, r.name));
+  // Hip Thrust con Barra + Puente de Glúteo en el mismo día (390 casos): si el filtro saca lo que no es el hip thrust, el puente no entra.
+  for (const nota of ['dolor de rodilla', 'hernia lumbar', 'desgarro de aductor', 'dolor de rodilla, desgarro de aductor']) {
+    const g = _t_gen(_t_mujer('x3', { notes: nota }), 1).routines[0].exercises.filter(e => !e.corrective);
+    assert.ok(!(g.some(e => e.id === 'e42') && g.some(e => core._genPatron(e) === 'empuje_cadera' && e.id !== 'e42')), nota + ': ' + g.map(e => e.name).join(' / '));
+  }
+});
+
+test('v746 · el correctivo de la zona no se pierde en ningún día de la plantilla (aductor, rodilla, lumbar)', () => {
+  for (const nota of ['desgarro de aductor', 'dolor de rodilla', 'hernia lumbar']) for (const days of [3, 4]) {
+    const out = _t_gen(_t_mujer('co', { notes: nota, days }), 2);
+    out.routines.forEach(r => assert.ok(r.exercises.some(e => e.corrective), nota + ' / ' + r.name + ': sin correctivo'));
+  }
+  // El ejercicio reservado para el correctivo no lo gasta el relleno (si no, "ya lo tiene" y se salta el aviso).
+  const cargado = _t_gen(_t_mujer('co2', { notes: 'desgarro de aductor' }), 2).routines[0].exercises.filter(e => e.corrective);
+  assert.strictEqual(cargado.length, 1);
+  assert.ok(cargado[0].correctiveWhy && cargado[0].correctiveWhy.length > 10);
+});
+
+test('v746 · una alternativa del coach, cuando la hay, entra en su puesto (mecanismo) y el cambio queda dicho en la rutina', () => {
+  const mini = { gym: { F: { 3: { id: 'alt', nombre: 'p', dias: [0, 1, 2].map(() => ({ nombre: 'D', focus: ['gluteo'], ejercicios: [
+    { id: 'e42', series: 4, reps: 10 }, { id: 'e61', series: 4, reps: 10, alternativa: 'e70' }, { id: 'e15', series: 3, reps: 15 }] })) } } } };
+  const c = _t_mujer('alt', { notes: 'Hernia discal L4-L5 diagnosticada, dolor lumbar al flexionar' });
+  const out = core.generarRutinas(c, _LIB_REAL, { seed: 5, now: _T_NOW, idFn: () => 'r', place: 'gym', plantillas: mini });
+  const g = out.routines[0].exercises.filter(e => !e.corrective);
+  assert.deepStrictEqual(g.map(e => e.id), ['e42', 'e70', 'e15']);
+  assert.strictEqual(g[1].plantillaReemplazo, 'e61'); assert.strictEqual(g[1].plantillaReemplazoNombre, 'Sentadilla Sumo');
+  assert.strictEqual(g[1].plantillaMotivo, 'salud'); assert.strictEqual(g[1].sets, 4); assert.strictEqual(g[1].reps, 10);
+  // Una alternativa que repite el patrón del día (Hip Thrust + Puente de Glúteo) NO entra: el relleno general decide.
+  const rep = { gym: { F: { 3: { id: 'alt2', nombre: 'p', dias: [0, 1, 2].map(() => ({ nombre: 'D', focus: ['gluteo'], ejercicios: [
+    { id: 'e42', series: 4, reps: 10 }, { id: 'e61', series: 4, reps: 10, alternativa: 'e73' }, { id: 'e15', series: 3, reps: 15 }] })) } } } };
+  const g2 = core.generarRutinas(c, _LIB_REAL, { seed: 5, now: _T_NOW, idFn: () => 'r', place: 'gym', plantillas: rep }).routines[0].exercises.filter(e => !e.corrective);
+  assert.ok(!g2.some(e => e.id === 'e73'), 'puso Puente de Glúteo detrás del Hip Thrust');
+  // Y los datos sembrados NO traen alternativas inventadas.
+  assert.ok(!JSON.stringify(core.PLANTILLAS_INICIO).includes('alternativa'));
+});
+
+test('v746 · la ficha del coach y la vista previa MUESTRAN qué ejercicio suyo se cambió y por cuál', () => {
+  const fs = require('fs'), path = require('path');
+  const sinC = t => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const coach = sinC(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8').replace(/\r\n/g, '\n'));
+  const i = coach.indexOf('function _plCambioTag('), tag = coach.slice(i, coach.indexOf('\n}\n', i) + 3);
+  assert.ok(i > 0 && /plantillaReemplazoNombre/.test(tag) && /esc\(/.test(tag));
+  const k = coach.indexOf('function renderDetailRoutines('), det = coach.slice(k, coach.indexOf('\nfunction ', k + 10));
+  const g = coach.indexOf('function renderGenPreview('), pre = coach.slice(g, coach.indexOf('\nfunction ', g + 10));
+  assert.ok(/_plCambioTag\(e\)/.test(det) && /_plCambioTag\(e\)/.test(pre), 'no se pinta en la ficha y en la vista previa');
+  // Ejecutada: el texto dice cuál era y por qué.
+  const f = new Function('esc', tag + '\nreturn _plCambioTag;')(s => String(s));
+  const t = f({ plantillaReemplazo: 'e61', plantillaReemplazoNombre: 'Sentadilla Sumo', plantillaMotivo: 'salud' });
+  assert.ok(/Sentadilla Sumo/.test(t) && /limitaci/.test(t), t);
+  assert.ok(/peso/.test(f({ plantillaReemplazo: 'e42', plantillaReemplazoNombre: 'Hip Thrust con Barra', plantillaMotivo: 'carga' })));
+  assert.strictEqual(f({ id: 'e42' }), '');
+});
+
+test('v746 · días de pierna NO seguidos: la plantilla y el generador, para cualquier día de registro', () => {
+  const adyacentes = out => { const ix = out.routines.map(r => ({ d: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].indexOf(r.day), pierna: /Glúteo|Pierna/.test(r.name) })).filter(x => x.pierna);
+    for (let i = 0; i < ix.length; i++) for (let j = i + 1; j < ix.length; j++) if (Math.abs(ix[i].d - ix[j].d) === 1) return true; return false; };
+  const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  let casos = 0;
+  for (const start of dias) for (const days of [3, 4]) {
+    const t = _t_gen(_t_mujer('d', { days }), 1, { startDay: start });
+    assert.strictEqual(t.routines[0].day, start, 'el primer entreno es el de hoy');
+    assert.strictEqual(t.routines[0].name, 'Glúteo');
+    assert.strictEqual(adyacentes(t), false, 'plantilla ' + days + ' desde ' + start + ': ' + t.routines.map(r => r.day + '=' + r.name).join(', '));
+    for (const sex of ['F', 'M']) {
+      const g = _t_gen(_t_mujer('d', { sex, days, level: 'Intermedio' }), 1, { startDay: start, sinPlantilla: true });
+      assert.strictEqual(g.routines[0].day, start);
+      assert.strictEqual(adyacentes(g), false, 'generador ' + sex + days + ' desde ' + start + ': ' + g.routines.map(r => r.day + '=' + r.name).join(', '));
+    }
+    casos++;
+  }
+  assert.strictEqual(casos, 10);
+  // CONTROL: sin la separación, quien se registra un martes SÍ quedaba con Glúteo y Pierna pegados.
+  const crudo = core.genWeekDays(3, 1);                // Martes, Jueves, Lunes
+  assert.deepStrictEqual(crudo, ['Martes', 'Jueves', 'Lunes']);
+  assert.deepStrictEqual(core.genSepararPiernas(crudo, [true, false, true]), ['Martes', 'Lunes', 'Jueves']);
+  assert.deepStrictEqual(core.genSepararPiernas(['Lunes', 'Miércoles', 'Viernes'], [true, false, true]), ['Lunes', 'Miércoles', 'Viernes'], 'lo que ya cuadra no se toca');
+  assert.deepStrictEqual(core.genSepararPiernas(['Lunes', 'Martes'], [true, true]), ['Lunes', 'Martes'], 'con 2 días no hay qué separar');
+});
+
+test('v746 · el ejercicio del correctivo está RESERVADO: el relleno no se lo come y el correctivo sale con su explicación', () => {
+  // e359 (puente con banda) no pasa en gimnasio; su relleno natural es e73 (puente de glúteo), que ES el correctivo del aductor.
+  const mini = { gym: { F: { 3: { id: 'res', nombre: 'p', dias: [0, 1, 2].map(() => ({ nombre: 'D', focus: ['gluteo'], ejercicios: [
+    { id: 'e359', series: 3, reps: 12 }, { id: 'e15', series: 3, reps: 15 }] })) } } } };
+  const c = _t_mujer('res', { notes: 'desgarro de aductor' });
+  const out = core.generarRutinas(c, _LIB_REAL, { seed: 5, now: _T_NOW, idFn: () => 'r', place: 'gym', plantillas: mini });
+  out.routines.forEach(r => {
+    const e73 = r.exercises.filter(e => e.id === 'e73');
+    assert.strictEqual(e73.length, 1, r.name + ': el puente tiene que salir UNA vez');
+    assert.strictEqual(e73[0].corrective, true, 'el relleno se comió el ejercicio del correctivo y este salió sin su explicación');
+    assert.ok(e73[0].correctiveWhy);
+  });
 });
 
 // ══════════════════════════════════════════════════════

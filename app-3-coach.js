@@ -435,10 +435,9 @@ async function saveClient(){
       // ¿Cambiaron datos que afectan la rutina de un usuario LIBRE (auto-generada)?
       const trainingChanged=isFreeClient(existing)&&(existing.place!==data.place||existing.goal!==data.goal||existing.level!==data.level||existing.days!==data.days);
       DB.clients[i]={...existing,...data};
-      const _avisoEd=trainingChanged?regenerarAviso(regenerarMotivos(existing,DB.history&&DB.history[existing.id]),'coach'):null;
-      if(trainingChanged&&confirm('Corregiste datos de entrenamiento de un usuario en modo libre. ¿Regenerar su rutina automática para que coincida?'+(_avisoEd?'\n\n'+_avisoEd:''))){
-        try{ _autoGenerateWeek(DB.clients[i]); toast('✨ Rutina regenerada con los nuevos datos'); }catch(e){ warn('AVI: regen tras editar falló:',e&&e.message); }
-      }
+      // v746 · ya NO regenera aquí (era un confirm() nativo sobre algo irreversible, regla v568): la semana nueva se pide con
+      // «Generar semana» en su ficha, que enseña el plan antes y pide dos toques para reemplazar. Solo se avisa.
+      if(trainingChanged)setTimeout(()=>toast('Cambiaste sus datos de entrenamiento. Para que su semana los refleje usa «Generar semana» en su ficha: ahí ves el plan antes de reemplazar nada.',6000),2700);
     }
     toast(`✅ ${data.name} actualizado`);
   } else {
@@ -2078,10 +2077,10 @@ function _wzFunnel(paso){
 }
 
 // Regenerar la semana desde la vista del asesorado (solo modo libre).
-function clientSelfGenerate(){
+function clientSelfGenerate(btn){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c)return;
-  const _aviso=regenerarAviso(regenerarMotivos(c,DB.history&&DB.history[c.id]),'client');
-  if(_aviso&&!confirm(_aviso))return;
+  const _aviso=regenerarAviso(regenerarMotivos(c,DB.history&&DB.history[c.id]),(typeof clientHasCoach==='function'&&clientHasCoach(c))?'client_coach':'client');
+  if(!_regenDosToques(btn,_aviso,'Toca otra vez para cambiar mi semana'))return;
   try{
     const res=_autoGenerateWeek(c);
     svNow('ax_c',DB.clients);
@@ -4071,6 +4070,12 @@ function dismissShockGlobal(){
   if(c)renderShockCard(c);
 }
 
+// v746 · lo que el coach quiere saber de una rutina de su plantilla: qué ejercicio SUYO se cambió y por cuál.
+function _plCambioTag(e){
+  if(!e||!e.plantillaReemplazo)return '';
+  const por=e.plantillaMotivo==='carga'?'por el peso de la persona (prioriza máquinas)':'por una limitación declarada';
+  return `<div class="exmet" style="color:var(--gt)">↔ Cambia «${esc(e.plantillaReemplazoNombre||e.plantillaReemplazo)}» de tu plantilla ${por}</div>`;
+}
 function renderDetailRoutines(c){
   const con=document.getElementById('d-routines');
   if(!(c.routines||[]).length){con.innerHTML='<div class="empty" style="padding:18px 0"><div class="eico" style="color:var(--g2)">'+_coIco('clipboard',34,'📋')+'</div><div class="etxt">Sin rutinas todavía</div><div class="esub">Crea la primera para este asesorado</div></div>';return}
@@ -4109,7 +4114,7 @@ function renderDetailRoutines(c){
         </div>
       </div>` : '';
 
-    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${_coIco('timer',11,'⏱')}${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Guardar como plantilla" aria-label="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">${_coIco('folder',14,'📂')}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar rutina" aria-label="Editar rutina" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar rutina" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div>${_exWarnChip(e,_limKeys,c.id==='_self')}</div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
+    div.innerHTML=`<div class="rch" onclick="this.closest('.rc').classList.toggle('open')"><div class="rcnum">${ri+1}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${exN} ejercicio${exN!==1?'s':''} · ${totS} series · ${_coIco('timer',11,'⏱')}${r.restSec||60}s</div></div><div style="display:flex;gap:4px;margin-right:4px"><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Guardar como plantilla" aria-label="Guardar como plantilla" onclick="event.stopPropagation();saveRoutineAsTemplate('${c.id}',${ri})">${_coIco('folder',14,'📂')}</button><button class="btn bg bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Editar rutina" aria-label="Editar rutina" onclick="event.stopPropagation();openEditRoutine('${c.id}',${ri})">${_coIco('pencil',13,'✏️')}</button><button class="btn bd bsm" style="padding:0 9px;min-height:36px;justify-content:center" title="Eliminar rutina" aria-label="Eliminar rutina" onclick="event.stopPropagation();delRoutine('${c.id}',${ri})">${_coIco('trash',14,'🗑️')}</button></div><div class="rcchev">▼</div></div><div class="rcbody">${r.note?`<div style="background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.30);border-radius:var(--rsm);padding:8px 12px;font-size:12px;color:var(--t1);margin-bottom:9px">💡 ${esc(r.note)}</div>`:''}${!(r.exercises||[]).length?'<div style="color:var(--t3);font-size:13px">Sin ejercicios</div>':(r.exercises||[]).map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div>${_plCambioTag(e)}${_exWarnChip(e,_limKeys,c.id==='_self')}</div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('')}${wuPreview}</div>`;
     con.appendChild(div);
   });
   // v746 · lo que la persona cambió por su cuenta en el entreno (🔄): qué por cuál y cuándo. Un cambio repetido del
@@ -4215,21 +4220,32 @@ function renderGenPreview(c,res){
   const warn=_card+(_lim.detected?`<div style="background:#fde8e8;border:1px solid var(--rd);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#a02020;margin-bottom:12px"><b>⚠️ Limitación detectada</b> (${esc(_lim.zones.join(', '))}). ${esc(_lim.advice)} <b>Revisa cada día antes de aprobar</b> — un algoritmo no conoce el detalle clínico, tú sí.${_cond}${_nerve}</div>`:'');
   const gaps=(res.envGaps&&res.envGaps.length)?`<div style="background:var(--yll);border:1px solid var(--yl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--ylt);margin-bottom:12px"><b>ℹ️ Sin opciones en este entorno para:</b> ${esc(res.envGaps.join(', '))}. Esos grupos quedaron sin cubrir (en peso corporal, tirar y curl exigen resistencia). Sugerencia: una <b>banda elástica</b> los desbloquea, o cambia el entorno del asesorado.</div>`:'';
   const adaptBanner=res.adaptation?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>🌱 Fase de adaptación</b> — este asesorado lleva pocas semanas, así que el borrador usa <b>15-20 reps con poco o nada de peso</b> y foco en técnica (sin importar el objetivo). Las cargas suben solas cuando pase la fase (~3 semanas). Profesional desde el día 1.</div>`:'';
-  const plBanner=res.plantilla?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>📋 Plantilla de inicio</b> — este borrador es TU plantilla para quien empieza, con las series y repeticiones que escribiste y en tu orden. Solo cambia un ejercicio si una limitación declarada lo prohíbe (lo marca en la rutina).</div>`:'';
+  const plBanner=res.plantilla?`<div style="background:#e9f8f0;border:1px solid var(--g);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:#1c6b4a;margin-bottom:12px"><b>📋 Plantilla de inicio</b> — este borrador es TU plantilla para quien empieza, con las series y repeticiones que escribiste y en tu orden. Solo cambia un ejercicio si una limitación declarada lo prohíbe o si su perfil de carga pide máquinas; cada cambio sale marcado en su fila (↔).</div>`:'';
   const loadBanner=res.loadProfile==='high'?`<div style="background:var(--bll);border:1px solid var(--bl);border-radius:var(--rsm);padding:10px 12px;font-size:12px;color:var(--blt);margin-bottom:12px"><b>⚖️ Perfil de carga alto</b> (IMC/cintura) — el borrador prioriza <b>máquinas y movimientos guiados/asistidos</b> y evita saltos/pliométricos, para cuidar articulaciones mientras gana base. Ajústalo según veas a la persona.</div>`:'';
   const intro=`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Borrador para <b>${esc(c.goal||'—')}</b> · ${esc(c.level||'—')} · ${res.routines.length} días/semana · ${PLACE_LABELS[res.place]||'🏋️ Gym'}. Es un punto de partida: confírmalo y luego ajusta cada rutina en el editor (✏️).</div>`;
   const cards=res.routines.map(r=>{
     const totS=r.exercises.reduce((s,e)=>s+(parseInt(e.sets)||0),0);
-    const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div></div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('');
+    const exs=r.exercises.map((e,_ei,_arr)=>`<div class="exrow"><div class="exicon" style="background:${MC[e.muscle]||'#ccc'}18;border:1px solid ${MC[e.muscle]||'#ccc'}30">${exIcon(e)}</div><div><div class="exname">${esc(e.name)}</div><div class="exmet">${esc(typeof exMuscleText==='function'?exMuscleText(e):e.muscle)} · ${esc(e.type)} · ${_coIco('timer',11,'⏱')}${restForExercise(e,r)}s${bisetInfo(_arr,_ei).biset?' · <span class="biset-tag">'+_coIco('link',10,'🔗')+' biserie</span>':''}</div>${_plCambioTag(e)}</div><div class="exsets">${exSetsCellHTML(e)}</div></div>`).join('');
     return `<div class="rc open" style="margin-bottom:8px"><div class="rch"><div class="rcnum">${r.day.slice(0,2)}</div><div class="rci"><div class="rcname">${esc(r.name)}</div><div class="rcmeta">${esc(r.day)} · ${r.exercises.length} ejercicios · ${totS} series · ⏱${r.restSec}s</div></div></div><div class="rcbody" style="display:block">${exs}</div></div>`;
   }).join('');
   document.getElementById('mg-body').innerHTML=warn+gaps+plBanner+adaptBanner+loadBanner+intro+cards;
 }
-function confirmGenRutinas(){
+// v746 · REEMPLAZAR UNA SEMANA NO SE PREGUNTA CON confirm() (regla v568): dos toques sobre el propio botón, que se desarma
+// solo a los 6 segundos. Devuelve true si ya se puede seguir (no hay nada que cuidar, o es el segundo toque).
+function _regenDosToques(btn,aviso,textoArmado){
+  if(!aviso)return true;
+  if(!btn)return false;                                  // sin botón no se puede preguntar: no se reemplaza nada
+  if(btn.dataset.armed==='1'){ btn.dataset.armed=''; if(btn._txt!=null)btn.textContent=btn._txt; return true; }
+  btn._txt=btn.textContent; btn.dataset.armed='1'; btn.textContent=textoArmado;
+  toast(aviso,6000);
+  setTimeout(()=>{ if(btn&&btn.isConnected&&btn.dataset.armed==='1'){ btn.dataset.armed=''; btn.textContent=btn._txt; } },6000);
+  return false;
+}
+function confirmGenRutinas(btn){
   const c=DB.clients.find(x=>x.id===CUR.clientId);if(!c||!CUR.genDraft)return;
   // v746 · regenerar REEMPLAZA: si ya hay algo que valía la pena (revisado, de plantilla, con entrenos), se pregunta.
   const _aviso=regenerarAviso(regenerarMotivos(c,DB.history&&DB.history[c.id]),'coach');
-  if(_aviso&&!confirm(_aviso))return;
+  if(!_regenDosToques(btn,_aviso,'Toca otra vez para reemplazar'))return;
   const n=CUR.genDraft.routines.length;
   // REEMPLAZA la semana, no la acumula: antes hacía push y regenerar daba 3+3=6 días
   // (bug reportado por Camilo 2026-06-23). Consistente con _autoGenerateWeek/clientSelfGenerate,

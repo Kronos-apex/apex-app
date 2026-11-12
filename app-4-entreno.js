@@ -3888,7 +3888,7 @@ function renderClientAllRoutines(client){
     regen.className='btn bd bsm';
     regen.style.cssText='width:100%;margin-bottom:10px';
     regen.textContent='✨ Regenerar mi semana';
-    regen.onclick=clientSelfGenerate;
+    regen.onclick=function(){ clientSelfGenerate(this); };
     con.appendChild(regen);
   }
   // (El botón «+ Nueva rutina» va DESPUÉS de la lista — ver más abajo. Estudio de interfaz

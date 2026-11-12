@@ -69,6 +69,11 @@
 - **Personalización por composición (v1.5):** `bodyLoadProfile(client, cintura)` → 'high' si IMC≥30 (`bmiFrom`) o relación cintura-talla≥0.60. 'high' → `opts.loadProfile` prioriza variantes guiadas/asistidas (`GEN_ASSISTED_RE`) y excluye alto impacto/pliométricos (`GEN_HIIMPACT_RE`).
 - `opts`: `{idFn, now, seed, tier, place, methodBias, adaptation, loadProfile}`. Retorna `{routines, needsReview, limitations, place, envGaps, adaptation, loadProfile}`.
 - Botón ✨ "Generar semana" en el detalle del asesorado (coach). En modo libre: `_autoGenerateWeek(c)` (reusa el motor) al registrarse y botón "✨ Regenerar mi semana".
+- **v746 · plantillas de inicio:** `PLANTILLAS_INICIO` (dato) + `plantillaInicioFor(place, sexKey, days, level)` + `validarPlantillasInicio(plantillas, lib)`; `_genDiasPlantilla` arma los días (filtro de salud de siempre, perfil de carga alto → variante guiada, relleno SIN repetir patrón `_genPatron` ni «casi iguales», hueco vacío antes que repetir, compuesto objetivo abre si algo se reemplazó). Ver `docs/plantillas-inicio.md`.
+- **v746 · equipo poco común:** `EX_UNCOMMON` (id → motivo) + `exUncommon(ex)`; el generador no los elige salvo `gymFullEquip:true` del perfil (sin pantalla aún) o ⭐ del coach.
+- **v746 · orden y días:** `GEN_DAYS[x].focus` (músculo objetivo del día), `_genOrdenar` / `_genGemelos` (sin dos compuestos casi iguales seguidos), `genSepararPiernas(dias, piernas)` (Glúteo y Pierna nunca en días seguidos; el primer día es el de hoy).
+- **v746 · regenerar con cuidado:** `regenerarMotivos(client, history)` + `regenerarAviso(motivos, audience)` ('coach' | 'client' | 'client_coach'); en la app `_regenDosToques(btn, aviso, texto)` (dos toques, sin `confirm()`) en `confirmGenRutinas(btn)` y `clientSelfGenerate(btn)`. Guardar una rutina generada desde el panel la marca `reviewed:true`.
+- **v746 · cambios de ejercicio:** `swapLogAdd(client, ev)` → `client.swapLog` (40 máx., viaja en el perfil); el coach los ve al pie de «Entreno» en la ficha. `_plCambioTag(e)` pinta «Cambia X de tu plantilla…» en la ficha y en la vista previa.
 
 ### Auto-registro y modo libre (v1.5 — `avi-core.js` + inline)
 - `validateSignup(data, clients, coachEmail)` — valida email/único/no-coach/contraseña.
@@ -76,7 +81,7 @@
 - `isFreeClient(client)` = `tier==='libre'` — **gating Premium**. Free conserva entrenar + rutina auto-generada + historial básico. SOLO Premium (con coach): chat (`renderClientMsgs`), nutrición (`renderNutritionClient`), fotos+medidas (`renderPhotosClient`/`renderMedidasClient`), analítica (`renderVolChart`/`renderPRsInProfile`/`renderClientExProgress`). Bloqueo = `premiumLockHTML()` (candado + "Quiero un coach").
 - `requestCoach()` — libre pide coach: `wantsCoach=true` + escribe mensaje al chat → le LLEGA al coach (su `pollMessages` re-trae `ax_c` con merge aditivo y notifica). Upsell `coachUpsellHTML`/`renderCoachUpsell` en "Hoy" y "Perfil".
 - `convertToPremium(cid)` — el coach activa Premium a un lead (`tier:'premium'`, limpia `wantsCoach`) → desbloquea todo. Botón "⭐ Activar Premium" en el detalle (`#d-freelead`).
-- Editar perfil de un libre (place/goal/level/days) ofrece **regenerar** su rutina para que coincida (`saveClient`).
+- Editar perfil de un libre (place/goal/level/days) AVISA de usar «Generar semana» (v746: ya no regenera ni pregunta con `confirm()` nativo; `saveClient`).
 
 ### Agregados de actividad por fecha (v1.5 — `avi-core.js`, deterministas, reciben `now`)
 - `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
