@@ -23,7 +23,8 @@ assert.ok(ini > 0, 'no se encontró el bloque de ventas');
   const fila = { id: 'v1', client_id: 'c1', producto_nombre: 'X', precio: 10, costo: 5, cuotas: 1, fecha: '2026-11-14', abonos: [], borrado: false };
   const ok = await ctx.__esc('coach_ventas', fila);
   assert.strictEqual(ok, false, '🔴 dijo que guardó sin red');
-  assert.ok(toasts.some(t => /No se guardó/.test(t)), '🔴 falló en silencio: ' + JSON.stringify(toasts));
+  // v750: suplEscribir ya NO avisa (dos toasts se pisan); el aviso lo decide quien la llama (lo prueba comprobar-ventas-flujo.cjs)
+  assert.strictEqual(toasts.length, 0, '🔴 suplEscribir volvió a lanzar su propio aviso y pisaría el de quien la llama: ' + JSON.stringify(toasts));
   assert.ok(ctx.__SUPL.pend.coach_ventas.v1, '🔴 la fila no quedó marcada como pendiente');
   const local = JSON.parse(guardados.ax_supl);
   assert.strictEqual(local.v.length, 1, '🔴 la venta no quedó en el teléfono');

@@ -45,6 +45,8 @@ create table if not exists public.coach_ventas (
 create index if not exists coach_productos_coach_idx on public.coach_productos (coach_id);
 create index if not exists coach_ventas_coach_idx on public.coach_ventas (coach_id);
 create index if not exists coach_ventas_client_idx on public.coach_ventas (client_id);
+-- `producto_id` es una llave foránea (on delete set null): sin índice, borrar un producto recorre toda la tabla de ventas.
+create index if not exists coach_ventas_producto_idx on public.coach_ventas (producto_id);
 
 -- ── RLS: solo el coach ───────────────────────────────────────────────────────────────────────────
 alter table public.coach_productos enable row level security;

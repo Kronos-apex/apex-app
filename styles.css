@@ -2783,7 +2783,7 @@ button.dt-tile:active{transform:scale(.97)}
 .vt-chip.on{border-color:var(--g);background:var(--gl);color:var(--gt)}
 .vt-dg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .vt-fld{margin-bottom:14px}
-.vt-hist{font-size:12px;color:var(--t2);padding:7px 0;border-top:1px solid var(--br);display:flex;justify-content:space-between}
+.vt-hist{font-size:12px;color:var(--t2);padding:7px 0;border-top:1px solid var(--br);display:flex;justify-content:space-between;align-items:center}
 .vt-hist b{font-family:'JetBrains Mono',monospace;color:var(--t1)}
 .vt-debt{border-left:3px solid var(--or);padding:10px 14px}
 .stat4{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}

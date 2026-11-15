@@ -27641,6 +27641,55 @@ test('v748 · sin red nada se pierde en silencio: la fila queda pendiente en el 
   assert.ok(/OK/.test(r.stdout));
 });
 
+// v750 · correcciones del verificador a la v748: se prueba EN EJECUCIÓN el bloque real de ventas (DOM y Supabase falsos)
+const _suplCorre = (script, env) => require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', script)], { encoding: 'utf8', env: Object.assign({}, process.env, env || {}) });
+test('v750 · flujo completo de ventas: sin red UN solo aviso (el de «guardado en el celular»), lo pendiente queda en ax_supl y la franja sale en las 3 pantallas', () => {
+  const r = _suplCorre('comprobar-ventas-flujo.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
+});
+test('v750 · S2 EN EJECUCIÓN: ni la ficha, ni el catálogo, ni abonos, editar, archivar o borrar tocan DB.clients ni clientToRow (sabotaje: colgar las ventas de _p)', () => {
+  const r = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'muta-cliente' });
+  assert.notStrictEqual(r.status, 0, '🔴 el candado S2 no detecta que la ficha cuelgue las ventas del asesorado');
+  assert.ok(/S2: DB\.clients cambió/.test(r.stderr), '🔴 falló por otra razón: ' + r.stderr.slice(0, 300));
+});
+test('v750 · S6 EN EJECUCIÓN: subir el precio del producto no cambia la venta vieja en la ficha (sabotaje: mostrar el precio vivo)', () => {
+  const r = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'precio-vivo' });
+  assert.notStrictEqual(r.status, 0, '🔴 el candado S6 no detecta el precio vivo en la ficha');
+  assert.ok(/S6: la venta vieja/.test(r.stderr), '🔴 falló por otra razón: ' + r.stderr.slice(0, 300));
+});
+test('v750 · los avisos no se pisan (sabotaje: el aviso del código de la v748) y la franja de pendientes sale en ficha, productos y panel', () => {
+  const a = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'toast-pisado' });
+  assert.notStrictEqual(a.status, 0, '🔴 el candado no detecta dos avisos que se pisan');
+  assert.ok(/QUEDA en pantalla/.test(a.stderr), a.stderr.slice(0, 300));
+  const b = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'franja-solo-ficha' });
+  assert.notStrictEqual(b.status, 0, '🔴 el candado no detecta la franja solo en la ficha');
+  assert.ok(/franja de pendientes en «Mis productos»/.test(b.stderr), b.stderr.slice(0, 300));
+});
+test('v750 · la carrera de la primera carga: una venta guardada mientras llega la nube no se pierde (sabotaje: mezcla que solo protege lo pendiente)', () => {
+  const r = _suplCorre('comprobar-ventas-carrera.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
+  const s = _suplCorre('comprobar-ventas-carrera.cjs', { SAB: 'mezcla-nube' });
+  assert.notStrictEqual(s.status, 0, '🔴 el candado de la carrera no detecta la venta perdida');
+  assert.ok(/desapareció/.test(s.stderr) && !/CONTROL/.test(s.stderr), '🔴 falló por otra razón (o el control sin carrera falló): ' + s.stderr.slice(0, 300));
+});
+test('v750 · la fecha de una venta o un abono sin fecha es la LOCAL de Bogotá, no la de UTC (23:30 del día 30)', () => {
+  const code = "const c=require('./avi-core.js');const a='2026-12-01T04:30:00.000Z';" +
+    "console.log(JSON.stringify([c.suplVentaNueva({id:'p',nombre:'X',precio:1,costo:0},{client_id:'c'},{ahora:a}).fecha,c.suplAbonoNuevo(1,null,'a',a).fecha]));";
+  const r = require('child_process').spawnSync(process.execPath, ['-e', code], { cwd: __dirname, encoding: 'utf8', env: Object.assign({}, process.env, { TZ: 'America/Bogota' }) });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.deepStrictEqual(JSON.parse(r.stdout), ['2026-11-30', '2026-11-30'], '🔴 la venta de las 23:30 del día 30 quedó con la fecha del día siguiente (UTC)');
+  // CONTROL: con una fecha dada se respeta tal cual
+  assert.strictEqual(core.suplVentaNueva({ id: 'p', nombre: 'X', precio: 1 }, { fecha: '2026-11-05' }, {}).fecha, '2026-11-05');
+});
+test('v750 · la migración tiene el índice de coach_ventas(producto_id) y sigue siendo idempotente', () => {
+  const fs = _supl748.fs, path = _supl748.path;
+  const dir = path.join(__dirname, 'supabase', 'migrations');
+  const sql = fs.readFileSync(path.join(dir, fs.readdirSync(dir).filter(n => /coach_ventas_suplementos/.test(n))[0]), 'utf8').replace(/\r/g, '').split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
+  assert.ok(/create index if not exists \w+ on public\.coach_ventas \(producto_id\)/.test(sql), '🔴 falta el índice de producto_id (llave foránea sin índice)');
+  const crea = sql.split(';').map(s => s.trim()).filter(s => /^create (table|index)/.test(s));
+  assert.ok(crea.length >= 6 && crea.every(s => /if not exists/.test(s)), '🔴 una creación no es idempotente');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

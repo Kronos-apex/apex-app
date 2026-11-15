@@ -14288,6 +14288,13 @@ function suplAvisoMenor(producto, client) {
   return { aviso, edad: aviso ? edad : null, bloquea: false };
 }
 // Venta nueva: COPIA nombre, precio y costo del momento (pueden venir cambiados para esta venta).
+// 'YYYY-MM-DD' del día de calendario LOCAL (Bogotá en los teléfonos reales). NUNCA `toISOString().slice(0,10)`:
+// a las 7 p.m. de Bogotá ya es «mañana» en UTC y la venta quedaba con la fecha del día siguiente.
+function _suplFechaLocal(d) {
+  const x = d instanceof Date ? d : new Date(d || Date.now());
+  const y = isNaN(x) ? new Date() : x;
+  return y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+}
 function suplVentaNueva(producto, datos, ids) {
   datos = datos || {}; ids = ids || {};
   const precio = datos.precio != null && datos.precio !== '' ? suplMonto(datos.precio) : suplMonto(producto && producto.precio);
@@ -14300,13 +14307,13 @@ function suplVentaNueva(producto, datos, ids) {
     producto_nombre: String((producto && producto.nombre) || datos.nombre || '').trim(),
     precio, costo,
     cuotas: Math.min(12, Math.max(1, parseInt(datos.cuotas, 10) || 1)),
-    fecha: datos.fecha || ahora.slice(0, 10),
+    fecha: datos.fecha || _suplFechaLocal(ids.ahora ? new Date(ids.ahora) : new Date()),
     abonos: [],
     borrado: false,
     creado: ahora, actualizado: ahora,
   };
 }
-function suplAbonoNuevo(monto, fecha, id) { return { id: id || null, monto: suplMonto(monto), fecha: fecha || new Date().toISOString().slice(0, 10) }; }
+function suplAbonoNuevo(monto, fecha, id, ahora) { return { id: id || null, monto: suplMonto(monto), fecha: fecha || _suplFechaLocal(ahora ? new Date(ahora) : new Date()) }; }
 function _suplMes(now) { const d = now || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function _suplVivas(ventas) { return (ventas || []).filter(v => v && !v.borrado); }
 function _suplEnMes(fecha, now) { return String(fecha || '').slice(0, 7) === _suplMes(now); }

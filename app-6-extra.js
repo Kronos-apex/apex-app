@@ -3478,7 +3478,7 @@ const SUPL_COLS={
   coach_productos:['id','coach_id','nombre','categoria','precio','costo','no_menores','activo','creado','actualizado'],
   coach_ventas:['id','coach_id','client_id','producto_id','producto_nombre','precio','costo','cuotas','fecha','abonos','borrado','creado','actualizado'],
 };
-const SUPL={productos:[],ventas:[],cargado:false,cargando:null,offline:false,_init:false,pend:{coach_productos:{},coach_ventas:{}},ui:{}};
+const SUPL={productos:[],ventas:[],cargado:false,cargando:null,offline:false,_init:false,pend:{coach_productos:{},coach_ventas:{}},sucio:{coach_productos:{},coach_ventas:{}},ui:{}};
 function _suplMon(n){ return '$'+Number(n||0).toLocaleString('es-CO'); }
 function _suplHoy(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function _suplFechaTxt(f){ if(!f)return ''; const d=new Date(String(f).slice(0,10)+'T12:00'); return isNaN(d)?'':d.toLocaleDateString('es-CO',{day:'numeric',month:'long'}); }
@@ -3500,11 +3500,23 @@ async function suplCliente(){
 function _suplFila(tabla,row,coachId){
   const o={}; SUPL_COLS[tabla].forEach(k=>{ if(row[k]!==undefined)o[k]=row[k]; }); o.coach_id=coachId; return o;
 }
-// Lo de la nube manda, salvo las filas que este teléfono todavía no pudo mandar (esas ganan hasta salir).
-function _suplMezcla(nube,local,pend){
+// Lo de la nube manda, salvo las filas que este teléfono protege: las pendientes (no salieron) y las que se
+// escribieron MIENTRAS la carga iba en camino (la foto de la nube es anterior y no las trae). Se une por id y
+// gana lo del teléfono; nada de eso se descarta al mezclar.
+function _suplMezcla(nube,local,protegidas){
   const porId={}; (nube||[]).forEach(r=>{ porId[r.id]=r; });
-  (local||[]).forEach(r=>{ if(r&&pend&&pend[r.id])porId[r.id]=r; });
+  (local||[]).forEach(r=>{ if(r&&protegidas&&protegidas[r.id])porId[r.id]=r; });
   return Object.keys(porId).map(k=>porId[k]);
+}
+function _suplProtegidas(tabla){ return Object.assign({},SUPL.sucio[tabla],SUPL.pend[tabla]); }
+function suplHayPendientes(){ return !!(SUPL.offline||Object.keys(SUPL.pend[SUPL_T_PROD]||{}).length||Object.keys(SUPL.pend[SUPL_T_VENT]||{}).length); }
+// Franja de «sin guardar en la nube»: la ficha, «Mis productos» y la tarjeta del panel la usan igual.
+function _suplFranja(){
+  return suplHayPendientes()?`<div class="vt-warn vt-pend"><span>📴</span><span>Hay ventas que aún no se guardan en la nube. Quedan en este teléfono y se mandan solas cuando haya señal.</span></div>`:'';
+}
+// UN solo aviso por acción (el toast tiene un solo lugar y gana el último): lo decide lo que devolvió suplEscribir.
+function _suplAviso(ok,textoOk){
+  toast(ok?textoOk:'Guardado en el celular; se sube cuando vuelva la señal',ok?2500:5200);
 }
 // Manda a la nube las filas pendientes. Devuelve true si no queda ninguna.
 async function suplReintentar(){
@@ -3528,13 +3540,14 @@ async function suplCargar(force){
   SUPL.cargando=(async()=>{
     try{
       if(suplSellada())return;
+      SUPL.sucio={coach_productos:{},coach_ventas:{}};   // lo que se escriba desde aquí hasta que llegue la nube
       const k=await suplCliente(); if(!k){ SUPL.offline=true; return; }
       const [rp,rv]=await Promise.all([
         k.c.from(SUPL_T_PROD).select('*').eq('coach_id',k.u.id),
         k.c.from(SUPL_T_VENT).select('*').eq('coach_id',k.u.id)]);
       if(rp.error||rv.error)throw (rp.error||rv.error);
-      SUPL.productos=_suplMezcla(rp.data,SUPL.productos,SUPL.pend[SUPL_T_PROD]);
-      SUPL.ventas=_suplMezcla(rv.data,SUPL.ventas,SUPL.pend[SUPL_T_VENT]);
+      SUPL.productos=_suplMezcla(rp.data,SUPL.productos,_suplProtegidas(SUPL_T_PROD));
+      SUPL.ventas=_suplMezcla(rv.data,SUPL.ventas,_suplProtegidas(SUPL_T_VENT));
       SUPL.offline=false; suplGuardarLocal();
       await suplReintentar();
     }catch(e){ SUPL.offline=true; warn('AVI supl cargar:',e&&e.message); }
@@ -3549,15 +3562,17 @@ async function suplEscribir(tabla,row){
   const lista=tabla===SUPL_T_PROD?SUPL.productos:SUPL.ventas;
   const i=lista.findIndex(r=>r.id===row.id); if(i>=0)lista[i]=row; else lista.push(row);
   if(suplSellada()){ suplGuardarLocal(); return true; }   // localhost: solo local, como el resto de la app
-  SUPL.pend[tabla][row.id]=true; suplGuardarLocal();
+  SUPL.sucio[tabla][row.id]=true; SUPL.pend[tabla][row.id]=true; suplGuardarLocal();
   const k=await suplCliente();
   let ok=false;
   if(k){ try{ const {error}=await k.c.from(tabla).upsert(_suplFila(tabla,row,k.u.id)); ok=!error; if(error)warn('AVI supl escribir:',error.message); }catch(_e){} }
   if(ok){ delete SUPL.pend[tabla][row.id]; SUPL.offline=false; suplGuardarLocal(); suplReintentar(); }
-  else toast('⚠️ No se guardó en la nube (sin conexión). Queda en este teléfono y se manda sola cuando haya señal.',5200);
-  return ok;
+  return ok;   // quien llama decide el aviso (_suplAviso): aquí no se avisa, para que no se pisen dos toasts
 }
-window.addEventListener('online',()=>{ suplInit(); if(Object.keys(SUPL.pend[SUPL_T_PROD]).length||Object.keys(SUPL.pend[SUPL_T_VENT]).length)suplReintentar().then(ok=>{ if(ok)toast('✅ Las ventas pendientes ya se guardaron'); }); });
+window.addEventListener('online',()=>{
+  suplInit(); if(!suplHayPendientes())return;
+  suplReintentar().then(ok=>{ if(ok){ SUPL.offline=false; toast('✅ Las ventas pendientes ya se guardaron'); } suplRepintar(); });
+});
 
 // ── Pantallas que se vuelven a pintar cuando cambia algo ──
 function suplRepintar(){
@@ -3575,8 +3590,7 @@ function suplRenderFicha(id){
   const ventas=suplVentasDe(SUPL.ventas,id);
   const debe=ventas.reduce((t,v)=>t+suplSaldo(v),0);
   let h=`<div class="card"><div class="ch" style="gap:10px"><div><div class="ctitle">🧴 Ventas</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Suplementos que le has vendido</div></div><span class="vt-priv">🔒 Solo tú lo ves</span></div><div class="cb">`;
-  if(SUPL.offline||Object.keys(SUPL.pend[SUPL_T_PROD]||{}).length||Object.keys(SUPL.pend[SUPL_T_VENT]||{}).length)
-    h+=`<div class="vt-warn"><span>📴</span><span>Hay ventas que aún no se guardan en la nube. Quedan en este teléfono y se mandan solas cuando haya señal.</span></div>`;
+  h+=_suplFranja();
   if(debe>0)h+=`<div class="vt-tot"><span style="color:var(--t2)">Te debe</span><b>${_suplMon(debe)}</b></div>`;
   if(!ventas.length)h+=`<div style="font-size:13px;color:var(--t3);text-align:center;padding:10px 0 4px">Aún no le has vendido nada.</div>`;
   ventas.forEach(v=>{
@@ -3604,7 +3618,7 @@ function suplRenderHome(){
   const debe=suplQuienDebe(SUPL.ventas,DB.clients,new Date());
   const total=debe.reduce((t,g)=>t+g.saldo,0);
   const activos=SUPL.productos.filter(p=>p.activo!==false);
-  let h='';
+  let h=_suplFranja();
   if(total>0){
     const dias=Math.max.apply(null,debe.map(g=>g.diasMasAntigua));
     h+=`<button class="card vt-debt" style="margin-bottom:13px;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="openCoachStat('ingresos')">
@@ -3632,10 +3646,10 @@ function suplRenderProductos(){
   const arch=SUPL.productos.filter(p=>p.activo===false).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));
   const sub=_suplEl('pr-sub'); if(sub)sub.textContent='Solo tú los ves · '+act.length+(act.length===1?' producto':' productos');
   const fila=p=>`<div class="pr-row" role="button" tabindex="0" style="cursor:pointer" onclick="suplAbrirProducto('${esc(p.id)}')"><div style="min-width:0"><div class="vt-nm">${esc(p.nombre)}</div><div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap"><span class="pr-chip">${esc(suplCategoria(p.categoria).label)}</span>${p.no_menores?`<span class="pr-chip" style="background:var(--orl);border-color:var(--or);color:var(--ort)">No para menores</span>`:''}${p.activo===false?`<span class="pr-chip">Archivado</span>`:''}</div><div class="vt-sub" style="margin-top:6px">Costo ${_suplMon(p.costo)}</div></div><div style="text-align:right;flex-shrink:0"><div class="pr-price">${_suplMon(p.precio)}</div><div style="margin-top:6px"><span class="pr-mg">${suplMargen(p.precio,p.costo)}%</span></div></div></div>`;
-  let h='';
-  if(!act.length&&!arch.length)h=`<div class="card"><div class="cb" style="text-align:center;font-size:13px;color:var(--t2);padding:22px 16px;line-height:1.5">Aún no tienes productos.<br>Agrega el primero con «+ Producto» y al vender se llenan solos el precio y el costo.</div></div>`;
+  let h=_suplFranja();
+  if(!act.length&&!arch.length)h+=`<div class="card"><div class="cb" style="text-align:center;font-size:13px;color:var(--t2);padding:22px 16px;line-height:1.5">Aún no tienes productos.<br>Agrega el primero con «+ Producto» y al vender se llenan solos el precio y el costo.</div></div>`;
   else{
-    h=`<div class="card" style="margin-bottom:13px"><div class="cb" style="padding-top:6px;padding-bottom:6px">${act.map(fila).join('')||'<div style="font-size:13px;color:var(--t3);padding:14px 0">Todos tus productos están archivados.</div>'}</div></div>`;
+    h+=`<div class="card" style="margin-bottom:13px"><div class="cb" style="padding-top:6px;padding-bottom:6px">${act.map(fila).join('')||'<div style="font-size:13px;color:var(--t3);padding:14px 0">Todos tus productos están archivados.</div>'}</div></div>`;
     if(arch.length)h+=`<div style="text-align:center;margin-bottom:13px"><button class="vt-lnk" onclick="suplVerArchivados()">${ver?'Ocultar':'Ver'} archivados (${arch.length})</button></div>`+(ver?`<div class="card" style="margin-bottom:13px"><div class="cb" style="padding-top:6px;padding-bottom:6px">${arch.map(fila).join('')}</div></div>`:'');
   }
   box.innerHTML=h;
@@ -3681,17 +3695,17 @@ async function suplGuardarProducto(){
   const row=Object.assign({},previo||{id:_suplId(),activo:true,creado:ahora},{nombre,categoria:_suplEl('pr-cat').value,precio,costo,no_menores:!!SUPL.ui.prodMenores});
   cm('m-producto');
   const vuelve=SUPL.ui.prodVuelve;
-  await suplEscribir(SUPL_T_PROD,row);
+  const ok=await suplEscribir(SUPL_T_PROD,row);
   if(vuelve&&!previo)suplVentaElegir(row.id);
-  suplRepintar(); toast(previo?'Producto actualizado':'Producto guardado');
+  suplRepintar(); _suplAviso(ok,previo?'Producto actualizado':'Producto guardado');
 }
 async function suplArchivarProducto(){
   const p=SUPL.productos.find(x=>x.id===SUPL.ui.prodId); if(!p)return;
   const archivar=p.activo!==false;
   if(archivar&&!confirm('¿Archivar «'+p.nombre+'»? Deja de salir al vender; las ventas que ya hiciste se quedan como están.'))return;
   cm('m-producto');
-  await suplEscribir(SUPL_T_PROD,Object.assign({},p,{activo:!archivar}));
-  suplRepintar(); toast(archivar?'Producto archivado':'Producto activado de nuevo');
+  const ok=await suplEscribir(SUPL_T_PROD,Object.assign({},p,{activo:!archivar}));
+  suplRepintar(); _suplAviso(ok,archivar?'Producto archivado':'Producto activado de nuevo');
 }
 
 // ── Modal de venta (maqueta B) ──
@@ -3742,8 +3756,8 @@ async function suplGuardarVenta(){
   const a1=suplMonto(_suplEl('vt-abono1').value);
   if(a1>0){ const val=suplValidarAbono(venta,a1); if(!val.ok)return falla(val.error); venta.abonos.push(suplAbonoNuevo(a1,venta.fecha,_suplId())); }
   cm('m-venta');
-  await suplEscribir(SUPL_T_VENT,venta);
-  suplRepintar(); toast('Venta guardada');
+  const ok=await suplEscribir(SUPL_T_VENT,venta);
+  suplRepintar(); _suplAviso(ok,'Venta guardada');
 }
 
 // ── Modal de abonos (maqueta C) ──
@@ -3785,24 +3799,24 @@ async function suplGuardarAbono(){
   if(!val.ok){ err.textContent=val.error; err.style.display='block'; return; }
   const nueva=Object.assign({},v,{abonos:suplAbonos(v).concat([suplAbonoNuevo(_suplEl('ab-monto').value,_suplEl('ab-fecha').value||_suplHoy(),_suplId())])});
   cm('m-abono');
-  await suplEscribir(SUPL_T_VENT,nueva);
-  suplRepintar(); toast(val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado');
+  const ok=await suplEscribir(SUPL_T_VENT,nueva);
+  suplRepintar(); _suplAviso(ok,val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado');
 }
 // Un abono mal digitado se quita de la lista, con confirmación (el saldo se recalcula solo).
 async function suplQuitarAbono(abonoId){
   const v=SUPL.ventas.find(x=>x.id===SUPL.ui.abonoVenta); if(!v)return;
   const a=suplAbonos(v).find(x=>x.id===abonoId); if(!a)return;
   if(!confirm('¿Quitar el abono de '+_suplMon(a.monto)+' del '+_suplFechaTxt(a.fecha)+'? El saldo vuelve a subir.'))return;
-  await suplEscribir(SUPL_T_VENT,Object.assign({},v,{abonos:suplAbonos(v).filter(x=>x.id!==abonoId)}));
-  suplAbonoPintar(true); suplRepintar();
+  const ok=await suplEscribir(SUPL_T_VENT,Object.assign({},v,{abonos:suplAbonos(v).filter(x=>x.id!==abonoId)}));
+  suplAbonoPintar(true); suplRepintar(); _suplAviso(ok,'Abono quitado');
 }
 // Una venta mal hecha no se borra de la base: se marca con lápida y deja de contar.
 async function suplBorrarVenta(){
   const v=SUPL.ventas.find(x=>x.id===SUPL.ui.abonoVenta); if(!v)return;
   if(!confirm('¿Borrar la venta de «'+v.producto_nombre+'»? Deja de contar en el saldo y en las ganancias.'))return;
   cm('m-abono');
-  await suplEscribir(SUPL_T_VENT,Object.assign({},v,{borrado:true}));
-  suplRepintar(); toast('Venta borrada');
+  const ok=await suplEscribir(SUPL_T_VENT,Object.assign({},v,{borrado:true}));
+  suplRepintar(); _suplAviso(ok,'Venta borrada');
 }
 
 // ── «Ingresos del mes» · bloque Suplementos, APARTE de las mensualidades (maqueta D) ──
@@ -3825,7 +3839,8 @@ function suplIngresosHTML(stat,empty){
   h+=debe.length?debe.map(g=>{
     const precio=g.ventas.reduce((t,v)=>t+suplMonto(v.precio),0), abonado=g.ventas.reduce((t,v)=>t+suplAbonado(v),0);
     const que=g.ventas.length===1?esc(g.ventas[0].producto_nombre):g.ventas.length+' productos';
-    return _crepRow(g.client_id,g.nombre,`${que} · abonó ${_suplMon(abonado)} de ${_suplMon(precio)}`,`<span class="crep-amt" style="color:var(--ort)">${_suplMon(g.saldo)}</span>`);
+    const cuotas=g.ventas.length===1&&g.ventas[0].cuotas>1?` · ${g.ventas[0].cuotas} cuotas`:'';
+    return _crepRow(g.client_id,g.nombre,`${que}${cuotas} · abonó ${_suplMon(abonado)} de ${_suplMon(precio)}`,`<span class="crep-amt" style="color:var(--ort)">${_suplMon(g.saldo)}</span>`);
   }).join(''):`<div class="crep-meta" style="padding:6px 2px 10px">Nadie te debe suplementos. 🎉</div>`;
   return h;
 }
