@@ -1827,6 +1827,7 @@ const _COACH_PANELS={
   'p-templates':{sbi:'sbi-templates',title:'Plantillas',nav:-1},
   'p-msgs':{sbi:'sbi-msgs',title:'Mensajes',nav:4},
   'p-detail':{sbi:'sbi-clients',title:'Detalle',nav:1},
+  'p-productos':{sbi:'sbi-clients',title:'Mis productos',nav:1},
 };
 // Restaura un panel previo del coach SIN registrar (lo usa el "undo" del stack del botón atrás).
 // p-detail recrea el detalle del asesorado que estaba abierto; si ya no existe (borrado) cae a la lista.
@@ -1958,6 +1959,7 @@ function renderHome(){
     });
   });
   const elIngr=document.getElementById('h-ingr');if(elIngr)elIngr.textContent='$'+ingr.toLocaleString('es-CO');
+  if(typeof suplRenderHome==='function')suplRenderHome(); // v748 · tarjetas de suplementos (aparte de los ingresos)
 
   // ── Activos ── (métrica de NEGOCIO: asesorados con membresía al día → sin el coach)
   const activos=DB.clients.filter(c=>{ if(!clientIsChargeable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
@@ -2536,18 +2538,21 @@ function openCoachStat(kind){
       total+=sub; nPagos+=pm.length; rows.push({c,sub,pm});
     });
     rows.sort((a,b)=>b.sub-a.sub);
-    html=_crepHero('💰','#10b981','$'+total.toLocaleString('es-CO'),`${nPagos} ${nPagos===1?'pago':'pagos'} · ${rows.length} ${rows.length===1?'asesorado':'asesorados'} · ${cap}`);
+    html=_crepHero('💰','#10b981','$'+total.toLocaleString('es-CO'),`Mensualidades · ${nPagos} ${nPagos===1?'pago':'pagos'} · ${rows.length} ${rows.length===1?'asesorado':'asesorados'}`);
     if(rows.length){
       const prom=Math.round(total/rows.length);
       html+=`<div class="sroom-stats">${stat('💵','Total','$'+total.toLocaleString('es-CO'),'#10b981')}${stat('👥','Pagaron',rows.length,'#3a86c8')}${stat('📊','Promedio','$'+prom.toLocaleString('es-CO'),'#9b6dd6')}</div>`;
-      html+=`<div class="sroom-sec">De dónde salen</div>`;
+      html+=suplIngresosHTML(stat,empty);
+      html+=`<div class="sroom-sec" style="margin-top:14px">Mensualidades · de dónde salen</div>`;
       html+=rows.map(({c,sub,pm})=>{
         const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'numeric',month:'long'})).join(', ');
         const nota=pm.map(p=>p.note).filter(Boolean)[0]||'';
         const meta=`${pm.length>1?pm.length+' pagos: ':''}${fechas}${nota?' · '+esc(nota):''}`;
         return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--gt)">$${sub.toLocaleString('es-CO')}</span>`);
       }).join('');
-    } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`);
+    } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`)+suplIngresosHTML(stat,empty);
+    // v748 · las ventas llegan de su tabla aparte: si aún no cargaron, se repinta al llegar
+    if(typeof suplCargar==='function'&&!SUPL.cargado)suplCargar().then(()=>{ const r=document.getElementById('coach-stat-room'); if(r&&r.classList.contains('on')&&titleEl.textContent.indexOf('Ingresos')===0)openCoachStat('ingresos'); });
   }
 
   else if(kind==='activos'){

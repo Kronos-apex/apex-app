@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=747">
+<link rel="stylesheet" href="styles.css?v=748">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -678,6 +678,8 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <button class="sm sm-tap" onclick="openCoachStat('sesiones')" aria-label="Ver sesiones de la semana"><div class="smv" style="color:var(--ort)" id="h-sess">0</div><div class="sml">Sesiones semana</div><span class="sm-chev">›</span></button>
         <button class="sm sm-tap" onclick="openCoachStat('sinentrenar')" aria-label="Ver asesorados sin entrenar"><div class="smv" style="color:var(--rdt)" id="h-venc">0</div><div class="sml">Sin entrenar</div><span class="sm-chev">›</span></button>
       </div>
+      <!-- v748 · suplementos: lo que te deben y tu catálogo (solo el coach) -->
+      <div id="h-supl"></div>
       <!-- 🔴 v592 · QUIÉN ENTRENÓ HOY, ARRIBA DEL TODO. Estaba después de la retención, «Mi
            entrenamiento» y «Comunidad de mi gym», o sea a dos pantallas de scroll — y encima
            con el tope de avisos de v581 casi nunca salía. El PO: «me ocultaste a los asesorados
@@ -720,6 +722,14 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
         <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="bolt">⚡</span> Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
         <div style="padding:8px 10px" id="h-list"></div>
       </div>
+    </div>
+
+    <!-- v748 · MIS PRODUCTOS (ventas de suplementos; solo el coach) -->
+    <div id="p-productos" class="panel">
+      <div class="back" onclick="history.back()">← Volver</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><div><div class="ptitle" style="margin:0">Mis productos</div><div style="font-size:12px;color:var(--t2);margin-top:3px" id="pr-sub">Solo tú los ves</div></div><button class="btn bp bsm" onclick="suplAbrirProducto()">+ Producto</button></div>
+      <div id="pr-list"></div>
+      <div class="sroom-cmp flat"><span>Margen = ganancia sobre el precio de venta. Al editar un producto, las ventas ya hechas no cambian.</span></div>
     </div>
 
     <!-- CLIENTS -->
@@ -1531,19 +1541,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=747"></script>
-<script src="muscle-map.js?v=747"></script>
-<script src="exercise-muscles.js?v=747"></script>
+<script src="avi-core.js?v=748"></script>
+<script src="muscle-map.js?v=748"></script>
+<script src="exercise-muscles.js?v=748"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=747"></script>
-<script src="app-2-login.js?v=747"></script>
-<script src="app-3-coach.js?v=747"></script>
-<script src="app-4-entreno.js?v=747"></script>
-<script src="app-5-salud.js?v=747"></script>
-<script src="app-6-extra.js?v=747"></script>
-<script src="app-7-community.js?v=747"></script>
+<script src="app-1-infra.js?v=748"></script>
+<script src="app-2-login.js?v=748"></script>
+<script src="app-3-coach.js?v=748"></script>
+<script src="app-4-entreno.js?v=748"></script>
+<script src="app-5-salud.js?v=748"></script>
+<script src="app-6-extra.js?v=748"></script>
+<script src="app-7-community.js?v=748"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1894,6 +1904,73 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <button class="btn bg" onclick="cm('m-payment')">Cancelar</button>
       <button class="btn bp" onclick="registerPayment()">Guardar pago</button>
     </div>
+  </div>
+</div>
+
+<!-- v748 · VENTAS DE SUPLEMENTOS (solo el coach): nueva venta -->
+<div class="mdbg" id="m-venta">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="vt-mt">
+    <div class="mdtitle" id="vt-mt" style="margin-bottom:4px">🧴 Nueva venta</div>
+    <div class="vt-sub" style="margin:0 0 12px" id="vt-para"></div>
+    <div class="vt-fld" style="margin-bottom:10px">
+      <div class="vt-sel" style="margin-bottom:5px"><label class="llbl" style="margin:0" for="vt-q">Producto</label><button type="button" class="vt-lnk" onclick="suplNuevoProductoDesdeVenta()">+ Nuevo producto</button></div>
+      <input class="inp" id="vt-q" placeholder="🔎 Buscar en mis productos" style="width:100%" oninput="suplVentaBuscar()" autocomplete="off">
+      <div class="vt-chips" id="vt-chips"></div>
+    </div>
+    <div id="vt-aviso"></div>
+    <div class="vt-dg" style="margin-bottom:8px">
+      <div><label class="llbl" for="vt-precio">Precio de venta</label><input class="inp" id="vt-precio" inputmode="numeric" style="width:100%" oninput="suplVentaCalc()"></div>
+      <div><label class="llbl" for="vt-costo">Lo que te costó</label><input class="inp" id="vt-costo" inputmode="numeric" style="width:100%" oninput="suplVentaCalc()"></div>
+    </div>
+    <div class="vt-hint" style="margin:0 0 12px">Se llenan solos con el producto; cámbialos solo para esta venta.</div>
+    <div class="vt-calc" style="margin-bottom:12px" id="vt-calc"></div>
+    <div class="vt-fld" style="margin-bottom:12px"><label class="llbl">Cuotas</label>
+      <div class="vt-chips" style="margin-top:0" id="vt-cuotas"></div></div>
+    <div class="vt-dg" style="margin-bottom:0">
+      <div><label class="llbl" for="vt-fecha">Fecha de la venta</label><input class="inp" type="date" id="vt-fecha" style="width:100%"></div>
+      <div><label class="llbl" for="vt-abono1">Primer abono (opcional)</label><input class="inp" id="vt-abono1" inputmode="numeric" style="width:100%" oninput="suplVentaCalc()"></div>
+    </div>
+    <div id="vt-err" style="font-size:12px;color:var(--rdt);margin-top:10px;display:none"></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-venta')">Cancelar</button><button class="btn bp" onclick="suplGuardarVenta()">Guardar venta</button></div>
+  </div>
+</div>
+
+<!-- v748 · producto del catálogo (nuevo o editar) -->
+<div class="mdbg" id="m-producto">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="pr-mt">
+    <div class="mdtitle" id="pr-mt">📦 Nuevo producto</div>
+    <div class="vt-fld"><label class="llbl" for="pr-nombre">Nombre</label><input class="inp" id="pr-nombre" maxlength="80" placeholder="Ej: Creatina 300 g" style="width:100%"></div>
+    <div class="vt-fld"><label class="llbl" for="pr-cat">Categoría</label><select class="sel" id="pr-cat" style="width:100%" onchange="suplProductoCatCambio()"></select></div>
+    <div class="vt-dg">
+      <div><label class="llbl" for="pr-precio">Precio de venta</label><input class="inp" id="pr-precio" inputmode="numeric" style="width:100%" oninput="suplProductoCalc()"></div>
+      <div><label class="llbl" for="pr-costo">Lo que te cuesta</label><input class="inp" id="pr-costo" inputmode="numeric" style="width:100%" oninput="suplProductoCalc()"></div>
+    </div>
+    <div class="vt-calc" id="pr-calc"></div>
+    <div class="vt-sw"><div><div class="vt-nm" style="font-size:13.5px">No para menores</div><div class="vt-sub">Te avisa al vender a alguien menor de 18. Viene encendido en Preentreno, Cafeína y Quemador.</div></div><button type="button" class="vt-tg" id="pr-menores" role="switch" aria-checked="false" aria-label="No para menores" onclick="suplProductoMenores()"></button></div>
+    <div id="pr-err" style="font-size:12px;color:var(--rdt);margin-bottom:8px;display:none"></div>
+    <div style="text-align:center;margin-bottom:6px"><button type="button" class="vt-lnk" id="pr-arch" style="display:none" onclick="suplArchivarProducto()"></button></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-producto')">Cancelar</button><button class="btn bp" onclick="suplGuardarProducto()">Guardar producto</button></div>
+  </div>
+</div>
+
+<!-- v748 · abonos de una venta -->
+<div class="mdbg" id="m-abono">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="ab-mt">
+    <div class="mdtitle" id="ab-mt">💵 Registrar abono</div>
+    <div style="margin:-6px 0 14px" id="ab-head"></div>
+    <div id="ab-form">
+      <div class="vt-dg">
+        <div><label class="llbl" for="ab-monto">Monto recibido (COP)</label><input class="inp" id="ab-monto" inputmode="numeric" style="width:100%" oninput="suplAbonoCalc()"></div>
+        <div><label class="llbl" for="ab-fecha">Fecha</label><input class="inp" type="date" id="ab-fecha" style="width:100%"></div>
+      </div>
+      <div class="vt-chips" style="margin:-6px 0 14px" id="ab-chips"></div>
+      <div class="vt-calc" id="ab-calc"></div>
+    </div>
+    <div id="ab-err" style="font-size:12px;color:var(--rdt);margin-bottom:8px;display:none"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Abonos anteriores</div>
+    <div id="ab-hist"></div>
+    <div style="text-align:center;margin-top:12px"><button type="button" class="vt-lnk" style="color:var(--rdt)" onclick="suplBorrarVenta()">Borrar esta venta</button></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-abono')">Cerrar</button><button class="btn bp" id="ab-guardar" onclick="suplGuardarAbono()">Guardar abono</button></div>
   </div>
 </div>
 

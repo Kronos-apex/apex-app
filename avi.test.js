@@ -27333,6 +27333,238 @@ test('v746 · el ejercicio del correctivo está RESERVADO: el relleno no se lo c
 });
 
 // ══════════════════════════════════════════════════════
+// v748 · VENTAS DE SUPLEMENTOS (solo el coach)
+// ══════════════════════════════════════════════════════
+// Un bloque de código sin comentarios (los de línea entera Y los del final de línea), para que ningún
+// candado apruebe porque un comentario nombra lo que busca.
+const _supl748 = (() => {
+  const fs = require('fs'), path = require('path');
+  const quitar = t => String(t).replace(/\r/g, '').split('\n').map(l => l.replace(/^\s*\/\/.*$/, '').replace(/\s\/\/\s.*$/, '')).join('\n');
+  const extra = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const ini = extra.indexOf('// VENTAS DE SUPLEMENTOS (v748) — pantallas y escritura');
+  return { fs, path, quitar, extra, ini, ui: ini > 0 ? quitar(extra.slice(ini)) : '' };
+})();
+const _suplHoyD = new Date(2026, 10, 14, 12, 0, 0); // 14-nov-2026
+const _suplV = (o) => Object.assign({ id: 'v', client_id: 'c1', producto_id: 'p1', producto_nombre: 'Colágeno 300 g', precio: 100000, costo: 70000, cuotas: 2, fecha: '2026-11-10', abonos: [], borrado: false }, o || {});
+
+test('v748 · el saldo se CALCULA (precio menos abonos), nunca baja de cero y «saldada» solo con saldo cero', () => {
+  assert.strictEqual(core.suplSaldo(_suplV()), 100000);
+  assert.strictEqual(core.suplSaldo(_suplV({ abonos: [{ monto: 30000 }, { monto: 20000 }] })), 50000);
+  assert.strictEqual(core.suplAbonado(_suplV({ abonos: [{ monto: 30000 }, { monto: 20000 }] })), 50000);
+  assert.strictEqual(core.suplSaldada(_suplV({ abonos: [{ monto: 100000 }] })), true);
+  assert.strictEqual(core.suplSaldada(_suplV({ abonos: [{ monto: 99999 }] })), false);
+  // un dato dañado con más abonos que precio no deja un saldo negativo
+  assert.strictEqual(core.suplSaldo(_suplV({ abonos: [{ monto: 150000 }] })), 0);
+  // «100.000», «$100.000» y 100000 son la misma plata; basura vale 0
+  assert.strictEqual(core.suplMonto('100.000'), 100000);
+  assert.strictEqual(core.suplMonto('$ 1.250.000'), 1250000);
+  assert.strictEqual(core.suplMonto('abc'), 0);
+  assert.strictEqual(core.suplMonto(-5), 0);
+  // no se guarda: la fila nueva no trae un campo `saldo`
+  assert.ok(!('saldo' in core.suplVentaNueva({ id: 'p', nombre: 'X', precio: 10, costo: 5 }, { client_id: 'c' })), '🔴 el saldo se guardaría y se desfasaría');
+});
+test('v748 · el margen es la ganancia sobre el PRECIO de venta (100.000 − 70.000 = 30%)', () => {
+  assert.strictEqual(core.suplMargen(100000, 70000), 30);
+  assert.strictEqual(core.suplMargen(8000, 5000), 38);
+  assert.strictEqual(core.suplMargen(0, 5000), 0);
+  assert.strictEqual(core.suplGanancia('100.000', '70.000'), 30000);
+  assert.strictEqual(core.suplMargenPromedio([{ precio: 100000, costo: 70000 }, { precio: 80000, costo: 40000, activo: true }, { precio: 50000, costo: 0, activo: false }]), 40);
+});
+test('v748 · un abono no puede pasar del saldo, ni ser cero, ni ir a una venta borrada o saldada', () => {
+  const v = _suplV({ abonos: [{ monto: 50000 }] });
+  assert.strictEqual(core.suplValidarAbono(v, 50001).ok, false, '🔴 dejó abonar más que el saldo');
+  assert.ok(/saldo/.test(core.suplValidarAbono(v, 50001).error));
+  const justo = core.suplValidarAbono(v, 50000);
+  assert.ok(justo.ok && justo.saldoDespues === 0, 'el abono exacto debe dejarla saldada');
+  assert.strictEqual(core.suplValidarAbono(v, 20000).saldoDespues, 30000);
+  assert.strictEqual(core.suplValidarAbono(v, 0).ok, false);
+  assert.strictEqual(core.suplValidarAbono(v, '').ok, false);
+  assert.strictEqual(core.suplValidarAbono(_suplV({ borrado: true }), 10).ok, false);
+  assert.strictEqual(core.suplValidarAbono(_suplV({ abonos: [{ monto: 100000 }] }), 1).ok, false, '🔴 dejó abonar a una venta saldada');
+});
+test('v748 · el agregado del mes: vendido, cobrado este mes, costo y ganancia (= vendido del mes − su costo)', () => {
+  const ventas = [
+    _suplV({ id: 'a', fecha: '2026-11-10', precio: 100000, costo: 70000, abonos: [{ monto: 50000, fecha: '2026-11-10' }] }),
+    // vendida en octubre, abonó en noviembre: su plata ENTRA en noviembre pero la venta no es de noviembre
+    _suplV({ id: 'b', client_id: 'c2', fecha: '2026-10-28', precio: 80000, costo: 55000, abonos: [{ monto: 30000, fecha: '2026-10-28' }, { monto: 50000, fecha: '2026-11-02' }] }),
+    _suplV({ id: 'c', client_id: 'c3', fecha: '2026-11-12', precio: 999999, costo: 1, borrado: true, abonos: [{ monto: 999999, fecha: '2026-11-12' }] }),
+  ];
+  const ag = core.suplAgregadoMes(ventas, _suplHoyD);
+  assert.strictEqual(ag.vendido, 100000, 'vendido = solo lo vendido en noviembre y vivo');
+  assert.strictEqual(ag.cobrado, 100000, 'cobrado = abonos de noviembre (50.000 + 50.000), también de ventas de octubre');
+  assert.strictEqual(ag.costo, 70000);
+  assert.strictEqual(ag.ganancia, 30000);
+  assert.strictEqual(ag.debe, 50000, 'debe = saldo de TODAS las ventas vivas (la de octubre ya quedó saldada)');
+  assert.strictEqual(ag.personasDeben, 1);
+  assert.deepStrictEqual(core.suplAgregadoMes([], _suplHoyD), { vendido: 0, cobrado: 0, costo: 0, ganancia: 0, debe: 0, personasDeben: 0, nVentas: 0 });
+});
+test('v748 · «Por producto» agrupa por producto, ordena por ganancia y con producto ARCHIVADO usa el nombre copiado', () => {
+  const productos = [
+    { id: 'p1', nombre: 'Colágeno (nombre nuevo)', activo: false },   // archivado y renombrado después de vender
+    { id: 'p2', nombre: 'Creatina 300 g', activo: true },
+    { id: 'p3', nombre: 'Proteína renombrada', activo: true },
+  ];
+  const ventas = [
+    _suplV({ id: '1', producto_id: 'p1', producto_nombre: 'Colágeno 300 g', precio: 100000, costo: 70000 }),
+    _suplV({ id: '2', producto_id: 'p1', producto_nombre: 'Colágeno 300 g', precio: 100000, costo: 70000, client_id: 'c2' }),
+    _suplV({ id: '3', producto_id: 'p2', producto_nombre: 'Creatina vieja', precio: 80000, costo: 55000 }),
+    _suplV({ id: '4', producto_id: 'p3', producto_nombre: 'Proteína 2 lb', precio: 150000, costo: 105000 }),
+    _suplV({ id: '5', producto_id: 'p3', producto_nombre: 'Proteína 2 lb', precio: 150000, costo: 105000, fecha: '2026-09-01' }), // otro mes
+    _suplV({ id: '6', producto_id: 'p2', producto_nombre: 'Creatina vieja', precio: 1, costo: 0, borrado: true }),
+  ];
+  const r = core.suplPorProducto(ventas, productos, _suplHoyD);
+  assert.deepStrictEqual(r.map(g => g.producto_id), ['p1', 'p3', 'p2'], 'orden por ganancia: 60.000 · 45.000 · 25.000');
+  assert.strictEqual(r[0].nombre, 'Colágeno 300 g', '🔴 con el producto archivado manda el nombre COPIADO en la venta');
+  assert.strictEqual(r[0].cantidad, 2, 'dos ventas del mismo producto van juntas');
+  assert.strictEqual(r[0].archivado, true);
+  assert.strictEqual(r[1].nombre, 'Proteína renombrada', 'con el producto activo manda su nombre actual');
+  assert.strictEqual(r[1].cantidad, 1, 'la venta de septiembre no cuenta en noviembre');
+  assert.strictEqual(r[2].cantidad, 1, 'la venta borrada no cuenta');
+  assert.strictEqual(r[2].margen, 31);
+  // un producto que ya no existe en el catálogo también cae al nombre copiado
+  assert.strictEqual(core.suplPorProducto([_suplV({ producto_id: 'zz', producto_nombre: 'Viejo' })], [], _suplHoyD)[0].nombre, 'Viejo');
+});
+test('v748 · la venta guarda UNA COPIA de nombre, precio y costo: editar el producto no cambia lo vendido', () => {
+  const prod = { id: 'p1', nombre: 'Creatina 300 g', precio: 80000, costo: 55000 };
+  const venta = core.suplVentaNueva(prod, { client_id: 'c1', cuotas: 2, fecha: '2026-11-10' }, { id: 'x' });
+  assert.deepStrictEqual([venta.producto_nombre, venta.precio, venta.costo, venta.producto_id], ['Creatina 300 g', 80000, 55000, 'p1']);
+  prod.nombre = 'Otro nombre'; prod.precio = 99999; prod.costo = 1;
+  assert.deepStrictEqual([venta.producto_nombre, venta.precio, venta.costo], ['Creatina 300 g', 80000, 55000], '🔴 la venta sigue al producto en vez de copiarlo');
+  // para ESTA venta el coach puede cambiarlos sin tocar el producto
+  const v2 = core.suplVentaNueva({ id: 'p1', nombre: 'Creatina 300 g', precio: 80000, costo: 55000 }, { client_id: 'c1', precio: '75.000', costo: '50.000' }, { id: 'y' });
+  assert.deepStrictEqual([v2.precio, v2.costo], [75000, 50000]);
+  assert.deepStrictEqual(core.suplVentaNueva(prod, { cuotas: 99 }).cuotas, 12);
+  assert.strictEqual(core.suplVentaNueva(prod, { cuotas: 0 }).cuotas, 1);
+  assert.strictEqual(core.suplCuota(100000, 3), 33333);
+});
+test('v748 · aviso de menor: 16 y 17 sí, 18 no, sin edad no; NUNCA bloquea; viene encendido en preentreno, cafeína y quemador', () => {
+  const pre = { no_menores: true }, normal = { no_menores: false };
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: 16 }).aviso, true);
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: '17' }).aviso, true, 'la edad guardada como texto también cuenta');
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: 18 }).aviso, false, '🔴 a los 18 ya no se avisa');
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: null }).aviso, false, '🔴 sin edad registrada no se inventa el aviso');
+  assert.strictEqual(core.suplAvisoMenor(pre, {}).aviso, false);
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: 0 }).aviso, false);
+  assert.strictEqual(core.suplAvisoMenor(normal, { age: 15 }).aviso, false, 'un producto sin la marca no avisa');
+  assert.strictEqual(core.suplAvisoMenor(pre, { age: 16 }).bloquea, false, '🔴 el aviso no puede bloquear la venta');
+  ['preentreno', 'cafeina', 'quemador'].forEach(c => assert.strictEqual(core.suplNoMenoresPorDefecto(c), true, c + ' debe venir encendido'));
+  ['proteina', 'creatina', 'omega3', 'colageno', 'otro'].forEach(c => assert.strictEqual(core.suplNoMenoresPorDefecto(c), false, c + ' no'));
+  assert.deepStrictEqual(core.SUPL_CATEGORIAS.map(c => c.label), ['Proteína en polvo', 'Barras de proteína', 'Creatina', 'Preentreno', 'Aminoácidos (BCAA/EAA)', 'Glutamina', 'Omega 3', 'Colágeno', 'Multivitamínico', 'Vitamina D', 'Magnesio', 'Electrolitos', 'Cafeína', 'Ganador de peso', 'Quemador', 'Otro']);
+});
+test('v748 · «Quién te debe»: cuentan las de cortesía, se excluye solo al coach, y va de mayor a menor deuda', () => {
+  const clientes = [{ id: 'c1', name: 'Mariana' }, { id: 'c2', name: 'Valentina', courtesy: true }, { id: '_self', name: 'Coach' }];
+  const ventas = [
+    _suplV({ id: '1', client_id: 'c1', precio: 100000, abonos: [{ monto: 50000, fecha: '2026-11-10' }] }),
+    _suplV({ id: '2', client_id: 'c2', producto_nombre: 'Proteína', precio: 150000, fecha: '2026-11-10', abonos: [{ monto: 50000, fecha: '2026-11-10' }] }),
+    _suplV({ id: '3', client_id: '_self', precio: 500000 }),
+    _suplV({ id: '4', client_id: 'c1', precio: 10000, abonos: [{ monto: 10000, fecha: '2026-11-10' }] }),   // saldada: no debe
+    _suplV({ id: '5', client_id: 'c1', precio: 70000, borrado: true }),
+  ];
+  const r = core.suplQuienDebe(ventas, clientes, _suplHoyD);
+  assert.deepStrictEqual(r.map(g => [g.client_id, g.saldo]), [['c2', 100000], ['c1', 50000]], '🔴 la de cortesía debe contar y el coach no');
+  assert.strictEqual(r[0].nombre, 'Valentina');
+  assert.strictEqual(r[0].diasMasAntigua, 4, 'hace 4 días (10 → 14 de noviembre)');
+  assert.strictEqual(core.suplQuienDebe([_suplV({ client_id: 'borrada' })], clientes, _suplHoyD)[0].nombre, 'Asesorado que ya no está', 'la deuda de alguien eliminado no desaparece en silencio');
+});
+test('v748 · una venta NO toca los pagos, el vencimiento ni MS.getStatus, ni muta al asesorado', () => {
+  const dia = 86400000, ahora = Date.now();
+  const c = { id: 'c1', name: 'Mariana', age: 16, payments: [{ date: new Date(ahora - 5 * dia).toISOString(), dueDate: new Date(ahora + 25 * dia).toISOString(), amount: 150000, note: '' }], routines: [] };
+  const antes = JSON.stringify(c), estado = core.MS.getStatus(c, new Date(ahora)), filaAntes = JSON.stringify(core.clientToRow(c, { coachId: 'k' }));
+  Object.freeze(c); Object.freeze(c.payments); c.payments.forEach(Object.freeze);
+  const prod = { id: 'p1', nombre: 'Preentreno', precio: 110000, costo: 75000, no_menores: true };
+  const venta = core.suplVentaNueva(prod, { client_id: 'c1', cuotas: 2 }, { id: 'v1' });
+  venta.abonos.push(core.suplAbonoNuevo(55000, '2026-11-14', 'a1'));
+  core.suplAvisoMenor(prod, c); core.suplQuienDebe([venta], [c], new Date(ahora)); core.suplAgregadoMes([venta], new Date(ahora)); core.suplVentasDe([venta], 'c1');
+  assert.strictEqual(JSON.stringify(c), antes, '🔴 vender cambió al asesorado');
+  assert.strictEqual(core.MS.getStatus(c, new Date(ahora)), estado, '🔴 vender cambió su estado de membresía');
+  assert.strictEqual(JSON.stringify(core.clientToRow(c, { coachId: 'k' })), filaAntes);
+  assert.strictEqual(c.payments.length, 1);
+  // y la pantalla tampoco: el código de las ventas no nombra los pagos ni el estado de membresía ni la fila del cliente
+  assert.ok(_supl748.ini > 0, 'no se encontró el bloque de ventas en app-6-extra.js');
+  const ui = _supl748.ui;
+  ['payments', 'getStatus', 'dueDate', 'clientToRow', 'updateClientRow', "sv('ax_c'", '.profile', 'upsertOwn'].forEach(t =>
+    assert.ok(!ui.includes(t), '🔴 el código de ventas toca «' + t + '»: una venta de suplementos no es una mensualidad ni vive en el asesorado'));
+  // CONTROL: ese mismo barrido SÍ encuentra los pagos donde de verdad se tocan
+  assert.ok(_supl748.quitar(_supl748.extra.slice(0, _supl748.ini)).includes('payments'), 'el barrido no discrimina: no ve ni los pagos de la membresía');
+  const core_ = _supl748.quitar(_supl748.fs.readFileSync(_supl748.path.join(__dirname, 'avi-core.js'), 'utf8'));
+  const a = core_.indexOf('const SUPL_MAYORIA_EDAD'), b = core_.indexOf("if (typeof module !== 'undefined'", a);
+  const logica = core_.slice(a, b);
+  ['payments', 'getStatus', 'clientToRow'].forEach(t => assert.ok(!logica.includes(t), '🔴 la lógica de ventas nombra «' + t + '»'));
+});
+test('v748 · «ventas» y «productos» NO viajan a la fila del asesorado: ni en clientToRow, ni en el perfil, ni en la sincronización', () => {
+  const fs = _supl748.fs, path = _supl748.path;
+  const coreSrc = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
+  const a = coreSrc.indexOf('function clientToRow('), b = coreSrc.indexOf('\nfunction ', a + 10);
+  const cuerpo = coreSrc.slice(a, b);
+  assert.ok(cuerpo.includes('profile'), 'no se leyó clientToRow');
+  assert.ok(!/ventas|productos|supl/i.test(cuerpo), '🔴 clientToRow nombra las ventas');
+  // un asesorado con esos campos (alguien que los metiera a mano) los llevaría en el perfil: por eso NINGÚN código los asigna
+  for (const f of fs.readdirSync(__dirname).filter(f => /^(avi-core|app-\d-[a-z]+)\.js$/.test(f))) {
+    const src = _supl748.quitar(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+    const m = src.match(/\b(c|cl|client|cli|me|self|profile|perfil)\.(ventas|productos|suplementos)\b/);
+    assert.ok(!m, '🔴 ' + f + ' pone «' + (m && m[0]) + '» en el asesorado');
+  }
+  // y la clave local de las ventas no entra a ninguna lista que se sincronice a la nube
+  const infra = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8'));
+  const sb = infra.slice(infra.indexOf('const SB_KEYS=['), infra.indexOf(']', infra.indexOf('const SB_KEYS=[')));
+  assert.ok(sb.includes('ax_c') && !sb.includes('ax_supl'), '🔴 ax_supl entró a SB_KEYS (se subiría al blob compartido)');
+  assert.ok(!/_COACH_SETTINGS_KEYS\s*=\s*\[[^\]]*ax_supl/.test(infra), '🔴 ax_supl viaja en los ajustes del coach');
+  // la pantalla de ventas solo habla con sus dos tablas
+  const tablas = [..._supl748.ui.matchAll(/\.from\(([^)]*)\)/g)].map(m => m[1]);
+  assert.ok(tablas.length >= 3, 'no se leyeron las llamadas a la base');
+  tablas.forEach(t => assert.ok(/^(SUPL_T_PROD|SUPL_T_VENT|tabla)$/.test(t), '🔴 las ventas hablan con otra tabla: ' + t));
+  assert.ok(/SUPL_T_PROD='coach_productos', SUPL_T_VENT='coach_ventas'/.test(_supl748.ui));
+});
+test('v748 · la migración: RLS encendido en las dos tablas y UNA sola política por tabla, solo del coach', () => {
+  const fs = _supl748.fs, path = _supl748.path;
+  const dir = path.join(__dirname, 'supabase', 'migrations');
+  const f = fs.readdirSync(dir).filter(n => /coach_ventas_suplementos/.test(n));
+  assert.strictEqual(f.length, 1, 'no hay una sola migración de ventas');
+  const sql = fs.readFileSync(path.join(dir, f[0]), 'utf8').replace(/\r/g, '').split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
+  const UID = "'0a6484ed-42af-449d-9903-e440ac683ecf'::uuid";
+  const tablas = [...sql.matchAll(/create table if not exists public\.(\w+)/g)].map(m => m[1]);
+  assert.deepStrictEqual(tablas.sort(), ['coach_productos', 'coach_ventas']);
+  tablas.forEach(t => {
+    assert.ok(new RegExp('alter table public\\.' + t + ' enable row level security').test(sql), '🔴 ' + t + ' sin RLS');
+    assert.ok(new RegExp('revoke all on public\\.' + t + ' from anon').test(sql), '🔴 ' + t + ' abierta a anon');
+  });
+  const pol = sql.split(';').map(s => s.trim()).filter(s => /^create policy/.test(s));
+  assert.strictEqual(pol.length, 2, '🔴 tiene que haber exactamente dos políticas (una por tabla): ' + pol.length);
+  pol.forEach(p => {
+    assert.ok(/for all to authenticated/.test(p), '🔴 política que no es «for all to authenticated»: ' + p.slice(0, 80));
+    assert.ok(p.includes('using ((select auth.uid()) = ' + UID + ')') && p.includes('with check ((select auth.uid()) = ' + UID + ')'), '🔴 la política no ata USING y WITH CHECK al uid del coach');
+    assert.ok(!/\b(anon|public\s+using|true)\b/.test(p.replace('on public.', '')), '🔴 política abierta: ' + p.slice(0, 80));
+  });
+  assert.deepStrictEqual(pol.map(p => p.match(/on public\.(\w+)/)[1]).sort(), ['coach_productos', 'coach_ventas']);
+  // ninguna política para asesorados: ni `client_id = auth.uid()` ni `select` suelto
+  assert.ok(!/for (select|insert|update|delete)\b/.test(sql), '🔴 una política parcial puede abrirle una puerta a alguien');
+  assert.ok(!/client_id\s*=\s*\(?\s*\(?select auth\.uid/.test(sql), '🔴 una política deja pasar al asesorado dueño de la fila');
+  ['coach_id', 'client_id'].forEach(c => assert.ok(new RegExp('create index if not exists \\w+ on public\\.coach_ventas \\(' + c + '\\)').test(sql), 'falta el índice por ' + c));
+  assert.ok(/create index if not exists \w+ on public\.coach_productos \(coach_id\)/.test(sql));
+  ['id', 'coach_id', 'nombre', 'categoria', 'precio', 'costo', 'no_menores', 'activo', 'creado', 'actualizado'].forEach(c => assert.ok(new RegExp('\\b' + c + '\\s').test(sql.slice(sql.indexOf('coach_productos'), sql.indexOf('coach_ventas'))), 'coach_productos sin ' + c));
+  ['id', 'coach_id', 'client_id', 'producto_id', 'producto_nombre', 'precio', 'costo', 'cuotas', 'fecha', 'abonos', 'borrado', 'creado', 'actualizado'].forEach(c => assert.ok(new RegExp('\\b' + c + '\\s').test(sql.slice(sql.indexOf('create table if not exists public.coach_ventas'))), 'coach_ventas sin ' + c));
+  // CONTROL: el mismo análisis SÍ ve una política abierta si la hubiera
+  const mala = "create policy x on public.coach_ventas for all to anon using (true) with check (true)";
+  assert.ok(/\b(anon|true)\b/.test(mala), 'el control no discrimina');
+});
+test('v748 · el respaldo local y el CLAUDE.md incluyen las dos tablas nuevas', () => {
+  const fs = _supl748.fs, path = _supl748.path;
+  const bk = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'scripts', 'backup-local.mjs'), 'utf8'));
+  ['coach_productos', 'coach_ventas'].forEach(t => {
+    assert.ok(bk.includes("fetchTableOpcional('" + t + "')"), '🔴 el respaldo no baja ' + t);
+    assert.ok(new RegExp('counts: \{[^}]*' + t + ': ' + t + '\.length').test(bk), '🔴 ' + t + ' no se cuenta en el respaldo');
+  });
+  assert.ok(/push_subscriptions, coach_productos, coach_ventas, auth_users/.test(bk), '🔴 las tablas nuevas no entran al archivo del respaldo');
+  const md = fs.readFileSync(path.join(__dirname, 'CLAUDE.md'), 'utf8');
+  assert.ok(/coach_productos/.test(md) && /coach_ventas/.test(md), '🔴 CLAUDE.md no dice que esas tablas están en el respaldo');
+});
+test('v748 · sin red nada se pierde en silencio: la fila queda pendiente en el teléfono y el aviso lo dice', () => {
+  const r = require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', 'comprobar-ventas-sin-red.cjs')], { encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
+  assert.ok(/OK/.test(r.stdout));
+});
+
+// ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
 

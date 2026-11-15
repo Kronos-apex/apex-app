@@ -2759,3 +2759,48 @@ button.dt-tile:active{transform:scale(.97)}
 .lim-ask{margin-bottom:12px}
 .lim-ask-t{display:flex;gap:9px;align-items:flex-start;font-size:var(--fs-base);color:var(--t1);line-height:1.5}
 .lim-ask-ic{flex-shrink:0;display:flex;color:var(--g2);margin-top:1px}
+
+/* ── v748 · Ventas de suplementos (solo el coach) — de la maqueta aprobada ── */
+.vt-priv{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--br2);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0}
+.vt-row{padding:12px 14px;background:var(--bg);border-radius:var(--rsm);margin-bottom:9px}
+.vt-row:last-child{margin-bottom:0}
+.vt-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.vt-nm{font-size:14px;font-weight:800;color:var(--t1)}
+.vt-sub{font-size:12px;color:var(--t2);margin-top:2px}
+.vt-saldo{font-size:12px;font-weight:800;color:var(--ort);white-space:nowrap;text-align:right}
+.vt-bar-l{display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);margin-top:9px;gap:8px}
+.vt-bar-l b{color:var(--t1);font-family:'JetBrains Mono',monospace;font-weight:700}
+.vt-gan{font-size:11.5px;color:var(--t3);margin-top:7px}
+.vt-gan b{color:var(--gt);font-family:'JetBrains Mono',monospace}
+.vt-act{display:flex;gap:8px;margin-top:10px}
+.vt-tot{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin:0 0 12px}
+.vt-tot b{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--ort);font-size:15px}
+.vt-hint{font-size:11.5px;color:var(--t3);margin-top:5px;line-height:1.4}
+.vt-calc{background:var(--gl);border:1px solid var(--g2);border-radius:var(--rsm);padding:10px 12px;font-size:12.5px;color:var(--gt);line-height:1.5;margin-bottom:14px}
+.vt-calc b{font-family:'JetBrains Mono',monospace}
+.vt-chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.vt-chip{border:1.5px solid var(--br2);background:var(--w);color:var(--t1);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:700;font-family:inherit}
+.vt-chip.on{border-color:var(--g);background:var(--gl);color:var(--gt)}
+.vt-dg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.vt-fld{margin-bottom:14px}
+.vt-hist{font-size:12px;color:var(--t2);padding:7px 0;border-top:1px solid var(--br);display:flex;justify-content:space-between}
+.vt-hist b{font-family:'JetBrains Mono',monospace;color:var(--t1)}
+.vt-debt{border-left:3px solid var(--or);padding:10px 14px}
+.stat4{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.stat4 .sroom-stat{padding:14px 8px 12px}
+.pr-chip{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--br2);color:var(--t2);white-space:nowrap}
+.pr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--br)}
+.pr-row:first-child{border-top:none}
+.pr-mg{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--gt);background:var(--gl);border-radius:20px;padding:2px 9px;white-space:nowrap}
+.pr-price{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:15px;color:var(--t1);text-align:right}
+.vt-warn{display:flex;gap:9px;align-items:flex-start;background:var(--yll);border:1px solid var(--yl);color:var(--ylt);border-radius:var(--rsm);padding:10px 12px;font-size:12.5px;line-height:1.45;font-weight:600;margin-bottom:12px}
+.vt-lnk{font-size:12.5px;font-weight:800;color:var(--gt);background:none;border:0;font-family:inherit;padding:0;white-space:nowrap}
+.vt-sw{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;background:var(--bg);border-radius:var(--rsm);margin-bottom:14px}
+.vt-tg{width:44px;height:26px;border-radius:13px;background:var(--br2);position:relative;flex-shrink:0}
+.vt-tg::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.vt-tg.on{background:var(--g)}.vt-tg.on::after{left:21px}
+.vt-sel{display:flex;align-items:center;justify-content:space-between}
+button.vt-tg{border:0;padding:0;cursor:pointer}
+.vt-chip{min-height:36px;cursor:pointer}
+.vt-lnk{cursor:pointer;min-height:36px}
+.vt-debt{text-align:left}

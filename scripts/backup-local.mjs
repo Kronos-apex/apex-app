@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════
 // AVI — Backup local de Supabase (copia FUERA del proyecto cloud)
 // ───────────────────────────────────────────────────────────────────────
-// Exporta user_data + apex_data + push_subscriptions + cuentas auth a un
+// Exporta user_data + apex_data + push_subscriptions + coach_productos + coach_ventas (v748)
+// + cuentas auth a un
 // JSON fechado en Desktop\AVI\backups\. Complementa al snapshot diario
 // interno (apex_daily_backup, pg_cron): si el proyecto Supabase se pierde
 // (cuenta, pausa del free tier, error humano), esta copia sobrevive.
@@ -38,6 +39,15 @@ async function fetchTable(name) {
   return r.json();
 }
 
+// v748 · las tablas de ventas son nuevas: si la migración aún no se aplicó (404), se respalda vacío
+// en vez de tumbar el respaldo diario de todo lo demás. Cualquier otro error sí aborta.
+async function fetchTableOpcional(name) {
+  const r = await fetch(`${SB_URL}/rest/v1/${name}?select=*`, { headers: HDRS });
+  if (r.status === 404) { console.warn(`⚠️ ${name} aún no existe en Supabase (¿falta aplicar la migración?) — se respalda vacía`); return []; }
+  if (!r.ok) die(`Supabase respondió ${r.status} al leer ${name}: ${await r.text()}`);
+  return r.json();
+}
+
 // Cuentas de auth (mapa uid↔email, necesario para restaurar): API admin, paginada.
 async function fetchAuthUsers() {
   const users = [];
@@ -57,8 +67,10 @@ async function fetchAuthUsers() {
   return users;
 }
 
-const [user_data, apex_data, push_subscriptions, auth_users] = await Promise.all([
-  fetchTable('user_data'), fetchTable('apex_data'), fetchTable('push_subscriptions'), fetchAuthUsers()
+const [user_data, apex_data, push_subscriptions, coach_productos, coach_ventas, auth_users] = await Promise.all([
+  fetchTable('user_data'), fetchTable('apex_data'), fetchTable('push_subscriptions'),
+  fetchTableOpcional('coach_productos'), fetchTableOpcional('coach_ventas'), // v748 · ventas de suplementos del coach
+  fetchAuthUsers()
 ]);
 
 if (!user_data.length && !apex_data.length) die('Supabase devolvió 0 filas en user_data Y apex_data — no se guarda un backup vacío.');
@@ -70,8 +82,8 @@ const outFile = join(OUT_DIR, `avi-backup-${stamp}.json`);
 writeFileSync(outFile, JSON.stringify({
   generated_at: now.toISOString(),
   supabase_project: 'eoebhrxbokyllqalyecj',
-  counts: { user_data: user_data.length, apex_data: apex_data.length, push_subscriptions: push_subscriptions.length, auth_users: auth_users.length },
-  user_data, apex_data, push_subscriptions, auth_users
+  counts: { user_data: user_data.length, apex_data: apex_data.length, push_subscriptions: push_subscriptions.length, coach_productos: coach_productos.length, coach_ventas: coach_ventas.length, auth_users: auth_users.length },
+  user_data, apex_data, push_subscriptions, coach_productos, coach_ventas, auth_users
 }));
 
 // Poda: conserva los KEEP_FILES exports más recientes.
@@ -81,4 +93,4 @@ const old = readdirSync(OUT_DIR)
 old.forEach(f => unlinkSync(join(OUT_DIR, f)));
 
 const kb = Math.round(statSync(outFile).size / 1024);
-console.log(`✅ Backup local: ${outFile} (${kb} KB) — user_data ${user_data.length} · apex_data ${apex_data.length} · push ${push_subscriptions.length} · auth ${auth_users.length}${old.length ? ` · podados ${old.length} viejos` : ''}`);
+console.log(`✅ Backup local: ${outFile} (${kb} KB) — user_data ${user_data.length} · apex_data ${apex_data.length} · push ${push_subscriptions.length} · productos ${coach_productos.length} · ventas ${coach_ventas.length} · auth ${auth_users.length}${old.length ? ` · podados ${old.length} viejos` : ''}`);

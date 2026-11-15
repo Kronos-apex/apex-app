@@ -2651,6 +2651,9 @@ const AVI_ICONS={
   heart:'<path d="M12 19s-6-4.2-8-8a3.8 3.8 0 0 1 8-1 3.8 3.8 0 0 1 8 1c-2 3.8-8 8-8 8z"/>',
   // Hábitos parte 2 (v362): pasos del día en la tarjeta #cn-habits.
   footprints:'<path d="M4 15.5v-2C4 11 2.9 10 3 8c.05-2.4 1.3-5 4-5C8.7 3 9.3 4.6 9.3 6c0 2.7-1.6 4.9-1.6 7.5v2a1.9 1.9 0 1 1-3.7 0z"/><path d="M19.7 19v-2c0-1.8.9-2.7 1-4.6.1-2.4-1.3-5-4-5-1.6 0-2.3 1.6-2.3 3 0 2.7 1.6 4.9 1.6 7.5v1.1a1.9 1.9 0 1 0 3.7 0z"/><path d="M4 13h4"/><path d="M16 17h4"/>',
+  // v748 · ventas de suplementos (solo el coach): la bolsa y el paquete del catálogo.
+  bag:'<path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  box:'<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5v-9z"/><path d="M3.5 7.5L12 12l8.5-4.5"/><path d="M12 12v9"/>',
 };
 function aviIcon(name,size){
   const p=AVI_ICONS[name]||AVI_ICONS.sparkles;

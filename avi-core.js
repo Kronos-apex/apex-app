@@ -14207,6 +14207,162 @@ function profileRowsModel(client, d, now) {
       valor: lock || (fot ? (fot === 1 ? '1 foto' : fot + ' fotos') : 'Sin fotos') },
   ];
 }
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// VENTAS DE SUPLEMENTOS (v748) — lógica pura. SOLO la ve el coach.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// 🔒 Viven en dos TABLAS APARTE (`coach_productos`, `coach_ventas`), jamás dentro del asesorado:
+//    en `user_data` la asesorada puede leer, editar y borrar su propia fila (y su perfil es suyo),
+//    así que un precio o un costo ahí lo vería ella. Por eso nada de esto toca la fila del
+//    asesorado, los pagos de mensualidad, el vencimiento ni el estado de membresía: una venta de
+//    suplementos NO es una mensualidad y no mueve el estado de nadie.
+// 💎 El saldo se CALCULA (precio menos abonos), no se guarda: un campo guardado se desfasa.
+// 💎 La venta guarda UNA COPIA de nombre, precio y costo del momento: editar el producto no
+//    reescribe lo que ya se vendió.
+// Las fechas son 'YYYY-MM-DD' (texto): comparar por mes es comparar prefijos, sin zonas horarias.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+const SUPL_MAYORIA_EDAD = 18;
+const SUPL_CATEGORIAS = [
+  { id: 'proteina', label: 'Proteína en polvo', noMenores: false },
+  { id: 'barras', label: 'Barras de proteína', noMenores: false },
+  { id: 'creatina', label: 'Creatina', noMenores: false },
+  { id: 'preentreno', label: 'Preentreno', noMenores: true },
+  { id: 'aminoacidos', label: 'Aminoácidos (BCAA/EAA)', noMenores: false },
+  { id: 'glutamina', label: 'Glutamina', noMenores: false },
+  { id: 'omega3', label: 'Omega 3', noMenores: false },
+  { id: 'colageno', label: 'Colágeno', noMenores: false },
+  { id: 'multivitaminico', label: 'Multivitamínico', noMenores: false },
+  { id: 'vitamina-d', label: 'Vitamina D', noMenores: false },
+  { id: 'magnesio', label: 'Magnesio', noMenores: false },
+  { id: 'electrolitos', label: 'Electrolitos', noMenores: false },
+  { id: 'cafeina', label: 'Cafeína', noMenores: true },
+  { id: 'ganador', label: 'Ganador de peso', noMenores: false },
+  { id: 'quemador', label: 'Quemador', noMenores: true },
+  { id: 'otro', label: 'Otro', noMenores: false },
+];
+function suplCategoria(id) { return SUPL_CATEGORIAS.find(c => c.id === id) || SUPL_CATEGORIAS[SUPL_CATEGORIAS.length - 1]; }
+// «No para menores» arranca encendido en las categorías de estimulantes; el coach lo cambia.
+function suplNoMenoresPorDefecto(catId) { return suplCategoria(catId).noMenores === true; }
+
+// '100.000' · '$100.000' · '100000' · 100000 → 100000. Vacío o basura → 0. Nunca negativo.
+function suplMonto(v) {
+  if (typeof v === 'number') return isFinite(v) && v > 0 ? Math.round(v) : 0;
+  const s = String(v == null ? '' : v).replace(/[^\d]/g, '');
+  const n = s ? parseInt(s, 10) : 0;
+  return isFinite(n) && n > 0 ? n : 0;
+}
+function suplGanancia(precio, costo) { return suplMonto(precio) - suplMonto(costo); }
+// Margen = ganancia sobre el PRECIO de venta, en % entero. Sin precio → 0.
+function suplMargen(precio, costo) {
+  const p = suplMonto(precio);
+  return p > 0 ? Math.round(((p - suplMonto(costo)) / p) * 100) : 0;
+}
+function suplCuota(precio, cuotas) {
+  const n = Math.max(1, parseInt(cuotas, 10) || 1);
+  return Math.round(suplMonto(precio) / n);
+}
+function suplAbonos(venta) { return Array.isArray(venta && venta.abonos) ? venta.abonos : []; }
+function suplAbonado(venta) { return suplAbonos(venta).reduce((t, a) => t + suplMonto(a && a.monto), 0); }
+// El saldo no se guarda: es precio menos lo abonado (nunca negativo).
+function suplSaldo(venta) { return Math.max(0, suplMonto(venta && venta.precio) - suplAbonado(venta)); }
+function suplSaldada(venta) { return !!venta && suplMonto(venta.precio) > 0 && suplSaldo(venta) === 0; }
+// Un abono: > 0 y no más que el saldo. Devuelve {ok, error, saldoDespues}.
+function suplValidarAbono(venta, monto) {
+  const m = suplMonto(monto);
+  const saldo = suplSaldo(venta);
+  if (!venta || venta.borrado) return { ok: false, error: 'Esa venta ya no existe.', saldoDespues: saldo };
+  if (m <= 0) return { ok: false, error: 'Escribe cuánto te pagó.', saldoDespues: saldo };
+  if (saldo <= 0) return { ok: false, error: 'Esta venta ya está saldada.', saldoDespues: 0 };
+  if (m > saldo) return { ok: false, error: 'El abono no puede pasar del saldo ($' + saldo.toLocaleString('es-CO') + ').', saldoDespues: saldo };
+  return { ok: true, error: '', saldoDespues: saldo - m };
+}
+// ¿Avisar «no para menores»? Solo si el producto lo marca y la persona REGISTRA una edad menor de 18.
+// Sin edad no avisa (no se inventa). NUNCA bloquea: el aviso informa, la decisión es del coach.
+function suplAvisoMenor(producto, client) {
+  const edad = parseInt(client && client.age, 10);
+  const aviso = !!(producto && producto.no_menores) && isFinite(edad) && edad > 0 && edad < SUPL_MAYORIA_EDAD;
+  return { aviso, edad: aviso ? edad : null, bloquea: false };
+}
+// Venta nueva: COPIA nombre, precio y costo del momento (pueden venir cambiados para esta venta).
+function suplVentaNueva(producto, datos, ids) {
+  datos = datos || {}; ids = ids || {};
+  const precio = datos.precio != null && datos.precio !== '' ? suplMonto(datos.precio) : suplMonto(producto && producto.precio);
+  const costo = datos.costo != null && datos.costo !== '' ? suplMonto(datos.costo) : suplMonto(producto && producto.costo);
+  const ahora = ids.ahora || new Date().toISOString();
+  return {
+    id: ids.id || null,
+    client_id: datos.client_id || null,
+    producto_id: (producto && producto.id) || null,
+    producto_nombre: String((producto && producto.nombre) || datos.nombre || '').trim(),
+    precio, costo,
+    cuotas: Math.min(12, Math.max(1, parseInt(datos.cuotas, 10) || 1)),
+    fecha: datos.fecha || ahora.slice(0, 10),
+    abonos: [],
+    borrado: false,
+    creado: ahora, actualizado: ahora,
+  };
+}
+function suplAbonoNuevo(monto, fecha, id) { return { id: id || null, monto: suplMonto(monto), fecha: fecha || new Date().toISOString().slice(0, 10) }; }
+function _suplMes(now) { const d = now || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function _suplVivas(ventas) { return (ventas || []).filter(v => v && !v.borrado); }
+function _suplEnMes(fecha, now) { return String(fecha || '').slice(0, 7) === _suplMes(now); }
+// Agregado del mes: vendido (ventas hechas este mes), cobrado (abonos recibidos este mes, de ventas
+// de cualquier mes), costo de lo vendido este mes, ganancia = vendido − su costo. «Debe» es el total
+// pendiente de TODAS las ventas vivas (no solo las del mes).
+function suplAgregadoMes(ventas, now) {
+  const vivas = _suplVivas(ventas);
+  const delMes = vivas.filter(v => _suplEnMes(v.fecha, now));
+  const vendido = delMes.reduce((t, v) => t + suplMonto(v.precio), 0);
+  const costo = delMes.reduce((t, v) => t + suplMonto(v.costo), 0);
+  let cobrado = 0;
+  vivas.forEach(v => suplAbonos(v).forEach(a => { if (_suplEnMes(a && a.fecha, now)) cobrado += suplMonto(a.monto); }));
+  const debe = vivas.reduce((t, v) => t + suplSaldo(v), 0);
+  const quienes = new Set(vivas.filter(v => suplSaldo(v) > 0).map(v => v.client_id));
+  return { vendido, cobrado, costo, ganancia: vendido - costo, debe, personasDeben: quienes.size, nVentas: delMes.length };
+}
+// «Por producto» del mes, por ganancia. Agrupa por producto_id; si el producto está archivado
+// (o ya no existe) manda el nombre COPIADO en la venta; si sigue activo, su nombre actual.
+function suplPorProducto(ventas, productos, now) {
+  const porId = {}; (productos || []).forEach(p => { if (p) porId[p.id] = p; });
+  const grupos = {};
+  _suplVivas(ventas).filter(v => _suplEnMes(v.fecha, now)).forEach(v => {
+    const clave = v.producto_id || ('n:' + v.producto_nombre);
+    const g = grupos[clave] || (grupos[clave] = { clave, producto_id: v.producto_id || null, nombre: '', cantidad: 0, vendido: 0, costo: 0, ganancia: 0, archivado: false });
+    const p = v.producto_id ? porId[v.producto_id] : null;
+    g.archivado = !p || p.activo === false;
+    g.nombre = (p && p.activo !== false) ? p.nombre : v.producto_nombre;
+    g.cantidad += 1; g.vendido += suplMonto(v.precio); g.costo += suplMonto(v.costo);
+    g.ganancia = g.vendido - g.costo;
+  });
+  return Object.keys(grupos).map(k => { const g = grupos[k]; g.margen = suplMargen(g.vendido, g.costo); return g; })
+    .sort((a, b) => b.ganancia - a.ganancia || a.nombre.localeCompare(b.nombre));
+}
+// «Quién te debe»: por persona, con el detalle de sus ventas con saldo. Cuentan TODAS las asesoradas
+// del coach (también las de cortesía); solo se excluye al propio coach (`_self`).
+function suplQuienDebe(ventas, clientes, now) {
+  const porId = {}; (clientes || []).forEach(c => { if (c) porId[c.id] = c; });
+  const hoy = (now || new Date());
+  const hoyMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const gr = {};
+  _suplVivas(ventas).forEach(v => {
+    if (isSelfClient(v.client_id) || suplSaldo(v) <= 0) return;
+    const c = porId[v.client_id];
+    const g = gr[v.client_id] || (gr[v.client_id] = { client_id: v.client_id, nombre: c ? c.name : 'Asesorado que ya no está', saldo: 0, ventas: [], diasMasAntigua: 0 });
+    g.saldo += suplSaldo(v); g.ventas.push(v);
+    const f = String(v.fecha || '').split('-').map(Number);
+    if (f.length === 3 && f[0]) g.diasMasAntigua = Math.max(g.diasMasAntigua, Math.max(0, Math.round((hoyMs - Date.UTC(f[0], f[1] - 1, f[2])) / 86400000)));
+  });
+  return Object.keys(gr).map(k => gr[k]).sort((a, b) => b.saldo - a.saldo);
+}
+// Ventas vivas de una persona, las más nuevas primero.
+function suplVentasDe(ventas, clientId) {
+  return _suplVivas(ventas).filter(v => v.client_id === clientId).slice()
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || String(b.creado).localeCompare(String(a.creado)));
+}
+function suplMargenPromedio(productos) {
+  const act = (productos || []).filter(p => p && p.activo !== false && suplMonto(p.precio) > 0);
+  return act.length ? Math.round(act.reduce((t, p) => t + suplMargen(p.precio, p.costo), 0) / act.length) : 0;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     PROFILE_SECS, PROFILE_LOCK_TXT, profileRowsModel,
@@ -14949,5 +15105,26 @@ if (typeof module !== 'undefined' && module.exports) {
     stepsAdd,
     stepsWeek,
     habitPct,
+    SUPL_MAYORIA_EDAD,
+    SUPL_CATEGORIAS,
+    suplCategoria,
+    suplNoMenoresPorDefecto,
+    suplMonto,
+    suplGanancia,
+    suplMargen,
+    suplCuota,
+    suplAbonos,
+    suplAbonado,
+    suplSaldo,
+    suplSaldada,
+    suplValidarAbono,
+    suplAvisoMenor,
+    suplVentaNueva,
+    suplAbonoNuevo,
+    suplAgregadoMes,
+    suplPorProducto,
+    suplQuienDebe,
+    suplVentasDe,
+    suplMargenPromedio,
   };
 }
