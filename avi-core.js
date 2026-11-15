@@ -6298,7 +6298,7 @@ function quickCardioRoutine(optId, catalog) {
 // MARCA). Misma puerta que todo lo demás (`exerciseContraindicated`), jamás una segunda lista.
 // `lib` = la lista del dispositivo y el catálogo, en ese orden: se prueba CADA copia del id, porque el
 // coach puede haber renombrado el ejercicio y el criterio clínico vive en el nombre del catálogo.
-function quickWorkoutFit(items, limKeys, lib) {
+function quickWorkoutFit(items, limKeys, lib, opts) {
   const L = Array.isArray(lib) ? lib : [];
   const keys = limKeys || [];
   const keep = [], quitados = [];
@@ -6310,6 +6310,9 @@ function quickWorkoutFit(items, limKeys, lib) {
     // con presión arterial o embarazo, «HIIT sin equipo» seguía ofreciéndose con los escaladores a 30 s fuerte / 15 s.
     if (it.hiit) copias.push({ id: it.id, name: copias[copias.length - 1].name || '', type: 'HIIT' });
     const zonas = keys.filter(z => copias.some(ex => exerciseContraindicated(ex, [z], L)));
+    // v747 · menor de 16: la MISMA regla de carga axial del generador (sentadilla con barra, peso muerto, volteo de llanta…).
+    const porEdad = !!(opts && opts.minor) && copias.some(ex => _genMakeExcluder({ keys: [] }, true, false, null)(ex));
+    if (porEdad && !zonas.includes('menor')) zonas.push('menor');
     if (zonas.length) quitados.push({ id: it.id, name: copias[copias.length - 1].name || it.id, zonas });
     else keep.push(it);
   });
@@ -6318,7 +6321,7 @@ function quickWorkoutFit(items, limKeys, lib) {
 // Cómo se le nombra la zona A LA PERSONA, con su posesivo. `GEN_ZONE_LABEL` le habla al coach y no
 // siempre acepta un «tu» delante («tu la parte de atrás de tu muslo»).
 // Las condiciones (v727) van con la frase de Laura, sin diagnósticos (`GEN_COND_CLIENT`).
-const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión' };
+const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión', menor: 'tu edad' };
 function zoneLabelClient(z) {
   return GEN_ZONE_LABEL_CLIENT[z] || GEN_COND_CLIENT[z] || (GEN_ZONE_LABEL[z] ? 'tu ' + GEN_ZONE_LABEL[z] : '');
 }
@@ -6330,10 +6333,10 @@ function quickFitZonas(zonas) {
 }
 // La biblioteca entera pasada por las limitaciones de la persona. Un rápido que se queda sin
 // ejercicios no se ofrece (`oculto`); «Cardio a tu ritmo» se mide por sus OPCIONES (`opciones`).
-function quickWorkoutsFor(list, limKeys, lib) {
+function quickWorkoutsFor(list, limKeys, lib, opts) {
   return (list || []).map(w => {
     const items = w.cardio ? QUICK_CARDIO_OPTIONS.map(o => ({ id: o.id })) : (w.items || []);
-    const fit = quickWorkoutFit(items, limKeys, lib);
+    const fit = quickWorkoutFit(items, limKeys, lib, opts);
     return {
       w: w.cardio ? w : Object.assign({}, w, { items: fit.keep }),
       opciones: w.cardio ? fit.keep.map(i => i.id) : null,

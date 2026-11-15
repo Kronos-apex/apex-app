@@ -2091,6 +2091,12 @@ const QUICK_WORKOUTS=[
   {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT sin equipo', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
    items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e81',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
+  // v747 · pedido del dueño (14-nov): el volteo de llantas como cardio después del entreno, POR RONDAS (4 de 6 volteos, 60 s de pausa).
+  //    Cuenta volteos (track reps), así que no pide kilos. Pasa por la misma puerta de zonas que todo (quickWorkoutsFor) y,
+  //    para menores de 16, por la misma regla de carga axial del generador. Va con el MET de reps (4): ver docs/roadmap.md.
+  {id:'qw_llantas', emoji:'🏋️', ic:'dumbbell', name:'Volteo de llantas', goal:'Cardio · Funcional', place:'Gym/Parque', dur:'~10 min',
+   desc:'4 rondas de 6 volteos · 60 s de descanso. Después de tu entreno.',
+   items:[{id:'e382',sets:4,reps:6,track:'reps',restSec:60}]},
   {id:'qw_abs_casa', emoji:'💥', ic:'burst', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
    desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
    items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
@@ -2118,6 +2124,7 @@ function buildQuickRoutine(spec, cfg){
     if(it.sets!=null)ex.sets=it.sets;
     if(it.reps!=null)ex.reps=it.reps;
     if(it.track)ex.track=it.track;
+    if(it.restSec!=null)ex.restSec=it.restSec;
     if(it.hiit){
       ex.type='HIIT';ex.track='hiit';ex.hiit={...(base.hiit||{}),...it.hiit};
       if(cfg){ex.sets=cfg.rounds;ex.hiit={work:cfg.work,rest:cfg.rest};}
@@ -2133,13 +2140,19 @@ function _qwLimKeys(){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
   return c?(limitationsFor(c,Date.now()).keys||[]):[];
 }
-function _qwFitOf(spec){ return quickWorkoutsFor([spec],_qwLimKeys(),_qwLib())[0]; }
+// v747 · edad para la regla de menores de 16 (sin carga axial): la misma del generador.
+function _qwOpts(){
+  const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
+  const age=parseInt(c&&c.age);
+  return {minor:Number.isFinite(age)&&age>0&&age<16};
+}
+function _qwFitOf(spec){ return quickWorkoutsFor([spec],_qwLimKeys(),_qwLib(),_qwOpts())[0]; }
 // «A», «A ni B», «A, B ni C». Recibe los nombres YA escapados.
 function _qwNi(nombres){ const l=nombres.map(n=>'«'+n+'»'); return l.length<2?l.join(''):l.slice(0,-1).join(', ')+' ni '+l[l.length-1]; }
 function openQuickWorkouts(){
   const room=document.getElementById('quickwo-room'),body=document.getElementById('quickwo-body');
   if(!room||!body)return;
-  const fits=quickWorkoutsFor(QUICK_WORKOUTS,_qwLimKeys(),_qwLib());
+  const fits=quickWorkoutsFor(QUICK_WORKOUTS,_qwLimKeys(),_qwLib(),_qwOpts());
   const ocultos=fits.filter(f=>f.oculto);
   const aviso=ocultos.length?`<div class="qw-fit-note">No te mostramos ${_qwNi(ocultos.map(f=>esc(f.w.name)))}: no ${ocultos.length===1?'va':'van'} con lo que nos contaste de ${esc(quickFitZonas([].concat(...ocultos.map(f=>f.zonas))))}.</div>`:'';
   body.innerHTML=`<div class="qw-intro">Sesiones listas para un día fuera de tu plan. No cambian tu rutina asignada, pero <b>sí cuentan</b> en tu historial y tu racha 🔥</div>`+aviso+

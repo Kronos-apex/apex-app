@@ -62,6 +62,7 @@ v723 arregló la duración (el inicio ya no se sella al TERMINAR el primer cardi
 - **El MET POR ACTIVIDAD de cardio.** Hoy todo cardio vale 7: caminar a paso normal anda por 3,5 y la escaladora por
   encima de 8, así que «Caminar o trotar» le da de más a quien camina. Los valores por actividad (las 6 de «Cardio a tu
   ritmo»: e20, e375, e64, e67, e135, e65) los valida **Andrés Hyp** antes de escribirlos.
+  El volteo de llantas (rápido, 14-nov) cuenta con MET 4 por track reps: entra en la mejora de MET por actividad.
 - **El ritmo personal (`personalSecsPerSet`, avi-core) se infla con el cardio.** Divide la duración de la sesión entre
   las series hechas y el cardio cuenta como UNA serie de 20-30 min → a quien cierra con cardio la app le estima rutinas
   más largas. Restar `cardioDoneSec` a la duración y no contar las series de cardio.
