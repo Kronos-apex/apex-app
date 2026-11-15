@@ -6310,9 +6310,14 @@ function quickWorkoutFit(items, limKeys, lib, opts) {
     // con presión arterial o embarazo, «HIIT sin equipo» seguía ofreciéndose con los escaladores a 30 s fuerte / 15 s.
     if (it.hiit) copias.push({ id: it.id, name: copias[copias.length - 1].name || '', type: 'HIIT' });
     const zonas = keys.filter(z => copias.some(ex => exerciseContraindicated(ex, [z], L)));
-    // v747 · menor de 16: la MISMA regla de carga axial del generador (sentadilla con barra, peso muerto, volteo de llanta…).
-    const porEdad = !!(opts && opts.minor) && copias.some(ex => _genMakeExcluder({ keys: [] }, true, false, null)(ex));
-    if (porEdad && !zonas.includes('menor')) zonas.push('menor');
+    // v749 · edad y nivel SOLO donde el ítem lo pide (`soloAdultoNivel`: hoy la llanta del rápido `qw_llantas`).
+    // La v747 pasaba a todos los rápidos por la regla de carga axial del generador y le quitaba a un menor de 15 la
+    // «Sentadilla con Salto» (peso corporal) de «HIIT sin equipo» y «Cardio Pliométrico»: nadie pidió eso.
+    // Menor de 16 (mismo corte que `_qwOpts`) → «tu edad»; nivel Principiante → «tu nivel» (e382 es nivel A).
+    if (it.soloAdultoNivel && opts) {
+      if (opts.minor && !zonas.includes('menor')) zonas.push('menor');
+      if (opts.principiante && !zonas.includes('nivel')) zonas.push('nivel');
+    }
     if (zonas.length) quitados.push({ id: it.id, name: copias[copias.length - 1].name || it.id, zonas });
     else keep.push(it);
   });
@@ -6321,7 +6326,7 @@ function quickWorkoutFit(items, limKeys, lib, opts) {
 // Cómo se le nombra la zona A LA PERSONA, con su posesivo. `GEN_ZONE_LABEL` le habla al coach y no
 // siempre acepta un «tu» delante («tu la parte de atrás de tu muslo»).
 // Las condiciones (v727) van con la frase de Laura, sin diagnósticos (`GEN_COND_CLIENT`).
-const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión', menor: 'tu edad' };
+const GEN_ZONE_LABEL_CLIENT = { isquios: 'la parte de atrás de tu muslo', generic: 'tu lesión', menor: 'tu edad', nivel: 'tu nivel' };
 function zoneLabelClient(z) {
   return GEN_ZONE_LABEL_CLIENT[z] || GEN_COND_CLIENT[z] || (GEN_ZONE_LABEL[z] ? 'tu ' + GEN_ZONE_LABEL[z] : '');
 }

@@ -2087,16 +2087,19 @@ const QUICK_WORKOUTS=[
   //    candados de v485/v493 — la misma clase que el `weekEditorial` que se retiró en v493 por
   //    decirle «RECOMPOSICIÓN · más definido» a dos menores. El circuito no tiene nada de malo; lo
   //    que sobraba era la promesa sobre el cuerpo. Nombrado por lo que ES, sirve igual para todos
-  //    y no hay que gatear nada por edad.
+  //    y no hay que gatear nada por edad. (v749: sigue así. La edad y el nivel solo gatean
+  //    la llanta, `qw_llantas`; los demás rápidos dan lo mismo a cualquier edad, también «Sentadilla con Salto».)
   {id:'qw_hiit_casa', emoji:'🔥', ic:'flame', name:'HIIT sin equipo', goal:'Cardio · HIIT', place:'Casa/Parque', dur:'~15 min',
    desc:'Circuito de alta intensidad sin equipo: 4 rondas de 30s fuerte / 15s de pausa.',
    items:[{id:'e182',sets:4,hiit:{work:30,rest:15}},{id:'e81',sets:4,hiit:{work:30,rest:15}},{id:'e184',sets:4,hiit:{work:30,rest:15}},{id:'e202',sets:4,hiit:{work:30,rest:15}},{id:'e183',sets:4,hiit:{work:30,rest:15}}]},
-  // v747 · pedido del dueño (14-nov): el volteo de llantas como cardio después del entreno, POR RONDAS (4 de 6 volteos, 60 s de pausa).
-  //    Cuenta volteos (track reps), así que no pide kilos. Pasa por la misma puerta de zonas que todo (quickWorkoutsFor) y,
-  //    para menores de 16, por la misma regla de carga axial del generador. Va con el MET de reps (4): ver docs/roadmap.md.
+  // v747 · pedido del dueño (14-nov): el volteo de llantas como cardio después del entreno, POR RONDAS.
+  //    v749: 3 rondas de 5 volteos con 60 s (lo pidieron Laura y Coach Pro; el 4×6 fue un ejemplo). Cuenta volteos
+  //    (track reps), así que no pide kilos. Pasa por la puerta de zonas de todos (quickWorkoutsFor) y SOLO ESTE rápido
+  //    se oculta a menores de 16 y a Principiantes (`soloAdultoNivel`: e382 es nivel A, «Exige dominar bisagra y peso
+  //    muerto»). Va con el MET de reps (4): ver docs/roadmap.md.
   {id:'qw_llantas', emoji:'🏋️', ic:'dumbbell', name:'Volteo de llantas', goal:'Cardio · Funcional', place:'Gym/Parque', dur:'~10 min',
-   desc:'4 rondas de 6 volteos · 60 s de descanso. Después de tu entreno.',
-   items:[{id:'e382',sets:4,reps:6,track:'reps',restSec:60}]},
+   desc:'3 rondas de 5 volteos · 60 s de descanso. Después de tu entreno.',
+   items:[{id:'e382',sets:3,reps:5,track:'reps',restSec:60,soloAdultoNivel:true}]},
   {id:'qw_abs_casa', emoji:'💥', ic:'burst', name:'Abdomen Express', goal:'Core', place:'Casa', dur:'~10 min',
    desc:'Cinco ejercicios para encender el abdomen en casa, sin equipo.',
    items:[{id:'e18',sets:3,reps:15,track:'reps'},{id:'e72',sets:3,reps:12,track:'reps'},{id:'e81',sets:3,reps:20,track:'reps'},{id:'e49',sets:3,reps:30,track:'tiempo'},{id:'e17',sets:3,reps:40,track:'tiempo'}]},
@@ -2140,11 +2143,12 @@ function _qwLimKeys(){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
   return c?(limitationsFor(c,Date.now()).keys||[]):[];
 }
-// v747 · edad para la regla de menores de 16 (sin carga axial): la misma del generador.
+// v749 · edad y nivel de la persona, para el ÚNICO rápido que los exige (la llanta). Menor de 16 = el corte del
+// generador; sin nivel se trata como Principiante, igual que el generador (`client.level || 'Principiante'`).
 function _qwOpts(){
   const c=(DB.clients||[]).find(x=>x.id===CUR.clientId);
   const age=parseInt(c&&c.age);
-  return {minor:Number.isFinite(age)&&age>0&&age<16};
+  return {minor:Number.isFinite(age)&&age>0&&age<16, principiante:!!c&&(c.level||'Principiante')==='Principiante'};
 }
 function _qwFitOf(spec){ return quickWorkoutsFor([spec],_qwLimKeys(),_qwLib(),_qwOpts())[0]; }
 // «A», «A ni B», «A, B ni C». Recibe los nombres YA escapados.

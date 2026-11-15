@@ -25304,26 +25304,49 @@ test('🔒 v726 · el dolor que reportó la persona también filtra los rápidos
   assert.ok(_qwDe(core.quickWorkoutsFor(_QW_REAL, keys, _LIB_REAL), 'qw_plio').oculto, '🔴 el reporte de dolor de rodilla no llega a los rápidos');
 });
 
-// ── v747 · «VOLTEO DE LLANTAS» COMO RÁPIDO DE CARDIO (pedido del dueño, 14-nov) ──
-// Lo hace por rondas después del entreno: 4 de 6 volteos con 60 s de pausa. Es una sesión que arma la
-// app y elige la persona, así que pasa por las MISMAS puertas que la llanta del catálogo: zonas de Laura
-// (quickWorkoutsFor) y la regla de carga axial de menores de 16 (la del generador).
-test('v747 · el rápido «Volteo de llantas» existe: e382, 4 × 6, 60 s de pausa, entre los de cardio', () => {
+// ── v747/v749 · «VOLTEO DE LLANTAS» COMO RÁPIDO DE CARDIO (pedido del dueño, 14-nov) ──
+// Lo hace por rondas después del entreno: 3 de 5 volteos con 60 s de pausa (v749: lo pidieron Laura y Coach Pro;
+// el 4×6 de la v747 fue un ejemplo). Es una sesión que arma la app y elige la persona, así que pasa por las
+// zonas de Laura (quickWorkoutsFor). La edad (<16) y el nivel (Principiante) la ocultan SOLO a ELLA: la v747 le
+// pasaba la regla de carga axial a TODOS los rápidos y a un menor de 15 le quitaba e184 «Sentadilla con Salto»
+// (peso corporal) de «HIIT sin equipo» y «Cardio Pliométrico», diciéndole que era «por tu edad».
+const _QW_UI_SRC = require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8');
+// La función REAL `_qwOpts`, leída del archivo y EJECUTADA con una ficha de asesorado.
+const _qwOptsDe = ficha => {
+  const src = sinComentarios(_QW_UI_SRC);
+  const fn = src.slice(src.indexOf('function _qwOpts('), src.indexOf('function _qwFitOf('));
+  assert.ok(fn.length > 40 && fn.includes('minor'), 'CONTROL · no encontré _qwOpts en app-4-entreno.js');
+  return new Function('DB', 'CUR', fn + '; return _qwOpts();')({ clients: [ficha] }, { clientId: ficha.id });
+};
+// Lo que daba CADA rápido para un menor de 15 en el padre de la v747 (df4a028), con nombres exactos.
+// Los rápidos de antes no miran edad ni nivel: tienen que seguir dando EXACTAMENTE esto a cualquiera.
+const _QW_PADRE = {
+  qw_hiit_maquina: ['e74 HIIT / Intervalos'],
+  qw_hiit_casa: ['e182 Rodillas Altas', 'e81 Escaladores (Mountain Climbers)', 'e184 Sentadilla con Salto', 'e202 Burpee Completo', 'e183 Talones al Glúteo'],
+  qw_abs_casa: ['e18 Crunch Abdominal', 'e72 Dead Bug', 'e81 Escaladores (Mountain Climbers)', 'e49 Plancha Lateral', 'e17 Plancha Frontal'],
+  qw_movilidad: ['e165 Gato–Camello', 'e173 Rotación Torácica', 'e170 Círculos de Cadera', 'e168 Cobra', 'e179 Estiramiento de Isquios', 'e167 Postura del Niño'],
+  qw_fullbody_casa: ['e83 Lagartijas (Push-up)', 'e162 Zancada Inversa a Peso Corporal', 'e73 Puente de Glúteo', 'e146 Remo Invertido en Mesa o Barra Baja', 'e17 Plancha Frontal'],
+  qw_gluteo_casa: ['e73 Puente de Glúteo', 'e162 Zancada Inversa a Peso Corporal', 'e130 Patada de Glúteo en Cuadrupedia', 'e106 Puente de Glúteo a Una Pierna', 'e163 Abducción Tumbado de Lado'],
+  qw_plio: ['e184 Sentadilla con Salto', 'e185 Zancadas con Salto', 'e186 Salto del Patinador', 'e198 Sprint en el Sitio', 'e203 Sprawl'],
+};
+const _qwNombres = (fit) => fit.w.items.map(i => i.id + ' ' + (_LIB_REAL.find(e => e.id === i.id) || {}).name);
+
+test('v747 · el rápido «Volteo de llantas» existe: e382, 3 × 5, 60 s de pausa, entre los de cardio', () => {
   const w = _QW_REAL.find(x => x.id === 'qw_llantas');
   assert.ok(w, '🔴 no está el rápido del volteo de llantas');
   assert.strictEqual(w.name, 'Volteo de llantas');
   assert.ok(/^Cardio/.test(w.goal), 'va entre los de cardio: su etiqueta empieza por «Cardio»');
   assert.ok(!w.cardio, 'no es «Cardio a tu ritmo» (minutos): cuenta volteos');
-  assert.deepStrictEqual(w.items.map(i => [i.id, i.sets, i.reps, i.restSec, i.track]), [['e382', 4, 6, 60, 'reps']]);
-  assert.ok(/4 rondas de 6 volteos/.test(w.desc) && /60 s/.test(w.desc) && /Después de tu entreno/.test(w.desc));
+  assert.deepStrictEqual(w.items.map(i => [i.id, i.sets, i.reps, i.restSec, i.track]), [['e382', 3, 5, 60, 'reps']]);
+  assert.strictEqual(w.desc, '3 rondas de 5 volteos · 60 s de descanso. Después de tu entreno.');
   // Lo que arranca de verdad: la función REAL que arma la rutina, leída del archivo.
-  const src = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const src = sinComentarios(_QW_UI_SRC);
   const fn = src.slice(src.indexOf('function buildQuickRoutine('), src.indexOf('function _qwLib('));
   const build = new Function('DB', fn + '; return buildQuickRoutine;')({ exercises: _LIB_REAL });
   const r = build(w, null);
   const ex = r.exercises[0];
   assert.strictEqual(r.exercises.length, 1);
-  assert.deepStrictEqual([ex.id, ex.sets, ex.reps, ex.restSec, core.exTrack(ex)], ['e382', 4, 6, 60, 'reps']);
+  assert.deepStrictEqual([ex.id, ex.sets, ex.reps, ex.restSec, core.exTrack(ex)], ['e382', 3, 5, 60, 'reps']);
   assert.strictEqual(core.repsUnitOf(ex), 'volteos');
   assert.strictEqual(core.restForExercise(ex, r), 60, '🔴 la pausa de 60 s no llega al guiado');
   // CONTROL: la llanta del catálogo NO cambió (v719): sigue «otro» y contando volteos, sin kilos.
@@ -25333,31 +25356,85 @@ test('v747 · el rápido «Volteo de llantas» existe: e382, 4 × 6, 60 s de pau
   assert.deepStrictEqual([cat.sets, cat.reps], [3, 5]);
 });
 
-test('🔒 v747 · el rápido de la llanta respeta las zonas de la llanta y la edad (menores de 16)', () => {
-  const llantas = lista => _qwDe(lista, 'qw_llantas');
-  // Sin limitaciones se ofrece.
-  const libre = llantas(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL));
-  assert.ok(libre && !libre.oculto && libre.quedan === 1, '🔴 sin limitaciones el rápido no se ofrece');
-  // Cae en las siete zonas de la llanta: en cada una se OCULTA (es su único ejercicio).
-  for (const z of ['lumbar', 'rodilla', 'codo', 'muneca', 'hombro', 'cuello', 'pecho'])
-    assert.strictEqual(llantas(core.quickWorkoutsFor(_QW_REAL, [z], _LIB_REAL)).oculto, true, `🔴 con dolor de ${z} se ofrece el volteo de llantas`);
-  // 🔒 CONTROL: las zonas donde la llanta NO cae lo siguen ofreciendo (el filtro no quedó ancho).
-  for (const z of ['aductor', 'abductor', 'tobillo', 'isquios'])
-    assert.strictEqual(llantas(core.quickWorkoutsFor(_QW_REAL, [z], _LIB_REAL)).oculto, false, `la llanta no cae en ${z}`);
-  // Menor de 16: se oculta con la misma regla de carga axial del generador, y se le dice por qué.
-  const menor = llantas(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL, { minor: true }));
-  assert.strictEqual(menor.oculto, true, '🔴 a un menor de 16 se le ofrece el volteo de llantas');
+test('🔒 v749 · `_qwOpts` se EJECUTA con una ficha real: <16 es menor, 17 no, sin edad no, Principiante se marca', () => {
+  const ficha = (extra) => Object.assign({ id: 'c1', name: 'Ana', age: 15, level: 'Intermedio', sex: 'F' }, extra);
+  assert.strictEqual(_qwOptsDe(ficha({ age: 15 })).minor, true, '🔴 un menor de 15 no se lee como menor');
+  assert.strictEqual(_qwOptsDe(ficha({ age: '15' })).minor, true, 'la edad guardada como texto también');
+  assert.strictEqual(_qwOptsDe(ficha({ age: 16 })).minor, false, 'el corte es <16: a los 16 ya no es menor');
+  assert.strictEqual(_qwOptsDe(ficha({ age: 17 })).minor, false);
+  assert.strictEqual(_qwOptsDe(ficha({ age: undefined })).minor, false, 'sin edad no es menor');
+  assert.strictEqual(_qwOptsDe(ficha({ age: 0 })).minor, false);
+  assert.strictEqual(_qwOptsDe(ficha({ level: 'Principiante' })).principiante, true, '🔴 Principiante no se marca');
+  assert.strictEqual(_qwOptsDe(ficha({ level: undefined })).principiante, true, 'sin nivel = Principiante, como el generador');
+  assert.strictEqual(_qwOptsDe(ficha({ level: 'Intermedio' })).principiante, false);
+  assert.strictEqual(_qwOptsDe(ficha({ level: 'Avanzado' })).principiante, false);
+  // Sin ficha (coach sin asesorado abierto): ni menor ni principiante.
+  const sin = new Function('DB', 'CUR', sinComentarios(_QW_UI_SRC).slice(sinComentarios(_QW_UI_SRC).indexOf('function _qwOpts('), sinComentarios(_QW_UI_SRC).indexOf('function _qwFitOf(')) + '; return _qwOpts();')({ clients: [] }, { clientId: 'nadie' });
+  assert.deepStrictEqual([sin.minor, sin.principiante], [false, false]);
+  // La pantalla le pasa esas opciones al filtro: sin eso nada de esto se activa.
+  const tramo = sinComentarios(_QW_UI_SRC);
+  const ui = tramo.slice(tramo.indexOf('function _qwLib('), tramo.indexOf('function _qwRun('));
+  assert.ok(ui.includes('quickWorkoutsFor(QUICK_WORKOUTS,_qwLimKeys(),_qwLib(),_qwOpts())') && ui.includes('quickWorkoutsFor([spec],_qwLimKeys(),_qwLib(),_qwOpts())'),
+    '🔴 la lista o el arranque de los rápidos no pasan la edad y el nivel al filtro');
+});
+
+test('🔒 v749 · la llanta se oculta a un menor de 15 y a una persona Principiante; un adulto intermedio la ve', () => {
+  const llantas = (ficha, keys) => _qwDe(core.quickWorkoutsFor(_QW_REAL, keys || [], _LIB_REAL, _qwOptsDe(ficha)), 'qw_llantas');
+  const base = { id: 'c1', age: 30, level: 'Intermedio' };
+  const adulto = llantas(base);
+  assert.ok(adulto && !adulto.oculto && adulto.quedan === 1, '🔴 un adulto intermedio sin limitaciones no ve la llanta');
+  const menor = llantas({ ...base, age: 15 });
+  assert.strictEqual(menor.oculto, true, '🔴 a un menor de 15 se le ofrece el volteo de llantas');
   assert.deepStrictEqual(menor.zonas, ['menor']);
   assert.strictEqual(core.quickFitZonas(menor.zonas), 'tu edad');
-  // 🔒 CONTROL: a un adulto no se le oculta por edad, y al menor solo se le quita lo de carga axial: Abdomen Express se queda.
-  assert.strictEqual(llantas(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL, { minor: false })).oculto, false);
-  assert.strictEqual(_qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL, { minor: true }), 'qw_abs_casa').oculto, false, 'la regla de menores quedó ancha');
-  // La pantalla le pasa la edad: sin eso el filtro de menores nunca se activa.
-  const ui = sinComentarios(require('fs').readFileSync(require('path').join(__dirname, 'app-4-entreno.js'), 'utf8'));
-  const tramo = ui.slice(ui.indexOf('function _qwLib('), ui.indexOf('function _qwRun('));
-  assert.ok(tramo.includes('quickWorkoutsFor(QUICK_WORKOUTS,_qwLimKeys(),_qwLib(),_qwOpts())') && tramo.includes('quickWorkoutsFor([spec],_qwLimKeys(),_qwLib(),_qwOpts())'),
-    '🔴 la lista o el arranque de los rápidos no pasan la edad al filtro');
-  assert.ok(/age<16/.test(tramo), 'el corte de menores es 16, como el generador');
+  const princ = llantas({ ...base, level: 'Principiante' });
+  assert.strictEqual(princ.oculto, true, '🔴 a una persona Principiante se le ofrece el volteo de llantas');
+  assert.deepStrictEqual(princ.zonas, ['nivel']);
+  assert.strictEqual(core.quickFitZonas(princ.zonas), 'tu nivel', 'el aviso dice «tu nivel», no «tu edad»');
+  assert.deepStrictEqual(llantas({ ...base, age: 15, level: 'Principiante' }).zonas.sort(), ['menor', 'nivel']);
+  // CONTROLES: 16 y 17 años intermedios la ven; el aviso de «edad» no sale para quien no es menor.
+  assert.strictEqual(llantas({ ...base, age: 16 }).oculto, false);
+  assert.strictEqual(llantas({ ...base, age: 17 }).oculto, false);
+  assert.strictEqual(llantas({ ...base, age: undefined }).oculto, false, 'sin edad no se oculta por edad');
+  // Las zonas de la llanta siguen mandando: se oculta en las siete donde cae, y en las demás no.
+  for (const z of ['lumbar', 'rodilla', 'codo', 'muneca', 'hombro', 'cuello', 'pecho'])
+    assert.strictEqual(llantas(base, [z]).oculto, true, `🔴 con dolor de ${z} se ofrece el volteo de llantas`);
+  for (const z of ['aductor', 'abductor', 'tobillo', 'isquios'])
+    assert.strictEqual(llantas(base, [z]).oculto, false, `la llanta no cae en ${z}`);
+  // El flag es el que la gatea: sin él (otro rápido, otro ejercicio) las opciones no la tocan.
+  const sinFlag = [{ id: 'x', name: 'x', items: [{ id: 'e382', sets: 3, reps: 5, track: 'reps' }] }];
+  assert.strictEqual(core.quickWorkoutsFor(sinFlag, [], _LIB_REAL, { minor: true, principiante: true })[0].oculto, false,
+    'la edad y el nivel solo gatean los ítems marcados con soloAdultoNivel');
+});
+
+test('🔒 v749 · para un menor de 15, TODOS los demás rápidos dan EXACTAMENTE lo del padre de la v747 (df4a028)', () => {
+  const menor15 = { id: 'c1', age: 15, level: 'Intermedio' };
+  const opts = _qwOptsDe(menor15);
+  assert.strictEqual(opts.minor, true, 'CONTROL · el menor de 15 no se leyó como menor: el resto de la prueba no probaría nada');
+  const lista = core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL, opts);
+  const esperados = Object.keys(_QW_PADRE);
+  assert.deepStrictEqual(lista.map(f => f.w.id).filter(id => id !== 'qw_llantas').sort(), ['qw_cardio'].concat(esperados).sort(),
+    'CONTROL · cambió la lista de rápidos: hay que revisar la tabla del padre');
+  for (const id of esperados) {
+    const f = _qwDe(lista, id);
+    assert.ok(f && !f.oculto, `🔴 al menor de 15 se le ocultó «${id}»`);
+    assert.deepStrictEqual(_qwNombres(f), _QW_PADRE[id], `🔴 «${id}» ya no da lo mismo que en el padre para un menor de 15`);
+    assert.deepStrictEqual(f.quitados, [], `🔴 a «${id}» se le quitó algo a un menor de 15 «por tu edad»`);
+  }
+  // «Cardio a tu ritmo» mide por sus opciones: las mismas que sin edad ni nivel.
+  const cardio = _qwDe(lista, 'qw_cardio'), sinOpts = _qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL), 'qw_cardio');
+  assert.ok(cardio.opciones.length >= 3 && !cardio.oculto, 'CONTROL · el cardio libre tiene opciones');
+  assert.deepStrictEqual(cardio.opciones, sinOpts.opciones);
+  // La queja concreta: «Sentadilla con Salto» sigue en los dos rápidos de peso corporal.
+  for (const id of ['qw_hiit_casa', 'qw_plio'])
+    assert.ok(_qwDe(lista, id).w.items.some(i => i.id === 'e184'), `🔴 e184 «Sentadilla con Salto» se perdió de ${id}`);
+  // Lo mismo para Principiante, y el único aviso de «edad» es el de la llanta.
+  for (const ficha of [{ id: 'c1', age: 15, level: 'Principiante' }, { id: 'c1', age: 40, level: 'Principiante' }, { id: 'c1', age: 40, level: 'Avanzado' }])
+    for (const id of esperados)
+      assert.deepStrictEqual(_qwNombres(_qwDe(core.quickWorkoutsFor(_QW_REAL, [], _LIB_REAL, _qwOptsDe(ficha)), id)), _QW_PADRE[id], `«${id}» cambió para ${JSON.stringify(ficha)}`);
+  const ocultos = lista.filter(f => f.oculto);
+  assert.deepStrictEqual(ocultos.map(f => f.w.id), ['qw_llantas'], 'al menor de 15 solo se le oculta la llanta');
+  assert.strictEqual(core.quickFitZonas([].concat(...ocultos.map(f => f.zonas))), 'tu edad');
 });
 
 test('🔒 v726 · se prueba CADA copia del ejercicio: renombrarlo en el dispositivo no lo cuela', () => {
