@@ -1904,6 +1904,9 @@ const EX_IMG_IDS=new Set(Object.values(EX_IMG_NAME));
 // dos fotos aprobadas (modo «calcar» sobre free-exercise-db). La app muestra UNA por ejercicio: la del momento que mejor
 // se lee, revisada a tamaño real (lección v498). Entran 19; fuera e297 otra vez: de espaldas no se ve el agarre supino.
 ['e222','e266','e267','e268','e273','e275','e277','e280','e281','e282','e292','e294','e296','e308','e312','e314','e325','e338','e366'].forEach(id=>EX_IMG_IDS.add(id));
+// v751 · 9 ejercicios con foto (15-nov, el dueño revisó las del bot: «sube todas menos la de dominada agarre neutro»). Una foto por
+// ejercicio (la del FINAL, que es la que enseña el movimiento), 720×720, sin la estrellita de Gemini (recorte). e382 recibe su primera foto.
+['e276','e284','e335','e371','e382','e379','e253','e327','e322'].forEach(id=>EX_IMG_IDS.add(id));
 // Nota del coach: cue profesional corto por ejercicio (lo ve el asesorado en el detalle).
 // Se resuelve por id al renderizar (como las imágenes) — sin tocar los datos guardados.
 // Lote 1 (2026-06-07): ejercicios con foto nueva + compuestos base. Rollout al resto pendiente.

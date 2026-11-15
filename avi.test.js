@@ -24725,7 +24725,7 @@ test('v719 · la llanta existe con su ficha completa: nivel A, 3 × 5, volteos, 
   assert.deepStrictEqual([ex.sets, ex.reps], [3, 5]);
   assert.deepStrictEqual(ex.env, ['gym', 'parque']);
   assert.ok(ex.desc && ex.descSimple && ex.muscleLabel && ex.ytQuery, 'ficha incompleta');
-  // El ícono sale cuando no hay foto (hoy no la hay). 🛞 se pintó como un cuadro vacío en la captura del
+  // El ícono sale cuando no hay foto (desde v751 sí la hay; el ícono solo se ve si falla la carga). 🛞 se pintó como un cuadro vacío en la captura del
   // harness: es un emoji reciente. Uno que el catálogo ya usa es uno que ya se vio pintado en los teléfonos.
   assert.ok(_LIB_REAL.some(e => e.id !== 'e382' && e.icon === ex.icon), '🔴 la llanta lleva un ícono que nadie más usa: probable cuadro vacío');
   // Lo que Laura exigió que diga la ficha: los brazos no jalan, los dedos, y a quién no se le pone.
@@ -27688,6 +27688,24 @@ test('v750 · la migración tiene el índice de coach_ventas(producto_id) y sigu
   assert.ok(/create index if not exists \w+ on public\.coach_ventas \(producto_id\)/.test(sql), '🔴 falta el índice de producto_id (llave foránea sin índice)');
   const crea = sql.split(';').map(s => s.trim()).filter(s => /^create (table|index)/.test(s));
   assert.ok(crea.length >= 6 && crea.every(s => /if not exists/.test(s)), '🔴 una creación no es idempotente');
+});
+
+test('v751 · las 9 fotos nuevas están registradas en EX_IMG_IDS y son JPEG 720×720 (incluida e382, la primera de la llanta)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  // solo líneas de CÓDIGO (empiezan por «['e…'] .forEach»), nunca un comentario que nombre los ids
+  const registrados = new Set();
+  src.split(/\r?\n/).filter(l => /^\['e\d+'/.test(l) && /EX_IMG_IDS\.add/.test(l)).forEach(l => (l.match(/e\d+/g) || []).forEach(id => registrados.add(id)));
+  const nuevas = ['e276', 'e284', 'e335', 'e371', 'e382', 'e379', 'e253', 'e327', 'e322'];
+  nuevas.forEach(id => {
+    assert.ok(registrados.has(id), '🔴 ' + id + ' tiene foto pero no está en EX_IMG_IDS: la app no la muestra');
+    const b = fs.readFileSync(path.join(__dirname, 'media', 'exercises', id + '.jpg'));
+    assert.ok(b.length > 10000 && b[0] === 0xFF && b[1] === 0xD8, '🔴 ' + id + '.jpg no es un JPEG con cuerpo');
+    let o = 2, w = 0, h = 0;
+    while (o < b.length - 9) { if (b[o] !== 0xFF) { o++; continue; } const m = b[o + 1]; if (m >= 0xC0 && m <= 0xC3) { h = b.readUInt16BE(o + 5); w = b.readUInt16BE(o + 7); break; } o += 2 + b.readUInt16BE(o + 2); }
+    assert.deepStrictEqual([w, h], [720, 720], '🔴 ' + id + '.jpg no es 720×720 (una foto de 2048 se bajaría entera)');
+  });
+  assert.ok(!registrados.has('e303'), '🔴 e303 (dominadas agarre neutro) la rechazó el dueño: no entra');
 });
 
 // ══════════════════════════════════════════════════════
