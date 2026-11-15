@@ -27708,6 +27708,36 @@ test('v751 · las 9 fotos nuevas están registradas en EX_IMG_IDS y son JPEG 720
   assert.ok(!registrados.has('e303'), '🔴 e303 (dominadas agarre neutro) la rechazó el dueño: no entra');
 });
 
+test('🔒 15-nov · publicar-hogar no llama a Vercel con la carpeta vacía y no usa %TEMP%', () => {
+  const fs = require('fs'), os = require('os'), path = require('path'), cp = require('child_process');
+  const src = fs.readFileSync(path.join(__dirname, 'scripts', 'publicar-hogar.mjs'), 'utf8');
+  const cod = sinComentarios(src);
+  assert.ok(!/DEST\s*=\s*join\(process\.env\.TEMP/.test(cod), '🔴 la copia volvió a vivir en %TEMP% (otro proceso la limpia)');
+  assert.ok(cod.indexOf('revisarCarpeta(') > -1 && cod.indexOf('revisarCarpeta(') < cod.indexOf('vercel deploy'), '🔴 el candado ya no va ANTES de desplegar');
+  assert.ok(/PRODUCCIÓN NO RESPONDE BIEN/.test(cod) && /vercel rollback/.test(cod), '🔴 falta el aviso/reversión posterior');
+  // Comportamiento real: carpeta propia de prueba, `npx` falso que anota si lo llaman, y la carpeta vaciada a propósito.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'avi-hogar-'));
+  const dest = path.join(tmp, 'avi-home', '.vercel');
+  fs.mkdirSync(dest, { recursive: true });
+  fs.writeFileSync(path.join(dest, 'project.json'), JSON.stringify({ projectName: 'avi-app' }));
+  const bin = path.join(tmp, 'bin'); fs.mkdirSync(bin);
+  const marca = path.join(tmp, 'llamaron-npx.txt');
+  fs.writeFileSync(path.join(bin, 'npx.cmd'), '@echo off\r\necho x>> "' + marca + '"\r\n');
+  fs.writeFileSync(path.join(bin, 'npx'), '#!/bin/sh\necho x >> "' + marca + '"\n', { mode: 0o755 });
+  const corre = (vaciar) => cp.spawnSync(process.execPath, [path.join(__dirname, 'scripts', 'publicar-hogar.mjs')], {
+    encoding: 'utf8', timeout: 120000,
+    env: Object.assign({}, process.env, { AVI_HOGAR_DIR: tmp, AVI_HOGAR_PRUEBA_VACIAR: vaciar ? '1' : '0', PATH: bin + path.delimiter + process.env.PATH }) });
+  const mala = corre(true);
+  assert.strictEqual(mala.status, 1, '🔴 con la carpeta vacía el script tenía que abortar (salida ' + mala.status + '): ' + mala.stderr);
+  assert.ok(/NO SE PUBLICA/.test(mala.stderr), 'el aborto tiene que decirlo en español');
+  assert.ok(!fs.existsSync(marca), '🔴 llamó a Vercel con la carpeta vacía');
+  // Control: con la carpeta completa el candado deja pasar (llega a Vercel falso) y no aborta por el candado.
+  const buena = corre(false);
+  assert.ok(!/NO SE PUBLICA/.test(buena.stderr), 'control: con la copia completa el candado no debe abortar: ' + buena.stderr);
+  assert.ok(fs.existsSync(marca), 'control: con la copia completa tenía que llegar a Vercel');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

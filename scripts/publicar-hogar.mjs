@@ -13,13 +13,19 @@
 // Corre: node scripts/publicar-hogar.mjs          (con la señal de mudanza, que desde el 23-sep va siempre)
 //       node scripts/publicar-hogar.mjs --sin-mudanza   (solo para APAGARLA a propósito)
 // ─────────────────────────────────────────────────────────────────────────────
-import { cpSync, mkdirSync, rmSync, copyFileSync, readFileSync, existsSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, copyFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { revisarCarpeta } from './hogar-candado.mjs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEST = join(process.env.TEMP || '/tmp', 'avi-home');
+// 🔴 15-nov-2026: la copia vivía en %TEMP% y otro proceso la limpió en pleno despliegue: Vercel subió una
+//    carpeta VACÍA y app.avientrena.com dio 404 varios minutos. Ahora vive en una carpeta propia y estable
+//    (nadie la limpia). `AVI_HOGAR_DIR` solo existe para que la prueba no toque la carpeta real.
+const BASE = process.env.AVI_HOGAR_DIR || join(homedir(), '.avi', 'publicar-hogar');
+const DEST = join(BASE, 'avi-home');
 const ARCHIVOS = ['index.html', 'sw.js', 'manifest.json', 'styles.css', 'foods.json', 'avi-core.js', 'muscle-map.js',
   'exercise-muscles.js', 'app-1-infra.js', 'app-2-login.js', 'app-3-coach.js', 'app-4-entreno.js', 'app-5-salud.js',
   'app-6-extra.js', 'app-7-community.js'];
@@ -30,9 +36,12 @@ const CARPETAS = ['icons', 'splash', 'screenshots', 'legal', 'vendor', 'media'];
 //    deploy se va a un proyecto NUEVO (o a ninguno) y app.avientrena.com se queda en la versión
 //    anterior — pasó al publicar v659 y solo lo delató el prodcheck contra el hogar nuevo.
 const LINK = join(DEST, '.vercel');
-const linkTmp = join(process.env.TEMP || '/tmp', 'avi-home-vercel-link');
+const linkTmp = join(BASE, 'avi-home-vercel-link');
+const LINK_VIEJO = join(process.env.TEMP || '/tmp', 'avi-home', '.vercel'); // la carpeta de antes, solo para heredar el enlace
+mkdirSync(BASE, { recursive: true });
 rmSync(linkTmp, { recursive: true, force: true });
 if (existsSync(LINK)) cpSync(LINK, linkTmp, { recursive: true });
+else if (existsSync(join(LINK_VIEJO, 'project.json'))) cpSync(LINK_VIEJO, linkTmp, { recursive: true });
 rmSync(DEST, { recursive: true, force: true });
 mkdirSync(DEST, { recursive: true });
 if (existsSync(linkTmp)) cpSync(linkTmp, LINK, { recursive: true });
@@ -67,7 +76,50 @@ if (proyectoEnlazado() !== PROYECTO) {
   console.error(`🔴 No se publica: la carpeta quedó enlazada a «${proyectoEnlazado()}», no a ${PROYECTO}.`);
   process.exit(1);
 }
+// Solo para la prueba del candado: simula que otro proceso vació la carpeta justo antes de publicar.
+if (process.env.AVI_HOGAR_PRUEBA_VACIAR === '1') {
+  for (const e of readdirSync(DEST)) if (e !== '.vercel') rmSync(join(DEST, e), { recursive: true, force: true });
+}
+// 🔴 CANDADO: con la carpeta incompleta NO se llama a Vercel (acepta una carpeta vacía y la pone en producción).
+const problemas = revisarCarpeta(DEST, ROOT, ARCHIVOS);
+if (problemas.length) {
+  console.error('🔴 NO SE PUBLICA: la carpeta ' + DEST + ' está incompleta.');
+  for (const x of problemas) console.error('   - ' + x);
+  console.error('   Vuelve a correr el comando; si se repite, revisa quién toca esa carpeta.');
+  process.exit(1);
+}
 const v = (readFileSync(join(ROOT, 'sw.js'), 'utf8').match(/avi-v(\d+)/) || [])[1];
 console.log(`Publicando v${v} en app.avientrena.com (proyecto ${PROYECTO})…`);
 execSync('npx -y vercel deploy --prod --yes', { cwd: DEST, stdio: 'inherit' });
+// 🔴 Comprobación DESPUÉS: producción tiene que responder 200 con ESTA versión (index.html y sw.js).
+const ORIGEN = 'https://app.avientrena.com';
+const verProd = async (ruta, re) => {
+  for (let i = 0; i < 6; i++) { // la propagación puede tardar unos segundos
+    let motivo = '';
+    try {
+      const r = await fetch(`${ORIGEN}${ruta}?nocache=${Date.now()}`, { cache: 'no-store' });
+      const t = r.ok ? await r.text() : '';
+      const ver = (t.match(re) || [])[1];
+      if (r.ok && ver === v) return { ok: true };
+      motivo = `${ruta}: HTTP ${r.status}, versión ${ver || 'ninguna'}`;
+    } catch (e) { motivo = `${ruta}: ${e.message}`; }
+    if (i === 5) return { ok: false, motivo };
+    await new Promise((res) => setTimeout(res, 5000));
+  }
+};
+const malos = [];
+for (const [ruta, re] of [['/', /\?v=(\d+)/], ['/sw.js', /avi-v(\d+)/]]) {
+  const r = await verProd(ruta, re);
+  if (!r.ok) malos.push(r.motivo);
+}
+if (malos.length) {
+  console.error('\n##########################################################');
+  console.error('#  PRODUCCIÓN NO RESPONDE BIEN');
+  console.error('##########################################################');
+  for (const m of malos) console.error(`   - ${m} (se esperaba v${v})`);
+  console.error('\nReversión a la versión anterior (NO se hizo sola; córrela tú):');
+  console.error(`   cd "${DEST}" && npx -y vercel rollback`);
+  process.exit(2);
+}
+console.log(`✅ Producción responde 200 con v${v} (index.html y sw.js).`);
 console.log('\nVerifica: node scripts/e2e/_prodcheck.mjs v' + v + ' https://app.avientrena.com/');
