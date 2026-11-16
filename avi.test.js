@@ -18378,6 +18378,12 @@ test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal pa
   const pm = progressionPlan(marcada, _EX_BARRA);
   assert.strictEqual(pm.estado, 'sube', 'las dos normales siguen siendo «dos seguidas»');
   assert.strictEqual(pm.kg, 52.5, 'sube desde 50, jamás desde 42,5');
+  // (a2) La MARCA sola basta, aunque el peso no sea ×0,85 (45 kg = ×0,90): la heurística del peso no la ve.
+  const soloMarca = _hs(normales.concat([{ kg: 45, reps: [12, 12, 12, 12] }]));
+  soloMarca[2].deload = true;
+  assert.strictEqual(progressionPlan(soloMarca, _EX_BARRA).kg, 52.5);
+  const sinSuMarca = _hs(normales.concat([{ kg: 45, reps: [12, 12, 12, 12] }]));
+  assert.strictEqual(progressionPlan(sinSuMarca, _EX_BARRA).kg, 47.5, 'CONTROL · sin marca y sin ser ×0,85, 45 kg es un peso real y manda');
   // (b) Sin marca (sesiones viejas): se reconoce por su peso ×0,85 y porque la siguiente vuelve a 50.
   const sinMarca = _hs(normales.concat([{ kg: 42.5, reps: [12, 12, 12, 12] }]));
   assert.strictEqual(progressionPlan(sinMarca, _EX_BARRA).kg, 52.5);
