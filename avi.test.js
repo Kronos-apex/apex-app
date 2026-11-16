@@ -132,6 +132,7 @@ const {
   suggestFromPR,
   progressionPlan,
   repRangeOf,
+  repsFloorOf,
   repRangeFromTope,
   repTierOf,
   genRepsFor,
@@ -15339,11 +15340,11 @@ test('suggestFromPR: si el récord es a MENOS reps que el objetivo, sigue estima
   assert.strictEqual(suggestFromPR({ kg: 0, reps: 12, unit: 'kg' }, 12), null);
 });
 
-test('loadStep: el escalón es proporcional — 2,5 kg sobre una mancuerna de 2,5 es +100%', () => {
+test('loadStep: si el catálogo no sabe el equipo, el salto MÁS PEQUEÑO — 1 kg bajo 10 kg y 2,5 kg desde ahí (v752)', () => {
   assert.strictEqual(loadStep(2.5), 1, 'quien arranca liviano no puede saltar el doble');
   assert.strictEqual(loadStep(10), 2.5);
-  assert.strictEqual(loadStep(100), 5);
-  assert.ok(loadStep(2.5) < loadStep(100), 'el escalón crece con la carga');
+  assert.strictEqual(loadStep(100), 2.5, 'ya no crece a 5 kg con el peso (antes +5 desde 30 kg)');
+  assert.strictEqual(loadStep(30), 2.5);
 });
 
 // ── EL ÁNIMO DECLARADO TIENE QUE SOBREVIVIR A LA MEDIANOCHE ──
@@ -18367,6 +18368,96 @@ test('🔒 v752 · los textos de la progresión: cortos, sin RIR ni RPE, sin «t
   assert.strictEqual(casos[0].texto, '50 kg · rango 8-12 · hoy busca 1 rep más en la serie que más te costó');
   assert.strictEqual(casos[1].texto, 'Hiciste 12 en todas dos veces seguidas · hoy 52,5 kg × 10');
   assert.match(casos[3].texto, /^Hoy [\d,]+ kg para volver a tu rango de 7-10$/);
+});
+
+test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal parte del último peso normal, no del bajado', () => {
+  const normales = [{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }];
+  // (a) La sesión de descarga trae la MARCA que le pone el guardado.
+  const marcada = _hs(normales.concat([{ kg: 42.5, reps: [12, 12, 12, 12] }]));
+  marcada[2].deload = true;
+  const pm = progressionPlan(marcada, _EX_BARRA);
+  assert.strictEqual(pm.estado, 'sube', 'las dos normales siguen siendo «dos seguidas»');
+  assert.strictEqual(pm.kg, 52.5, 'sube desde 50, jamás desde 42,5');
+  // (b) Sin marca (sesiones viejas): se reconoce por su peso ×0,85 y porque la siguiente vuelve a 50.
+  const sinMarca = _hs(normales.concat([{ kg: 42.5, reps: [12, 12, 12, 12] }]));
+  assert.strictEqual(progressionPlan(sinMarca, _EX_BARRA).kg, 52.5);
+  // (c) Y con una sesión normal DESPUÉS de la descarga, el peso de partida es 50.
+  const despues = _hs([normales[0], normales[1], { kg: 42.5, reps: [12, 12, 12, 12] }, { kg: 50, reps: [10, 10, 10, 10] }]);
+  const pd = progressionPlan(despues, _EX_BARRA);
+  assert.strictEqual(pd.kg, 50);
+  assert.strictEqual(pd.estado, 'repite');
+  // CONTROL: una bajada que SE QUEDA (la siguiente sesión sigue a 42,5) es un peso nuevo de verdad y manda.
+  const seQueda = _hs([normales[0], { kg: 42.5, reps: [10, 10, 10, 10] }, { kg: 42.5, reps: [10, 10, 10, 10] }]);
+  assert.strictEqual(progressionPlan(seQueda, _EX_BARRA).kg, 42.5);
+});
+
+test('🔴 v752 · el piso de repeticiones de las condiciones: el rango NUNCA baja de 8 (tope 8 → 8-12)', () => {
+  assert.deepStrictEqual(repRangeOf({ reps: 8 }, 8), { min: 8, max: 12 }, 'tope = piso: el tope sube para dejar margen');
+  assert.deepStrictEqual(repRangeOf({ reps: 6 }, 8), { min: 8, max: 12 });
+  assert.deepStrictEqual(repRangeOf({ reps: 10 }, 8), { min: 8, max: 10 }, '⅔ de 10 es 7: el piso manda');
+  assert.deepStrictEqual(repRangeOf({ reps: 12 }, 8), { min: 8, max: 12 }, 'ya cumplía');
+  assert.deepStrictEqual(repRangeOf({ reps: 8 }), { min: 5, max: 8 }, 'CONTROL: sin condición el rango sigue siendo el de siempre');
+  // Una asesorada con presión: la nota se lee con el mismo motor que el generador.
+  const conPresion = { id: 'p1', name: 'P', notes: 'hipertension controlada', sex: 'F', age: 45 };
+  assert.strictEqual(repsFloorOf(conPresion, Date.parse('2026-11-05T12:00:00Z')), 8);
+  assert.strictEqual(repsFloorOf({ id: 'p2', name: 'Q', notes: '' }, Date.parse('2026-11-05T12:00:00Z')), 0);
+  // Tope 8 (fuerza con condición): 8×8 dos sesiones a 50 → no baja a 5-6: el mínimo es 8 y la sesión de 6 reps BAJA.
+  const ex8 = { id: 'e1', name: 'Press de Banca con Barra', type: 'Compuesto', muscle: 'pecho', sets: 3, reps: 8 };
+  const baja = progressionPlan(_hs([{ kg: 50, reps: [7, 7, 6] }, { kg: 50, reps: [7, 6, 6] }]), ex8, { piso: 8 });
+  assert.strictEqual(baja.estado, 'baja', 'con piso 8, 7 reps es estar bajo el mínimo');
+  assert.deepStrictEqual(baja.rango, { min: 8, max: 12 });
+  assert.match(baja.texto, /rango de 8-12/);
+  // Sin el piso, esas mismas series (7 y 6 con un rango 5-8) están DENTRO del rango y no bajan.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [7, 7, 6] }, { kg: 50, reps: [7, 6, 6] }]), ex8).estado, 'repite');
+  // Las reps de arranque tras subir también respetan el piso: nunca 5-7.
+  const sube = progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12] }, { kg: 50, reps: [12, 12, 12] }]), ex8, { piso: 8 });
+  assert.strictEqual(sube.estado, 'sube');
+  assert.ok(sube.reps >= 8, 'arranque ' + sube.reps);
+  // El cable: _progressInfo calcula el piso y se lo pasa al plan.
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const k = e4.indexOf('function _progressInfo');
+  const info = e4.slice(k, e4.indexOf('\nfunction ', k + 10));
+  assert.match(info, /repsFloorOf\(c,/, '🔴 _progressInfo dejó de calcular el piso de las condiciones');
+  assert.match(info, /progressionPlan\(_hist,ex,\{pr:pr,piso:piso\}\)/, '🔴 el piso no llega al plan');
+});
+
+test('🔒 v752 · el guardado MARCA la sesión de descarga (la progresión la ignora)', () => {
+  const fs = require('fs'), path = require('path');
+  const e4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
+  const k = e4.indexOf('function saveSessionToHistory');
+  const cuerpo = e4.slice(k, e4.indexOf('\nfunction ', k + 10));
+  assert.match(cuerpo, /_enDescarga=.*deloadState\(/, '🔴 el guardado dejó de mirar si hay semana de descarga');
+  assert.ok((cuerpo.match(/deload:true|\.deload=true/g) || []).length >= 2, '🔴 la marca no se escribe en las dos ramas (sesión nueva y sesión que se completa)');
+});
+
+test('🔴 v752 · equipo desconocido: el salto es 2,5 kg (1 kg bajo 10), no el escalón de 5 desde 30 kg', () => {
+  const raro = { id: 'e999', name: 'Algo raro', type: 'Compuesto', muscle: 'pecho', sets: 3, reps: 12 };
+  assert.strictEqual(exerciseStepKg(raro), null, 'CONTROL · el catálogo no lo sabe');
+  const p = progressionPlan(_hs([{ kg: 40, reps: [12, 12, 12] }, { kg: 40, reps: [12, 12, 12] }], 'e999'), raro);
+  assert.strictEqual(p.estado, 'sube');
+  assert.strictEqual(p.kg, 42.5, 'antes subía a 45');
+  const liviano = progressionPlan(_hs([{ kg: 8, reps: [12, 12, 12] }, { kg: 8, reps: [12, 12, 12] }], 'e999'), { ...raro, reps: 15 });
+  assert.ok(liviano.kg <= 9);
+});
+
+test('🔴 v752 · el peso que baja o sube se redondea a lo que el equipo puede cargar (barra 47,5 · mancuerna al par · máquina de 5)', () => {
+  // «meta 10 con 8»: con una barra, 50×6 dos veces → Epley da 48,6 y 48 no se puede cargar con discos: 47,5.
+  const curlBarra = { id: 'e9', name: 'Curl de Bíceps con Barra', type: 'Aislamiento', muscle: 'biceps', sets: 3, reps: 10 };
+  const b = progressionPlan(_hs([{ kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [6, 6, 6] }], 'e9'), curlBarra);
+  assert.strictEqual(b.estado, 'baja');
+  assert.strictEqual(b.kg, 47.5);
+  assert.match(b.texto, /Hoy 47,5 kg/);
+  // Mancuerna: al par (múltiplos de 2). Máquina: de 5 en 5.
+  const man = progressionPlan(_hs([{ kg: 30, reps: [6, 6, 6] }, { kg: 30, reps: [6, 6, 6] }], 'e121'), _EX_CURL10);
+  assert.strictEqual(man.kg % 2, 0, 'mancuerna ' + man.kg);
+  const maq = progressionPlan(_hs([{ kg: 60, reps: [6, 6, 6] }, { kg: 60, reps: [6, 6, 6] }], 'e6'), { ..._EX_MAQUINA, reps: 10 });
+  assert.strictEqual(maq.estado, 'baja');
+  assert.strictEqual(maq.kg % 5, 0, 'máquina ' + maq.kg);
+  // Al subir desde un peso que no está en la rejilla, también cae en ella.
+  const sube = progressionPlan(_hs([{ kg: 51, reps: [12, 12, 12, 12] }, { kg: 51, reps: [12, 12, 12, 12] }]), _EX_BARRA);
+  assert.strictEqual(sube.kg % 2.5, 0, 'subida ' + sube.kg);
+  assert.ok(sube.kg > 51);
 });
 
 

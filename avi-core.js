@@ -2601,15 +2601,16 @@ function suggestLoad(e1rm, targetReps, opts) {
   const kg = Math.round(raw / step) * step;
   return kg > 0 ? kg : null;
 }
-// ── Escalón de carga: cuánto se sube, proporcional a lo que se levanta ──
-// 🔴 El paso fijo de 2,5 kg está calibrado para quien levanta 40: sobre una mancuerna de
-// 2,5 kg es un **+100%**, un salto que ninguna principiante puede dar. Por eso quien arranca
-// liviano se queda liviano para siempre.
+// ── Escalón de carga cuando el catálogo NO sabe el equipo: el salto más pequeño ──
+// 🔴 Un paso fijo de 2,5 kg es +100% sobre una mancuerna de 2,5 kg: bajo 10 kg el salto es de 1 kg.
+// v752: ya no crece con el peso (antes +5 desde 30 kg): la regla es «el salto más pequeño».
 function loadStep(kg) {
   kg = parseFloat(kg) || 0;
-  if (kg < 10) return 1;
-  if (kg < 30) return 2.5;
-  return 5;
+  return kg < 10 ? 1 : 2.5;
+}
+// Lleva un peso a la rejilla de cargas del equipo (barra 47,5 · mancuerna al par · máquina de 5 en 5).
+function _aGrilla(kg, paso) {
+  return Math.round(Math.round(kg / paso) * paso * 100) / 100;
 }
 
 // Desde un PR guardado ({val|kg, reps, unit:'kg'}) → kg de REFERENCIA para targetReps.
@@ -2666,17 +2667,31 @@ function repRangeFromTope(tope) {
 }
 // El rango de un ejercicio de la rutina. Casi siempre sale de UN número (el tope); si alguna vez una
 // rutina trae «8-12» escrito, se respeta tal cual.
-function repRangeOf(ex) {
+// `piso` (opcional) = las repeticiones mínimas que una condición de salud exige (presión, abdomen o piso
+// pélvico, embarazo: 8). El rango NUNCA baja de ahí: el mínimo es max(⅔ del tope, piso) y, si el tope no
+// deja margen sobre el piso, el tope sube (piso 8 → 8-12).
+function repRangeOf(ex, piso) {
   if (!ex) return null;
   const r = ex.reps;
+  let rg = null;
   if (typeof r === 'string') {
     const m = /^\s*(\d+)\s*[-–]\s*(\d+)\s*$/.exec(r);
     if (m) {
       const lo = parseInt(m[1]), hi = parseInt(m[2]);
-      if (lo >= 1 && hi >= lo && hi <= 200) return { min: lo, max: hi };
+      if (lo >= 1 && hi >= lo && hi <= 200) rg = { min: lo, max: hi };
     }
   }
-  return repRangeFromTope(r);
+  if (!rg) rg = repRangeFromTope(r);
+  const f = parseInt(piso) || 0;
+  if (rg && f > 0 && rg.min < f) {
+    rg = { min: f, max: rg.max <= f ? Math.ceil(f * 1.5) : rg.max };
+  }
+  return rg;
+}
+// El piso de repeticiones de ESTA persona (0 si ninguna condición lo pide). Misma lista que el generador.
+function repsFloorOf(client, nowTs) {
+  const lim = limitationsFor(client || {}, nowTs != null ? nowTs : Date.now());
+  return (lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0) ? 8 : 0;
 }
 
 // El TIPO de ejercicio para elegir su rango: 'compuesto' | 'aislado' | 'chico' (laterales, pantorrilla,
@@ -2736,7 +2751,7 @@ function _kgTxt(kg) { return fmtMiles(Math.round(kg * 100) / 100); }
 //     texto (lo que lee la persona), saltoGrande (true → el aviso es del COACH), avisoCoach (texto) }
 function progressionPlan(history, ex, opts) {
   opts = opts || {};
-  const rango = repRangeOf(ex);
+  const rango = repRangeOf(ex, opts.piso);
   if (!rango) return null;
   const exKey = String((ex && (ex.id != null && ex.id !== '' ? ex.id : ex.name)) || '');
   if (!exKey) return null;
@@ -2746,7 +2761,7 @@ function progressionPlan(history, ex, opts) {
   const ses = (Array.isArray(history) ? history : []).filter(s => s && s.date && isFinite(new Date(s.date).getTime()))
     .map(s => ({ s, t: new Date(s.date).getTime() })).sort((a, b) => a.t - b.t);
   // Un DÍA = un entrenamiento (dos entradas del mismo día son el mismo; misma regla de v529).
-  const dias = [], porDia = {};
+  const crudos = [], porDia = {};
   ses.forEach(({ s }) => {
     const dia = String(s.date).slice(0, 10);
     (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
@@ -2755,11 +2770,31 @@ function progressionPlan(history, ex, opts) {
         if (!st || !st.done) return;
         const kg = parseFloat(st.kg), reps = parseFloat(st.reps);
         if (!(kg > 0) || !(reps > 0)) return;
-        if (!porDia[dia]) { porDia[dia] = []; dias.push(porDia[dia]); }
-        porDia[dia].push({ kg, reps });
+        if (!porDia[dia]) { porDia[dia] = { sets: [], descarga: false }; crudos.push(porDia[dia]); }
+        porDia[dia].sets.push({ kg, reps });
+        if (s.deload) porDia[dia].descarga = true;
       });
     });
   });
+  // 🔴 La semana de DESCARGA no cuenta: ni para el peso de partida ni para «sesiones seguidas». Si no, la
+  // primera sesión normal partiría del peso bajado a propósito. Se reconoce por la marca que el guardado
+  // le pone a la sesión (`deload`) y, en las que se guardaron sin marca, por su peso: ≈ ×0,85 del día
+  // normal anterior y con el siguiente día de vuelta al peso (o sin siguiente día). Una bajada que SE QUEDA
+  // (la siguiente sesión sigue en el peso bajo) es un peso nuevo de verdad y no se ignora.
+  const topDe = d => Math.max.apply(null, d.sets.map(x => x.kg));
+  const dias = [];
+  crudos.forEach((d, i) => {
+    if (d.descarga) return;
+    const prev = dias.length ? topDe(dias[dias.length - 1]) : 0;
+    const t = topDe(d);
+    if (prev && t <= prev * (DELOAD_LOAD_FACTOR + 0.02) && t >= prev * 0.75) {
+      let sig = null;
+      for (let j = i + 1; j < crudos.length && !sig; j++) if (!crudos[j].descarga) sig = crudos[j];
+      if (!sig || topDe(sig) >= prev * 0.95) return;
+    }
+    dias.push(d);
+  });
+  for (let i = 0; i < dias.length; i++) dias[i] = dias[i].sets;
 
   // Sin sesiones con carga: lo único que hay es el récord. Se REPITE ese peso; con una sola marca no se sube.
   if (!dias.length) {
@@ -2780,12 +2815,13 @@ function progressionPlan(history, ex, opts) {
   const floja0 = Math.min.apply(null, w0.map(x => x.reps));
   const e1 = Math.max.apply(null, D0.map(x => _epley(x.kg, x.reps)));
   const paso = exerciseStepKg(ex) || loadStep(W);
+  const grilla = kg => _aGrilla(kg, paso);
 
   // ── ¿SUBE? ──
   const dosSeguidas = todasTope(D0) && todasTope(D1);
   const pasaUltima = w0[w0.length - 1].reps >= rango.max + PROG_RAISE_OVER_REPS;
   if (dosSeguidas || pasaUltima) {
-    const nuevo = Math.round((W + paso) * 100) / 100;
+    const nuevo = grilla(W + paso);
     const arranque = Math.round(30 * (e1 / nuevo - 1));
     if (arranque >= rango.min) {
       const reps = Math.min(arranque, rango.max);
@@ -2812,8 +2848,8 @@ function progressionPlan(history, ex, opts) {
       const top = Math.max.apply(null, dias[i].map(x => x.kg));
       if (top < W - 1e-9) previo = top;
     }
-    let epl = Math.round(e1 / (1 + rango.min / 30) / paso) * paso;
-    if (!(epl < W)) epl = W - paso;
+    let epl = grilla(e1 / (1 + rango.min / 30));
+    if (!(epl < W)) epl = grilla(W - paso);
     const kg = Math.max(0.5, previo != null && previo <= epl ? previo : epl);
     return { estado: 'baja', kg, reps: rango.min, rango, saltoGrande: false, avisoCoach: '',
       texto: `Hoy ${_kgTxt(kg)} kg para volver a tu rango de ${rangoTxt}` };
@@ -14801,6 +14837,7 @@ if (typeof module !== 'undefined' && module.exports) {
     suggestFromPR,
     progressionPlan,
     repRangeOf,
+    repsFloorOf,
     repRangeFromTope,
     repTierOf,
     genRepsFor,

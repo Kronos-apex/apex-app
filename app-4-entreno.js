@@ -2407,7 +2407,8 @@ function _progressInfo(ex){
       return {sug:deloadSuggestKg(pr,reps),pr:pr,reps:reps,plan:null,deload:true};
     }
     const _hist=(DB.history&&DB.history[c.id])||[];
-    const plan=(typeof progressionPlan==='function')?progressionPlan(_hist,ex,{pr:pr}):null;
+    const piso=(typeof repsFloorOf==='function')?repsFloorOf(c,Date.now()):0;   // condiciones con mínimo de 8 reps
+    const plan=(typeof progressionPlan==='function')?progressionPlan(_hist,ex,{pr:pr,piso:piso}):null;
     return {sug:plan?plan.kg:null,pr:pr,reps:reps,plan:plan,deload:false};
   }catch(e){return null;}
 }
@@ -3066,7 +3067,8 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     sid=startNewSession(routine.id);
     already=DB.history[clientId].find(h=>!h.sessionId&&h.routineId===routine.id&&new Date(h.date).toDateString()===today&&(h.doneSets||0)<(h.totalSets||0));
   }
-  if(already){already.sessionId=sid;already.mood=(typeof getTodayMood==='function'?getTodayMood(clientId):'')||already.mood||'';already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();if(finished&&!already.finishedAt)already.finishedAt=new Date().toISOString();}
+  const _enDescarga=(typeof deloadState==='function')&&!!deloadState(_curClient(),Date.now());   // v752: la sesión de la semana de descarga no cuenta para subir el peso
+  if(already){if(_enDescarga)already.deload=true;already.sessionId=sid;already.mood=(typeof getTodayMood==='function'?getTodayMood(clientId):'')||already.mood||'';already.totalVol=Math.round(totalVol);already.doneSets=doneSets;already.totalSets=totalSets;already.exercises=setsData;already.date=new Date().toISOString();if(finished&&!already.finishedAt)already.finishedAt=new Date().toISOString();}
   else{
     // 🔴 `mood` = el ánimo que la persona declaró HOY («cansada», «con dolor», «en mi periodo»).
     // Hasta el 2026-08-03 vivía SOLO en localStorage (`mood_<cid>_<fecha>`) y se borraba a
@@ -3082,7 +3084,7 @@ function saveSessionToHistory(routine,totalVol,doneSets,immediate=true,finished=
     // finishedAt: solo si esta llamada viene de un flujo de FIN (100% o "Finalizar temprano") — es
     // lo que distingue una sesión TERMINADA de una parcial en curso (fix tarjeta "ya entrenaste" v367).
     const _ini=new Date(Date.now()-(typeof cardioDoneSec==='function'?cardioDoneSec(setsData):0)*1000).toISOString();
-    DB.history[clientId].unshift({mood:(typeof getTodayMood==='function'?getTodayMood(clientId):'')||'',id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:_ini,totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(finished?{finishedAt:new Date().toISOString()}:{})});
+    DB.history[clientId].unshift({mood:(typeof getTodayMood==='function'?getTodayMood(clientId):'')||'',id:uid(),sessionId:sid,routineId:routine.id,routineName:routine.name,date:new Date().toISOString(),startedAt:_ini,totalVol:Math.round(totalVol),doneSets,totalSets,exercises:setsData,...(_enDescarga?{deload:true}:{}),...(finished?{finishedAt:new Date().toISOString()}:{})});
     if(DB.history[clientId].length>365)DB.history[clientId]=DB.history[clientId].slice(0,365);
   }
   // El parcial usa sync con debounce (sv) para no disparar una llamada de red por cada
