@@ -820,44 +820,30 @@ function gmRender(){
     }
     const setsEl = document.createElement('div');
     setsEl.className = 'gm-sets';
-    // v595: se pide UNA vez todo lo de la progresión (peso + récord + sesiones consolidando).
+    // v595: se pide UNA vez todo lo de la progresión (peso + rango + frase). v752: doble progresión por rango.
     const gmInfo=(typeof _progressInfo==='function')?_progressInfo(ex):null;
     const gmSug=gmInfo?gmInfo.sug:((typeof _suggestKg==='function')?_suggestKg(ex):null);
     // Semana de descarga (v482): el peso sugerido ya viene bajado, así que NO puede seguir diciendo
-    // «según tu récord» — está por debajo de él a propósito, y sin decirlo se lee como un error.
+    // lo de la progresión — está por debajo del récord a propósito, y sin decirlo se lee como un error.
     // Y donde NO hay récord la app se quedaba muda: para 9 de 21 personas la bajada de carga no
     // existía en ningún ejercicio. Ahí va la frase (`deloadLoadHint`, que se calla en adaptación).
     const gmDeload=(typeof deloadState==='function')&&!!deloadState(_curClient(),Date.now());
     if(gmSug){
       const sh=document.createElement('div');
       sh.style.cssText='font-size:11.5px;font-weight:700;color:var(--gt);margin:2px 0 4px';
-      // 🔴 v595: el mismo renglón decía LO MISMO cuando tocaba SUBIR y cuando tocaba repetir,
-      //    así que el escalón de la doble progresión no se notaba (medido sobre el PO: la app le
-      //    mandaba subir en 15 de 24 ejercicios, uno con 18 sesiones al mismo peso, y él seguía
-      //    igual). Ahora el número se dice como INSTRUCCIÓN, y el día que toca subir se ve.
-      let _ph=null;
-      if(!gmDeload&&gmInfo&&typeof progressHint==='function'){
-        const _pr=gmInfo.pr||{};
-        // v610: `gmInfo.pr` ya es el ANCLA (récord o trabajo reciente) y `fuente` dice cuál, para
-        // que la pantalla pueda decir de dónde sale el número en vez de afirmar «según tu récord»
-        // sobre un peso que no salió de ahí (lección de v511).
-        // v611: la instrucción nombra la unidad del ejercicio — «cumpliendo 40 PASOS para subir»,
-        // no «40 reps», que es lo que la casilla de al lado ya dejó de decir.
-        _ph=progressHint(_pr.val!=null?_pr.val:_pr.kg,_pr.reps,gmInfo.reps,gmInfo.ses,gmSug,gmInfo.fuente,
-          (typeof repsUnitOf==='function'?repsUnitOf(ex):'reps'));
-      }
-      if(_ph&&_ph.estado==='sube'){
+      // 🔴 v595: el número se dice como INSTRUCCIÓN, y el día que toca subir se ve. v752: la frase sale
+      //    de `progressionPlan` (peso, rango y qué buscar hoy); el aviso de «salto grande» es del COACH y
+      //    NO viaja aquí.
+      const _pl=(!gmDeload&&gmInfo)?gmInfo.plan:null;
+      if(_pl&&_pl.estado==='sube'){
         // Sube de tamaño y gana fondo SOLO en el día del escalón: si se destacara siempre,
         // dejaría de significar nada (es el gate que se aprende a ignorar).
         sh.style.cssText='font-size:13px;font-weight:800;color:var(--gt);background:var(--gl);'
           +'border-radius:8px;padding:5px 8px;margin:2px 0 6px';
       }
-      sh.textContent=_ph
-        ? (_ph.estado==='sube'?'⬆️ ':'🎯 ')+_ph.texto
-        // v610: el respaldo también dice de DÓNDE sale el número. Dejarlo clavado en «según tu
-        // récord» mentiría en los 32 casos reales en que el peso lo decide el trabajo reciente.
-        : `🎯 Peso sugerido: ${gmSug} kg · ${gmDeload?'bajado a propósito esta semana'
-            :((gmInfo&&gmInfo.fuente==='reciente')?'según lo que vienes moviendo':'según tu récord')}`;
+      sh.textContent=_pl
+        ? (_pl.estado==='sube'?'⬆️ ':(_pl.estado==='baja'?'⬇️ ':'🎯 '))+_pl.texto
+        : `🎯 Peso sugerido: ${fmtMiles(gmSug)} kg · ${gmDeload?'bajado a propósito esta semana':'según tu récord'}`;
       setsEl.appendChild(sh);
     }else if(gmDeload&&typeof deloadLoadHint==='function'){
       const hint=deloadLoadHint(_curClient(),DB.history,ex,Date.now());

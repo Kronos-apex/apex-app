@@ -1369,11 +1369,23 @@ function _progBuildBody(card){
       });
     });
     _progMatches[adjId]=matches;
+    // v752 · AVISO SOLO PARA EL COACH: si con el salto de peso más chico del equipo la persona quedaría bajo el
+    // mínimo de su rango, la app NO le sube la carga y sigue pidiéndole repeticiones (`progressionPlan`). Eso
+    // lo lee el coach aquí; la asesorada nunca ve esta frase. Se lee del primer ejercicio de rutina que case.
+    let avisoCoach='';
+    try{
+      const _m0=matches[0], _rex=_m0?c.routines[_m0.ri].exercises[_m0.ei]:null;
+      if(_rex&&exTrack(_rex)==='peso_reps'&&typeof progressionPlan==='function'){
+        const _pp=progressionPlan(DB.history[c.id]||[],_rex,{pr:(DB.prs[c.id]||{})[_rex.id||_rex.name]});
+        if(_pp&&_pp.saltoGrande)avisoCoach=_pp.avisoCoach;
+      }
+    }catch(e){}
     html.push(`<div class="pex-item"><div class="pex-row" onclick="togglePexRow('${chartId}')">
       <div style="width:28px;height:28px;border-radius:6px;background:${color}18;border:1px solid ${color}30;display:flex;align-items:center;justify-content:center;flex-shrink:0">${muscleIcon(ex.muscle,16,true)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;overflow-wrap:break-word">${esc(ex.name)}</div>
         <div style="font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.sessions} ${m.sessions===1?'sesión':'sesiones'} · <span style="font-weight:600;color:${trendColor}">${trendStr}</span></div>
+        ${avisoCoach?`<div class="pex-aviso-coach" style="font-size:10px;color:var(--ort);line-height:1.35;margin-top:2px">⚠️ ${esc(avisoCoach)}</div>`:''}
       </div>
       <div style="text-align:right;flex-shrink:0;margin-right:8px">
         <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">${fmtMetric(m.record,unit)}</div>

@@ -2000,21 +2000,25 @@ function minorCoachAlert(name, consent) {
 function genSchemeFor(goal, level, adaptation) {
   const g = _norm(goal);
   let base;
-  if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { reps: 14, sets: [3, 4], rest: 55, cardioClose: true };
-  else if (g.includes('ganar') || g.includes('masa') || g.includes('musc') || g.includes('volum')) base = { reps: 10, sets: [3, 4], rest: 90 };
-  else if (g.includes('recomp')) base = { reps: 12, sets: [3, 4], rest: 70, coreClose: true };
-  else if (g.includes('fuerza')) base = { reps: 6, sets: [4, 5], rest: 120 };
-  else if (g.includes('resist')) base = { reps: 18, sets: [3, 4], rest: 45, cardioClose: true };
-  else base = { reps: 12, sets: [3, 3], rest: 60 }; // salud general / default
+  // `rangos` = la fila de GEN_REPS_RANGOS (v752: el rango sale del objetivo Y del tipo de ejercicio).
+  if (g.includes('perder') || g.includes('grasa') || g.includes('defin')) base = { rangos: 'grasa', sets: [3, 4], rest: 55, cardioClose: true };
+  else if (g.includes('ganar') || g.includes('masa') || g.includes('musc') || g.includes('volum')) base = { rangos: 'masa', sets: [3, 4], rest: 90 };
+  else if (g.includes('recomp')) base = { rangos: 'masa', sets: [3, 4], rest: 70, coreClose: true };
+  else if (g.includes('fuerza')) base = { rangos: 'fuerza', sets: [4, 5], rest: 120 };
+  else if (g.includes('resist')) base = { rangos: 'resistencia', sets: [3, 4], rest: 45, cardioClose: true };
+  else base = { rangos: 'grasa', sets: [3, 3], rest: 60 }; // salud general / default
   const [lo, hi] = base.sets;
   const setsN = level === 'Principiante' ? Math.min(lo, 3) : level === 'Avanzado' ? hi : Math.min(hi, 4);
-  const scheme = { setsN, repsN: base.reps, restSec: base.rest, cardioClose: !!base.cardioClose, coreClose: !!base.coreClose };
+  const rangos = GEN_REPS_RANGOS[base.rangos];
+  // `repsN` = el tope de los COMPUESTOS (el ejercicio que manda el día); cada ejercicio toma el suyo con `genRepsFor`.
+  const scheme = { setsN, repsN: rangos.compuesto[1], repsRangos: rangos, restSec: base.rest, cardioClose: !!base.cardioClose, coreClose: !!base.coreClose };
   // Fase de adaptación: reps altas (mín. 15; la nota indica 15-20) con poco o nada de
   // peso, descanso corto, técnica primero. Sobrescribe el objetivo SIN importar cuál sea
   // (primero el cuerpo aprende el patrón, luego progresamos cargas).
   if (adaptation) {
     scheme.setsN = 3;
     scheme.repsN = 15;
+    scheme.repsRangos = null;   // 15 para todos: en adaptación no hay rango por tipo de ejercicio
     scheme.restSec = 60;
     scheme.adaptation = true;
   }
@@ -2608,216 +2612,221 @@ function loadStep(kg) {
   return 5;
 }
 
-// Desde un PR guardado ({val|kg, reps, unit:'kg'}) → kg sugeridos para targetReps.
+// Desde un PR guardado ({val|kg, reps, unit:'kg'}) → kg de REFERENCIA para targetReps.
 // Solo aplica a modalidad de peso; PRs en reps/seg/min no estiman 1RM.
-// 🔴 BUCLE CERRADO, medido en producción 2026-08-03 (hallazgo de Valery): estimaba el 1RM
-// desde el récord y devolvía el 95% para ESAS MISMAS repeticiones — que da exactamente el
-// peso que la persona ya levanta. Caso real: PR de 10 kg × 12 → 1RM 14 → 14/1,4 × 0,95 = 9,5
-// → redondea a **10**. El peso sugerido no sube ⇒ el récord no sube ⇒ el detector lo lee como
-// estancamiento. Una asesorada llevaba **10 sesiones en 2 meses remando con 10 kg** mientras
-// hacía hip thrust con 100: no estaba fatigada, estaba INFRACARGADA por el propio consejo.
-// Y con más de 15 reps devolvía `null` (`estimate1RM`), o sea que la app se CALLABA justo
-// cuando alguien llega a 20 repeticiones y se ganó el salto de mancuerna.
-// Regla nueva = doble progresión, la de toda la vida: si ya cumpliste las reps objetivo con
-// ese peso, lo siguiente es SUBIR.
-//
-// ── CONSOLIDACIÓN (v529) — reporte del PO, 2026-08-24 ────────────────────────────────────────
-// *«¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión ya le quieras
-// subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner?»* Tenía razón, y
-// esto es lo que le faltaba a v482: la doble progresión de verdad **repite el peso hasta
-// CONSOLIDARLO** y solo entonces sube. Aquí bastaba UNA serie buena para que el récord subiera y
-// la sugerencia saltara un escalón a la sesión siguiente.
-// 📊 MEDIDO sobre las 209 combinaciones persona-ejercicio reales (24-ago): **en 113 (54%) el peso
-// tope se hizo UN SOLO día** — o sea que en más de la mitad de los casos la app estaba lista para
-// subir sin que la persona hubiera repetido nunca esa carga.
-// 🔴 Y la primera idea —exigir las reps en TODAS las series— la tumbó la medición: la gente
-// registra las mismas reps en todas (146 de 215 sesiones de 4 series), así que ese filtro habría
-// tocado **26 de 436 casos** y dejado el problema intacto. El filtro que discrimina es el de
-// SESIONES, no el de series.
-// CONTRATO: `opts.sesionesEnPeso` = cuántas sesiones DISTINTAS ya cumplió las reps objetivo con
-// ese peso (lo calcula `sessionsAtLoad`, que sí ve el historial). Por defecto **1**, o sea la
-// conservadora: sin el dato NO se sube. Un caller que se olvide de pasarlo hace que la app
-// repita el peso, nunca que lo dispare — y el test de cableado exige que `_suggestKg` lo pase.
-// 📊 LA CURVA, medida sobre las 208 sugerencias de los planes vigentes (24-ago). De ellas, la
-// regla vieja subía el peso en 167; con consolidación siguen subiendo:
-//     umbral 2 → 84 suben  (se frenan 83)
-//     umbral 3 → 52 suben  (se frenan 115)   ← elegido por el PO
-//     umbral 4 → 38 suben  (se frenan 129)
-// 🔴 La curva NO tiene codo: cada sesión que se exige frena ~30 casos, parejo. Así que el número
-// NO lo elige el dato — lo elige el criterio del entrenador, y el dato dice lo que cuesta moverlo.
-// El PO subió de 2 a 3 el 24-ago: quiere que la persona repita la carga dos veces antes de que la
-// app proponga subir. Cambiarlo es una línea y la cuenta está aquí al lado.
-const LOAD_CONSOLIDATE_SESSIONS = 3;
-// Cuántas sesiones distintas cumplió ya las reps objetivo con ESE peso (o más). PURA.
-// Cuenta por DÍA, no por registro: dos entradas del mismo día son el mismo entrenamiento.
-function sessionsAtLoad(sessions, exKey, kg, targetReps) {
-  const objetivo = parseInt(targetReps) || 10;
-  const peso = parseFloat(kg);
-  if (!(peso > 0)) return 0;
-  const dias = new Set();
-  (sessions || []).forEach(s => {
-    if (!s || !s.date) return;
-    const dia = String(s.date).slice(0, 10);
-    ((s.exercises) || []).forEach(e => {
-      if (!e) return;
-      if (e.id !== exKey && e.name !== exKey) return;
-      ((e.sets) || []).forEach(st => {
-        if (!st || !st.done) return;
-        const k = parseFloat(st.kg), r = parseFloat(st.reps);
-        // «Con ese peso o más» y cumpliendo las reps: una serie mejor también consolida.
-        if (k >= peso && r >= objetivo) dias.add(dia);
-      });
-    });
-  });
-  return dias.size;
-}
+// v752 · YA NO decide cuándo subir ni bajar la carga de trabajo: eso lo hace `progressionPlan`
+// (doble progresión por rango, sobre las SESIONES y no sobre el récord). Esta función queda como
+// referencia pura de «qué peso corresponde a este récord», y la usa la semana de descarga
+// (`deloadSuggestKg`), que la topa con el propio récord.
+// 🔴 Historia que no se debe repetir (bucle cerrado, 2026-08-03): estimar el 1RM desde el récord y
+// devolver el 95% para ESAS MISMAS repeticiones da exactamente el peso que la persona ya levanta.
+// Por eso, si el récord ya cumple las reps objetivo, la referencia es el propio récord.
 function suggestFromPR(pr, targetReps, opts) {
   if (!pr || (pr.unit || 'kg') !== 'kg') return null;
   const kg = parseFloat(pr.val != null ? pr.val : pr.kg);
   if (!(kg > 0)) return null;
   const reps = parseInt(pr.reps) || 1;
   const tgt = parseInt(targetReps) || 10;
-  if (reps >= tgt) {
-    // ⚠️ ESTA RAMA SUBE EL PESO. Quien la use dentro de un contexto que quiere BAJARLO tiene que
-    // toparla, no encadenarle un factor: hasta v481 la semana de descarga multiplicaba por 0,9 el
-    // número que ya había salido subido de aquí, y el resultado quedaba POR ENCIMA del propio
-    // récord en 130 de 148 casos reales (medido 14-ago, `scripts/deload-carga.mjs`). El tope vive
-    // en `deloadSuggestKg`.
-    // 🔴 CONSOLIDACIÓN: repetir el peso hasta hacerlo en ≥2 sesiones. Sin el dato se asume 1
-    // (conservador): la app repite la carga en vez de dispararla.
-    const ses = (opts && opts.sesionesEnPeso != null) ? (parseInt(opts.sesionesEnPeso) || 0) : 1;
-    if (ses < LOAD_CONSOLIDATE_SESSIONS) return kg;   // mismo peso: aún se está adaptando
-    const paso = (opts && opts.step) || loadStep(kg);
-    return Math.round((kg + paso) * 2) / 2;   // a medio kilo: es una sugerencia, no un disco
-  }
+  if (reps >= tgt) return kg;
   // El récord es a MENOS reps que el objetivo → sí hay que estimar (más reps = menos peso).
   const e1 = estimate1RM(kg, Math.min(reps, 15));
   return e1 ? suggestLoad(e1, tgt, opts) : null;
 }
 
-// ── La progresión, dicha como INSTRUCCIÓN y no como número ──────────────────
-// 🔴 v595, reporte del PO: «construyamos la progresión dentro de la app». Medido antes de
-// construir: la doble progresión YA existe y YA funciona — sobre sus datos reales la app le
-// decía que subiera en 15 de 24 ejercicios, uno de ellos con 18 sesiones al mismo peso. Lo que
-// fallaba es que la pantalla decía LO MISMO en los dos casos («🎯 Peso sugerido: 95 kg · según
-// tu récord»), así que un número que manda subir hoy era indistinguible de un número de
-// referencia. Una progresión que no se nota no es una progresión.
-//
-// PURA. Recibe el récord, las reps objetivo, cuántas sesiones lleva consolidando y el peso ya
-// sugerido (no lo recalcula: `suggestFromPR` es la única que decide el peso).
-// → null si no hay con qué decir nada · {estado:'sube'|'consolida'|'base', faltan, texto}
 // ══════════════════════════════════════════════════════════════════════════════════════════
-// EL ANCLA DE LA CARGA (v610) — «arregla lo del peso sugerido», pedido del PO el 13-sep-2026
+// LA DOBLE PROGRESIÓN POR RANGO (v752) — regla APROBADA por el PO el 16-nov-2026
+// («Regla aprobada y escribe tú los rangos según tu regla»). Estudio y números en
+// DOCUMENTOS/investigacion-progresion-2026-11-16.md.
+// ──────────────────────────────────────────────────────────────────────────────────────────
+// Antes cada ejercicio tenía UN número de repeticiones y, tras 3 sesiones cumpliéndolo, la app subía
+// el peso un escalón: quien iba 50×8→9→10→12 y quien se quedaba en 50×8 recibían lo mismo, y quien
+// no llegaba al número recibía una rebaja por Epley («meta 10, hiciste 8 → baja a 45»).
+// Ahora:
+//  1. Cada ejercicio tiene un RANGO. La rutina guarda UN número, que es el TOPE; el mínimo se
+//     DERIVA al leerla (`repRangeOf`: tope × 2/3). Las rutinas viejas no se reescriben.
+//  2. Cada sesión: mismo peso y +1 rep a la serie más floja, sin pasar el tope.
+//  3. Sube cuando todas las series llegan al tope en 2 sesiones seguidas, O cuando en 1 sola
+//     sesión la última serie pasa el tope por 2 o más.
+//  4. Sube el salto más chico del equipo, y arranca con las reps que da Epley. Si esas reps caen
+//     por debajo del mínimo del rango, NO sube: sigue sumando reps (tope duro 30) y avisa al COACH.
+//  5. Una serie corta no baja nada: solo baja si la MEJOR serie queda bajo el mínimo en 2 sesiones
+//     seguidas.
+// SIN RIR NI RPE (v682: son solo dato). Este bloque no los lee.
 // ══════════════════════════════════════════════════════════════════════════════════════════
-// Hasta v609 TODO el peso sugerido salía del RÉCORD, que es el mejor día de su vida y puede tener
-// meses. v595 solo tapó el síntoma: cuando el récord quedaba lejos del trabajo real, la app dejaba
-// de dar la instrucción… pero **seguía enseñando el número del récord**, así que a la Prensa del PO
-// le proponía 200 kg moviendo 100 — y, como el calentamiento se deriva de esa cifra, le pedía
-// calentar con 100 kg, que es su serie de trabajo entera.
-//
-// 📊 MEDIDO sobre las 279 combinaciones persona-ejercicio de los planes VIVOS (13-sep):
-//   · **59 tenían el récord desfasado** contra su última sesión — 12 personas, no solo el PO.
-//   · Con el ancla nueva, **249 de 279 no cambian de número** (el récord sigue mandando cuando
-//     describe su trabajo) y **32 pasan al trabajo reciente**: 27 bajan, 3 hablan por primera vez
-//     (la app estaba MUDA porque el récord no daba sugerencia).
-//   · **El calentamiento de los que cambian cae de 672,5 kg a 392,5 kg en total.**
-//
-// 🔴 LA VENTANA ES DE VARIAS SESIONES, Y ESO LO DECIDIÓ LA MEDICIÓN. Mirar solo la ÚLTIMA sesión
-//    —que es lo que hacía la guarda de v595— es demasiado frágil: **27 de los 59 casos que marcaba
-//    eran FALSOS** (un día flojo suelto, con el récord perfectamente vigente en las sesiones de al
-//    lado: la Patada de Glúteo de Nayla, los Desplantes de Salomón…). A esas 27 la app les quitaba
-//    la instrucción sin motivo. Con la mejor carga de las últimas 3 sesiones, esos 27 la recuperan.
-const LOAD_ANCHOR_SESSIONS = 3;
-// 🔒 Piso para que el RÉCORD siga siendo el ancla. Por debajo de esto el récord ya no describe su
-// trabajo (otra máquina, otra variante, un dato mal tecleado o una bajada deliberada por lesión —
-// el caso literal del PO) y manda lo que viene moviendo.
-// Medido el 9-sep sobre los 24 ejercicios del PO, récord contra su peso real:
-//   86% · 83% · 78% · 70% · 50% · 50% · 40% · 38%
-// Los cuatro de arriba son variación normal (fatiga, otro día, descarga); los cuatro de abajo son
-// récords que ya no son suyos. El corte parte esa curva por la mitad, en el hueco entre 70% y 50%.
-// 🔒 Y queda POR DEBAJO de `DELOAD_LOAD_FACTOR` (0,85) a propósito: una semana de descarga baja la
-//    carga a propósito y NO puede arrastrar el ancla con ella. Si algún día ese factor baja de
-//    0,75, la descarga empezaría a rebajar el ancla de todo el mundo — hay un test que lo vigila.
-const LOAD_ANCHOR_MIN_RATIO = 0.75;
+const PROG_HARD_CAP_REPS = 30;     // más reps que esto con un peso no es progresar: es otro ejercicio
+const PROG_RAISE_OVER_REPS = 2;    // la última serie pasa el tope por tanto → sube en UNA sesión
+// «2 sesiones seguidas» (subir y bajar) vive en la forma de `progressionPlan`: mira la sesión de hoy
+// y la anterior. Subir ese número exige reescribir la función, no mover una constante.
 
-// recentWorkLoad(sessions, exKey, opts) → {kg, reps, sesiones} | null. PURA.
-// La mejor carga (y las reps que hizo con ella) entre las últimas `LOAD_ANCHOR_SESSIONS` sesiones
-// en las que aparece ese ejercicio CON peso. Es «lo que viene moviendo», que no es su récord.
-// 🔒 Casa por id y también por NOMBRE, porque las sesiones anteriores a finales de junio no traen
-//    id (misma razón que `sessionsAtLoad`, v529, y que `exerciseIdentity`, v558).
-// 🔒 Sin fecha usable la sesión no entra: `new Date(null)` es la ÉPOCA y ordenaría al revés (v517).
-function recentWorkLoad(sessions, exKey, opts) {
-  const key = String(exKey == null ? '' : exKey);
-  if (!key) return null;
-  const N = (opts && opts.sesiones) || LOAD_ANCHOR_SESSIONS;
-  const mismo = e => e && (String(e.id || '') === key || String(e.name || '') === key);
-  const conCarga = (Array.isArray(sessions) ? sessions : []).filter(s => {
-    if (!s || !s.date || !isFinite(new Date(s.date).getTime())) return false;
-    return (Array.isArray(s.exercises) ? s.exercises : []).some(e => mismo(e) &&
-      (Array.isArray(e.sets) ? e.sets : []).some(x => parseFloat(x && x.kg) > 0));
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, N);
-  if (!conCarga.length) return null;
-  let kg = 0, reps = 0;
-  conCarga.forEach(s => (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
-    if (!mismo(e)) return;
-    (Array.isArray(e.sets) ? e.sets : []).forEach(st => {
-      const k = parseFloat(st && st.kg), r = parseFloat(st && st.reps) || 0;
-      if (!(k > 0)) return;
-      // La mejor carga; a igual carga, la serie con más repeticiones.
-      if (k > kg || (k === kg && r > reps)) { kg = k; reps = r; }
+// Rango desde el TOPE (lo que la rutina guarda). round(tope × 2/3): 12→8-12, 15→10-15, 6→4-6, 10→7-10, 20→13-20.
+function repRangeFromTope(tope) {
+  const max = parseInt(tope);
+  if (!(max >= 1) || max > 200) return null;
+  return { min: Math.max(1, Math.round(max * 2 / 3)), max: max };
+}
+// El rango de un ejercicio de la rutina. Casi siempre sale de UN número (el tope); si alguna vez una
+// rutina trae «8-12» escrito, se respeta tal cual.
+function repRangeOf(ex) {
+  if (!ex) return null;
+  const r = ex.reps;
+  if (typeof r === 'string') {
+    const m = /^\s*(\d+)\s*[-–]\s*(\d+)\s*$/.exec(r);
+    if (m) {
+      const lo = parseInt(m[1]), hi = parseInt(m[2]);
+      if (lo >= 1 && hi >= lo && hi <= 200) return { min: lo, max: hi };
+    }
+  }
+  return repRangeFromTope(r);
+}
+
+// El TIPO de ejercicio para elegir su rango: 'compuesto' | 'aislado' | 'chico' (laterales, pantorrilla,
+// abdomen) | null (cardio, isométrico, HIIT, movilidad: no cuentan repeticiones de fuerza).
+// Sale de lo que el catálogo ya dice: `type` (Compuesto/Aislamiento/…), `muscle` y el nombre.
+// 🔎 Funcional y Bodyweight (que no son «Aislamiento») cuentan como compuestos: son movimientos de varias
+// articulaciones. Un ejercicio sin tipo cuenta como compuesto.
+function repTierOf(ex) {
+  if (!ex) return null;
+  if (_genKeepNatural(ex) || ex.type === 'Movilidad') return null;
+  const nombre = _norm(ex.name || '');
+  if (ex.muscle === 'core') return 'chico';
+  if (/pantorrilla/.test(_norm(ex.muscleLabel || '')) || /elevacion(es)? de talones|pantorrilla|gemelo/.test(nombre)) return 'chico';
+  if (ex.muscle === 'hombros' && /elevacion(es)? lateral/.test(nombre)) return 'chico';
+  if (ex.type === 'Aislamiento') return 'aislado';
+  return 'compuesto';
+}
+
+// Los rangos de las rutinas GENERADAS, por objetivo y tipo de ejercicio. La rutina guarda el TOPE.
+const GEN_REPS_RANGOS = {
+  fuerza:      { compuesto: [4, 6],   aislado: [8, 12],  chico: [10, 15] },
+  masa:        { compuesto: [8, 12],  aislado: [10, 15], chico: [12, 20] },   // Ganar masa y Recomposición
+  grasa:       { compuesto: [10, 15], aislado: [12, 15], chico: [15, 20] },   // Perder grasa y Salud general
+  resistencia: { compuesto: [15, 20], aislado: [15, 20], chico: [15, 25] },
+};
+// Las repeticiones (el TOPE del rango) con que nace un ejercicio generado.
+function genRepsFor(scheme, ex) {
+  const tier = scheme && scheme.repsRangos ? repTierOf(ex) : null;
+  const tope = tier ? scheme.repsRangos[tier][1] : scheme.repsN;
+  return Math.max(tope, (scheme && scheme.repsFloor) || 0);
+}
+
+// El salto de peso MÁS CHICO que permite el equipo, según lo que el catálogo sabe del ejercicio:
+// barra con discos 2,5 kg · mancuerna 2 kg (por mancuerna) · máquina de placas o polea 5 kg.
+// `null` si el catálogo no lo dice: ahí manda `loadStep` (proporcional al peso, 1 kg bajo 10 kg).
+function exerciseStepKg(ex) {
+  if (!ex) return null;
+  const nombre = _norm(ex.name || '');
+  if (barDefaultKg(ex) != null || /\bbarra\b|\bdiscos?\b/.test(nombre)) return 2.5;
+  if (/mancuerna/.test(nombre)) return 2;
+  if (/maquina|polea|cable|prensa|jalon|multipower|peck|contractora|hack|palanca/.test(nombre)) return 5;
+  const desc = _norm((ex.desc || '') + ' ' + (ex.descSimple || ''));
+  if (/mancuerna/.test(desc)) return 2;
+  if (/polea|maquina|cable/.test(desc)) return 5;
+  return null;
+}
+
+// Epley sin tope de repeticiones: aquí las reps pueden pasar de 15 (la regla las deja llegar a 30).
+function _epley(kg, reps) { return kg * (1 + reps / 30); }
+function _kgTxt(kg) { return fmtMiles(Math.round(kg * 100) / 100); }
+
+// progressionPlan(history, ex, opts) → qué hacer HOY con ese ejercicio. PURA.
+//   history: sesiones de la persona (en cualquier orden; manda la fecha). ex: el ejercicio de la rutina
+//   ({id, name, sets, reps = TOPE, …}). opts.pr: récord, solo para cuando no hay sesiones con carga.
+// → null si no hay con qué hablar · {
+//     estado: 'sube'|'baja'|'repite', kg, reps (meta o reps de arranque), rango:{min,max},
+//     texto (lo que lee la persona), saltoGrande (true → el aviso es del COACH), avisoCoach (texto) }
+function progressionPlan(history, ex, opts) {
+  opts = opts || {};
+  const rango = repRangeOf(ex);
+  if (!rango) return null;
+  const exKey = String((ex && (ex.id != null && ex.id !== '' ? ex.id : ex.name)) || '');
+  if (!exKey) return null;
+  const mismo = e => e && (String(e.id || '') === exKey || String(e.name || '') === exKey);
+  const unidad = repsUnitOf(ex), uno = unidad.replace(/s$/, '');
+  const rangoTxt = rango.min + '-' + rango.max;
+  const ses = (Array.isArray(history) ? history : []).filter(s => s && s.date && isFinite(new Date(s.date).getTime()))
+    .map(s => ({ s, t: new Date(s.date).getTime() })).sort((a, b) => a.t - b.t);
+  // Un DÍA = un entrenamiento (dos entradas del mismo día son el mismo; misma regla de v529).
+  const dias = [], porDia = {};
+  ses.forEach(({ s }) => {
+    const dia = String(s.date).slice(0, 10);
+    (Array.isArray(s.exercises) ? s.exercises : []).forEach(e => {
+      if (!mismo(e)) return;
+      (Array.isArray(e.sets) ? e.sets : []).forEach(st => {
+        if (!st || !st.done) return;
+        const kg = parseFloat(st.kg), reps = parseFloat(st.reps);
+        if (!(kg > 0) || !(reps > 0)) return;
+        if (!porDia[dia]) { porDia[dia] = []; dias.push(porDia[dia]); }
+        porDia[dia].push({ kg, reps });
+      });
     });
-  }));
-  return kg > 0 ? { kg: kg, reps: reps, sesiones: conCarga.length } : null;
-}
+  });
 
-// loadAnchor(pr, sessions, exKey, opts) → el objeto tipo-récord desde el que se calcula el peso.
-// PURA. `{kg, reps, unit:'kg', fuente:'record'|'reciente', recordKg}` o null si no hay de dónde.
-// 🔒 Devuelve la MISMA forma que un récord justamente para que `suggestFromPR` no se entere: la
-//    doble progresión, la consolidación y el redondeo siguen siendo los de siempre, solo cambia
-//    DESDE QUÉ PESO se cuentan. Una segunda fórmula de progresión sería el bug de v435 otra vez.
-function loadAnchor(pr, sessions, exKey, opts) {
-  const recordKg = pr ? parseFloat(pr.val != null ? pr.val : pr.kg) : NaN;
-  const tieneRecord = isFinite(recordKg) && recordKg > 0 && (pr.unit || 'kg') === 'kg';
-  const rec = recentWorkLoad(sessions, exKey, opts);
-  // Sin historial de carga manda el récord: la ausencia de información no puede volverse silencio
-  // (el detector mudo de v433 al revés). Sin récord manda lo reciente, que es mejor que nada.
-  if (!rec) return tieneRecord ? { kg: recordKg, reps: parseInt(pr.reps) || 1, unit: 'kg', fuente: 'record', recordKg: recordKg } : null;
-  if (!tieneRecord) return { kg: rec.kg, reps: rec.reps || 1, unit: 'kg', fuente: 'reciente', recordKg: null };
-  if (rec.kg >= recordKg * LOAD_ANCHOR_MIN_RATIO) {
-    return { kg: recordKg, reps: parseInt(pr.reps) || 1, unit: 'kg', fuente: 'record', recordKg: recordKg };
+  // Sin sesiones con carga: lo único que hay es el récord. Se REPITE ese peso; con una sola marca no se sube.
+  if (!dias.length) {
+    const pr = opts.pr;
+    const kgPr = pr ? parseFloat(pr.val != null ? pr.val : pr.kg) : NaN;
+    if (!(kgPr > 0) || (pr.unit || 'kg') !== 'kg') return null;
+    const meta = Math.min(rango.max, (parseInt(pr.reps) || 0) + 1);
+    return { estado: 'repite', kg: kgPr, reps: Math.max(rango.min, meta), rango, saltoGrande: false, avisoCoach: '',
+      texto: `${_kgTxt(kgPr)} kg · rango ${rangoTxt} · hoy busca 1 ${uno} más en la serie que más te costó` };
   }
-  return { kg: rec.kg, reps: rec.reps || 1, unit: 'kg', fuente: 'reciente', recordKg: recordKg };
-}
 
-// `fuente` = de dónde salió el peso ('record' | 'reciente'). La pantalla lo DICE: cambiar de dónde
-// sale un número sin decirlo es media solución y el coach no reconoce el dato (lección de v511).
-// `unidad` (v611): cómo se llama la segunda cifra de ESE ejercicio — 'reps' salvo el granjero,
-// que cuenta pasos. Se recibe ya resuelta (`repsUnitOf`) para no duplicar el criterio aquí.
-function progressHint(prKg, prReps, targetReps, sesiones, sug, fuente, unidad) {
-  const kg = parseFloat(prKg), s = parseFloat(sug);
-  if (!(kg > 0) || !(s > 0)) return null;
-  const tgt = parseInt(targetReps) || 0;
-  const reps = parseInt(prReps) || 0;
-  const segun = fuente === 'reciente' ? 'según lo que vienes moviendo' : 'según tu récord';
-  if (s > kg) {
-    const n = parseInt(sesiones);
-    const cuantas = isFinite(n) && n > 0 ? ` en ${n} ${n === 1 ? 'sesión' : 'sesiones'}` : '';
-    return { estado: 'sube', faltan: 0,
-      texto: `Consolidaste ${kg} kg${cuantas} — hoy toca ${s} kg` };
+  const D0 = dias[dias.length - 1], D1 = dias.length > 1 ? dias[dias.length - 2] : null;
+  const W = Math.max.apply(null, D0.map(x => x.kg));
+  const enPeso = d => d.filter(x => x.kg >= W - 1e-9);
+  const minSeries = Math.min(2, parseInt(ex && ex.sets) || 1);   // una sola serie anotada no «cumple» la sesión
+  const todasTope = d => { const a = d ? enPeso(d) : []; return a.length >= minSeries && a.every(x => x.reps >= rango.max); };
+  const w0 = enPeso(D0);
+  const floja0 = Math.min.apply(null, w0.map(x => x.reps));
+  const e1 = Math.max.apply(null, D0.map(x => _epley(x.kg, x.reps)));
+  const paso = exerciseStepKg(ex) || loadStep(W);
+
+  // ── ¿SUBE? ──
+  const dosSeguidas = todasTope(D0) && todasTope(D1);
+  const pasaUltima = w0[w0.length - 1].reps >= rango.max + PROG_RAISE_OVER_REPS;
+  if (dosSeguidas || pasaUltima) {
+    const nuevo = Math.round((W + paso) * 100) / 100;
+    const arranque = Math.round(30 * (e1 / nuevo - 1));
+    if (arranque >= rango.min) {
+      const reps = Math.min(arranque, rango.max);
+      const porque = dosSeguidas ? `Hiciste ${rango.max} en todas dos veces seguidas`
+        : `Tu última serie pasó el tope de ${rango.max}`;
+      return { estado: 'sube', kg: nuevo, reps, rango, saltoGrande: false, avisoCoach: '',
+        texto: `${porque} · hoy ${_kgTxt(nuevo)} kg × ${reps}` };
+    }
+    // El salto es demasiado grande para este ejercicio: NO se sube. Se sigue sumando reps y avisa el COACH.
+    const meta = Math.min(PROG_HARD_CAP_REPS, floja0 + 1);
+    return { estado: 'repite', kg: W, reps: meta, rango, saltoGrande: true,
+      avisoCoach: 'El salto de peso es muy grande para este ejercicio (' + _kgTxt(W) + ' → ' + _kgTxt(nuevo)
+        + ' kg dejaría menos de ' + rango.min + ' repeticiones): sigue sumando repeticiones; valora una mancuerna o disco intermedio, polea o unilateral.',
+      texto: floja0 >= PROG_HARD_CAP_REPS ? `${_kgTxt(W)} kg · ya llegas a ${PROG_HARD_CAP_REPS} ${unidad}: mantén ese ritmo`
+        : `${_kgTxt(W)} kg · sigue sumando ${unidad}: hoy busca 1 más en la serie que más te costó` };
   }
-  // Repite. Solo es CONSOLIDACIÓN si ya cumple las reps objetivo con ese peso; si el récord es a
-  // menos reps que el objetivo, lo que pasa es otra cosa (el peso se estima hacia abajo) y decir
-  // «te faltan N sesiones» sería mentir sobre el mecanismo.
-  if (reps >= tgt && tgt > 0) {
-    const n = parseInt(sesiones);
-    const faltan = Math.max(0, LOAD_CONSOLIDATE_SESSIONS - (isFinite(n) ? n : 0));
-    // 🔒 El número de sesiones que faltan se DERIVA de la constante. Escrito a mano, el día que
-    //    alguien mueva la constante la pantalla seguiría prometiendo el plazo viejo.
-    if (faltan > 0) return { estado: 'consolida', faltan,
-      texto: `Repite ${kg} kg · te ${faltan === 1 ? 'falta 1 sesión' : 'faltan ' + faltan + ' sesiones'}` +
-             ` cumpliendo ${tgt} ${unidad || 'reps'} para subir` };
+
+  // ── ¿BAJA? La MEJOR serie bajo el mínimo en 2 sesiones seguidas con ese peso (una serie corta no baja nada). ──
+  const bajo = d => { const a = d ? enPeso(d) : []; return a.length > 0 && Math.max.apply(null, a.map(x => x.reps)) < rango.min; };
+  if (bajo(D0) && bajo(D1)) {
+    // Al peso de antes si con él vuelve al rango; si no, el peso que da el mínimo del rango con Epley.
+    let previo = null;
+    for (let i = dias.length - 1; i >= 0 && previo == null; i--) {
+      const top = Math.max.apply(null, dias[i].map(x => x.kg));
+      if (top < W - 1e-9) previo = top;
+    }
+    let epl = Math.round(e1 / (1 + rango.min / 30) / paso) * paso;
+    if (!(epl < W)) epl = W - paso;
+    const kg = Math.max(0.5, previo != null && previo <= epl ? previo : epl);
+    return { estado: 'baja', kg, reps: rango.min, rango, saltoGrande: false, avisoCoach: '',
+      texto: `Hoy ${_kgTxt(kg)} kg para volver a tu rango de ${rangoTxt}` };
   }
-  return { estado: 'base', faltan: 0, texto: `Peso sugerido: ${s} kg · ${segun}` };
+
+  // ── REPITE: mismo peso, +1 rep a la serie más floja, sin pasar el tope. ──
+  if (floja0 >= rango.max) {
+    return { estado: 'repite', kg: W, reps: rango.max, rango, saltoGrande: false, avisoCoach: '',
+      texto: `${_kgTxt(W)} kg · rango ${rangoTxt} · repite con todas las series en ${rango.max} y la próxima subes` };
+  }
+  const meta = Math.max(rango.min, floja0 + 1);
+  return { estado: 'repite', kg: W, reps: meta, rango, saltoGrande: false, avisoCoach: '',
+    texto: `${_kgTxt(W)} kg · rango ${rangoTxt} · hoy busca 1 ${uno} más en la serie que más te costó` };
 }
 
 // ── Calentamiento + dropset: peso derivado del peso de trabajo ──
@@ -2903,7 +2912,7 @@ function _genMaterialize(ex, scheme) {
     c.sets = parseInt(ex.sets) || scheme.setsN; // reps natural (minutos/segundos/rondas)
   } else {
     c.sets = scheme.setsN;
-    c.reps = scheme.repsN;
+    c.reps = genRepsFor(scheme, ex);   // v752: el TOPE del rango de ESTE ejercicio (objetivo × tipo)
   }
   // Hornea el descanso por tipo (cada ejercicio nace con su descanso correcto).
   // En adaptación se respeta el descanso corto uniforme (técnica primero, ver genSchemeFor).
@@ -3478,7 +3487,7 @@ function generarRutinas(client, lib, opts) {
   // 🔒 v727 · candado de Laura (Q2): con presión arterial, abdomen y piso pélvico o embarazo, NUNCA
   // menos de 8 repeticiones (medido antes: «Fuerza» daba 6 con o sin «hipertensión» en la nota). El
   // nombre de un ejercicio no deja ver la carga máxima ni el aire retenido; esto sí lo controla.
-  if ((lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0)) scheme.repsN = Math.max(scheme.repsN, 8);
+  if ((lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0)) { scheme.repsN = Math.max(scheme.repsN, 8); scheme.repsFloor = 8; }
   const place = opts.place || client.place || 'gym'; // entorno de equipo (Fase C)
   const methodBias = opts.methodBias || null;        // del estilo/preset (calistenia/funcional/...)
   const loadProfile = opts.loadProfile === 'high' ? 'high' : 'normal'; // por IMC/cintura (ver bodyLoadProfile)
@@ -3530,7 +3539,7 @@ function generarRutinas(client, lib, opts) {
   if (pl) {
     const schemeTpl = genSchemeFor(client.goal || '', level, false);
     const minReps8 = (lim.keys || []).some(z => GEN_MIN_REPS8_KEYS.indexOf(z) >= 0);
-    if (minReps8) schemeTpl.repsN = Math.max(schemeTpl.repsN, 8);
+    if (minReps8) { schemeTpl.repsN = Math.max(schemeTpl.repsN, 8); schemeTpl.repsFloor = 8; }
     diasPl = _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8, { reservados: new Set(_corr ? [_corr.ex.id] : []), altaCarga: highLoad });
     scheme.restSec = schemeTpl.restSec;
   }
@@ -14790,13 +14799,15 @@ if (typeof module !== 'undefined' && module.exports) {
     suggestLoad,
     loadStep,
     suggestFromPR,
-    sessionsAtLoad,
-    LOAD_CONSOLIDATE_SESSIONS,
-    recentWorkLoad,
-    loadAnchor,
-    progressHint,
-    LOAD_ANCHOR_SESSIONS,
-    LOAD_ANCHOR_MIN_RATIO,
+    progressionPlan,
+    repRangeOf,
+    repRangeFromTope,
+    repTierOf,
+    genRepsFor,
+    exerciseStepKg,
+    GEN_REPS_RANGOS,
+    PROG_HARD_CAP_REPS,
+    PROG_RAISE_OVER_REPS,
     warmupLoad,
     dropLoad,
     trainingStartTs,

@@ -2386,13 +2386,13 @@ function exSetsCellHTML(e){
 
 // (setLogHeadHTML — cabecera de la tabla clásica — RETIRADA en F5b 2026-07-06)
 
-// ── Peso sugerido por PR (Epley, funciones en avi-core) ──
-// Solo modalidad de peso, con PR previo del MISMO ejercicio y fuera de la fase de
-// adaptación (ahí la consigna es carga suave y técnica, no acercarse al máximo).
-// v595: devuelve TODO lo que la progresión necesita (peso sugerido + récord + reps objetivo +
-// sesiones consolidando), para que la PISTA que lee el asesorado y el PESO que se le sugiere
-// salgan del mismo sitio. `_suggestKg` delega aquí: una segunda cuenta de `sesionesEnPeso` sería
-// el bug del peso de v448/v511 otra vez, con dos verdades sobre el mismo número.
+// ── Peso sugerido: la doble progresión por rango (v752, `progressionPlan` en avi-core) ──
+// Solo modalidad de peso y fuera de la fase de adaptación (ahí la consigna es carga suave y
+// técnica, no acercarse al máximo). El plan sale de las SESIONES de la persona con ese ejercicio y
+// del rango de la rutina (el número que guarda es el TOPE; el mínimo se deriva), no del récord.
+// Devuelve TODO lo que la tarjeta necesita (`plan`: peso, reps, rango y la frase), para que la
+// PISTA que lee la persona y el PESO que se le sugiere salgan del mismo sitio. `_suggestKg` delega
+// aquí: una segunda cuenta sería el bug del peso de v448/v511, con dos verdades sobre el mismo número.
 function _progressInfo(ex){
   try{
     if(exTrack(ex)!=='peso_reps')return null;
@@ -2404,28 +2404,11 @@ function _progressInfo(ex){
     // final. Antes esta línea multiplicaba por 0,9 la sugerencia ya subida por la progresión, y el
     // resultado quedaba por encima del propio récord — ver `deloadSuggestKg` en avi-core.
     if(typeof deloadState==='function'&&typeof deloadSuggestKg==='function'&&deloadState(c,Date.now())){
-      return {sug:deloadSuggestKg(pr,reps),pr:pr,reps:reps,ses:null,deload:true};
+      return {sug:deloadSuggestKg(pr,reps),pr:pr,reps:reps,plan:null,deload:true};
     }
-    // v610 · EL ANCLA. El peso ya NO sale siempre del récord: si lo que viene moviendo está muy
-    // por debajo de él, ese récord dejó de describir su trabajo y manda lo reciente. `loadAnchor`
-    // devuelve un objeto con la MISMA forma que un récord, así que la doble progresión de
-    // `suggestFromPR` sigue siendo la de siempre — solo cambia desde qué peso se cuenta.
     const _hist=(DB.history&&DB.history[c.id])||[];
-    const _anc=(typeof loadAnchor==='function')?loadAnchor(pr,_hist,ex.id||ex.name):null;
-    const _base=_anc||pr;
-    // CONSOLIDACIÓN (v529, reporte del PO): la doble progresión repite el peso hasta hacerlo en
-    // ≥3 sesiones y solo entonces sube. `suggestFromPR` no ve el historial, así que el conteo se
-    // calcula aquí con `sessionsAtLoad` y se le pasa. Sin este argumento la regla asume 1 sesión
-    // y repite el peso — conservadora a propósito, pero entonces NADIE subiría nunca: por eso
-    // hay un test de CABLEADO que exige que esta línea siga pasando `sesionesEnPeso`.
-    // 🔒 Se cuenta sobre el ANCLA, no sobre el récord: contar las sesiones a 200 kg mientras se
-    //    sugiere 100 daría siempre 0 y nadie volvería a subir de peso nunca.
-    const _ses=(typeof sessionsAtLoad==='function')
-      ? sessionsAtLoad(_hist, ex.id||ex.name,
-                       parseFloat(_base&&(_base.val!=null?_base.val:_base.kg)), reps)
-      : undefined;
-    return {sug:suggestFromPR(_base,reps,{sesionesEnPeso:_ses}),pr:_base,record:pr,reps:reps,ses:_ses,
-            fuente:(_anc&&_anc.fuente)||'record',deload:false};
+    const plan=(typeof progressionPlan==='function')?progressionPlan(_hist,ex,{pr:pr}):null;
+    return {sug:plan?plan.kg:null,pr:pr,reps:reps,plan:plan,deload:false};
   }catch(e){return null;}
 }
 // El peso sugerido SALE de `_progressInfo` — jamás se recalcula aquí (ver el comentario de arriba).

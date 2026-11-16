@@ -130,8 +130,13 @@ const {
   estimate1RM,
   suggestLoad,
   suggestFromPR,
-  sessionsAtLoad,
-  LOAD_CONSOLIDATE_SESSIONS,
+  progressionPlan,
+  repRangeOf,
+  repRangeFromTope,
+  repTierOf,
+  genRepsFor,
+  exerciseStepKg,
+  GEN_REPS_RANGOS,
   warmupLoad,
   dropLoad,
   bmiFrom,
@@ -919,10 +924,12 @@ test('orden §2.5: Compuesto → … → Cardio/Core al final (rank no decrecien
   });
 });
 
-test('sets/reps según objetivo: Ganar músculo Intermedio → 4×10 (no cardio)', () => {
+test('sets/reps según objetivo: Ganar músculo Intermedio → 4 series y el TOPE del rango de cada tipo (v752: 12 · 15 · 20)', () => {
   const { routines } = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
   const peso = routines.flatMap(r => r.exercises).filter(e => e.muscle !== 'cardio' && e.type !== 'Isométrico');
-  peso.forEach(e => { assert.strictEqual(e.sets, 4); assert.strictEqual(e.reps, 10); });
+  const topes = { compuesto: 12, aislado: 15, chico: 20 };   // «Ganar masa»: 8-12 · 10-15 · 12-20
+  peso.forEach(e => { assert.strictEqual(e.sets, 4); assert.strictEqual(e.reps, topes[repTierOf(e)], `${e.name} (${repTierOf(e)})`); });
+  assert.ok(new Set(peso.map(e => e.reps)).size >= 2, 'CONTROL · el tope ya NO es el mismo número para todos los ejercicios');
 });
 
 test('Principiante → cap de 3 series', () => {
@@ -3505,9 +3512,10 @@ test('genSchemeFor: en adaptación fuerza 15 reps / 3 series / descanso 60, sin 
   });
 });
 
-test('genSchemeFor: SIN adaptación mantiene el esquema del objetivo (hipertrofia = 10 reps)', () => {
+test('genSchemeFor: SIN adaptación mantiene el esquema del objetivo (hipertrofia: compuestos con tope 12, rango 8-12)', () => {
   const s = genSchemeFor('Ganar músculo', 'Principiante', false);
-  assert.strictEqual(s.repsN, 10);
+  assert.strictEqual(s.repsN, 12, 'repsN es el tope de los compuestos (v752: antes 10 para todos)');
+  assert.deepStrictEqual(s.repsRangos, { compuesto: [8, 12], aislado: [10, 15], chico: [12, 20] });
   assert.ok(!s.adaptation);
 });
 
@@ -3552,7 +3560,7 @@ test('generarRutinas: SIN adaptación (intermedio) usa reps del objetivo, no 15'
   const res = generarRutinas({ sex: 'M', level: 'Intermedio', days: 3, goal: 'Ganar músculo' }, LIB, FIXED);
   assert.ok(!res.adaptation);
   const carga = res.routines[0].exercises.find(e => e.type === 'Compuesto');
-  assert.strictEqual(carga.reps, 10, 'hipertrofia intermedio = 10 reps');
+  assert.strictEqual(carga.reps, 12, 'hipertrofia intermedio: un compuesto sale con el tope de su rango 8-12 (v752; antes 10)');
 });
 
 // ══════════════════════════════════════════════════════
@@ -9866,9 +9874,9 @@ test('🔒 v484 · un récord viejo SIN `val` ni `unit` (formato legacy) se fund
   const legacy = { kg: 30, reps: 8, name: 'Curl Femoral Acostado en Máquina' };
   const r = prsRemapRetired({ e38: legacy });
   assert.strictEqual(r.prs.e15.kg, 30, 'la marca legacy se conserva');
-  // v529: con el peso ya consolidado (≥2 sesiones) sube; lo que este test afirma es que la marca
-  // legacy ALIMENTA la sugerencia, no la regla de progresión (esa vive en su propio bloque).
-  assert.strictEqual(suggestFromPR(r.prs.e15, 8, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 35, 'y ya alimenta el peso sugerido');
+  // v752: `suggestFromPR` es la referencia de la descarga (ya no sube el peso: eso es `progressionPlan`);
+  // lo que este test afirma es que la marca legacy ALIMENTA esa referencia.
+  assert.strictEqual(suggestFromPR(r.prs.e15, 8), 30, 'y ya alimenta la referencia de peso');
 });
 
 test('🔒 v484 · sin récords varados no toca NADA (ni copia el objeto)', () => {
@@ -12215,19 +12223,20 @@ test('🔴 v482 · EL CANDADO CENTRAL: en descarga NUNCA se sugiere un peso ≥ 
 });
 
 test('🔴 v482 · el caso REAL que lo destapó: Nadia, récord 25 kg ×15, plan de 15 reps', () => {
-  // Antes: suggestFromPR sube a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
-  // récord. La app llamaba «descarga» a levantar lo mismo de siempre.
+  // Antes: suggestFromPR subía a 27,5 (doble progresión) y el 0,9 lo devolvía a 25 — exactamente su
+  // récord. La app llamaba «descarga» a levantar lo mismo de siempre. v752: `suggestFromPR` ya no sube
+  // (el escalón es de `progressionPlan`), así que la cadena vieja ni existe; el tope sigue vigilado abajo.
   const pr = { val: 25, unit: 'kg', reps: 15 };
-  assert.strictEqual(suggestFromPR(pr, 15, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 27.5, 'fuera de descarga sí progresa (eso está bien)');
-  assert.strictEqual(Math.round(27.5 * 0.9 * 2) / 2, 25, 'la cadena vieja devolvía su propio récord');
-  assert.strictEqual(deloadSuggestKg(pr, 15), 21.5, 'ahora sale del récord, no del escalón');
+  assert.strictEqual(suggestFromPR(pr, 15), 25, 'la referencia es su propio récord: no hay escalón escondido');
+  assert.strictEqual(Math.round(27.5 * 0.9 * 2) / 2, 25, 'la cadena vieja (27,5 × 0,9) devolvía su propio récord');
+  assert.strictEqual(deloadSuggestKg(pr, 15), 21.5, 'la descarga sale del récord, no de un escalón');
 });
 
 test('🔒 v482 · el factor se aplica sobre el RÉCORD, no sobre la sugerencia normal', () => {
   // Es la trampa en la que cayó el harness _verify-deload durante 48 versiones: comparaba la
   // sugerencia de descarga contra la NORMAL (que ya venía subida) y pintaba verde.
   const pr = { val: 60, unit: 'kg', reps: 15 };
-  const normal = suggestFromPR(pr, 15);          // 65 — con escalón de progresión
+  const normal = suggestFromPR(pr, 15);          // 60 — la referencia (v752: sin escalón)
   const dl = deloadSuggestKg(pr, 15);            // 51 — 60 × 0,85
   assert.ok(dl < normal, 'contra la normal baja (esto pasaba ANTES también, por eso no servía)');
   assert.ok(dl < 60 * 0.9, 'y contra el RÉCORD baja de verdad: ' + dl);
@@ -15311,90 +15320,13 @@ test('sanitizePrs retira el récord FANTASMA que nadie podría volver a batir', 
   assert.strictEqual(sanitizePrs(prs).removed, 0, 'sin historial no hay base relativa: no se inventa');
 });
 
-// ── EL PESO SUGERIDO TIENE QUE SUBIR (bucle cerrado, medido 2026-08-03) ──
-// Estimaba el 1RM desde el récord y devolvía el 95% para ESAS MISMAS reps = exactamente el
-// peso que la persona ya levanta. PR 10 kg × 12 → 1RM 14 → 14/1,4 × 0,95 = 9,5 → redondea a
-// **10**. El peso sugerido no sube ⇒ el récord no sube ⇒ el detector lo llama estancamiento.
-// Caso real: 10 sesiones en 2 meses remando con 10 kg mientras hacía hip thrust con 100.
-test('🔴 suggestFromPR: si ya cumpliste las reps objetivo Y consolidaste el peso, SUBE (doble progresión)', () => {
-  // El caso exacto que estaba en producción. v529 le añade la consolidación: el escalón exige
-  // ≥2 sesiones con ese peso, así que el test lo declara explícitamente.
-  const r = suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS });
-  assert.ok(r > 10, `sugirió ${r} kg cuando ya levanta 10: el peso sugerido nunca subiría`);
-  assert.strictEqual(r, 12.5);
-  // Y no se calla por encima de 15 reps: ahí es JUSTO cuando se ganó el salto de mancuerna
-  const luz = suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS });
-  assert.ok(luz != null, 'con 20 reps la app se callaba (estimate1RM devuelve null > 15 reps)');
-  assert.ok(luz > 2.5, `sugirió ${luz} tras 20 repeticiones con 2,5 kg`);
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 🔴 v529 · CONSOLIDACIÓN — reporte del PO (24-ago)
-// «¿Cómo es posible que si hoy le pongo 40 en hack squat, a la siguiente sesión ya le quieras
-// subir 5 kilos si ni siquiera se ha adaptado al peso que le acabo de poner?»
-// ══════════════════════════════════════════════════════════════════════════════
-test('🔴 v529 · el caso del PO: con UNA sola sesión a 40 kg, la app REPITE 40 — no sube a 45', () => {
-  // El umbral se LEE de la constante, no se escribe a mano: el PO la movió de 2 a 3 el mismo día
-  // y un test con el número quemado se habría puesto rojo describiendo su decisión como un fallo.
-  const pr = { val: 40, reps: 12, unit: 'kg' };
-  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: 1 }), 40, 'aún se está adaptando: se repite');
-  for (let n = 1; n < LOAD_CONSOLIDATE_SESSIONS; n++) {
-    assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: n }), 40, `con ${n} sesión(es) todavía se repite`);
-  }
-  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS }), 45,
-    'consolidado: ahora sí sube un escalón');
-  // 🔒 CONTROL de que la regla no se volvió «no subir nunca»: por encima del umbral también sube.
-  assert.strictEqual(suggestFromPR(pr, 12, { sesionesEnPeso: LOAD_CONSOLIDATE_SESSIONS + 3 }), 45);
-  // 🔒 Y que el umbral es un número con sentido: exigir 1 sería no exigir nada.
-  assert.ok(LOAD_CONSOLIDATE_SESSIONS >= 2, 'consolidar exige repetir al menos una vez');
-});
-test('🔒 v529 · sin el dato de sesiones NO se dispara el peso (el default es el conservador)', () => {
-  // Un caller que se olvide de pasar `sesionesEnPeso` hace que la app REPITA la carga, jamás que
-  // la suba sola. El riesgo del default contrario es el bug que este lote vino a arreglar.
-  assert.strictEqual(suggestFromPR({ val: 40, reps: 12, unit: 'kg' }, 12), 40);
-});
-test('🔴 v529 · CABLEADO: el conteo de sesiones LLEGA a la progresión', () => {
-  // Una función pura que nadie llama es «puerta cerrada, ventana abierta» (lección v509). Si
-  // alguien borra el argumento, la app deja de subir el peso NUNCA y no da ningún error.
-  // 🔁 RE-ENCUADRADO en v595: el conteo se mudó de `_suggestKg` a `_progressInfo` (para que la
-  //    PISTA que se lee y el PESO que se sugiere salgan del mismo sitio). La propiedad que este
-  //    test protege es la misma —que el conteo llegue— y por eso se afirma en su casa nueva, más
-  //    que `_suggestKg` DELEGUE: sin esa segunda mitad, alguien puede reintroducir una segunda
-  //    cuenta de las sesiones y tener dos verdades sobre el mismo número (bug de v448/v511).
-  const fs = require('fs'), path = require('path');
-  // El helper compartido `sinComentarios` se declara MÁS ABAJO en este archivo, así que aquí se
-  // quitan los comentarios de línea a mano (regla de v593: un check estático nunca mira dentro
-  // de un comentario — mi propio comentario contendría el texto que la aserción busca).
-  const src = fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8')
-    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  const i = src.indexOf('function _progressInfo');
-  assert.ok(i > 0, 'no se encontró _progressInfo en app-4-entreno.js');
-  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
-  assert.match(cuerpo, /sessionsAtLoad\(/, '_progressInfo debe contar las sesiones con ese peso');
-  assert.match(cuerpo, /sesionesEnPeso\s*:/, 'debe pasarle el conteo a suggestFromPR');
-
-  const j = src.indexOf('function _suggestKg');
-  assert.ok(j > 0, 'no se encontró _suggestKg');
-  const cuerpoSug = src.slice(j, src.indexOf('\nfunction ', j + 10));
-  assert.match(cuerpoSug, /_progressInfo\(/, '_suggestKg tiene que DELEGAR, no recalcular');
-  assert.ok(!/sessionsAtLoad\(/.test(cuerpoSug),
-    '🔴 _suggestKg volvió a contar las sesiones por su cuenta: son dos verdades sobre el mismo número');
-});
-test('v529 · sessionsAtLoad cuenta DÍAS distintos que cumplieron las reps con ese peso', () => {
-  const ses = [
-    { date: '2026-08-01T10:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '40', reps: '12' }] }] },
-    { date: '2026-08-01T18:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '40', reps: '12' }] }] },
-    { date: '2026-08-05T10:00:00Z', exercises: [{ id: 'e9', sets: [{ done: true, kg: '45', reps: '12' }] }] },
-  ];
-  assert.strictEqual(sessionsAtLoad(ses, 'e9', 40, 12), 2, 'dos entradas del mismo día son UN entrenamiento; 45 kg también consolida los 40');
-  assert.strictEqual(sessionsAtLoad(ses, 'e9', 40, 15), 0, 'con objetivo de 15 reps, ninguna sesión lo cumplió');
-  // Una serie NO marcada como hecha no cuenta: anotar el peso no es levantarlo.
-  const noHecha = [{ date: '2026-08-01', exercises: [{ id: 'e9', sets: [{ done: false, kg: '40', reps: '12' }] }] }];
-  assert.strictEqual(sessionsAtLoad(noHecha, 'e9', 40, 12), 0);
-  // Casa por nombre cuando el registro viejo no trae id.
-  const porNombre = [{ date: '2026-08-01', exercises: [{ name: 'Hack Squat', sets: [{ done: true, kg: '40', reps: '12' }] }] }];
-  assert.strictEqual(sessionsAtLoad(porNombre, 'Hack Squat', 40, 12), 1);
-  assert.strictEqual(sessionsAtLoad(null, 'e9', 40, 12), 0);
+// ── v752 · `suggestFromPR` YA NO decide cuándo subir ──
+// (Antes: «EL PESO SUGERIDO TIENE QUE SUBIR» y la CONSOLIDACIÓN de 3 sesiones por el número fijo, v482/v529.
+// Esas reglas se reemplazan por la doble progresión por rango: ver el bloque «v752 · LA DOBLE PROGRESIÓN».)
+test('🔒 v752 · suggestFromPR es la referencia del récord: si ya cumple las reps, devuelve el propio récord (no un escalón)', () => {
+  assert.strictEqual(suggestFromPR({ kg: 10, reps: 12, unit: 'kg' }, 12), 10);
+  assert.strictEqual(suggestFromPR({ val: 40, reps: 12, unit: 'kg' }, 12), 40, 'sin sesiones consolidadas ni nada: no se dispara el peso');
+  assert.strictEqual(suggestFromPR({ kg: 2.5, reps: 20, unit: 'kg' }, 15), 2.5, 'tampoco con 20 reps: subir es de progressionPlan');
 });
 
 test('suggestFromPR: si el récord es a MENOS reps que el objetivo, sigue estimando hacia abajo', () => {
@@ -18171,186 +18103,270 @@ test('🔒 CABLEADO v594: el calentamiento REAL deja de repetir el movimiento', 
 });
 
 // ══════════════════════════════════════════════════════
-// v595 · LA PROGRESIÓN SE DICE COMO INSTRUCCIÓN, NO COMO NÚMERO
+// v752 · LA DOBLE PROGRESIÓN POR RANGO — regla aprobada por el PO el 16-nov-2026
 // ══════════════════════════════════════════════════════
-// Pedido del PO: «construyamos la progresión dentro de la app». Medido ANTES de construir: la
-// doble progresión ya existía y ya funcionaba — sobre sus datos reales la app le mandaba subir en
-// 15 de 24 ejercicios, uno con 18 sesiones al mismo peso. Lo que fallaba es que la pantalla decía
-// lo mismo al mandar subir que al mandar repetir.
+// Antes: UN número de repeticiones por ejercicio, subir el peso tras 3 sesiones cumpliéndolo (sin mirar las reps de
+// más) y bajarlo por Epley si no se llegaba al número. Ahora: un RANGO (la rutina guarda el tope; el mínimo =
+// round(tope × 2/3)), +1 rep a la serie más floja, sube con todas las series en el tope 2 sesiones seguidas (o la
+// última serie 2 reps por encima en una), con el salto más chico del equipo; baja solo si la MEJOR serie queda bajo
+// el mínimo 2 sesiones seguidas. Informe: DOCUMENTOS/investigacion-progresion-2026-11-16.md.
+// Cada sesión del ayudante = { kg, reps:[por serie] }, una por semana.
+const _hs = (sesiones, id) => sesiones.map((x, i) => ({
+  date: new Date(Date.UTC(2026, 8, 1 + i * 7, 15)).toISOString(),
+  exercises: [{ id: id || 'e1', name: 'Ejercicio', sets: x.reps.map(r => ({ kg: String(x.kg), reps: String(r), done: true })) }],
+}));
+const _EX_BARRA = { id: 'e1', name: 'Press de Banca con Barra', type: 'Compuesto', muscle: 'pecho', sets: 4, reps: 12 };
+const _EX_MAQUINA = { id: 'e6', name: 'Jalón al Pecho en Polea', type: 'Compuesto', muscle: 'espalda', sets: 4, reps: 12 };
+const _EX_LATERAL = { id: 'e8', name: 'Elevaciones Laterales', type: 'Aislamiento', muscle: 'hombros', sets: 3, reps: 15,
+  desc: 'Sube las mancuernas a los lados hasta la altura del hombro.' };
+const _EX_CURL10 = { id: 'e121', name: 'Curl con Mancuerna', type: 'Aislamiento', muscle: 'biceps', sets: 3, reps: 10 };
 
-test('v595 · el día del escalón la app lo DICE, y dice desde qué peso', () => {
-  const h = core.progressHint(90, 10, 8, 9, 95);
-  assert.strictEqual(h.estado, 'sube');
-  assert.match(h.texto, /90 kg/, 'tiene que decir de qué peso viene');
-  assert.match(h.texto, /95 kg/, 'y a cuál va: sin el número nuevo no es una instrucción');
-  assert.match(h.texto, /9 sesiones/, 'y por qué toca: es lo que hace legible la doble progresión');
+test('🔴 v752 · el rango sale del tope: round(tope × 2/3) — plantilla con 12 → 8-12, con 6 → 4-6', () => {
+  [[12, 8], [15, 10], [6, 4], [10, 7], [20, 13]].forEach(([tope, min]) =>
+    assert.deepStrictEqual(repRangeFromTope(tope), { min, max: tope }, `tope ${tope}`));
+  // Lo que la rutina guarda es UN número (número o texto de número): el rango se DERIVA al leerla.
+  assert.deepStrictEqual(repRangeOf({ reps: 12 }), { min: 8, max: 12 });
+  assert.deepStrictEqual(repRangeOf({ reps: '6' }), { min: 4, max: 6 });
+  assert.deepStrictEqual(repRangeOf({ reps: '8-12' }), { min: 8, max: 12 }, 'un rango escrito se respeta');
+  assert.strictEqual(repRangeOf({ reps: 'x' }), null);
+  assert.strictEqual(repRangeOf(null), null);
 });
 
-test('🔒 v595 · mientras consolida dice CUÁNTO FALTA, derivado de la constante', () => {
-  const a = core.progressHint(90, 10, 8, 1, 90);
-  assert.strictEqual(a.estado, 'consolida');
-  assert.strictEqual(a.faltan, core.LOAD_CONSOLIDATE_SESSIONS - 1);
-  // 🔒 Se afirma contra la CONSTANTE, no contra un 2 escrito a mano: si alguien mueve el umbral,
-  //    la pantalla tiene que prometer el plazo nuevo, no el viejo.
-  assert.match(a.texto, new RegExp('faltan? ' + (core.LOAD_CONSOLIDATE_SESSIONS - 1)
-    + '|falta 1 sesión'));
-  const b = core.progressHint(90, 10, 8, core.LOAD_CONSOLIDATE_SESSIONS - 1, 90);
-  assert.strictEqual(b.faltan, 1);
-  assert.match(b.texto, /falta 1 sesión/, 'en singular: «te faltan 1 sesiones» se lee como un error');
+test('🔴 v752 · CASO A (8-12): 50×8 → 10 → 12 → 12: NO sube hasta la segunda sesión en 12, y entonces 52,5 con las reps de Epley', () => {
+  const S = [{ kg: 50, reps: [8, 8, 8, 8] }, { kg: 50, reps: [10, 10, 10, 10] }, { kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }];
+  for (let n = 1; n <= 3; n++) {
+    const p = progressionPlan(_hs(S.slice(0, n)), _EX_BARRA);
+    assert.strictEqual(p.estado, 'repite', `tras la sesión ${n} todavía no sube`);
+    assert.strictEqual(p.kg, 50, `tras la sesión ${n} el peso sigue en 50`);
+  }
+  const tres = progressionPlan(_hs(S.slice(0, 3)), _EX_BARRA);
+  assert.match(tres.texto, /repite con todas las series en 12/, 'con todas en 12 una sola vez: confirma, no sube');
+  const p = progressionPlan(_hs(S), _EX_BARRA);
+  assert.strictEqual(p.estado, 'sube');
+  assert.strictEqual(p.kg, 52.5, 'barra y discos: el salto es de 2,5 kg');
+  // Epley: 1RM = 50 × (1 + 12/30) = 70 → 30 × (70 / 52,5 − 1) = 10 reps de arranque.
+  assert.strictEqual(p.reps, 10);
+  assert.strictEqual(p.texto, 'Hiciste 12 en todas dos veces seguidas · hoy 52,5 kg × 10');
+  // El mismo caso en una máquina de placas (salto de 5 kg): 55 kg y 8 reps — y sigue dentro del rango 8-12.
+  const m = progressionPlan(_hs(S, 'e6'), _EX_MAQUINA);
+  assert.strictEqual(m.kg, 55);
+  assert.strictEqual(m.reps, 8);
 });
 
-test('🔒 v595 · CONTROL · no promete un escalón donde el mecanismo es OTRO', () => {
-  // Récord a MENOS reps que el objetivo: ahí el peso se estima hacia abajo, no se consolida.
-  // Decirle «te faltan N sesiones para subir» sería mentir sobre cómo funciona.
-  const h = core.progressHint(100, 8, 12, 0, 90);
-  assert.strictEqual(h.estado, 'base');
-  assert.ok(!/faltan|falta 1/.test(h.texto), '🔴 prometió una consolidación que no existe');
-  // Y sin datos no se inventa nada.
-  assert.strictEqual(core.progressHint(null, null, 10, 1, null), null);
-  assert.strictEqual(core.progressHint(0, 10, 10, 5, 0), null);
+test('🔴 v752 · CASO B (8-12): 50×8 en 4 sesiones — nunca sube, sigue en 50 pidiendo +1 rep, y el estancamiento no salta antes de sus compuertas', () => {
+  const S = Array.from({ length: 4 }, () => ({ kg: 50, reps: [8, 8, 8, 8] }));
+  for (let n = 1; n <= 4; n++) {
+    const p = progressionPlan(_hs(S.slice(0, n)), _EX_BARRA);
+    assert.strictEqual(p.estado, 'repite');
+    assert.strictEqual(p.kg, 50, 'el peso no se mueve');
+    assert.strictEqual(p.reps, 9, 'la meta es 1 rep más en la serie más floja');
+    assert.strictEqual(p.texto, '50 kg · rango 8-12 · hoy busca 1 rep más en la serie que más te costó');
+  }
+  // El detector de estancamiento NO se tocó y respeta sus compuertas: 4 sesiones semanales son pocas semanas.
+  const DIA = 86400000, T0 = new Date('2026-09-01T10:00:00').getTime();
+  const cl = { id: 'c1', level: 'Intermedio', startDate: new Date(T0 - 180 * DIA).toISOString() };
+  const histApp = S.map((x, i) => ({ date: new Date(T0 + i * 7 * DIA).toISOString(), sessionId: 's' + i,
+    exercises: [{ id: 'e1', name: 'Press', track: 'peso_reps', sets: x.reps.map(r => ({ kg: '50', reps: String(r), done: true })) }] })).reverse();
+  const rep = core.stallReport(cl, histApp, T0 + 3 * 7 * DIA);
+  assert.strictEqual(rep.evaluable, false, 'con 4 sesiones el detector todavía no opina');
+  assert.deepStrictEqual(rep.items, []);
+  // CONTROL: el detector sigue VIVO — con 9 semanas en el mismo 50×8 sí marca el ejercicio (no se apagó).
+  const largo = Array.from({ length: 9 }, (_, i) => ({ date: new Date(T0 + i * 7 * DIA).toISOString(), sessionId: 'l' + i,
+    exercises: [{ id: 'e1', name: 'Press', track: 'peso_reps', sets: [8, 8, 8, 8].map(r => ({ kg: '50', reps: String(r), done: true })) }] })).reverse();
+  const r9 = core.stallReport(cl, largo, T0 + 8 * 7 * DIA);
+  assert.ok(r9.evaluable && r9.items.some(i => i.stalled), 'el detector de estancamiento conserva su criterio');
 });
 
-// 🔁 RE-ENCUADRADOS EN v610, NO CALLADOS. Los tres tests de v595 que vivían aquí afirmaban la
-// GUARDA: «si el récord ya no es su peso de trabajo, no des una instrucción». Esa propiedad no se
-// pierde — se cumple mucho mejor, porque ahora el NÚMERO tampoco sale del récord desfasado. Lo que
-// dejaba de tener sentido era exigir que la app se quedara MUDA sobre un peso que sí puede
-// calcular bien, y que el criterio se decidiera con UNA sola sesión (27 de 59 falsos positivos).
-test('🔴 v610 · con el récord desfasado, el peso sale del TRABAJO RECIENTE (el caso de la Prensa)', () => {
-  // Su Prensa: récord de 200 kg de mayo, y viene moviendo 100 desde que se lastimó la pierna.
-  const ses = [
-    { date: '2026-05-26', exercises: [{ id: 'e36', sets: [{ kg: '200', reps: '12', done: 1 }] }] },
-    { date: '2026-09-01', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
-    { date: '2026-09-04', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
-    { date: '2026-09-08', exercises: [{ id: 'e36', sets: [{ kg: '100', reps: '12', done: 1 }] }] },
-  ];
-  const pr = { val: 200, kg: 200, reps: 12, unit: 'kg' };
-  const anc = core.loadAnchor(pr, ses, 'e36');
-  assert.strictEqual(anc.fuente, 'reciente', '🔴 siguió anclado a un récord que ya no describe su trabajo');
-  assert.strictEqual(anc.kg, 100);
-  assert.strictEqual(anc.recordKg, 200, 'el récord no se pierde ni se reescribe: solo deja de ser el ancla');
-  // Y el peso que se le propone sale de ahí: consolidó 100 en 3 sesiones → toca subir un escalón.
-  const ses3 = core.sessionsAtLoad(ses, 'e36', anc.kg, 12);
-  const sug = core.suggestFromPR(anc, 12, { sesionesEnPeso: ses3 });
-  assert.ok(sug > 100 && sug <= 110, 'esperaba un escalón sobre 100, vino ' + sug);
-  // 🔒 Y el calentamiento, que se DERIVA del peso sugerido, deja de ser su serie de trabajo.
-  assert.ok(core.warmupLoad(sug) < 60, 'el calentamiento sigue clavado al récord: ' + core.warmupLoad(sug));
-  assert.strictEqual(core.warmupLoad(200), 100, 'CONTROL: con el ancla vieja le pedía calentar con 100 kg');
-  // El texto DICE de dónde sale el número (v511): afirmar «según tu récord» aquí sería falso.
-  // 🔬 La primera versión de esta aserción salió VERDE con el sabotaje puesto y la cazó la matriz:
-  //    miraba un hint en estado 'consolida' («Repite 100 kg…»), que no nombra la fuente NUNCA, así
-  //    que clavar «según tu récord» pasaba sin despeinarse. La fuente solo se pinta en la rama
-  //    'base', y ESA es la que hay que ejercitar (la aserción que el defecto puede satisfacer).
-  const base = core.progressHint(100, 8, 12, 1, 85, 'reciente');   // récord a MENOS reps → estima abajo
-  assert.strictEqual(base.estado, 'base', 'el fixture tiene que caer en la rama que nombra la fuente');
-  assert.match(base.texto, /según lo que vienes moviendo/, base.texto);
-  assert.ok(!/tu récord/.test(base.texto), '🔴 dice «según tu récord» sobre un peso que no salió del récord');
-  // 🔒 CONTROL: cuando el peso SÍ sale del récord, lo sigue diciendo — si no, esto sería haber
-  //    borrado la frase en vez de haberla hecho honesta.
-  assert.match(core.progressHint(100, 8, 12, 1, 85, 'record').texto, /según tu récord/);
+test('🔴 v752 · pasar el tope por 2 o más en la ÚLTIMA serie sube en una sola sesión (y por 1 no)', () => {
+  const pasa = progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 14] }]), _EX_BARRA);
+  assert.strictEqual(pasa.estado, 'sube');
+  assert.strictEqual(pasa.kg, 52.5);
+  assert.match(pasa.texto, /pasó el tope de 12/);
+  // CONTROL: por 1 rep no basta (y la primera serie pasada tampoco: manda la ÚLTIMA).
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 13] }]), _EX_BARRA).estado, 'repite');
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [14, 12, 12, 12] }]), _EX_BARRA).estado, 'repite');
 });
 
-test('🔒 v610 · un día flojo suelto NO mueve el ancla (27 de 59 casos reales eran eso)', () => {
-  // La guarda de v595 miraba solo la ÚLTIMA sesión, así que a la Patada de Glúteo de Nayla le
-  // quitaba la instrucción por un día liviano, con el récord vigente en las sesiones de al lado.
-  const ses = [
-    { date: '2026-09-01', exercises: [{ id: 'e10', sets: [{ kg: '30', reps: '12', done: 1 }] }] },
-    { date: '2026-09-04', exercises: [{ id: 'e10', sets: [{ kg: '30', reps: '12', done: 1 }] }] },
-    { date: '2026-09-08', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },   // día flojo
-  ];
-  const pr = { val: 30, kg: 30, reps: 12, unit: 'kg' };
-  const anc = core.loadAnchor(pr, ses, 'e10');
-  assert.strictEqual(anc.fuente, 'record', '🔴 un solo día flojo le tumbó el ancla');
-  assert.strictEqual(anc.kg, 30);
-  // 🔒 CONTROL: si el día flojo se vuelve la norma, el ancla SÍ baja — si no, esto no sería una
-  //    ventana, sería haber vuelto al récord de siempre.
-  const bajada = ses.concat([
-    { date: '2026-09-10', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },
-    { date: '2026-09-12', exercises: [{ id: 'e10', sets: [{ kg: '15', reps: '12', done: 1 }] }] },
-  ]);
-  assert.strictEqual(core.loadAnchor(pr, bajada, 'e10').fuente, 'reciente');
+test('🔴 v752 · mancuerna de 6 kg a 15 reps (rango 10-15): el salto a 8 kg da menos de 10 reps → NO sube y el aviso es del COACH', () => {
+  const S = [{ kg: 6, reps: [15, 15, 15] }, { kg: 6, reps: [15, 15, 15] }];
+  const p = progressionPlan(_hs(S, 'e8'), _EX_LATERAL);
+  assert.strictEqual(exerciseStepKg(_EX_LATERAL), 2, 'mancuerna: el salto es de 2 kg');
+  assert.strictEqual(p.estado, 'repite', 'no sube');
+  assert.strictEqual(p.kg, 6);
+  assert.strictEqual(p.reps, 16, 'sigue sumando repeticiones, más allá del tope');
+  assert.strictEqual(p.saltoGrande, true);
+  assert.match(p.avisoCoach, /salto de peso es muy grande para este ejercicio/i);
+  // La asesorada NO lee el aviso: su frase no habla de saltos, coach ni números del plan.
+  assert.ok(!/coach|salto|grande/i.test(p.texto), 'la frase de la asesorada trae el aviso del coach: ' + p.texto);
+  // Sigue sumando hasta el tope duro de 30 y ahí se detiene.
+  const polea = { id: 'e117', name: 'Elevaciones Laterales en Polea', type: 'Aislamiento', muscle: 'hombros', sets: 3, reps: 15 };   // salto de 5 kg
+  const alTope = progressionPlan(_hs([{ kg: 5, reps: [30, 30, 30] }, { kg: 5, reps: [30, 30, 30] }], 'e117'), polea);
+  assert.strictEqual(alTope.saltoGrande, true);
+  assert.strictEqual(alTope.reps, core.PROG_HARD_CAP_REPS);
+  assert.strictEqual(alTope.estado, 'repite');
+  // Con las reps que sí dan el mínimo, sube: 6 kg × 25 → 1RM 11 → a 8 kg salen 11 reps (≥ 10).
+  const sube = progressionPlan(_hs([{ kg: 6, reps: [25, 25, 25] }, { kg: 6, reps: [25, 25, 25] }], 'e8'), _EX_LATERAL);
+  assert.strictEqual(sube.estado, 'sube');
+  assert.strictEqual(sube.kg, 8);
+  assert.ok(sube.reps >= 10 && sube.reps <= 15);
+  // CONTROL: con una mancuerna de 20 kg el salto de 2 kg (+10%) SÍ cabe y sube.
+  const grande = progressionPlan(_hs([{ kg: 20, reps: [15, 15, 15] }, { kg: 20, reps: [15, 15, 15] }], 'e8'), _EX_LATERAL);
+  assert.strictEqual(grande.estado, 'sube');
+  assert.strictEqual(grande.kg, 22);
+  assert.strictEqual(grande.saltoGrande, false);
 });
 
-test('🔒 v610 · recentWorkLoad = la mejor carga de las últimas sesiones, no el mejor día de su vida', () => {
-  const ses = [
-    { date: '2026-05-26', exercises: [{ id: 'e36', sets: [{ kg: '200', reps: '12' }] }] },
-    { date: '2026-08-15', exercises: [{ id: 'e36', sets: [{ kg: '90', reps: '12' }, { kg: '100', reps: '8' }] }] },
-  ];
-  const r = core.recentWorkLoad(ses, 'e36', { sesiones: 1 });
-  assert.strictEqual(r.kg, 100, 'de la sesión reciente, la mejor carga');
-  assert.strictEqual(r.reps, 8, 'y las reps que hizo CON esa carga, que es lo que decide si sube');
-  // Con la ventana entera entra el récord viejo, que es la carga más alta del rango.
-  assert.strictEqual(core.recentWorkLoad(ses, 'e36').kg, 200);
-  // Casa por NOMBRE: las sesiones viejas no traen id (misma razón que sessionsAtLoad y v558).
-  const viejas = [{ date: '2026-06-01', exercises: [{ name: 'Prensa de Pierna', sets: [{ kg: '150' }] }] }];
-  assert.strictEqual(core.recentWorkLoad(viejas, 'Prensa de Pierna').kg, 150);
-  // Sin carga, sin fecha usable o sin nada: null, jamás un número inventado.
-  assert.strictEqual(core.recentWorkLoad([{ date: '2026-06-01', exercises: [{ id: 'e36', sets: [{ reps: '12' }] }] }], 'e36'), null);
-  assert.strictEqual(core.recentWorkLoad([{ date: null, exercises: [{ id: 'e36', sets: [{ kg: '80' }] }] }], 'e36'), null);
-  assert.strictEqual(core.recentWorkLoad([], 'e36'), null);
-  assert.strictEqual(core.recentWorkLoad(null, null), null);
+test('🔴 v752 · meta 10 con 8 hechas (rango 7-10): MANTIENE el peso; solo baja con la mejor serie bajo 7 en 2 sesiones seguidas', () => {
+  const ocho = progressionPlan(_hs([{ kg: 50, reps: [8, 8, 8] }], 'e121'), _EX_CURL10);
+  assert.strictEqual(ocho.estado, 'repite', 'se acabó el «meta 10, hiciste 8 → baja a 45»');
+  assert.strictEqual(ocho.kg, 50);
+  assert.deepStrictEqual(ocho.rango, { min: 7, max: 10 });
+  // Una sesión corta NO baja, ni dos si la MEJOR serie de alguna llega al mínimo.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10).estado, 'repite');
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [7, 6, 6] }], 'e121'), _EX_CURL10).estado, 'repite',
+    'la mejor serie de la última llegó a 7 (el mínimo): no baja');
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [7, 7, 7] }, { kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10).estado, 'repite',
+    'la sesión anterior estaba en el rango: no son DOS sesiones bajas');
+  // Con la mejor serie bajo 7 dos sesiones seguidas: baja, sin pasarse del peso actual.
+  const baja = progressionPlan(_hs([{ kg: 50, reps: [6, 6, 5] }, { kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10);
+  assert.strictEqual(baja.estado, 'baja');
+  assert.ok(baja.kg < 50 && baja.kg > 40, 'baja un escalón, no un derrumbe: ' + baja.kg);
+  assert.match(baja.texto, /^Hoy [\d,]+ kg para volver a tu rango de 7-10$/);
+  // Con un peso anterior que sí devuelve al rango, vuelve a ESE peso (47,5 → subió a 50 y no llegó).
+  const previo = progressionPlan(_hs([{ kg: 47.5, reps: [10, 10, 10] }, { kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10);
+  assert.strictEqual(previo.estado, 'baja');
+  assert.strictEqual(previo.kg, 47.5);
 });
 
-test('🔒 v610 · sin historial manda el récord, y el corte se DERIVA de la constante', () => {
-  const pr = { val: 100, kg: 100, reps: 12, unit: 'kg' };
-  // Sin sesiones no se calla ni se inventa: manda el récord (el detector mudo de v433 al revés).
-  assert.strictEqual(core.loadAnchor(pr, [], 'e1').fuente, 'record');
-  assert.strictEqual(core.loadAnchor(pr, null, 'e1').kg, 100);
-  // Sin récord manda lo reciente, que es mejor que nada.
-  const ses = [{ date: '2026-09-08', exercises: [{ id: 'e1', sets: [{ kg: '40', reps: '10' }] }] }];
-  const sinPr = core.loadAnchor(null, ses, 'e1');
-  assert.strictEqual(sinPr.fuente, 'reciente');
-  assert.strictEqual(sinPr.kg, 40);
-  assert.strictEqual(core.loadAnchor(null, [], 'e1'), null, 'sin nada de nada, null');
-  // El corte sale de la constante, no de un 0,75 escrito a mano en el test.
-  const r = core.LOAD_ANCHOR_MIN_RATIO;
-  const conKg = kg => core.loadAnchor(pr, [{ date: '2026-09-08', exercises: [{ id: 'e1', sets: [{ kg: String(kg), reps: '12' }] }] }], 'e1').fuente;
-  assert.strictEqual(conKg(100 * r * 1.01), 'record');
-  assert.strictEqual(conKg(100 * r * 0.99), 'reciente');
+test('🔒 v752 · las sesiones deben ser CONSECUTIVAS y AL MISMO peso; una serie sin marcar o un solo registro no cuentan', () => {
+  // 12 en todas a 45 y luego 12 en todas a 50: son dos pesos distintos, no dos sesiones con el mismo.
+  const distinto = progressionPlan(_hs([{ kg: 45, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]), _EX_BARRA);
+  assert.strictEqual(distinto.estado, 'repite');
+  // En la sesión intermedia se quedó corto: ya no son seguidas.
+  const corta = progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [10, 10, 10, 10] }, { kg: 50, reps: [12, 12, 12, 12] }]), _EX_BARRA);
+  assert.strictEqual(corta.estado, 'repite');
+  // Una sola serie anotada de las 4 del plan no «cumple» la sesión.
+  const una = progressionPlan(_hs([{ kg: 50, reps: [12] }, { kg: 50, reps: [12] }]), _EX_BARRA);
+  assert.strictEqual(una.estado, 'repite');
+  // Anotar no es levantar: las series sin marcar como hechas no cuentan.
+  const sinHacer = _hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]);
+  sinHacer.forEach(s => s.exercises[0].sets.forEach(x => { x.done = false; }));
+  assert.strictEqual(progressionPlan(sinHacer, _EX_BARRA), null);
+  // Dos entradas del MISMO día son un solo entrenamiento (regla de v529): 12 en todas dos veces el mismo día no basta.
+  const mismoDia = _hs([{ kg: 50, reps: [12, 12, 12, 12] }]).concat(_hs([{ kg: 50, reps: [12, 12, 12, 12] }]));
+  assert.strictEqual(progressionPlan(mismoDia, _EX_BARRA).estado, 'repite');
+  // CONTROL: con las dos sesiones bien (distintos días, mismo peso, todas en el tope) SÍ sube.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]), _EX_BARRA).estado, 'sube');
 });
 
-test('🔒 v610 · una semana de DESCARGA no puede arrastrar el ancla', () => {
-  // La descarga baja la carga a propósito (`DELOAD_LOAD_FACTOR`), y si ese factor cayera por
-  // debajo del corte del ancla, tres semanas de descarga le rebajarían el ancla a todo el mundo
-  // y nadie volvería a su carga real. Los dos números viven en avi-core y aquí se comparan.
-  assert.ok(core.DELOAD_LOAD_FACTOR > core.LOAD_ANCHOR_MIN_RATIO,
-    `🔴 el factor de descarga (${core.DELOAD_LOAD_FACTOR}) cayó por debajo del corte del ancla (${core.LOAD_ANCHOR_MIN_RATIO})`);
-  // Y en concreto: tres sesiones a la carga de descarga dejan el ancla en el récord.
-  const pr = { val: 100, kg: 100, reps: 12, unit: 'kg' };
-  const dl = Math.round(100 * core.DELOAD_LOAD_FACTOR * 2) / 2;
-  const ses = ['2026-09-01', '2026-09-04', '2026-09-08'].map(d =>
-    ({ date: d, exercises: [{ id: 'e1', sets: [{ kg: String(dl), reps: '12', done: 1 }] }] }));
-  assert.strictEqual(core.loadAnchor(pr, ses, 'e1').fuente, 'record');
+test('🔒 v752 · el peso sale de las SESIONES, no del récord: el récord viejo de 200 kg no arrastra el consejo (caso de la Prensa)', () => {
+  const ses = _hs([{ kg: 200, reps: [12] }, { kg: 100, reps: [12, 12, 12] }, { kg: 100, reps: [12, 12, 12] }, { kg: 100, reps: [9, 9, 9] }], 'e36');
+  const prensa = { id: 'e36', name: 'Prensa de Pierna', type: 'Compuesto', muscle: 'piernas', sets: 3, reps: 12 };
+  const p = progressionPlan(ses, prensa, { pr: { val: 200, kg: 200, reps: 12, unit: 'kg' } });
+  assert.strictEqual(p.kg, 100, 'manda lo que viene moviendo, no el récord');
+  assert.ok(core.warmupLoad(p.kg) < 60, 'y el calentamiento, que se deriva de ese peso, deja de ser su serie de trabajo');
+  // Sin sesiones con carga pero con récord: se repite el récord y NO se sube con una sola marca.
+  const soloPr = progressionPlan([], prensa, { pr: { val: 100, kg: 100, reps: 12, unit: 'kg' } });
+  assert.strictEqual(soloPr.kg, 100);
+  assert.strictEqual(soloPr.estado, 'repite');
+  assert.strictEqual(progressionPlan([], prensa), null, 'sin sesiones ni récord no se inventa nada');
+  assert.strictEqual(progressionPlan(ses, { ...prensa, reps: 'x' }), null);
 });
 
-test('🔒 CABLEADO v610: el ancla se calcula, viaja y la pantalla dice de dónde sale el peso', () => {
+test('🔒 v752 · el salto de peso lo da el EQUIPO: barra 2,5 · mancuerna 2 · máquina o polea 5 · si no se sabe, el escalón proporcional', () => {
+  assert.strictEqual(exerciseStepKg(_EX_BARRA), 2.5);
+  assert.strictEqual(exerciseStepKg({ id: 'e2', name: 'Press Inclinado con Mancuernas' }), 2);
+  assert.strictEqual(exerciseStepKg(_EX_MAQUINA), 5);
+  assert.strictEqual(exerciseStepKg({ id: 'e36', name: 'Prensa de Pierna' }), 5);
+  assert.strictEqual(exerciseStepKg({ id: 'e999', name: 'Algo raro' }), null, 'si el catálogo no lo sabe, no se inventa');
+  // Y sin saberlo, manda `loadStep`: bajo 10 kg el salto es de 1 kg.
+  const raro = { id: 'e999', name: 'Algo raro', type: 'Compuesto', muscle: 'pecho', sets: 3, reps: 15 };
+  const p = progressionPlan(_hs([{ kg: 8, reps: [15, 15, 15] }, { kg: 8, reps: [15, 15, 15] }], 'e999'), raro);
+  assert.strictEqual(p.kg, 9);
+});
+
+test('🔴 v752 · generador: cada ejercicio nace con el TOPE de su rango por objetivo y tipo (barrido de los 6 objetivos)', () => {
+  const objetivos = [['Fuerza', 'fuerza'], ['Ganar músculo', 'masa'], ['Recomposición', 'masa'], ['Perder grasa', 'grasa'], ['Salud general', 'grasa'], ['Resistencia', 'resistencia']];
+  const TABLA = {   // escrito a mano desde la regla del PO, independiente de GEN_REPS_RANGOS
+    fuerza:      { compuesto: 6, aislado: 12, chico: 15 },
+    masa:        { compuesto: 12, aislado: 15, chico: 20 },
+    grasa:       { compuesto: 15, aislado: 15, chico: 20 },
+    resistencia: { compuesto: 20, aislado: 20, chico: 25 },
+  };
+  const vistos = new Set();
+  objetivos.forEach(([goal, fila]) => {
+    const out = core.generarRutinas({ id: 'g1', name: 'G', sex: 'M', age: 30, weight: 75, height: 175, goal, level: 'Intermedio', days: 4, place: 'gym' },
+      _LIB_REAL, { seed: 3, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+    out.routines.flatMap(r => r.exercises).forEach(e => {
+      const tier = repTierOf(e);
+      if (!tier) return;   // cardio / isométrico / HIIT: cuentan minutos o segundos
+      vistos.add(goal + '|' + tier);
+      assert.strictEqual(e.reps, TABLA[fila][tier], `${goal} · ${e.name} (${tier}) debía nacer con ${TABLA[fila][tier]}, nació con ${e.reps}`);
+    });
+  });
+  assert.ok(vistos.size >= 14, 'el barrido tiene que tocar los tres tipos en casi todos los objetivos: ' + vistos.size);
+  // La fase de adaptación del principiante NO cambia: 15 para todos, sea cual sea el tipo (3×15, ver el test de generarRutinas con adaptación).
+  const ad = core.genSchemeFor('Fuerza', 'Principiante', true);
+  ['compuesto', 'aislado', 'chico'].forEach(t => assert.strictEqual(genRepsFor(ad, { type: t === 'aislado' ? 'Aislamiento' : 'Compuesto', muscle: t === 'chico' ? 'core' : 'pecho', name: 'x' }), 15, t));
+});
+
+test('🔒 v752 · la clasificación sale del catálogo: compuesto, aislado y «chico» (laterales, pantorrilla, abdomen)', () => {
+  const ex = id => { const e = _LIB_REAL.find(x => x.id === id); assert.ok(e, id + ' no está en el catálogo'); return e; };
+  assert.strictEqual(repTierOf(ex('e1')), 'compuesto');     // press de banca
+  assert.strictEqual(repTierOf(ex('e9')), 'aislado');       // curl con barra
+  assert.strictEqual(repTierOf(ex('e8')), 'chico');         // elevaciones laterales
+  assert.strictEqual(repTierOf(ex('e117')), 'chico');       // laterales en polea
+  assert.strictEqual(repTierOf(ex('e16')), 'chico');        // talones de pie (pantorrilla)
+  assert.strictEqual(repTierOf(ex('e59')), 'chico');        // talones sentado
+  assert.strictEqual(repTierOf(ex('e18')), 'chico');        // crunch (abdomen)
+  assert.strictEqual(repTierOf(ex('e131')), 'chico');       // crunch en polea
+  assert.strictEqual(repTierOf(ex('e87')), 'aislado');      // patada lateral en polea: glúteo, no es «laterales» de hombro
+  assert.strictEqual(repTierOf(ex('e49')), null, 'plancha: segundos, no repeticiones');
+  assert.strictEqual(repTierOf(ex('e64')), null, 'cardio: minutos');
+  // Todo el catálogo cae en algún sitio y nada de fuerza queda sin tipo.
+  const sinTipo = _LIB_REAL.filter(e => core.exTrack(e) === 'peso_reps' && !repTierOf(e)).map(e => e.id);
+  assert.deepStrictEqual(sinTipo, ['e376', 'e377'], 'solo los dos trineos (muscle «cardio») quedan sin tipo de rango: ' + sinTipo);
+});
+
+test('🔒 v752 · CABLEADO: la tarjeta lee la doble progresión, la adaptación sigue sin sugerencia y el aviso del coach no llega a la asesorada', () => {
   const fs = require('fs'), path = require('path');
-  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
-  assert.match(src, /progressHint\(/, '🔴 la función pura no la llama nadie: puerta cerrada, ventana abierta');
-  // El realce va atado al estado 'sube'. Si se destacara siempre, dejaría de significar algo —
-  // es el gate que se aprende a ignorar (lección del smoke que pasó 43 versiones en rojo).
-  // Se ancla en la GUARDA concreta, no en que el texto aparezca: 'sube' sale tambien en el
-  // ternario del icono, asi que quitar la condicion del realce saldria VERDE (leccion v570).
-  assert.match(src, /if\(_ph&&_ph\.estado==='sube'\)/, '🔴 el realce dejó de mirar si de verdad toca subir');
-  assert.match(src, /_ph\s*\?/, '🔴 la pantalla dejó de usar el texto de la instrucción');
-  // 🔒 La FUENTE tiene que llegar hasta la función, o la pantalla afirma «según tu récord» sobre
-  //    un peso que salió del trabajo reciente — que es la mentira de v437 con otra cara.
-  assert.match(src, /gmInfo\.fuente/, '🔴 la fuente del peso dejó de llegar a la instrucción');
-  // Y el respaldo (cuando no hay hint) tampoco puede clavar «según tu récord».
-  assert.match(src, /fuente==='reciente'\)\?'seg[uú]n lo que vienes moviendo'/,
-    '🔴 el texto de respaldo volvió a afirmar «según tu récord» pase lo que pase');
+  const lee = f => sinComentarios(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+  const e4 = lee('app-4-entreno.js'), e6 = lee('app-6-extra.js'), e2 = lee('app-2-login.js');
+  const k = e4.indexOf('function _progressInfo');
+  const info = e4.slice(k, e4.indexOf('\nfunction ', k + 10));
+  assert.match(info, /progressionPlan\(_hist,ex,/, '🔴 _progressInfo dejó de pedirle el plan a progressionPlan');
+  assert.ok(!/suggestFromPR\(|sessionsAtLoad|loadAnchor/.test(info), '🔴 _progressInfo volvió a calcular el peso desde el récord');
+  // 🔒 La fase de adaptación se corta ANTES de pedir el plan: sin ese corte el principiante recibe peso sugerido.
+  const iAd = info.indexOf('isInAdaptation(c,DB.history,new Date()))return null');
+  assert.ok(iAd > 0 && iAd < info.indexOf('progressionPlan('), '🔴 el principiante en adaptación ya no queda sin sugerencia de peso');
+  // La tarjeta: el realce de «sube» va atado al estado, y la frase sale del plan.
+  assert.match(e6, /if\(_pl&&_pl\.estado==='sube'\)/, '🔴 el realce dejó de mirar si de verdad toca subir');
+  assert.match(e6, /_pl\.texto/, '🔴 la tarjeta dejó de usar la frase del plan');
+  // El aviso «salto grande» es del COACH: la pantalla de la asesorada jamás lo nombra.
+  assert.ok(!/avisoCoach|saltoGrande/.test(e6), '🔴 el aviso del coach llegó a la tarjeta de la asesorada');
+  // …y sí lo lee el coach, en su panel de Cargas.
+  assert.match(e2, /progressionPlan\(DB\.history\[c\.id\]/, '🔴 el coach dejó de ver el aviso de salto grande');
+  assert.match(e2, /avisoCoach/);
+  // Y en descarga la tarjeta NO usa la frase de la progresión (el peso está bajado a propósito).
+  assert.match(e6, /const _pl=\(!gmDeload&&gmInfo\)\?gmInfo\.plan:null/, '🔴 en semana de descarga la tarjeta habla como si no hubiera descarga');
+});
 
-  // 🔴 Y la otra mitad, que faltaba: que app-4 lo CALCULE. Comprobar solo que la pantalla lo pasa
-  //    deja pasar el caso en que la fuente viaja siempre en 'record' y el ancla queda inerte — un
-  //    sabotaje salió VERDE exactamente por eso. Los dos extremos del cable, o no es un cable.
-  const src4 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-4-entreno.js'), 'utf8'));
-  const k = src4.indexOf('function _progressInfo');
-  const cuerpoInfo = src4.slice(k, src4.indexOf('\nfunction ', k + 10));
-  assert.match(cuerpoInfo, /loadAnchor\(pr,_hist,/, '🔴 _progressInfo dejó de calcular el ancla');
-  assert.match(cuerpoInfo, /fuente:\(_anc&&_anc\.fuente\)/, '🔴 la fuente no viaja en el resultado');
-  // 🔒 Y la consolidación se cuenta sobre el ANCLA, no sobre el récord: contar sesiones a 200 kg
-  //    mientras se sugiere 100 daría siempre 0 y nadie volvería a subir de peso jamás.
-  assert.match(cuerpoInfo, /sessionsAtLoad\(_hist,[\s\S]{0,120}_base/, '🔴 la consolidación volvió a contarse sobre el récord');
-  assert.match(cuerpoInfo, /suggestFromPR\(_base,/, '🔴 el peso volvió a calcularse desde el récord');
+test('🔒 v752 · los textos de la progresión: cortos, sin RIR ni RPE, sin «tranquilo» ni «listo»', () => {
+  const casos = [
+    progressionPlan(_hs([{ kg: 50, reps: [8, 8, 8, 8] }]), _EX_BARRA),
+    progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]), _EX_BARRA),
+    progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 14] }]), _EX_BARRA),
+    progressionPlan(_hs([{ kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10),
+    progressionPlan(_hs([{ kg: 6, reps: [15, 15, 15] }, { kg: 6, reps: [15, 15, 15] }], 'e8'), _EX_LATERAL),
+  ];
+  casos.forEach(p => {
+    assert.ok(p && p.texto.length > 10 && p.texto.length < 90, 'frase corta: ' + (p && p.texto));
+    assert.ok(!/\b(rir|rpe|reserva|tranquil[oa]|listo|lista)\b/i.test(p.texto), 'texto con lenguaje que no va: ' + p.texto);
+  });
+  // Los tres ejemplos que dio el PO, tal cual.
+  assert.strictEqual(casos[0].texto, '50 kg · rango 8-12 · hoy busca 1 rep más en la serie que más te costó');
+  assert.strictEqual(casos[1].texto, 'Hiciste 12 en todas dos veces seguidas · hoy 52,5 kg × 10');
+  assert.match(casos[3].texto, /^Hoy [\d,]+ kg para volver a tu rango de 7-10$/);
 });
 
 
@@ -18938,14 +18954,16 @@ test('🔴 v611 · la dosis del héroe nombra la unidad SOLO cuando no son repet
 });
 
 test('🔴 v611 · la instrucción de la progresión dice PASOS, y por defecto sigue diciendo reps', () => {
-  const faltan = core.LOAD_CONSOLIDATE_SESSIONS - 1;
-  const conPasos = core.progressHint(40, 40, 40, faltan, 40, 'record', 'pasos');
-  assert.strictEqual(conPasos.estado, 'consolida');
-  assert.match(conPasos.texto, /40 pasos para subir/);
-  // Sin unidad (todos los demás llamadores posibles) el texto es el de siempre: el default
-  // conservador nunca puede inventarle una unidad a nadie.
-  const sinUnidad = core.progressHint(90, 10, 8, faltan, 90, 'record');
-  assert.match(sinUnidad.texto, /8 reps para subir/);
+  // v752: la frase sale de `progressionPlan` (antes de `progressHint`). Misma propiedad: la unidad del ejercicio.
+  const granjero = { id: 'e136', name: 'Caminata del Granjero (Farmers Walk)', type: 'Funcional', muscle: 'otro', sets: 3, reps: 40 };
+  const p = progressionPlan(_hs([{ kg: 20, reps: [30, 30, 30] }], 'e136'), granjero);
+  assert.match(p.texto, /1 paso más/, p.texto);
+  const bloqueado = progressionPlan(_hs([{ kg: 2, reps: [40, 40, 40] }, { kg: 2, reps: [40, 40, 40] }], 'e136'), { ...granjero, name: 'Caminata del Granjero' });
+  assert.ok(/pasos/.test(bloqueado.texto) || bloqueado.estado === 'sube', bloqueado.texto);
+  // Sin unidad especial el texto es el de siempre: el default nunca le inventa una unidad a nadie.
+  const press = progressionPlan(_hs([{ kg: 50, reps: [8, 8, 8] }]), _EX_BARRA);
+  assert.match(press.texto, /1 rep más/);
+  assert.ok(!/paso/.test(press.texto));
 });
 
 test('🔒 v611 · CABLEADO: las superficies que rotulan la 2ª cifra pasan por repsUnitOf', () => {
@@ -22612,7 +22630,7 @@ test('🔒 v682 · Coach Pro: NINGUNA regla de progresión lee las reps en reser
   const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
   const cuerpo = n => { const i = src.indexOf(n); assert.ok(i > 0, 'no encontré ' + n); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
   for (const f of ['function perfIndex(', 'function exercisePerfSeries(', 'function stallReport(', 'function stalledExercises(',
-    'function progressHint(', 'function suggestFromPR(', 'function recentWorkLoad(', 'function computeExerciseProgress(', 'function shockTargets(']) {
+    'function progressionPlan(', 'function repRangeOf(', 'function repTierOf(', 'function suggestFromPR(', 'function computeExerciseProgress(', 'function shockTargets(']) {
     assert.ok(!/\brir/i.test(cuerpo(f)), '🔴 ' + f + ' lee las reps en reserva (Coach Pro lo prohibió hasta medir cobertura)');
   }
 });
@@ -25612,7 +25630,8 @@ test('🔒 v727 · candado 4 · con presión, abdomen o embarazo el esquema NUNC
     return out.routines.flatMap(r => r.exercises).filter(e => e.type !== 'Cardio' && e.type !== 'HIIT' && /^\d+$/.test(String(e.reps))).map(e => +e.reps);
   };
   const sin = reps('');
-  assert.ok(sin.length > 10 && sin.every(n => n === 6), `CONTROL · «Fuerza» sin nota ya no da 6 repeticiones (${[...new Set(sin)]})`);
+  // v752: «Fuerza» ya no es 6 para todos: compuestos 4-6 (tope 6), aislados 8-12 (12) y laterales/pantorrilla/abdomen 10-15 (15).
+  assert.ok(sin.length > 10 && sin.every(n => [6, 12, 15].includes(n)) && Math.min(...sin) === 6, `CONTROL · «Fuerza» sin nota ya no da repeticiones de fuerza (${[...new Set(sin)]})`);
   for (const nota of ['hipertension controlada', 'postparto', 'estoy embarazada'])
     assert.ok(reps(nota).every(n => n >= 8), `🔴 con «${nota}» hay series de menos de 8 repeticiones`);
   // Con osteoporosis el plan cambia de ejercicios (alguno trae sus repeticiones propias), pero el esquema NO sube a 8.
