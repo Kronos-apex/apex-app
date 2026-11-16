@@ -538,6 +538,7 @@ function _genDiasPlantilla(pl, lib, st, schemeTpl, minReps8, opt) {
   const ajustar = (c, it) => {
     c.sets = it.series;
     c.reps = (minReps8 && !_genKeepNatural(c) && it.reps < 8) ? 8 : it.reps;
+    delete c.repsMin; delete c.repsMinDeTope;   // el número es del coach: el mínimo se deriva (⅔)
     return c;
   };
   return pl.dias.map(dia => {
@@ -2655,6 +2656,7 @@ function suggestFromPR(pr, targetReps, opts) {
 // SIN RIR NI RPE (v682: son solo dato). Este bloque no los lee.
 // ══════════════════════════════════════════════════════════════════════════════════════════
 const PROG_HARD_CAP_REPS = 30;     // más reps que esto con un peso no es progresar: es otro ejercicio
+const PROG_AVISO_REPS_SOBRE_TOPE = 5;   // el aviso de «salto grande» (solo del coach) sale con 5+ reps por encima del tope sin poder subir
 const PROG_RAISE_OVER_REPS = 2;    // la última serie pasa el tope por tanto → sube en UNA sesión
 // «2 sesiones seguidas» (subir y bajar) vive en la forma de `progressionPlan`: mira la sesión de hoy
 // y la anterior. Subir ese número exige reescribir la función, no mover una constante.
@@ -2681,7 +2683,15 @@ function repRangeOf(ex, piso) {
       if (lo >= 1 && hi >= lo && hi <= 200) rg = { min: lo, max: hi };
     }
   }
-  if (!rg) rg = repRangeFromTope(r);
+  if (!rg) {
+    // Rutinas GENERADAS: guardan el mínimo EXACTO de la tabla (`repsMin`) junto al tope que lo acompañaba. Si
+    // el coach cambió el tope después, el mínimo guardado ya no vale y se deriva (⅔ del tope), como en las
+    // plantillas del coach y las rutinas viejas.
+    const tope = parseInt(r);
+    const rm = parseInt(ex.repsMin);
+    if (rm >= 1 && rm < tope && parseInt(ex.repsMinDeTope) === tope) rg = { min: rm, max: tope };
+    else rg = repRangeFromTope(r);
+  }
   const f = parseInt(piso) || 0;
   if (rg && f > 0 && rg.min < f) {
     rg = { min: f, max: rg.max <= f ? Math.ceil(f * 1.5) : rg.max };
@@ -2723,6 +2733,11 @@ function genRepsFor(scheme, ex) {
   const tope = tier ? scheme.repsRangos[tier][1] : scheme.repsN;
   return Math.max(tope, (scheme && scheme.repsFloor) || 0);
 }
+// El MÍNIMO exacto de la tabla para ese ejercicio (o null si no aplica: adaptación, cardio, isométrico).
+function genRepsMinFor(scheme, ex) {
+  const tier = scheme && scheme.repsRangos ? repTierOf(ex) : null;
+  return tier ? scheme.repsRangos[tier][0] : null;
+}
 
 // El salto de peso MÁS CHICO que permite el equipo, según lo que el catálogo sabe del ejercicio:
 // barra con discos 2,5 kg · mancuerna 2 kg (por mancuerna) · máquina de placas o polea 5 kg.
@@ -2731,7 +2746,8 @@ function exerciseStepKg(ex) {
   if (!ex) return null;
   const nombre = _norm(ex.name || '');
   if (barDefaultKg(ex) != null || /\bbarra\b|\bdiscos?\b/.test(nombre)) return 2.5;
-  if (/mancuerna/.test(nombre)) return 2;
+  if (/pesa rusa|kettlebell/.test(nombre)) return 4;
+  if (/mancuerna|zottman/.test(nombre)) return 2;
   if (/maquina|polea|cable|prensa|jalon|multipower|peck|contractora|hack|palanca/.test(nombre)) return 5;
   const desc = _norm((ex.desc || '') + ' ' + (ex.descSimple || ''));
   if (/mancuerna/.test(desc)) return 2;
@@ -2743,12 +2759,22 @@ function exerciseStepKg(ex) {
 function _epley(kg, reps) { return kg * (1 + reps / 30); }
 function _kgTxt(kg) { return fmtMiles(Math.round(kg * 100) / 100); }
 
+// ¿Máquina ASISTIDA? Ahí el número es la AYUDA: subir de nivel es QUITAR ayuda y bajar es ponerle más.
+function _esAsistida(ex) {
+  return !!ex && (ex.id === 'e225' || ex.id === 'e231' || /asistid/.test(_norm(ex.name || '')));
+}
+// Rejilla del equipo: hacia abajo (lo que se puede cargar sin pasarse) y hacia arriba.
+function _pisoGrilla(kg, paso) { return Math.round(Math.floor(kg / paso + 1e-9) * paso * 100) / 100; }
+function _techoGrilla(kg, paso) { return Math.round(Math.ceil(kg / paso - 1e-9) * paso * 100) / 100; }
+
 // progressionPlan(history, ex, opts) → qué hacer HOY con ese ejercicio. PURA.
 //   history: sesiones de la persona (en cualquier orden; manda la fecha). ex: el ejercicio de la rutina
-//   ({id, name, sets, reps = TOPE, …}). opts.pr: récord, solo para cuando no hay sesiones con carga.
+//   ({id, name, sets, reps = TOPE, repsMin?, …}). opts.pr: récord, solo para cuando no hay sesiones con carga.
+//   opts.piso: repeticiones mínimas que exige una condición de salud (`repsFloorOf`).
 // → null si no hay con qué hablar · {
 //     estado: 'sube'|'baja'|'repite', kg, reps (meta o reps de arranque), rango:{min,max},
-//     texto (lo que lee la persona), saltoGrande (true → el aviso es del COACH), avisoCoach (texto) }
+//     hechas (reps de la última sesión con ese peso, por serie), texto (lo que lee la persona),
+//     saltoGrande (true → el aviso es del COACH), avisoCoach (texto) }
 function progressionPlan(history, ex, opts) {
   opts = opts || {};
   const rango = repRangeOf(ex, opts.piso);
@@ -2758,6 +2784,7 @@ function progressionPlan(history, ex, opts) {
   const mismo = e => e && (String(e.id || '') === exKey || String(e.name || '') === exKey);
   const unidad = repsUnitOf(ex), uno = unidad.replace(/s$/, '');
   const rangoTxt = rango.min + '-' + rango.max;
+  const asistida = _esAsistida(ex);
   const ses = (Array.isArray(history) ? history : []).filter(s => s && s.date && isFinite(new Date(s.date).getTime()))
     .map(s => ({ s, t: new Date(s.date).getTime() })).sort((a, b) => a.t - b.t);
   // Un DÍA = un entrenamiento (dos entradas del mismo día son el mismo; misma regla de v529).
@@ -2770,99 +2797,125 @@ function progressionPlan(history, ex, opts) {
         if (!st || !st.done) return;
         const kg = parseFloat(st.kg), reps = parseFloat(st.reps);
         if (!(kg > 0) || !(reps > 0)) return;
-        if (!porDia[dia]) { porDia[dia] = { sets: [], descarga: false }; crudos.push(porDia[dia]); }
+        if (!porDia[dia]) { porDia[dia] = { sets: [], descarga: false, dolor: false }; crudos.push(porDia[dia]); }
         porDia[dia].sets.push({ kg, reps });
         if (s.deload) porDia[dia].descarga = true;
+        if (s.mood === 'dolor') porDia[dia].dolor = true;
       });
     });
   });
-  // 🔴 La semana de DESCARGA no cuenta: ni para el peso de partida ni para «sesiones seguidas». Si no, la
-  // primera sesión normal partiría del peso bajado a propósito. Se reconoce por la marca que el guardado
-  // le pone a la sesión (`deload`) y, en las que se guardaron sin marca, por su peso: ≈ ×0,85 del día
-  // normal anterior y con el siguiente día de vuelta al peso (o sin siguiente día). Una bajada que SE QUEDA
-  // (la siguiente sesión sigue en el peso bajo) es un peso nuevo de verdad y no se ignora.
+  // 🔴 La semana de DESCARGA no cuenta: ni para el peso de partida ni para «sesiones seguidas». Se reconoce
+  // por la marca que el guardado le pone a la sesión (`deload`) y, en las viejas sin marca, por su peso
+  // (≈ ×0,85 del día normal anterior) SOLO si una sesión posterior ya volvió al peso. La ÚLTIMA sesión nunca
+  // se descarta por su peso: si la persona bajó (una molestia, un mal día), ese es su peso de hoy.
   const topDe = d => Math.max.apply(null, d.sets.map(x => x.kg));
-  const dias = [];
+  const diasObj = [];
   crudos.forEach((d, i) => {
     if (d.descarga) return;
-    const prev = dias.length ? topDe(dias[dias.length - 1]) : 0;
+    const prev = diasObj.length ? topDe(diasObj[diasObj.length - 1]) : 0;
     const t = topDe(d);
     if (prev && t <= prev * (DELOAD_LOAD_FACTOR + 0.02) && t >= prev * 0.75) {
       let sig = null;
       for (let j = i + 1; j < crudos.length && !sig; j++) if (!crudos[j].descarga) sig = crudos[j];
-      if (!sig || topDe(sig) >= prev * 0.95) return;
+      if (sig && topDe(sig) >= prev * 0.95) return;
     }
-    dias.push(d);
+    diasObj.push(d);
   });
-  for (let i = 0; i < dias.length; i++) dias[i] = dias[i].sets;
+  const dias = diasObj.map(d => d.sets);
 
-  // Sin sesiones con carga: lo único que hay es el récord. Se REPITE ese peso; con una sola marca no se sube.
+  // Sin sesiones con carga: lo único que hay es el récord. Con una sola marca no se sube ni se repite a ciegas:
+  // el peso con el que se llega al MÍNIMO del rango (Epley), hacia abajo a lo que el equipo puede cargar.
   if (!dias.length) {
     const pr = opts.pr;
     const kgPr = pr ? parseFloat(pr.val != null ? pr.val : pr.kg) : NaN;
     if (!(kgPr > 0) || (pr.unit || 'kg') !== 'kg') return null;
-    const meta = Math.min(rango.max, (parseInt(pr.reps) || 0) + 1);
-    return { estado: 'repite', kg: kgPr, reps: Math.max(rango.min, meta), rango, saltoGrande: false, avisoCoach: '',
-      texto: `${_kgTxt(kgPr)} kg · rango ${rangoTxt} · hoy busca 1 ${uno} más en la serie que más te costó` };
+    let kg = kgPr;
+    if (!asistida) {
+      const p0 = exerciseStepKg(ex) || loadStep(kgPr);
+      const calc = _pisoGrilla(_epley(kgPr, parseInt(pr.reps) || 1) / (1 + rango.min / 30), p0);
+      if (calc > 0) kg = Math.min(kgPr, calc);
+    }
+    return { estado: 'repite', kg, reps: rango.min, rango, hechas: [], saltoGrande: false, avisoCoach: '',
+      texto: `${_kgTxt(kg)} kg · rango ${rangoTxt} · hoy busca ${rango.min} ${unidad}` };
   }
 
   const D0 = dias[dias.length - 1], D1 = dias.length > 1 ? dias[dias.length - 2] : null;
   const W = Math.max.apply(null, D0.map(x => x.kg));
   const enPeso = d => d.filter(x => x.kg >= W - 1e-9);
-  const minSeries = Math.min(2, parseInt(ex && ex.sets) || 1);   // una sola serie anotada no «cumple» la sesión
-  const todasTope = d => { const a = d ? enPeso(d) : []; return a.length >= minSeries && a.every(x => x.reps >= rango.max); };
+  const nSeries = Math.max(1, parseInt(ex && ex.sets) || 1);   // TODAS las series de trabajo del plan
+  const todasTope = d => { const a = d ? enPeso(d) : []; return a.length >= nSeries && a.every(x => x.reps >= rango.max); };
   const w0 = enPeso(D0);
-  const floja0 = Math.min.apply(null, w0.map(x => x.reps));
+  const hechas = w0.map(x => x.reps);
+  const floja0 = Math.min.apply(null, hechas);
   const e1 = Math.max.apply(null, D0.map(x => _epley(x.kg, x.reps)));
   const paso = exerciseStepKg(ex) || loadStep(W);
   const grilla = kg => _aGrilla(kg, paso);
+  const repite = (texto, meta, extra) => Object.assign({ estado: 'repite', kg: W, reps: meta, rango, hechas, saltoGrande: false, avisoCoach: '', texto }, extra || {});
 
   // ── ¿SUBE? ──
   const dosSeguidas = todasTope(D0) && todasTope(D1);
-  const pasaUltima = w0[w0.length - 1].reps >= rango.max + PROG_RAISE_OVER_REPS;
+  // +2 en la última serie: con TODAS las series hechas y las anteriores ya en el tope.
+  const pasaUltima = w0.length >= nSeries && w0[w0.length - 1].reps >= rango.max + PROG_RAISE_OVER_REPS
+    && w0.slice(0, -1).every(x => x.reps >= rango.max);
   if (dosSeguidas || pasaUltima) {
+    const porque = dosSeguidas ? `Hiciste ${rango.max} en todas dos veces seguidas`
+      : `Tu última serie pasó el tope de ${rango.max}`;
+    // Si el último entrenamiento de este ejercicio quedó con molestia, esta vez no se sube.
+    if (diasObj[diasObj.length - 1].dolor) {
+      return repite(`${_kgTxt(W)} kg · rango ${rangoTxt} · la última vez te molestó algo: hoy repite este peso`, Math.max(rango.min, floja0));
+    }
+    if (asistida) {
+      // Máquina asistida: subir de nivel es QUITAR ayuda.
+      const nuevo = _pisoGrilla(W - paso, paso);
+      if (nuevo > 0) {
+        return { estado: 'sube', kg: nuevo, reps: rango.min, rango, hechas, saltoGrande: false, avisoCoach: '',
+          texto: `${porque} · hoy con ${_kgTxt(W - nuevo)} kg menos de ayuda (${_kgTxt(nuevo)} kg) × ${rango.min}` };
+      }
+      return repite(`${_kgTxt(W)} kg de ayuda · rango ${rangoTxt} · ya casi sin ayuda: busca 1 ${uno} más`, Math.min(rango.max, floja0 + 1));
+    }
     const nuevo = grilla(W + paso);
     const arranque = Math.round(30 * (e1 / nuevo - 1));
     if (arranque >= rango.min) {
       const reps = Math.min(arranque, rango.max);
-      const porque = dosSeguidas ? `Hiciste ${rango.max} en todas dos veces seguidas`
-        : `Tu última serie pasó el tope de ${rango.max}`;
-      return { estado: 'sube', kg: nuevo, reps, rango, saltoGrande: false, avisoCoach: '',
+      return { estado: 'sube', kg: nuevo, reps, rango, hechas, saltoGrande: false, avisoCoach: '',
         texto: `${porque} · hoy ${_kgTxt(nuevo)} kg × ${reps}` };
     }
-    // El salto es demasiado grande para este ejercicio: NO se sube. Se sigue sumando reps y avisa el COACH.
+    // El salto es demasiado grande para este ejercicio: NO se sube. Se sigue sumando reps (tope duro 30).
+    // El aviso al COACH solo sale cuando la persona ya lleva 5 o más reps por encima del tope sin poder subir.
     const meta = Math.min(PROG_HARD_CAP_REPS, floja0 + 1);
-    return { estado: 'repite', kg: W, reps: meta, rango, saltoGrande: true,
-      avisoCoach: 'El salto de peso es muy grande para este ejercicio (' + _kgTxt(W) + ' → ' + _kgTxt(nuevo)
-        + ' kg dejaría menos de ' + rango.min + ' repeticiones): sigue sumando repeticiones; valora una mancuerna o disco intermedio, polea o unilateral.',
-      texto: floja0 >= PROG_HARD_CAP_REPS ? `${_kgTxt(W)} kg · ya llegas a ${PROG_HARD_CAP_REPS} ${unidad}: mantén ese ritmo`
-        : `${_kgTxt(W)} kg · sigue sumando ${unidad}: hoy busca 1 más en la serie que más te costó` };
+    const aviso = floja0 >= rango.max + PROG_AVISO_REPS_SOBRE_TOPE;
+    return repite(floja0 >= PROG_HARD_CAP_REPS ? `${_kgTxt(W)} kg · ya llegas a ${PROG_HARD_CAP_REPS} ${unidad}: mantén ese ritmo`
+      : `${_kgTxt(W)} kg · sigue sumando ${unidad}: hoy busca 1 más en la serie que más te costó`, meta, {
+      saltoGrande: aviso,
+      avisoCoach: aviso ? 'El salto de peso es muy grande para este ejercicio (' + _kgTxt(W) + ' → ' + _kgTxt(nuevo)
+        + ' kg dejaría menos de ' + rango.min + ' repeticiones): ya va ' + (floja0 - rango.max) + ' por encima del tope; valora una mancuerna o disco intermedio, polea o unilateral.' : '' });
   }
 
   // ── ¿BAJA? La MEJOR serie bajo el mínimo en 2 sesiones seguidas con ese peso (una serie corta no baja nada). ──
   const bajo = d => { const a = d ? enPeso(d) : []; return a.length > 0 && Math.max.apply(null, a.map(x => x.reps)) < rango.min; };
   if (bajo(D0) && bajo(D1)) {
-    // Al peso de antes si con él vuelve al rango; si no, el peso que da el mínimo del rango con Epley.
-    let previo = null;
-    for (let i = dias.length - 1; i >= 0 && previo == null; i--) {
-      const top = Math.max.apply(null, dias[i].map(x => x.kg));
-      if (top < W - 1e-9) previo = top;
+    if (asistida) {
+      const kg = Math.round((W + paso) * 100) / 100;
+      return { estado: 'baja', kg, reps: rango.min, rango, hechas, saltoGrande: false, avisoCoach: '',
+        texto: `Hoy con ${_kgTxt(paso)} kg más de ayuda (${_kgTxt(kg)} kg) para volver a tu rango de ${rangoTxt}` };
     }
-    let epl = grilla(e1 / (1 + rango.min / 30));
-    if (!(epl < W)) epl = grilla(W - paso);
-    const kg = Math.max(0.5, previo != null && previo <= epl ? previo : epl);
-    return { estado: 'baja', kg, reps: rango.min, rango, saltoGrande: false, avisoCoach: '',
+    // Siempre desde el peso ACTUAL (nunca un peso viejo del historial): Epley al mínimo del rango, hacia abajo a lo
+    // que el equipo puede cargar, y acotado entre un paso por debajo del actual y el actual × 0,90.
+    const hi = _pisoGrilla(W - paso, paso);
+    const lo = Math.min(hi, _techoGrilla(W * 0.90, paso));
+    let kg = Math.min(_pisoGrilla(e1 / (1 + rango.min / 30), paso), hi);
+    kg = Math.max(kg, lo, Math.min(paso, hi));
+    kg = Math.max(0.5, kg);
+    return { estado: 'baja', kg, reps: rango.min, rango, hechas, saltoGrande: false, avisoCoach: '',
       texto: `Hoy ${_kgTxt(kg)} kg para volver a tu rango de ${rangoTxt}` };
   }
 
   // ── REPITE: mismo peso, +1 rep a la serie más floja, sin pasar el tope. ──
   if (floja0 >= rango.max) {
-    return { estado: 'repite', kg: W, reps: rango.max, rango, saltoGrande: false, avisoCoach: '',
-      texto: `${_kgTxt(W)} kg · rango ${rangoTxt} · repite con todas las series en ${rango.max} y la próxima subes` };
+    return repite(`${_kgTxt(W)} kg · rango ${rangoTxt} · repite con todas las series en ${rango.max} y la próxima subes`, rango.max);
   }
   const meta = Math.max(rango.min, floja0 + 1);
-  return { estado: 'repite', kg: W, reps: meta, rango, saltoGrande: false, avisoCoach: '',
-    texto: `${_kgTxt(W)} kg · rango ${rangoTxt} · hoy busca 1 ${uno} más en la serie que más te costó` };
+  return repite(`${_kgTxt(W)} kg · rango ${rangoTxt} · hoy busca 1 ${uno} más en la serie que más te costó`, meta);
 }
 
 // ── Calentamiento + dropset: peso derivado del peso de trabajo ──
@@ -2949,6 +3002,10 @@ function _genMaterialize(ex, scheme) {
   } else {
     c.sets = scheme.setsN;
     c.reps = genRepsFor(scheme, ex);   // v752: el TOPE del rango de ESTE ejercicio (objetivo × tipo)
+    let rmin = genRepsMinFor(scheme, ex);
+    if (rmin != null) rmin = Math.max(rmin, scheme.repsFloor || 0);   // el piso de las condiciones manda sobre la tabla
+    if (rmin != null && rmin < c.reps) { c.repsMin = rmin; c.repsMinDeTope = c.reps; }   // y su MÍNIMO exacto de la tabla
+    else { delete c.repsMin; delete c.repsMinDeTope; }
   }
   // Hornea el descanso por tipo (cada ejercicio nace con su descanso correcto).
   // En adaptación se respeta el descanso corto uniforme (técnica primero, ver genSchemeFor).
@@ -14842,6 +14899,8 @@ if (typeof module !== 'undefined' && module.exports) {
     repTierOf,
     genRepsFor,
     exerciseStepKg,
+    genRepsMinFor,
+    PROG_AVISO_REPS_SOBRE_TOPE,
     GEN_REPS_RANGOS,
     PROG_HARD_CAP_REPS,
     PROG_RAISE_OVER_REPS,

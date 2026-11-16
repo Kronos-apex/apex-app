@@ -1308,6 +1308,33 @@ function repsSanityHint(rid, ei, si, el){
   }catch(_e){}
 }
 
+// v752 · QUÉ NÚMERO TRAE LA CASILLA DE REPS. Antes traía el TOPE del rango escrito: quien tocaba «hecho» sin
+// editar (el 52 % de las series reales) anotaba el tope y la app lo leía como «llegó» y le subía el peso en falso.
+// Ahora trae lo que la persona HIZO la última vez con ese peso (serie por serie); con peso nuevo, las reps de
+// arranque; sin historial, el MÍNIMO del rango. La META de hoy («busca 1 rep más») va de placeholder, jamás de valor:
+// tocar «hecho» sin editar nunca fabrica progreso. → {valor, meta}
+function gmRepsDefault(ex,ei,si){
+  const respaldo=parseInt(ex&&ex.reps)||1;
+  try{
+    if(typeof GM==='undefined'||!GM)return {valor:respaldo,meta:respaldo};
+    GM._rd=GM._rd||{};
+    let d=GM._rd[ei];
+    if(!d){
+      const info=(typeof _progressInfo==='function')?_progressInfo(ex):null;
+      const c=(typeof _curClient==='function')?_curClient():null;
+      const piso=(c&&typeof repsFloorOf==='function')?repsFloorOf(c,Date.now()):0;
+      const rg=(typeof repRangeOf==='function')?repRangeOf(ex,piso):null;
+      d={plan:info&&info.plan,min:rg?rg.min:respaldo};
+      GM._rd[ei]=d;
+    }
+    const pl=d.plan;
+    if(!pl)return {valor:d.min,meta:d.min};
+    const h=pl.hechas||[];
+    const valor=(pl.estado==='repite'&&h.length)?h[Math.min(si,h.length-1)]:pl.reps;
+    return {valor:valor,meta:pl.reps};
+  }catch(e){return {valor:respaldo,meta:respaldo};}
+}
+
 // Celdas de input del modo guiado SEGÚN la modalidad (espeja el flujo clásico):
 // peso_reps → KG+REPS · reps → REPS · tiempo → SEG+▶crono · cardio → MIN+KM.
 function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
@@ -1316,6 +1343,7 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
   // granjero cuenta PASOS. Una sola fuente (`repsUnitOf`) para las tres ramas que la pintan.
   const RL=(typeof repsUnitOf==='function'?repsUnitOf(ex):'reps').toUpperCase();
   const g=f=>getLog(GM.routine.id,ei,si,f);
+  const RD=(track==='peso_reps'||track==='reps')?gmRepsDefault(ex,ei,si):{valor:ex.reps,meta:ex.reps};
   // v714 · `B` (solo peso con barra ELEGIDA): la casilla del peso lleva debajo el total con la barra y
   // las dos casillas se alinean arriba, para que REPS no baje cuando aparece esa línea.
   const cell=(f,attrs,ph,val,label,span,B)=>`<div${span?' style="grid-column:2/4"':''}${B?' class="gm-scell-top"':''}>
@@ -1324,8 +1352,8 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
     <div class="gm-sinput-label">${label}</div>${B&&B.bar!=null?`<div class="gm-bar-total">${esc(barTotalLabel(val,B.bar))}</div>`:''}</div>`;
   // Peso corporal con lastre activo: celda KG (peso añadido) + REPS, igual que la clásica
   // (mismo campo 'kg' → entra al volumen). Sin lastre: solo REPS a lo ancho.
-  if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false);
-  if(track==='reps') return cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,true);
+  if(track==='reps'&&lastre) return cell('kg','type="number" step="0.5" min="0"','lastre',g('kg'),'LASTRE',false)+cell('reps','type="number" min="1"',RD.meta,g('reps')||RD.valor,RL,false);
+  if(track==='reps') return cell('reps','type="number" min="1"',RD.meta,g('reps')||RD.valor,RL,true);
   if(track==='tiempo') return cell('secs','type="number" min="0"',holdSecsOf(ex),g('secs')||holdSecsOf(ex),'SEG',false)
     +`<div><button type="button" class="gm-timer-go" aria-label="Iniciar cronómetro de la serie" style="width:100%;padding:8px;border:1.5px solid var(--g2);border-radius:8px;background:transparent;color:var(--g2);cursor:pointer;font-size:16px;font-weight:700">▶</button><div class="gm-sinput-label">CRONO</div></div>`;
   if(track==='cardio') return cell('min','type="number" min="0"','min',g('min')||ex.reps,'MIN',false)+cell('dist','type="number" min="0" step="0.1"','km',g('dist'),'KM',false);
@@ -1334,7 +1362,7 @@ function gmSetCellsHTML(track, ex, ei, si, done, gmSug, lastre, barSum){
   // de 15 → «75 kg con barra». Si se le coló la barra al número, el total le sale raro y se da cuenta.
   // Sin barra elegida no hay total: la línea de arriba se la está preguntando.
   const B=(barSum!=null&&typeof barTotalLabel==='function')?{bar:barSum}:null;
-  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?'~'+gmSug:'kg'),g('kg'),'KG',false,B)+cell('reps','type="number" min="1"',ex.reps,g('reps')||ex.reps,RL,false,B&&{});
+  return cell('kg','type="number" step="0.5" min="0"',ex.defaultKg||(gmSug?fmtMiles(gmSug):'kg'),g('kg'),'KG',false,B)+cell('reps','type="number" min="1"',RD.meta,g('reps')||RD.valor,RL,false,B&&{});
 }
 
 // Registra los inputs (cualquier modalidad) de una serie del guiado y los bloquea.
@@ -1347,7 +1375,7 @@ function gmLogRow(ei, si){
   const inps=row.querySelectorAll('.gm-sinput[data-field]');
   inps.forEach(inp=>{
     let v=inp.value;
-    if(inp.dataset.field==='reps' && !v) v=ex.reps; // reps vacío → el objetivo de la rutina
+    if(inp.dataset.field==='reps' && !v) v=String(gmRepsDefault(ex,ei,si).valor); // reps vacío → lo que hizo la última vez (v752: ya no el tope)
     setLog(GM.routine.id, ei, si, inp.dataset.field, v);
     inp.readOnly=true;
   });

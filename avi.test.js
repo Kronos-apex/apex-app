@@ -18195,10 +18195,15 @@ test('🔴 v752 · mancuerna de 6 kg a 15 reps (rango 10-15): el salto a 8 kg da
   assert.strictEqual(p.estado, 'repite', 'no sube');
   assert.strictEqual(p.kg, 6);
   assert.strictEqual(p.reps, 16, 'sigue sumando repeticiones, más allá del tope');
-  assert.strictEqual(p.saltoGrande, true);
-  assert.match(p.avisoCoach, /salto de peso es muy grande para este ejercicio/i);
   // La asesorada NO lee el aviso: su frase no habla de saltos, coach ni números del plan.
   assert.ok(!/coach|salto|grande/i.test(p.texto), 'la frase de la asesorada trae el aviso del coach: ' + p.texto);
+  // El aviso del coach NO sale mientras apenas se acerca al tope: solo con 5 o más reps POR ENCIMA del tope sin poder subir.
+  assert.strictEqual(p.saltoGrande, false, 'a 15 reps (en el tope) todavía no se avisa');
+  assert.ok(!p.avisoCoach);
+  const veinte = progressionPlan(_hs([{ kg: 6, reps: [20, 20, 20] }, { kg: 6, reps: [20, 20, 20] }], 'e8'), _EX_LATERAL);
+  assert.strictEqual(veinte.estado, 'repite');
+  assert.strictEqual(veinte.saltoGrande, true, 'a 20 reps (5 sobre el tope) sí');
+  assert.match(veinte.avisoCoach, /salto de peso es muy grande para este ejercicio/i);
   // Sigue sumando hasta el tope duro de 30 y ahí se detiene.
   const polea = { id: 'e117', name: 'Elevaciones Laterales en Polea', type: 'Aislamiento', muscle: 'hombros', sets: 3, reps: 15 };   // salto de 5 kg
   const alTope = progressionPlan(_hs([{ kg: 5, reps: [30, 30, 30] }, { kg: 5, reps: [30, 30, 30] }], 'e117'), polea);
@@ -18236,7 +18241,7 @@ test('🔴 v752 · meta 10 con 8 hechas (rango 7-10): MANTIENE el peso; solo baj
   // Con un peso anterior que sí devuelve al rango, vuelve a ESE peso (47,5 → subió a 50 y no llegó).
   const previo = progressionPlan(_hs([{ kg: 47.5, reps: [10, 10, 10] }, { kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [6, 6, 6] }], 'e121'), _EX_CURL10);
   assert.strictEqual(previo.estado, 'baja');
-  assert.strictEqual(previo.kg, 47.5);
+  assert.strictEqual(previo.kg, 48, 'sale del peso ACTUAL (Epley al mínimo, mancuerna al par), no del peso anterior del historial');
 });
 
 test('🔒 v752 · las sesiones deben ser CONSECUTIVAS y AL MISMO peso; una serie sin marcar o un solo registro no cuentan', () => {
@@ -18370,6 +18375,162 @@ test('🔒 v752 · los textos de la progresión: cortos, sin RIR ni RPE, sin «t
   assert.match(casos[3].texto, /^Hoy [\d,]+ kg para volver a tu rango de 7-10$/);
 });
 
+test('🔴 v752 · la TABLA aprobada se respeta EXACTA: el generador guarda el mínimo de cada celda (6 objetivos × 3 tipos)', () => {
+  const TABLA = {   // escrita a mano desde la regla del dueño [mínimo, tope]
+    fuerza:      { compuesto: [4, 6],   aislado: [8, 12],  chico: [10, 15] },
+    masa:        { compuesto: [8, 12],  aislado: [10, 15], chico: [12, 20] },
+    grasa:       { compuesto: [10, 15], aislado: [12, 15], chico: [15, 20] },
+    resistencia: { compuesto: [15, 20], aislado: [15, 20], chico: [15, 25] },
+  };
+  const objetivos = [['Fuerza', 'fuerza'], ['Ganar músculo', 'masa'], ['Recomposición', 'masa'], ['Perder grasa', 'grasa'], ['Salud general', 'grasa'], ['Resistencia', 'resistencia']];
+  const vistos = new Set();
+  objetivos.forEach(([goal, fila]) => {
+    [3, 11].forEach(seed => {
+      const out = core.generarRutinas({ id: 'g1', name: 'G', sex: seed === 3 ? 'M' : 'F', age: 30, weight: 70, height: 170, goal, level: 'Intermedio', days: 4, place: 'gym' },
+        _LIB_REAL, { seed, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+      out.routines.flatMap(r => r.exercises).forEach(e => {
+        const tier = repTierOf(e);
+        if (!tier) return;
+        vistos.add(goal + '|' + tier);
+        const [mn, mx] = TABLA[fila][tier];
+        assert.deepStrictEqual(repRangeOf(e), { min: mn, max: mx }, `${goal} · ${e.name} (${tier}) debía ser ${mn}-${mx}`);
+      });
+    });
+  });
+  assert.ok(vistos.size >= 14, 'el barrido tiene que tocar los tres tipos en casi todos los objetivos: ' + vistos.size);
+  // Plantillas del coach y rutinas viejas: UN número, el mínimo se deriva (⅔).
+  assert.deepStrictEqual(repRangeOf({ reps: 12 }), { min: 8, max: 12 });
+  // Si el coach cambia el tope de un ejercicio generado, el mínimo guardado ya no vale y se deriva.
+  assert.deepStrictEqual(repRangeOf({ reps: 15, repsMin: 12, repsMinDeTope: 15 }), { min: 12, max: 15 });
+  assert.deepStrictEqual(repRangeOf({ reps: 20, repsMin: 12, repsMinDeTope: 15 }), { min: 13, max: 20 }, 'tope editado: se deriva');
+  // El piso de las condiciones sigue mandando sobre todo.
+  assert.deepStrictEqual(repRangeOf({ reps: 15, repsMin: 10, repsMinDeTope: 15 }, 12), { min: 12, max: 15 });
+  // Las plantillas del coach NO heredan un mínimo: el número es suyo.
+  const out = core.generarRutinas({ id: 'g1', name: 'G', sex: 'M', age: 30, weight: 70, height: 170, goal: 'Perder grasa', level: 'Intermedio', days: 4, place: 'gym' },
+    _LIB_REAL, { seed: 3, now: '2026-11-05T12:00:00Z', idFn: () => 'r' });
+  const algun = out.routines.flatMap(r => r.exercises).find(e => repTierOf(e) === 'aislado');
+  assert.ok(algun && algun.repsMin === 12 && algun.reps === 15, 'perder grasa · aislado se guarda 12-15: ' + JSON.stringify([algun && algun.repsMin, algun && algun.reps]));
+});
+
+test('🔴 v752 · la casilla de REPS no trae el tope: trae lo que hizo la última vez; tocar «hecho» sin editar no fabrica progreso', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8');
+  const i = src.indexOf('function gmRepsDefault'), j = src.indexOf('// Registra los inputs (cualquier modalidad)');
+  assert.ok(i > 0 && j > i, 'no se encontró gmSetCellsHTML');
+  const armar = hist => new Function('core', 'hist', `
+    var GM={routine:{id:'r1'}}; const getLog=()=>''; const esc=s=>String(s); const fmtMiles=core.fmtMiles; const repsUnitOf=core.repsUnitOf;
+    const barTotalLabel=core.barTotalLabel; const holdSecsOf=()=>30; const repRangeOf=core.repRangeOf; const repsFloorOf=core.repsFloorOf;
+    const _curClient=()=>({id:'c1',level:'Intermedio',startDate:'2026-01-01'});
+    const _progressInfo=ex=>({plan:core.progressionPlan(hist,ex,{})});
+    ${src.slice(i, j)}
+    return {cells:gmSetCellsHTML,def:gmRepsDefault};`)(core, hist);
+  const reps = (html) => { const m = /data-field="reps"[^>]*placeholder="([^"]*)"[^>]*value="([^"]*)"/.exec(html); assert.ok(m, 'no hay casilla de reps'); return { ph: m[1], val: m[2] }; };
+  // (1) Repite: 50×8 cuatro sesiones → trae lo que hizo (8), la meta de hoy (9) solo de placeholder; JAMÁS el tope (12).
+  const rep4 = armar(_hs(Array.from({ length: 4 }, () => ({ kg: 50, reps: [8, 8, 8, 8] }))));
+  for (let si = 0; si < 4; si++) {
+    const r = reps(rep4.cells('peso_reps', _EX_BARRA, 0, si, false, 50, false, null));
+    assert.strictEqual(r.val, '8', 'serie ' + si + ' trae lo que hizo la última vez');
+    assert.strictEqual(r.ph, '9', 'y la meta de hoy va de placeholder');
+  }
+  // Con series distintas la última vez, cada serie trae la suya.
+  const mixto = armar(_hs([{ kg: 50, reps: [10, 9, 8, 8] }]));
+  assert.deepStrictEqual([0, 1, 2, 3].map(si => reps(mixto.cells('peso_reps', _EX_BARRA, 0, si, false, 50, false, null)).val), ['10', '9', '8', '8']);
+  // (2) Sube de peso: con las reps de ARRANQUE calculadas (10), no con el tope.
+  const sube = armar(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]));
+  assert.strictEqual(reps(sube.cells('peso_reps', _EX_BARRA, 0, 0, false, 52.5, false, null)).val, '10');
+  // (3) Primera vez, sin historial: el MÍNIMO del rango (8), nunca el tope (12).
+  const nueva = armar([]);
+  assert.strictEqual(reps(nueva.cells('peso_reps', _EX_BARRA, 0, 0, false, null, false, null)).val, '8');
+  // (4) El peso sugerido se ve con coma, sin tilde.
+  const kg = /data-field="kg"[^>]*placeholder="([^"]*)"/.exec(sube.cells('peso_reps', _EX_BARRA, 0, 0, false, 52.5, false, null));
+  assert.strictEqual(kg[1], '52,5');
+  // (5) Y «hecho» sin editar (casilla vacía) anota lo mismo, no el tope: el cable de gmLogRow.
+  const sc = sinComentarios(src);
+  const logRow = sc.slice(sc.indexOf('function gmLogRow'), sc.indexOf('function gmLogCardio'));
+  assert.match(logRow, /gmRepsDefault\(ex,ei,si\)/, '🔴 gmLogRow volvió a anotar el tope cuando la casilla está vacía');
+  assert.ok(!/v=ex\.reps/.test(logRow));
+});
+
+test('🔴 v752 · «llegó al tope» exige TODAS las series del plan anotadas y en el tope', () => {
+  // 2 de 4 series en 12, dos veces → NO sube.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12] }, { kg: 50, reps: [12, 12] }]), _EX_BARRA).estado, 'repite');
+  // 3 de 4 tampoco.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12] }, { kg: 50, reps: [12, 12, 12] }]), _EX_BARRA).estado, 'repite');
+  // El +2 de la última serie exige todas las series hechas y las anteriores en el tope.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 14] }]), _EX_BARRA).estado, 'repite', 'solo 2 de 4 series');
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [11, 12, 12, 14] }]), _EX_BARRA).estado, 'repite', 'una serie anterior bajo el tope');
+  // CONTROL: con todas, sube.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 14] }]), _EX_BARRA).estado, 'sube');
+  assert.strictEqual(progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }]), _EX_BARRA).estado, 'sube');
+});
+
+test('🔴 v752 · al bajar el peso sale del ACTUAL (nunca de un peso viejo del historial) y cae en la rejilla, hacia abajo', () => {
+  const curlBarra = { id: 'e9', name: 'Curl de Bíceps con Barra', type: 'Aislamiento', muscle: 'biceps', sets: 3, reps: 10 };
+  // Un día suelto a 30 kg hace meses, y ahora 50×6 dos veces: baja a ~47,5, jamás a 30.
+  const h = _hs([{ kg: 30, reps: [12, 12, 12] }, { kg: 50, reps: [6, 6, 6] }, { kg: 50, reps: [6, 6, 6] }], 'e9');
+  const p = progressionPlan(h, curlBarra);
+  assert.strictEqual(p.estado, 'baja');
+  assert.ok(p.kg >= 45 && p.kg <= 47.5, 'bajó a ' + p.kg + ' (debía quedar entre 45 y 47,5)');
+  assert.strictEqual(p.kg % 2.5, 0);
+  // Acotado: aunque Epley pida mucho menos, no baja más del 10 %.
+  const muyMal = progressionPlan(_hs([{ kg: 50, reps: [2, 2, 2] }, { kg: 50, reps: [2, 2, 2] }], 'e9'), curlBarra);
+  assert.ok(muyMal.kg >= 45 && muyMal.kg <= 47.5, 'bajó a ' + muyMal.kg);
+});
+
+test('🔴 v752 · bajar por molestia se respeta: la última sesión más liviana (sin marca de descarga) manda; con molestia no se sube', () => {
+  const dos = [{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }];
+  // La última sesión bajó a 42,5 sin ser descarga: ese es su peso, y de ahí sigue el plan.
+  const bajo = progressionPlan(_hs(dos.concat([{ kg: 42.5, reps: [10, 10, 10, 10] }])), _EX_BARRA);
+  assert.strictEqual(bajo.kg, 42.5);
+  // Si esa última sesión quedó con ánimo de DOLOR, aunque cumpla para subir, esta vez no se sube.
+  const con = _hs(dos);
+  con[1].mood = 'dolor';
+  const p = progressionPlan(con, _EX_BARRA);
+  assert.strictEqual(p.estado, 'repite');
+  assert.strictEqual(p.kg, 50);
+  assert.match(p.texto, /molest/);
+  // CONTROL: con ánimo «bien» sube.
+  const bien = _hs(dos);
+  bien[1].mood = 'bien';
+  assert.strictEqual(progressionPlan(bien, _EX_BARRA).estado, 'sube');
+});
+
+test('🔴 v752 · máquinas ASISTIDAS: el número es la ayuda — subir de nivel es QUITAR ayuda, bajar es ponerle más', () => {
+  const asist = { id: 'e231', name: 'Dominadas Asistidas en Máquina', type: 'Compuesto', muscle: 'espalda', sets: 4, reps: 10 };
+  const sube = progressionPlan(_hs([{ kg: 40, reps: [10, 10, 10, 10] }, { kg: 40, reps: [10, 10, 10, 10] }], 'e231'), asist);
+  assert.strictEqual(sube.estado, 'sube');
+  assert.strictEqual(sube.kg, 35, 'menos ayuda = menos kg en la máquina');
+  assert.match(sube.texto, /5 kg menos de ayuda/);
+  const baja = progressionPlan(_hs([{ kg: 35, reps: [5, 5, 4, 4] }, { kg: 35, reps: [5, 5, 5, 4] }], 'e231'), asist);
+  assert.strictEqual(baja.estado, 'baja');
+  assert.strictEqual(baja.kg, 40);
+  assert.match(baja.texto, /5 kg más de ayuda/);
+  // La otra asistida del catálogo y CONTROL: una máquina normal con las mismas series SÍ sube de peso.
+  assert.strictEqual(progressionPlan(_hs([{ kg: 40, reps: [12, 12, 12] }, { kg: 40, reps: [12, 12, 12] }], 'e225'),
+    { id: 'e225', name: 'Fondos en Máquina Asistida', type: 'Compuesto', muscle: 'triceps', sets: 3, reps: 12 }).kg, 35);
+  const normal = progressionPlan(_hs([{ kg: 80, reps: [10, 10, 10, 10] }, { kg: 80, reps: [10, 10, 10, 10] }], 'e6'), { ..._EX_MAQUINA, reps: 10 });
+  assert.strictEqual(normal.kg, 85);
+});
+
+test('🔒 v752 · el panel de Cargas del coach pasa el piso de las condiciones, igual que la tarjeta', () => {
+  const fs = require('fs'), path = require('path');
+  const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.match(e2, /progressionPlan\(DB\.history\[c\.id\]\|\|\[\],_rex,[\s\S]{0,120}piso:\(typeof repsFloorOf==='function'\?repsFloorOf\(c,/, '🔴 el panel de Cargas no pasa el piso de 8');
+});
+
+test('🔴 v752 · solo con récord (sin sesiones): el peso para el MÍNIMO del rango por Epley, hacia abajo — no se repite 50 × 8', () => {
+  const p = progressionPlan([], _EX_BARRA, { pr: { val: 50, kg: 50, reps: 3, unit: 'kg' } });
+  assert.strictEqual(p.kg, 42.5, '50×3 → 1RM 55 → para 8 reps ≈ 43,4 → 42,5 en la rejilla de la barra');
+  assert.strictEqual(p.reps, 8);
+  // CONTROL: un récord que ya cumple el mínimo no salta por encima de sí mismo.
+  assert.strictEqual(progressionPlan([], _EX_BARRA, { pr: { val: 50, kg: 50, reps: 12, unit: 'kg' } }).kg, 50);
+});
+
+test('🔒 v752 · detalles de equipo: la pesa rusa salta de 4 en 4 y el curl Zottman es de mancuerna', () => {
+  assert.strictEqual(exerciseStepKg({ id: 'e998', name: 'Swing con Pesa Rusa' }), 4);
+  assert.strictEqual(exerciseStepKg({ id: 'e997', name: 'Curl Zottman' }), 2);
+});
+
 test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal parte del último peso normal, no del bajado', () => {
   const normales = [{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }];
   // (a) La sesión de descarga trae la MARCA que le pone el guardado.
@@ -18384,14 +18545,20 @@ test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal pa
   assert.strictEqual(progressionPlan(soloMarca, _EX_BARRA).kg, 52.5);
   const sinSuMarca = _hs(normales.concat([{ kg: 45, reps: [12, 12, 12, 12] }]));
   assert.strictEqual(progressionPlan(sinSuMarca, _EX_BARRA).kg, 47.5, 'CONTROL · sin marca y sin ser ×0,85, 45 kg es un peso real y manda');
-  // (b) Sin marca (sesiones viejas): se reconoce por su peso ×0,85 y porque la siguiente vuelve a 50.
-  const sinMarca = _hs(normales.concat([{ kg: 42.5, reps: [12, 12, 12, 12] }]));
+  // (b) Sin marca (sesiones viejas): se reconoce por su peso ×0,85 SOLO si una sesión posterior ya volvió al peso.
+  const sinMarca = _hs([normales[0], { kg: 42.5, reps: [12, 12, 12, 12] }, normales[1]]);
   assert.strictEqual(progressionPlan(sinMarca, _EX_BARRA).kg, 52.5);
+  // …pero la ÚLTIMA sesión nunca se descarta por su peso: si bajó (una molestia, un mal día), ese es su peso de hoy.
+  const bajoReal = _hs(normales.concat([{ kg: 42.5, reps: [10, 10, 10, 10] }]));
+  assert.strictEqual(progressionPlan(bajoReal, _EX_BARRA).kg, 42.5, 'la última sesión bajó y sin marca de descarga cuenta como real');
   // (c) Y con una sesión normal DESPUÉS de la descarga, el peso de partida es 50.
   const despues = _hs([normales[0], normales[1], { kg: 42.5, reps: [12, 12, 12, 12] }, { kg: 50, reps: [10, 10, 10, 10] }]);
   const pd = progressionPlan(despues, _EX_BARRA);
   assert.strictEqual(pd.kg, 50);
   assert.strictEqual(pd.estado, 'repite');
+  // (c2) Sin marca, a mitad del historial: el 42,5 queda fuera y las dos de 50 siguen siendo «seguidas».
+  const medio = _hs([normales[0], { kg: 42.5, reps: [12, 12, 12, 12] }, normales[1]]);
+  assert.strictEqual(progressionPlan(medio, _EX_BARRA).estado, 'sube');
   // CONTROL: una bajada que SE QUEDA (la siguiente sesión sigue a 42,5) es un peso nuevo de verdad y manda.
   const seQueda = _hs([normales[0], { kg: 42.5, reps: [10, 10, 10, 10] }, { kg: 42.5, reps: [10, 10, 10, 10] }]);
   assert.strictEqual(progressionPlan(seQueda, _EX_BARRA).kg, 42.5);
@@ -24657,8 +24824,8 @@ test('🔒 v714 · en el guiado: KG siempre, total solo con la barra ELEGIDA, y 
   // Ejecutar las celdas de verdad: con barra elegida (15) y 60 anotados → KG + «75 kg con barra»; sin barra → KG solo.
   const fnSrc = (e6.match(/function gmSetCellsHTML\([\s\S]*?\n\}/) || [])[0];
   assert.ok(fnSrc, 'CONTROL: encontré gmSetCellsHTML');
-  const mk = new Function('GM', 'getLog', 'esc', 'barTotalLabel', 'repsUnitOf', 'return (' + fnSrc + ')');
-  const pinta = mk({ routine: { id: 'r1' } }, (r, ei, si, f) => (f === 'kg' ? '60' : '10'), s => String(s), core.barTotalLabel, () => 'reps');
+  const mk = new Function('GM', 'getLog', 'esc', 'barTotalLabel', 'repsUnitOf', 'gmRepsDefault', 'fmtMiles', 'return (' + fnSrc + ')');
+  const pinta = mk({ routine: { id: 'r1' } }, (r, ei, si, f) => (f === 'kg' ? '60' : '10'), s => String(s), core.barTotalLabel, () => 'reps', ex => ({ valor: ex.reps, meta: ex.reps }), core.fmtMiles);
   const conBarra = pinta('peso_reps', { reps: '10' }, 0, 0, false, null, false, 15);
   assert.ok(/>KG</.test(conBarra) && /<div class="gm-bar-total">75 kg con barra<\/div>/.test(conBarra) && /data-bar="15"/.test(conBarra), conBarra);
   assert.strictEqual((conBarra.match(/class="gm-scell-top"/g) || []).length, 2, 'las dos casillas se alinean arriba');
