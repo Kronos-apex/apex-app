@@ -2915,7 +2915,6 @@ function progressionPlan(history, ex, opts) {
     const lo = Math.min(hi, _techoGrilla(W * 0.90, paso));
     let kg = Math.min(_pisoGrilla(e1 / (1 + rango.min / 30), paso), hi);
     kg = Math.max(kg, lo, Math.min(paso, hi));
-    kg = Math.max(minEq, kg);
     return { estado: 'baja', kg, reps: rango.min, rango, hechas, saltoGrande: false, avisoCoach: '',
       texto: `Hoy ${_kgTxt(kg)} kg para volver a tu rango de ${rangoTxt}` };
   }
