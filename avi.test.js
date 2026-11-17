@@ -28055,6 +28055,46 @@ test('🔒 15-nov · publicar-hogar no llama a Vercel con la carpeta vacía y no
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
+// v753 · videos de demostración aprobados el 17-nov. Helper compartido con v754 (nada de texto de comentarios: se lee el CÓDIGO).
+function _videosDemo(ids) {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'app-1-infra.js'), 'utf8');
+  // EX_VID real = la lista de la línea `const EX_VID=new Set([...])` + las líneas `[...].forEach(id=>EX_VID.add(id));` (solo código).
+  const ex = new Set();
+  src.split(/\r?\n/).filter(l => /^const EX_VID=new Set\(\[/.test(l) || (/^\['e\d+'/.test(l) && /EX_VID\.add/.test(l)))
+    .forEach(l => (l.match(/'(e\d+)'/g) || []).forEach(x => ex.add(x.slice(1, -1))));
+  // exVidSrc REAL, extraído del archivo y ejecutado con el EX_VID de arriba y las fotos que existen en disco.
+  const fn = src.match(/function exVidSrc\(e\)\{[\s\S]*?\n\}\n/)[0];
+  const fotos = new Set(fs.readdirSync(path.join(__dirname, 'media', 'exercises')).filter(f => /^e\d+\.jpg$/.test(f)).map(f => f.replace('.jpg', '')));
+  const exVidSrc = new Function('EX_IMG_IDS', 'EX_IMG_NAME', 'EX_VID', 'EX_VID_F', 'EX_VID_BOTH', '_viewSex', fn + '; return exVidSrc;')(fotos, {}, ex, new Set(['e34']), new Set(['e2', 'e33']), () => 'M');
+  const mp4 = id => fs.readFileSync(path.join(__dirname, 'media', 'exercises', id + '.mp4'));
+  return { ex, exVidSrc, mp4, fotos };
+}
+function _verMp4(id, b) {
+  assert.strictEqual(b.slice(4, 8).toString('latin1'), 'ftyp', '🔴 ' + id + '.mp4 no es un mp4');
+  assert.ok(b.indexOf('moov') > 0 && b.indexOf('moov') < b.indexOf('mdat'), '🔴 ' + id + '.mp4 sin faststart: no arranca sin bajarlo entero');
+  // tkhd: ancho y alto en 16.16 al final de la caja; se busca el de la pista de video (el único, sin audio)
+  const k = b.indexOf('tkhd'); const ver = b[k + 4];
+  const o = k + 4 + (ver === 1 ? 4 + 8 + 8 + 4 + 4 + 8 : 4 + 4 + 4 + 4 + 4 + 4) + 8 + 2 + 2 + 2 + 2 + 36;
+  assert.deepStrictEqual([b.readUInt32BE(o) >>> 16, b.readUInt32BE(o + 4) >>> 16], [720, 720], '🔴 ' + id + '.mp4 no es 720×720');
+  assert.ok(b.indexOf('soun') < 0, '🔴 ' + id + '.mp4 trae audio (los de la app van mudos)');
+}
+test('v753 · nueve videos de demostración: el archivo existe (mp4 720×720 mudo, faststart), está en EX_VID y exVidSrc devuelve el .mp4 con la foto de póster', () => {
+  const { ex, exVidSrc, mp4, fotos } = _videosDemo();
+  const ids = ['e10', 'e29', 'e22', 'e83', 'e35', 'e61', 'e18', 'e62', 'e132'];
+  ids.forEach(id => {
+    assert.ok(ex.has(id), '🔴 ' + id + ' tiene video pero no está en EX_VID: la app no lo muestra');
+    _verMp4(id, mp4(id));
+    assert.ok(fotos.has(id), '🔴 ' + id + ' no tiene foto: sin póster el video sale en negro mientras carga');
+    assert.strictEqual(exVidSrc({ id }), 'media/exercises/' + id + '.mp4', '🔴 exVidSrc de ' + id);
+  });
+  // e22 se REEMPLAZÓ: el viejo (386.039 bytes, 5-6 s) cortaba las mancuernas y las piernas; el nuevo dura 10 s y pesa más (592.092).
+  assert.ok(mp4('e22').length > 450000, '🔴 e22.mp4 sigue siendo el viejo (386.039 bytes), que cortaba mancuernas y piernas');
+  // CONTROL: la lectura de EX_VID ve los videos viejos (si el parser no viera nada, todo lo de arriba fallaría igual, pero así se nota).
+  ['e5', 'e8', 'e64', 'e57'].forEach(id => assert.ok(ex.has(id), 'control: el parser de EX_VID no ve ' + id));
+  assert.strictEqual(exVidSrc({ id: 'e1000' }), '', 'control: un id sin video no devuelve nada');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
