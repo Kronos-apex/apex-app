@@ -2843,7 +2843,9 @@ function progressionPlan(history, ex, opts) {
   const W = Math.max.apply(null, D0.map(x => x.kg));
   const enPeso = d => d.filter(x => x.kg >= W - 1e-9);
   const nSeries = Math.max(1, parseInt(ex && ex.sets) || 1);   // TODAS las series de trabajo del plan
-  const todasTope = d => { const a = d ? enPeso(d) : []; return a.length >= nSeries && a.every(x => x.reps >= rango.max); };
+  // «Seguidas» = con el MISMO peso: una sesión más pesada que la de hoy (antes de bajar) no cuenta como segunda.
+  const mismoPeso = d => !!d && Math.max.apply(null, d.map(x => x.kg)) <= W + 1e-9;
+  const todasTope = d => { const a = d && mismoPeso(d) ? enPeso(d) : []; return a.length >= nSeries && a.every(x => x.reps >= rango.max); };
   const w0 = enPeso(D0);
   const hechas = w0.map(x => x.reps);
   const floja0 = Math.min.apply(null, hechas);
@@ -2892,7 +2894,7 @@ function progressionPlan(history, ex, opts) {
   }
 
   // ── ¿BAJA? La MEJOR serie bajo el mínimo en 2 sesiones seguidas con ese peso (una serie corta no baja nada). ──
-  const bajo = d => { const a = d ? enPeso(d) : []; return a.length > 0 && Math.max.apply(null, a.map(x => x.reps)) < rango.min; };
+  const bajo = d => { const a = d && mismoPeso(d) ? enPeso(d) : []; return a.length > 0 && Math.max.apply(null, a.map(x => x.reps)) < rango.min; };
   if (bajo(D0) && bajo(D1)) {
     if (asistida) {
       const kg = Math.round((W + paso) * 100) / 100;
@@ -2901,11 +2903,19 @@ function progressionPlan(history, ex, opts) {
     }
     // Siempre desde el peso ACTUAL (nunca un peso viejo del historial): Epley al mínimo del rango, hacia abajo a lo
     // que el equipo puede cargar, y acotado entre un paso por debajo del actual y el actual × 0,90.
+    // El peso sugerido nunca baja del MÍNIMO del equipo (máquina o polea 5 · mancuerna 1 · pesa rusa 4 · barra y
+    // desconocido un paso de 2,5). Si bajar dejaría el peso por debajo, NO se baja: se repite y avisa al coach.
+    const pEq = exerciseStepKg(ex);
+    const minEq = pEq === 2 ? 1 : (pEq === 4 ? 4 : (pEq === 5 ? 5 : 2.5));
     const hi = _pisoGrilla(W - paso, paso);
+    if (hi < minEq - 1e-9) {
+      return repite(`Repite ${_kgTxt(W)} kg · busca llegar a ${rango.min} en todas`, rango.min,
+        { avisoCoach: 'No puede bajar más de peso: revisa el ejercicio.' });
+    }
     const lo = Math.min(hi, _techoGrilla(W * 0.90, paso));
     let kg = Math.min(_pisoGrilla(e1 / (1 + rango.min / 30), paso), hi);
     kg = Math.max(kg, lo, Math.min(paso, hi));
-    kg = Math.max(0.5, kg);
+    kg = Math.max(minEq, kg);
     return { estado: 'baja', kg, reps: rango.min, rango, hechas, saltoGrande: false, avisoCoach: '',
       texto: `Hoy ${_kgTxt(kg)} kg para volver a tu rango de ${rangoTxt}` };
   }

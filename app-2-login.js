@@ -1377,7 +1377,7 @@ function _progBuildBody(card){
       const _m0=matches[0], _rex=_m0?c.routines[_m0.ri].exercises[_m0.ei]:null;
       if(_rex&&exTrack(_rex)==='peso_reps'&&typeof progressionPlan==='function'){
         const _pp=progressionPlan(DB.history[c.id]||[],_rex,{pr:(DB.prs[c.id]||{})[_rex.id||_rex.name],piso:(typeof repsFloorOf==='function'?repsFloorOf(c,Date.now()):0)});
-        if(_pp&&_pp.saltoGrande)avisoCoach=_pp.avisoCoach;
+        if(_pp&&_pp.avisoCoach)avisoCoach=_pp.avisoCoach;
       }
     }catch(e){}
     html.push(`<div class="pex-item"><div class="pex-row" onclick="togglePexRow('${chartId}')">

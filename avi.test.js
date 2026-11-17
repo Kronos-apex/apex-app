@@ -18531,6 +18531,38 @@ test('🔒 v752 · detalles de equipo: la pesa rusa salta de 4 en 4 y el curl Zo
   assert.strictEqual(exerciseStepKg({ id: 'e997', name: 'Curl Zottman' }), 2);
 });
 
+test('🔴 v752 · bajar nunca deja el peso bajo el mínimo del equipo: se repite y el aviso es del coach (máquina 5 kg, mancuerna 2,5, pesa rusa 4)', () => {
+  const maq = { id: 'e6', name: 'Jalón al Pecho en Polea', type: 'Compuesto', muscle: 'espalda', sets: 3, reps: 12 };
+  const man = { id: 'e121', name: 'Curl con Mancuerna', type: 'Aislamiento', muscle: 'biceps', sets: 3, reps: 12 };
+  const pesa = { id: 'e998', name: 'Swing con Pesa Rusa', type: 'Funcional', muscle: 'piernas', sets: 3, reps: 12 };
+  [[maq, 5, 'e6'], [man, 2.5, 'e121'], [pesa, 4, 'e998']].forEach(([ex, kg, id]) => {
+    const p = progressionPlan(_hs([{ kg, reps: [5, 5, 5] }, { kg, reps: [5, 5, 5] }], id), ex);
+    assert.strictEqual(p.estado, 'repite', ex.name + ' no puede bajar de ' + kg + ' kg');
+    assert.strictEqual(p.kg, kg);
+    assert.match(p.texto, new RegExp('^Repite ' + String(kg).replace('.', ',') + ' kg · busca llegar a 8 en todas$'), p.texto);
+    assert.match(p.avisoCoach, /no puede bajar más de peso: revisa el ejercicio/i);
+    assert.strictEqual(p.saltoGrande, false);
+  });
+  // CONTROL: con un paso de margen SÍ baja, y nunca por debajo del mínimo.
+  const b = progressionPlan(_hs([{ kg: 10, reps: [5, 5, 5] }, { kg: 10, reps: [5, 5, 5] }], 'e6'), maq);
+  assert.strictEqual(b.estado, 'baja');
+  assert.strictEqual(b.kg, 5);
+  assert.ok(!b.avisoCoach);
+  // El aviso lo lee el coach en Cargas (cualquier aviso, no solo el de salto grande).
+  const fs = require('fs'), path = require('path');
+  assert.match(sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8')), /if\(_pp&&_pp\.avisoCoach\)avisoCoach=_pp\.avisoCoach;/);
+});
+
+test('🔴 v752 · «2 seguidas» son con el MISMO peso: 50×12, 50×12 y luego 42,5×12 NO sube a 45, repite 42,5', () => {
+  const p = progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }, { kg: 42.5, reps: [12, 12, 12, 12] }]), _EX_BARRA);
+  assert.strictEqual(p.estado, 'repite');
+  assert.strictEqual(p.kg, 42.5);
+  // Y una vez que la segunda sesión también es a 42,5, ahora sí sube.
+  const q = progressionPlan(_hs([{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 42.5, reps: [12, 12, 12, 12] }, { kg: 42.5, reps: [12, 12, 12, 12] }]), _EX_BARRA);
+  assert.strictEqual(q.estado, 'sube');
+  assert.strictEqual(q.kg, 45);
+});
+
 test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal parte del último peso normal, no del bajado', () => {
   const normales = [{ kg: 50, reps: [12, 12, 12, 12] }, { kg: 50, reps: [12, 12, 12, 12] }];
   // (a) La sesión de descarga trae la MARCA que le pone el guardado.
@@ -18544,7 +18576,9 @@ test('🔴 v752 · la semana de DESCARGA no cuenta: la primera sesión normal pa
   soloMarca[2].deload = true;
   assert.strictEqual(progressionPlan(soloMarca, _EX_BARRA).kg, 52.5);
   const sinSuMarca = _hs(normales.concat([{ kg: 45, reps: [12, 12, 12, 12] }]));
-  assert.strictEqual(progressionPlan(sinSuMarca, _EX_BARRA).kg, 47.5, 'CONTROL · sin marca y sin ser ×0,85, 45 kg es un peso real y manda');
+  const ps = progressionPlan(sinSuMarca, _EX_BARRA);
+  assert.strictEqual(ps.kg, 45, 'CONTROL · sin marca y sin ser ×0,85, 45 kg es un peso real y manda');
+  assert.strictEqual(ps.estado, 'repite', 'y es la PRIMERA sesión en el tope con ese peso: la de 50 no cuenta como segunda seguida');
   // (b) Sin marca (sesiones viejas): se reconoce por su peso ×0,85 SOLO si una sesión posterior ya volvió al peso.
   const sinMarca = _hs([normales[0], { kg: 42.5, reps: [12, 12, 12, 12] }, normales[1]]);
   assert.strictEqual(progressionPlan(sinMarca, _EX_BARRA).kg, 52.5);
