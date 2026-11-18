@@ -28079,9 +28079,9 @@ function _verMp4(id, b) {
   assert.deepStrictEqual([b.readUInt32BE(o) >>> 16, b.readUInt32BE(o + 4) >>> 16], [720, 720], '🔴 ' + id + '.mp4 no es 720×720');
   assert.ok(b.indexOf('soun') < 0, '🔴 ' + id + '.mp4 trae audio (los de la app van mudos)');
 }
-test('v753 · nueve videos de demostración: el archivo existe (mp4 720×720 mudo, faststart), está en EX_VID y exVidSrc devuelve el .mp4 con la foto de póster', () => {
+test('v753/v754 · once videos de demostración: el archivo existe (mp4 720×720 mudo, faststart), está en EX_VID y exVidSrc devuelve el .mp4 con la foto de póster', () => {
   const { ex, exVidSrc, mp4, fotos } = _videosDemo();
-  const ids = ['e10', 'e29', 'e22', 'e83', 'e35', 'e61', 'e18', 'e62', 'e132'];
+  const ids = ['e10', 'e29', 'e22', 'e83', 'e35', 'e61', 'e18', 'e62', 'e132', 'e133', 'e81']; // v754 suma Pallof y escaladores
   ids.forEach(id => {
     assert.ok(ex.has(id), '🔴 ' + id + ' tiene video pero no está en EX_VID: la app no lo muestra');
     _verMp4(id, mp4(id));

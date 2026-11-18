@@ -2076,6 +2076,8 @@ function exImgSrc(e,sex){
 const EX_VID=new Set(['e5','e8','e64','e6','e13','e11','e9','e27','e22','e84','e36','e1','e2','e24','e23','e14','e26','e28','e37','e42','e51','e52','e58','e80','e85','e86','e56','e3','e40','e47','e48','e57']);
 // v753 · 8 videos nuevos de demostración (17-nov, el dueño revisó la técnica) y e22 REEMPLAZADO (el viejo cortaba mancuernas y piernas). 720×720, 10 s, mudos.
 ['e10','e29','e83','e35','e61','e18','e62','e132'].forEach(id=>EX_VID.add(id));
+// v754 · 2 videos más (18-nov, aprobados por el dueño): Pallof (e133) y escaladores (e81, bucle de 1,5 s). 720×720, mudos.
+['e133','e81'].forEach(id=>EX_VID.add(id));
 // 1 VIDEO POR EJERCICIO, SE MUESTRA A TODOS — el sexo NO define el video (Camilo 2026-06-09:
 // hacer 220 videos ♂+♀ es inviable). EX_VID_F = ejercicios cuyo único video está guardado como
 // {id}_f.mp4 (se grabó con modelo mujer); igual se muestra a hombres y mujeres por igual.
