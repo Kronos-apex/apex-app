@@ -2078,6 +2078,8 @@ const EX_VID=new Set(['e5','e8','e64','e6','e13','e11','e9','e27','e22','e84','e
 ['e10','e29','e83','e35','e61','e18','e62','e132'].forEach(id=>EX_VID.add(id));
 // v754 · 2 videos más (18-nov, aprobados por el dueño): Pallof (e133) y escaladores (e81, bucle de 1,5 s). 720×720, mudos.
 ['e133','e81'].forEach(id=>EX_VID.add(id));
+// v755 · 1 video más (21-nov, aprobado por el dueño): pec deck (e111). 720×720, 10 s, mudo, faststart.
+['e111'].forEach(id=>EX_VID.add(id));
 // 1 VIDEO POR EJERCICIO, SE MUESTRA A TODOS — el sexo NO define el video (Camilo 2026-06-09:
 // hacer 220 videos ♂+♀ es inviable). EX_VID_F = ejercicios cuyo único video está guardado como
 // {id}_f.mp4 (se grabó con modelo mujer); igual se muestra a hombres y mujeres por igual.
