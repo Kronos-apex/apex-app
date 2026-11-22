@@ -7,16 +7,21 @@ const { crear: crearBase } = require('./arnes-ventas.cjs');
 const FALTA = n => ({ data: null, error: { message: 'Could not find the function public.' + n + ' in the schema cache', code: 'PGRST202' } });
 
 // `S` = el estado del servidor falso. Cada prueba lo arma y lo mira después.
+// `S.demora` (ms): el servidor tarda, para poder mirar el botón «Enviando…» a medio camino.
 function servidorFalso(S) {
+  const base = servidorBase(S);
+  return (nombre, args, cloud) => S.demora ? new Promise(res => setTimeout(() => res(base(nombre, args, cloud)), S.demora)) : base(nombre, args, cloud);
+}
+function servidorBase(S) {
   let n = 0;
   const ahora = () => new Date().toISOString();
   return (nombre, args, cloud) => {
     if (S.sinFunciones) return FALTA(nombre);
     if (S.falla && S.falla[nombre]) return { data: null, error: { message: S.falla[nombre] } };   // el código corto, como el SQL real
     const ped = id => Object.values(cloud.tienda_pedidos).find(p => p.id === id);
-    if (nombre === 'tienda_catalogo') return { data: S.catalogo, error: null };
+    if (nombre === 'tienda_catalogo') return { data: typeof S.catalogo === 'function' ? S.catalogo(S.uid) : S.catalogo, error: null };
     if (nombre === 'tienda_pedir') {
-      const p = S.catalogo.find(x => x.id === args.p_producto);
+      const p = (typeof S.catalogo === 'function' ? S.catalogo(S.uid) : S.catalogo).find(x => x.id === args.p_producto);
       if (!p) return { data: null, error: { message: 'no_disponible' } };
       // 🔒 el precio sale del catálogo del servidor: el teléfono no lo manda
       const row = { id: 'ped-' + (++n), coach_id: 'coach', client_uid: S.uid, client_id: S.uid, client_nombre: S.nombre, producto_id: p.id, producto_nombre: p.nombre, precio_unit: p.precio, cantidad: args.p_cantidad, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: ahora(), resuelto: null };

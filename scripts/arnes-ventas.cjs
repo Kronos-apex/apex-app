@@ -30,7 +30,7 @@ function crear(ROOT, opts) {
   const pushes = [];
   const AUTH = {
     client: () => ({ ...(opts.rpc ? { rpc: async (name, args) => { llamadas.push({ op: 'rpc', name, args: JSON.parse(JSON.stringify(args || {})) }); if (!net.on) return { data: null, error: { message: 'Failed to fetch' } }; return opts.rpc(name, args || {}, cloud); } } : {}), from: t => ({
-      select: () => ({ eq: async (col, val) => { llamadas.push({ op: 'select', t, col, val }); if (net.on && opts.tablaFalta && opts.tablaFalta.includes(t)) return { data: null, error: { message: 'relation "public.' + t + '" does not exist', code: '42P01' } }; const foto = JSON.parse(JSON.stringify(Object.values(cloud[t] || {}))); if (opts.selectDelay) await new Promise(r => setTimeout(r, opts.selectDelay)); if (opts.selectDelay && net.on) return { data: foto, error: null }; if (!net.on) return { data: null, error: { message: 'Failed to fetch' } }; return { data: Object.values(cloud[t] || {}).map(r => JSON.parse(JSON.stringify(r))), error: null }; } }),
+      select: () => ({ eq: async (col, val) => { llamadas.push({ op: 'select', t, col, val }); if (net.on && opts.tablaFalta && opts.tablaFalta.includes(t)) return { data: null, error: { message: 'relation "public.' + t + '" does not exist', code: '42P01' } }; const foto = JSON.parse(JSON.stringify(Object.values(cloud[t] || {}))); if (opts.selectDelay) await new Promise(r => setTimeout(r, opts.selectDelay)); if (opts.selectDelay && net.on) return { data: foto, error: null }; if (!net.on) return { data: null, error: { message: 'Failed to fetch' } }; return { data: Object.values(cloud[t] || {}).filter(r => !(t === 'tienda_pedidos' && col === 'client_uid') || r.client_uid === val).map(r => JSON.parse(JSON.stringify(r))), error: null }; } }),
       upsert: async row => { llamadas.push({ op: 'upsert', t, row: JSON.parse(JSON.stringify(row)) }); if (!net.on) return { error: { message: 'Failed to fetch' } }; if (!cloud[t]) return { error: { message: 'tabla desconocida ' + t } }; cloud[t][row.id] = JSON.parse(JSON.stringify(row)); return { error: null }; },
     }) }),
     getUser: async () => (net.on && net.userOn ? { id: opts.uid || COACH } : null),
@@ -58,6 +58,6 @@ function crear(ROOT, opts) {
   vm.runInContext('const __toastReal=toast; toast=function(m,ms){ __toasts.push(m); return __toastReal(m,ms); };', Object.assign(ctx, { __toasts: toasts }));
   vm.runInContext(code + '\nthis.__SUPL=SUPL;', ctx);
   const disparar = async ev => { for (const fn of (listeners[ev] || [])) fn(); await new Promise(r => setTimeout(r, 20)); };
-  return { ctx, els, store, net, cloud, llamadas, toasts, pushes, disparar, COACH, core, el: id => document.getElementById(id) };
+  return { ctx, els, store, net, cloud, llamadas, toasts, pushes, disparar, COACH, core, setUid: u => { opts.uid = u; ctx.CUR.loggedAs = u ? 'client' : 'coach'; }, el: id => document.getElementById(id) };
 }
 module.exports = { crear };

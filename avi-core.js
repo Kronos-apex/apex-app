@@ -14544,7 +14544,7 @@ function tiendaErrorCodigo(err) {
 }
 const TIENDA_ERRORES = {
   sin_red: 'Sin señal: tu pedido no salió. Inténtalo cuando tengas internet.',
-  agotado: 'Se acaba de agotar. Pídele a tu coach que te avise cuando llegue más.',
+  agotado: 'Se acaba de agotar.',
   menor: 'Este producto no es para menores de 18 años.',
   limite: 'Ya tienes 3 pedidos esperando entrega. Cuando tu coach te entregue uno, puedes pedir otro.',
   no_disponible: 'Este producto ya no está disponible.',
@@ -14559,6 +14559,10 @@ const TIENDA_ERRORES_COACH = {
   no_disponible: 'Este pedido ya no está pendiente: otra pantalla ya lo entregó o lo canceló.',
   otro: 'No se pudo completar. Inténtalo de nuevo en un momento.',
 };
+// «agotado» al pedir: si el catálogo recién bajado todavía trae el producto, es que pidió MÁS de lo que queda.
+function tiendaErrorAgotado(quedanAlgunas) {
+  return quedanAlgunas ? 'No quedan tantas. Prueba con menos o pregúntale a tu coach.' : TIENDA_ERRORES.agotado;
+}
 function tiendaErrorTexto(codigo, rol) {
   if (rol === 'coach' && TIENDA_ERRORES_COACH[codigo]) return TIENDA_ERRORES_COACH[codigo];
   return TIENDA_ERRORES[codigo] || TIENDA_ERRORES.otro;
@@ -15367,6 +15371,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TIENDA_ERRORES,
     TIENDA_ERRORES_COACH,
     tiendaErrorTexto,
+    tiendaErrorAgotado,
     tiendaFechaTxt,
     tiendaAvisoPocas,
     tiendaRecientes,

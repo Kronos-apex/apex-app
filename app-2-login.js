@@ -540,6 +540,9 @@ function logout(){
   // pestaña NO recargaba: veía la identidad de la anterior («en el perfil de Andrea aparecía el
   // mío»). Aquí no se recarga la página, así que el estado hay que devolverlo a cero a mano.
   try{ if(typeof cmtyResetIdentity==='function') cmtyResetIdentity(); }catch(_e){}
+  // v756 · MISMA clase (verificador): la tienda guarda catálogo, «Mis pedidos» y caché de la persona que salió; la
+  // siguiente cuenta de esta pestaña no puede heredarlos (un menor veía el catálogo, con «No para menores», de una adulta).
+  try{ if(typeof tiendaReset==='function') tiendaReset(); }catch(_e){}
   // El uid de la sesión también es identidad: si sobrevive, las claves namespacadas de la
   // siguiente cuenta podrían escribirse con el uid del anterior antes de que entre.
   try{ _authUid=null; }catch(_e){}
@@ -1616,6 +1619,8 @@ async function tryAutoLogin(){
     }
     const _aviChat=new URLSearchParams(location.search).get('avi-chat');
     const _aviPedidos=new URLSearchParams(location.search).get('avi-pedidos');   // v756 · el aviso de un pedido abre la bandeja
+    // Se quita de la URL al leerla (sin tocar el historial): recargar no vuelve a abrir la bandeja.
+    if(_aviPedidos){ try{ const _u=new URL(location.href); _u.searchParams.delete('avi-pedidos'); history.replaceState(history.state,'',_u.pathname+_u.search+_u.hash); }catch(_e){} }
     if(session.role === 'coach'){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';

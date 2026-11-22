@@ -3538,16 +3538,17 @@ function _suplAviso(ok,textoOk){
 // Manda a la nube las filas pendientes. Devuelve true si no queda ninguna.
 async function suplReintentar(){
   const k=await suplCliente(); if(!k)return false;
-  let quedan=0;
+  let quedan=0, subidas=0;
   for(const tabla of [SUPL_T_PROD,SUPL_T_VENT]){
     const lista=tabla===SUPL_T_PROD?SUPL.productos:SUPL.ventas;
     for(const id of Object.keys(SUPL.pend[tabla]||{})){
       const row=lista.find(r=>r.id===id); if(!row){ delete SUPL.pend[tabla][id]; continue; }
       const {error}=await k.c.from(tabla).upsert(_suplFila(tabla,row,k.u.id));
-      if(error){ quedan++; warn('AVI supl reintento:',error.message); } else delete SUPL.pend[tabla][id];
+      if(error){ quedan++; warn('AVI supl reintento:',error.message); } else { delete SUPL.pend[tabla][id]; subidas++; }
     }
   }
   suplGuardarLocal();
+  if(subidas&&typeof tiendaStockRefrescar==='function')tiendaStockRefrescar();   // una venta que subió tarde mueve el stock
   return quedan===0;
 }
 async function suplCargar(force){
@@ -3913,7 +3914,21 @@ function suplIngresosHTML(stat,empty){
 // 🧱 Si la migración aún no está aplicada, las funciones no existen: la persona no ve la fila y el coach no ve nada
 //    (`TIENDA.sinFunciones`); ningún error llega a la pantalla.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-const TIENDA={catalogo:[],catBajado:false,bajando:false,mis:[],pedidos:[],pedTs:0,stock:{},stockCargado:false,stockCargando:false,listo:false,sinFunciones:false,ui:{ocupado:{}}};
+function _tiendaNuevo(){ return {catalogo:[],catBajado:false,bajandoP:null,mis:[],pedidos:[],pedTs:0,stock:{},stockCargado:false,stockCargando:false,listo:false,sinFunciones:false,uid:null,ui:{ocupado:{}}}; }
+const TIENDA=_tiendaNuevo();
+// 🔒 Identidad (v756 · verificador): al salir de la cuenta TODO vuelve a cero (memoria y caché), y lo que se bajó queda atado al uid
+// de quien lo bajó: una cuenta que entra en la MISMA pestaña jamás pinta el catálogo, los pedidos ni el conteo de la anterior.
+function tiendaReset(){
+  Object.keys(TIENDA).forEach(k=>{ delete TIENDA[k]; });
+  Object.assign(TIENDA,_tiendaNuevo());
+  try{ localStorage.removeItem('ax_tienda'); }catch(_e){}
+}
+function _tiendaUid(){
+  try{ if(typeof _authUid!=='undefined'&&_authUid)return _authUid; }catch(_e){}
+  return (typeof CUR!=='undefined'&&CUR.loggedAs==='client')?CUR.clientId:null;
+}
+// Si lo que hay en memoria es de OTRA persona, se descarta antes de pintar.
+function tiendaGuardia(){ const u=_tiendaUid(); if(TIENDA.uid&&u&&TIENDA.uid!==u)tiendaReset(); }
 function _tiendaFaltaFuncion(err){
   const m=String((err&&(err.message||err.details))||'')+' '+String((err&&err.code)||'');
   return /PGRST20[25]|could not find the (function|table)|does not exist|schema cache/i.test(m);
@@ -3926,7 +3941,7 @@ async function _tiendaRpc(nombre,args){
   try{
     const r=await k.c.rpc(nombre,args||{});
     if(r&&r.error){ warn('AVI tienda '+nombre+':',r.error.message); return {data:null,error:{codigo:_tiendaFaltaFuncion(r.error)?'no_funcion':tiendaErrorCodigo(r.error)}}; }
-    return {data:r?r.data:null,error:null};
+    return {data:r?r.data:null,error:null,uid:k.u.id};
   }catch(_e){ return {data:null,error:{codigo:'sin_red'}}; }
 }
 // Lee los pedidos (la RLS decide qué filas ve cada quien). `col`/`val`: coach_id (coach) o client_uid (persona).
@@ -3936,11 +3951,13 @@ async function _tiendaSelectPedidos(col){
   try{
     const r=await k.c.from('tienda_pedidos').select('*').eq(col,k.u.id);
     if(r.error)return {data:null,error:{codigo:_tiendaFaltaFuncion(r.error)?'no_funcion':'otro'}};
-    return {data:r.data||[],error:null};
+    return {data:r.data||[],error:null,uid:k.u.id};
   }catch(_e){ return {data:null,error:{codigo:'sin_red'}}; }
 }
+// ¿La respuesta es de la persona que está AHORA? (si salió y entró otra mientras viajaba, se tira)
+function _tiendaEsDeAhora(r){ const u=_tiendaUid(); return !(r&&r.uid&&u&&r.uid!==u); }
 function _tiendaIcono(cat){
-  const m={preentreno:'bolt',cafeina:'bolt',quemador:'bolt',creatina:'dumbbell',proteina:'dumbbell',ganador:'dumbbell',aminoacidos:'dumbbell',barras:'apple'};
+  const m={preentreno:'bolt',cafeina:'bolt',quemador:'bolt',creatina:'dumbbell',proteina:'dumbbell',ganador:'dumbbell',aminoacidos:'dumbbell',barras:'box'};
   return m[cat]||'bag';
 }
 function _tiendaNombrePersona(p){
@@ -3951,30 +3968,46 @@ function _tiendaNombrePersona(p){
 // ═══════════════ ASESORADO ═══════════════
 // Caché local del último catálogo (por persona: un celular compartido no mezcla catálogos).
 function tiendaCacheLeer(){
-  const d=ld('ax_tienda',null);
-  if(d&&d.cid===CUR.clientId&&Array.isArray(d.c)&&!TIENDA.catBajado)TIENDA.catalogo=d.c;
+  tiendaGuardia();
+  const d=ld('ax_tienda',null), u=_tiendaUid();
+  if(d&&u&&d.uid===u&&Array.isArray(d.c)){ if(!TIENDA.catBajado){ TIENDA.catalogo=d.c; TIENDA.uid=u; } }
+  else if(d){ try{ localStorage.removeItem('ax_tienda'); }catch(_e){} }   // de otra persona (o sin dueño): se borra
 }
-function tiendaCacheGuardar(){ try{ localStorage.setItem('ax_tienda',JSON.stringify({cid:CUR.clientId,c:TIENDA.catalogo})); }catch(_e){} }
+function tiendaCacheGuardar(){ const u=TIENDA.uid||_tiendaUid(); if(!u)return; try{ localStorage.setItem('ax_tienda',JSON.stringify({uid:u,c:TIENDA.catalogo})); }catch(_e){} }
 // Se baja UNA vez al abrir la app (y al entrar a la tienda). Sin señal se queda con la caché.
-async function tiendaCatalogoBajar(){
-  if(TIENDA.bajando)return;
-  TIENDA.bajando=true;
-  try{
-    const r=await _tiendaRpc('tienda_catalogo');
-    if(!r.error){ TIENDA.catalogo=Array.isArray(r.data)?r.data:[]; TIENDA.sinFunciones=false; tiendaCacheGuardar(); }
-    else if(r.error.codigo==='no_funcion'){ TIENDA.catalogo=[]; TIENDA.sinFunciones=true; tiendaCacheGuardar(); }
-  }finally{ TIENDA.bajando=false; TIENDA.catBajado=true; }
+// Una sola bajada a la vez (quien llama mientras otra viaja espera a la misma).
+function tiendaCatalogoBajar(){
+  tiendaGuardia();
+  if(TIENDA.bajandoP)return TIENDA.bajandoP;
+  const p=_tiendaCatalogoBajar().finally(()=>{ if(TIENDA.bajandoP===p)TIENDA.bajandoP=null; });
+  TIENDA.bajandoP=p;
+  return p;
+}
+async function _tiendaCatalogoBajar(){
+  const r=await _tiendaRpc('tienda_catalogo');
+  if(!_tiendaEsDeAhora(r))return;
+  // «Bajado» SOLO si salió bien (o si el servidor dice que no hay tienda): un primer intento sin señal se reintenta.
+  if(!r.error){ TIENDA.catalogo=Array.isArray(r.data)?r.data:[]; TIENDA.sinFunciones=false; TIENDA.catBajado=true; TIENDA.uid=r.uid||TIENDA.uid; tiendaCacheGuardar(); }
+  else if(r.error.codigo==='no_funcion'){ TIENDA.catalogo=[]; TIENDA.sinFunciones=true; TIENDA.catBajado=true; TIENDA.uid=r.uid||TIENDA.uid; tiendaCacheGuardar(); }
+  else return;
   const c=suplPersona(CUR.clientId); if(c&&typeof renderProfileRows==='function')renderProfileRows(c);
 }
+// Sin señal al abrir: al volver la señal se reintenta (y también al abrir el Perfil, que pinta la fila).
+window.addEventListener('online',()=>{
+  // Si un intento sin señal sigue en vuelo, se espera a que termine y se vuelve a intentar (no se queda con su fallo).
+  try{ if(typeof CUR!=='undefined'&&CUR.loggedAs==='client'&&!TIENDA.catBajado)Promise.resolve(TIENDA.bajandoP).catch(()=>{}).then(()=>{ if(!TIENDA.catBajado)tiendaCatalogoBajar(); }); }catch(_e){}
+});
 // La fila de «Tienda» del Perfil: solo si la persona entrena con el coach y hay productos que mostrarle.
 function tiendaFilaPerfil(client){
   if(!tiendaVeTienda(client))return '';
-  if(!TIENDA.catBajado){ tiendaCacheLeer(); tiendaCatalogoBajar(); }
+  tiendaGuardia();
+  if(!TIENDA.catBajado){ tiendaCacheLeer(); if(!TIENDA.bajandoP)tiendaCatalogoBajar(); }
   const n=(TIENDA.catalogo||[]).filter(p=>tiendaMuestraProducto(p,client)).length;
   if(!n)return '';
   return `<button type="button" class="aj-row" data-pf-row="tienda" onclick="tiendaAbrir()"><span class="aj-ic">${aviIcon('bag',16)}</span><span class="aj-lbl">Tienda · suplementos de tu coach</span><span class="aj-val">${n} ${n===1?'producto':'productos'}</span><span class="aj-chev" aria-hidden="true">›</span></button>`;
 }
 function tiendaAbrir(){
+  tiendaGuardia();
   const room=_suplEl('p-tienda'); if(!room)return;
   if(typeof _roomFront==='function')_roomFront(room); else room.classList.add('on');
   if(typeof _syncRoomBodyClass==='function')_syncRoomBodyClass();
@@ -3989,9 +4022,11 @@ function closeTiendaRoom(){
 }
 async function tiendaMisCargar(){
   const r=await _tiendaSelectPedidos('client_uid');
-  if(!r.error)TIENDA.mis=r.data;
+  if(!_tiendaEsDeAhora(r))return;
+  if(!r.error){ TIENDA.mis=r.data; TIENDA.uid=r.uid||TIENDA.uid; }
 }
 function tiendaRender(){
+  tiendaGuardia();
   const body=_suplEl('tienda-body'); if(!body)return;
   const c=suplPersona(CUR.clientId);
   const lista=(TIENDA.catalogo||[]).filter(p=>tiendaMuestraProducto(p,c));
@@ -4033,13 +4068,23 @@ function tiendaPedirPintar(){
 }
 async function tiendaConfirmarPedido(){
   const u=TIENDA.ui.pedir; if(!u||u.enviando)return;
-  const err=_suplEl('pd-err');
+  const err=_suplEl('pd-err'), btn=_suplEl('pd-ok');
   u.enviando=true; err.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Enviando…'; }
   const r=await _tiendaRpc('tienda_pedir',{p_producto:u.id,p_cantidad:u.cant});
   u.enviando=false;
+  if(btn){ btn.disabled=false; btn.textContent='Confirmar pedido'; }
   if(r.error){
-    err.textContent=tiendaErrorTexto(r.error.codigo); err.style.display='block';
-    if(r.error.codigo==='agotado'||r.error.codigo==='no_disponible'||r.error.codigo==='menor'){ tiendaCatalogoBajar().then(tiendaRender); }
+    let texto=tiendaErrorTexto(r.error.codigo);
+    if(r.error.codigo==='agotado'){
+      // Se vuelve a bajar el catálogo: si quedan algunas, «prueba con menos»; si ya no queda ninguna, «se acaba de agotar».
+      if(TIENDA.bajandoP)await TIENDA.bajandoP;
+      await tiendaCatalogoBajar();
+      const p2=(TIENDA.catalogo||[]).find(x=>x.id===u.id);
+      texto=tiendaErrorAgotado(!!(p2&&p2.disponible!==false));
+      tiendaRender();
+    }else if(r.error.codigo==='no_disponible'||r.error.codigo==='menor'){ tiendaCatalogoBajar().then(tiendaRender); }
+    err.textContent=texto; err.style.display='block';
     return;
   }
   cm('m-pedir');
@@ -4071,8 +4116,9 @@ async function tiendaCoachCargar(force){
   if(!force&&Date.now()-TIENDA.pedTs<60000)return;
   TIENDA.pedTs=Date.now();
   const r=await _tiendaSelectPedidos('coach_id');
+  if(!_tiendaEsDeAhora(r))return;
   if(r.error){ if(r.error.codigo==='no_funcion')TIENDA.sinFunciones=true; return; }
-  TIENDA.pedidos=r.data; TIENDA.listo=true; TIENDA.sinFunciones=false;
+  TIENDA.pedidos=r.data; TIENDA.listo=true; TIENDA.sinFunciones=false; TIENDA.uid=r.uid||TIENDA.uid;
 }
 function tiendaPorEntregar(){ return (TIENDA.pedidos||[]).filter(p=>p&&p.estado==='pendiente'); }
 // Tarjeta del Inicio: solo si hay algo por entregar (y las funciones existen).
@@ -4088,13 +4134,13 @@ function tiendaAbrirPedidos(){
 }
 function tiendaRenderPedidos(){
   const box=_suplEl('pd-list'); if(!box)return;
-  const pend=tiendaPorEntregar().slice().sort((a,b)=>Date.parse(a.creado)-Date.parse(b.creado));
+  const pend=tiendaPorEntregar().slice().sort((a,b)=>Date.parse(b.creado)-Date.parse(a.creado));   // el más nuevo arriba (como la maqueta)
   const sub=_suplEl('pd-sub'); if(sub)sub.textContent=pend.length?pend.length+' por entregar':'Nada por entregar';
   let h='';
   if(!pend.length)h+=`<div class="card"><div class="cb" style="text-align:center;font-size:13px;color:var(--t2);padding:22px 16px">No tienes pedidos por entregar.</div></div>`;
   pend.forEach(p=>{
-    const total=suplMonto(p.precio_unit)*(parseInt(p.cantidad,10)||1), id=esc(p.id);
-    h+=`<div class="pd-card"><div class="vt-nm">${esc(_tiendaNombrePersona(p))} · ${esc(tiendaResumenPedido(p))}</div><div class="vt-sub">${esc(tiendaFechaTxt(p.creado))} · ${esc(tiendaMoneda(total))}</div><div class="pd-act"><button type="button" class="btn bp bsm" onclick="tiendaEntregar('${id}')">${aviIcon('check',14)} Entregado</button><button type="button" class="btn bg bsm" onclick="tiendaAbrirCuotas('${id}')">Cuotas</button><button type="button" class="btn bd bsm" onclick="tiendaCancelarCoach('${id}')">Cancelar</button></div></div>`;
+    const total=suplMonto(p.precio_unit)*(parseInt(p.cantidad,10)||1), id=esc(p.id), oc=!!TIENDA.ui.ocupado[p.id], dis=oc?' disabled aria-disabled="true"':'';
+    h+=`<div class="pd-card"><div class="vt-nm">${esc(_tiendaNombrePersona(p))} · ${esc(tiendaResumenPedido(p))}</div><div class="vt-sub">${esc(tiendaFechaTxt(p.creado))} · ${esc(tiendaMoneda(total))}</div><div class="pd-act"><button type="button" class="btn bp bsm"${dis} onclick="tiendaEntregar('${id}')">${oc?'Enviando…':aviIcon('check',14)+' Entregado'}</button><button type="button" class="btn bg bsm"${dis} onclick="tiendaAbrirCuotas('${id}')">Cuotas</button><button type="button" class="btn bd bsm"${dis} onclick="tiendaCancelarCoach('${id}')">Cancelar</button></div></div>`;
   });
   h+=`<div class="sroom-cmp flat" style="margin:12px 0"><span>Al tocar <b>Entregado</b>: queda como venta en la ficha de la persona (con abonos si es a cuotas) y el stock baja lo que se entregó. Si cancelas, no se toca nada.</span></div>`;
   const hace7=Date.now()-7*86400000;
@@ -4120,7 +4166,7 @@ function _tiendaAnotarVenta(v){
 async function _tiendaEntregarYa(id,cuotas,abono){
   if(TIENDA.ui.ocupado[id])return false;
   const ped=(TIENDA.pedidos||[]).find(p=>p.id===id); if(!ped)return false;
-  TIENDA.ui.ocupado[id]=true;
+  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();
   const args={p_pedido:id,p_cuotas:cuotas};
   if(abono!=null)args.p_abono=abono;
   const r=await _tiendaRpc('tienda_entregar',args);
@@ -4156,14 +4202,15 @@ async function tiendaCuotasOk(){
   const total=suplMonto(p.precio_unit)*(parseInt(p.cantidad,10)||1);
   const abono=suplMonto(_suplEl('cu-abono').value);
   if(abono>total){ const e=_suplEl('cu-err'); e.textContent='El abono no puede pasar del total ('+tiendaMoneda(total)+').'; e.style.display='block'; return; }
-  cm('m-cuotas');
+  const b=_suplEl('cu-ok'); if(b){ b.disabled=true; b.textContent='Enviando…'; }
   await _tiendaEntregarYa(u.id,u.n,abono);
+  cm('m-cuotas'); if(b){ b.disabled=false; b.textContent='Entregar'; }
 }
 async function tiendaCancelarCoach(id){
   if(TIENDA.ui.ocupado[id])return;
   const p=(TIENDA.pedidos||[]).find(x=>x.id===id); if(!p)return;
   if(!confirm('¿Cancelar el pedido de '+_tiendaNombrePersona(p)+' ('+tiendaResumenPedido(p)+')? No se toca nada: ni la venta ni el stock.'))return;
-  TIENDA.ui.ocupado[id]=true;
+  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();
   const r=await _tiendaRpc('tienda_cancelar',{p_pedido:id});
   delete TIENDA.ui.ocupado[id];
   if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); suplRenderHome(); return; }

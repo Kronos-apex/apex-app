@@ -19,12 +19,14 @@ grant execute on function public._probar_chk(boolean, text) to public;
 -- ── 0 · Datos falsos (como dueño de la base, sin sesión) ──────────────────────────────────────────────
 -- Mariana (adulta, '33') · Sofía (menor, '15') · Valentina (edad 'abc' = desconocida)
 -- Camila (trae «edad» en vez de «age») · Paula (sin coach)
+-- Lucía (plan Libre) · Daniela (plan premium: el CONTROL de Lucía) · Ximena (edad absurda '99999999999')
 do $$
 declare u uuid;
 begin
   foreach u in array array[
     'aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000002','aaaaaaaa-0000-4000-8000-000000000003',
-    'aaaaaaaa-0000-4000-8000-000000000004','aaaaaaaa-0000-4000-8000-000000000005']::uuid[] loop
+    'aaaaaaaa-0000-4000-8000-000000000004','aaaaaaaa-0000-4000-8000-000000000005','aaaaaaaa-0000-4000-8000-000000000006',
+    'aaaaaaaa-0000-4000-8000-000000000007','aaaaaaaa-0000-4000-8000-000000000008']::uuid[] loop
     begin
       insert into auth.users (id, aud, role, email) values (u, 'authenticated', 'authenticated', u::text || '@prueba.invalid')
       on conflict (id) do nothing;
@@ -38,7 +40,10 @@ insert into public.user_data (user_id, coach_id, role, profile, routines) values
  ('aaaaaaaa-0000-4000-8000-000000000002', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Sofía Prueba","age":"15"}', '[]'),
  ('aaaaaaaa-0000-4000-8000-000000000003', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Valentina Prueba","age":"abc"}', '[]'),
  ('aaaaaaaa-0000-4000-8000-000000000004', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Camila Prueba","edad":"30"}', '[]'),
- ('aaaaaaaa-0000-4000-8000-000000000005', null,                                   'client', '{"name":"Paula Prueba","age":"40"}', '[]');
+ ('aaaaaaaa-0000-4000-8000-000000000005', null,                                   'client', '{"name":"Paula Prueba","age":"40"}', '[]'),
+ ('aaaaaaaa-0000-4000-8000-000000000006', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Lucía Prueba","age":"30","tier":"libre"}', '[]'),
+ ('aaaaaaaa-0000-4000-8000-000000000007', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Daniela Prueba","age":"40","tier":"premium"}', '[]'),
+ ('aaaaaaaa-0000-4000-8000-000000000008', '0a6484ed-42af-449d-9903-e440ac683ecf', 'client', '{"name":"Ximena Prueba","age":"99999999999"}', '[]');
 
 insert into public.coach_productos (id, nombre, categoria, precio, costo, no_menores, activo, en_tienda, descripcion) values
  ('b1000000-0000-4000-8000-000000000001', 'Preentreno · sachet', 'preentreno', 4000, 2720, true,  true, true,  '1 porción, sellado'),
@@ -243,6 +248,43 @@ begin
   perform public.tienda_cargar_stock('b1000000-0000-4000-8000-000000000001', null, 'quitar');
   perform public._probar_chk((select not lleva_stock from public.coach_stock() where producto_id = 'b1000000-0000-4000-8000-000000000001'),
     'quitar apaga el stock: el producto ya no lleva');
+end $$;
+
+-- ── 5b · Plan Libre / app: la tienda es SOLO para quien entrena con el coach (y un plan premium, el CONTROL) ──
+reset role; set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-0000-4000-8000-000000000006","role":"authenticated"}';
+do $$
+declare ok boolean := false;
+begin
+  perform public._probar_chk((select count(*) from public.tienda_catalogo()) = 0, 'plan Libre: el catálogo sale vacío');
+  begin perform public.tienda_pedir('b1000000-0000-4000-8000-000000000002', 1); exception when others then ok := (sqlerrm = 'no_disponible'); end;
+  perform public._probar_chk(ok, 'plan Libre: no puede pedir');
+end $$;
+reset role; set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-0000-4000-8000-000000000007","role":"authenticated"}';
+do $$
+declare p public.tienda_pedidos;
+begin
+  perform public._probar_chk((select count(*) from public.tienda_catalogo()) = 2, 'CONTROL plan premium: SÍ ve el catálogo (2 productos)');
+  p := public.tienda_pedir('b1000000-0000-4000-8000-000000000002', 1);
+  perform public._probar_chk(p.estado = 'pendiente' and p.precio_unit = 85000, 'CONTROL plan premium: SÍ puede pedir');
+end $$;
+-- Edad absurda: no desborda ::int, cuenta como desconocida (sin «No para menores») y el catálogo no se rompe
+reset role; set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-0000-4000-8000-000000000008","role":"authenticated"}';
+do $$
+declare n int := -1;
+begin
+  begin select count(*) into n from public.tienda_catalogo(); exception when others then n := -1; end;
+  perform public._probar_chk(n = 1, 'edad absurda (99999999999): el catálogo NO se rompe y trae solo lo que no es «No para menores»');
+  perform public._probar_chk(not exists (select 1 from public.tienda_catalogo() where nombre = 'Preentreno · sachet'), 'edad absurda: cuenta como desconocida (sin el «No para menores»)');
+end $$;
+reset role;
+do $$
+begin
+  perform public._probar_chk((select public._tienda_edad('aaaaaaaa-0000-4000-8000-000000000008')) is null
+                             and (select public._tienda_edad('aaaaaaaa-0000-4000-8000-000000000001')) = 33,
+    'CONTROL: _tienda_edad devuelve null para la absurda y 33 para una edad normal');
 end $$;
 
 -- ── 6 · anon no ve nada ───────────────────────────────────────────────────────────────────────────────

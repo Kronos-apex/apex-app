@@ -40,6 +40,26 @@ const SABOTAJES = {
   'pocas-sin-texto': [["Quedan pocas: pide más</div>`:'';", "</div>`:'';"]],
   // la venta manual ignora la cantidad
   'cantidad-ignorada': [["if((v.cantidad||1)>1)venta.cantidad=v.cantidad;", ""]],
+  // la cuenta que sale deja su tienda a la vista de la siguiente (ni reinicio ni guardia por uid)
+  'sin-reset': [["function tiendaReset(){", "function tiendaReset(){ return;"]],
+  'sin-guardia': [["function tiendaGuardia(){", "function tiendaGuardia(){ return;"]],
+  // un primer intento sin señal marca el catálogo como bajado y nunca se reintenta
+  'catbajado-siempre': [["const r=await _tiendaRpc('tienda_catalogo');\n  if(!_tiendaEsDeAhora(r))return;", "const r=await _tiendaRpc('tienda_catalogo'); TIENDA.catBajado=true;\n  if(!_tiendaEsDeAhora(r))return;"]],
+  // el reintento sin señal sube la fila ENTERA (con stock_*)
+  'reintento-sube-todo': [["const {error}=await k.c.from(tabla).upsert(_suplFila(tabla,row,k.u.id));", "const {error}=await k.c.from(tabla).upsert(Object.assign({},row,{coach_id:k.u.id}));"]],
+  // tras un reintento que sale bien no se refresca el stock
+  'reintento-sin-refresco': [["if(subidas&&typeof tiendaStockRefrescar==='function')tiendaStockRefrescar();", ""]],
+  // al agotarse dice siempre lo mismo, sin volver a mirar el catálogo
+  'agotado-texto-fijo': [["texto=tiendaErrorAgotado(!!(p2&&p2.disponible!==false));", "texto=tiendaErrorTexto('agotado');"]],
+  // el botón de confirmar no se bloquea mientras envía
+  'confirmar-sin-bloqueo': [["if(btn){ btn.disabled=true; btn.textContent='Enviando…'; }", ""]],
+  // los botones del coach no se bloquean mientras envía
+  'coach-sin-bloqueo': [["  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();\n  const args=", "  TIENDA.ui.ocupado[id]=true;\n  const args="]],
+  // la bandeja vuelve al orden viejo (más viejo primero)
+  'bandeja-al-reves': [["Date.parse(b.creado)-Date.parse(a.creado));   // el más nuevo arriba (como la maqueta)", "Date.parse(a.creado)-Date.parse(b.creado));"]],
+  // la barra de proteína vuelve a llevar la manzana
+  'icono-manzana': [["barras:'box'};", "barras:'apple'};"]],
+  // el ?avi-pedidos=1 se queda en la URL (solo se mira el texto: está en app-2-login, lo cubre la prueba estática)
   // el botón de un producto agotado queda activo
   'agotado-activo': [["'disabled aria-disabled=\"true\"'", "''"]],
 };
@@ -80,6 +100,7 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     ok(/Preentreno · sachet/.test(room) && /1 porción, sellado/.test(room) && /\$4\.000/.test(room), 'A: la tarjeta lleva nombre, descripción y precio');
     ok((room.match(/>Disponible</g) || []).length === 2 && (room.match(/>Agotado</g) || []).length >= 1, 'A: insignias «Disponible» (2) y «Agotado»');
     ok(/disabled aria-disabled="true"/.test(room), 'A: el botón del agotado va desactivado (gris)');
+    ok(/data-i="box"/.test(room) && !/data-i="apple"/.test(room), 'A: la barra de proteína lleva el ícono de la caja (box), no una manzana');
     ok(!/costo|margen|unidades|stock/i.test(room.replace(/Stock\b/g, '')), 'A: la persona NO ve costo, margen ni unidades');
     // hoja: cantidad 1 → 2, total $8.000
     ctx.tiendaPedir('p1'); ctx.tiendaCant(1);
@@ -119,9 +140,15 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(30);
     ctx.tiendaPedir('p1'); H.S.catalogo[0].disponible = false;   // alguien más se llevó lo último
     await ctx.tiendaConfirmarPedido(); await esperar(30);
-    ok(/Se acaba de agotar/.test(el('pd-err').textContent) && el('pd-err').style.display === 'block', 'B: el error dice «Se acaba de agotar»: ' + el('pd-err').textContent);
+    ok(el('pd-err').textContent === 'Se acaba de agotar.' && el('pd-err').style.display === 'block', 'B: si ya no queda ninguna, el error dice «Se acaba de agotar.»: ' + el('pd-err').textContent);
     ok(!Object.keys(H.cloud.tienda_pedidos).length && !H.pushes.length, 'B: no queda pedido ni push');
     ok(/Agotado/.test(el('tienda-body').innerHTML.split('Preentreno')[1].split('Creatina')[0]), 'B: el catálogo se refrescó y el producto ya sale «Agotado»');
+    // Pidió MÁS de lo que queda (el producto sigue disponible): «No quedan tantas…»
+    H.S.catalogo[0].disponible = true; ctx.tiendaRender(); ctx.tiendaPedir('p1');
+    await ctx.tiendaConfirmarPedido(); await esperar(30);
+    ok(el('pd-err').textContent === 'No quedan tantas. Prueba con menos o pregúntale a tu coach.', 'B: si todavía quedan algunas, dice «No quedan tantas. Prueba con menos o pregúntale a tu coach.»: ' + el('pd-err').textContent);
+    ok(!/Agotado/.test(el('tienda-body').innerHTML.split('Preentreno')[1].split('Creatina')[0]), 'B: y la tarjeta sigue «Disponible» (el catálogo se volvió a bajar)');
+    ok(H.llamadas.filter(l => l.name === 'tienda_catalogo').length >= 3, 'B: con el error «agotado» se vuelve a bajar el catálogo');
     // cada código con su texto propio, distinto
     const textos = ['agotado', 'menor', 'limite', 'no_disponible', 'sin_red', 'otro'].map(c => ctx.tiendaErrorTexto(c));
     ok(new Set(textos).size === textos.length, 'B: cada error tiene su texto propio');
@@ -152,7 +179,7 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     const room = el('tienda-body').innerHTML;
     ok(/Creatina 300 g/.test(room) && !/Quemador/.test(room), 'D: la menor ve la creatina y NO el «No para menores»');
     ok(/1 producto</.test(ctx.tiendaFilaPerfil(ctx.DB.clients[0])), 'D: la fila del Perfil cuenta solo lo que puede ver (1)');
-    ctx.CUR.clientId = 'u3'; ctx.tiendaRender();
+    H.setUid('u3'); H.S.uid = 'u3'; ctx.CUR.clientId = 'u3'; await ctx.tiendaCatalogoBajar(); ctx.tiendaRender();
     ok(/Quemador/.test(el('tienda-body').innerHTML), 'D-CONTROL: una persona adulta SÍ ve el mismo producto');
   }
 
@@ -169,7 +196,7 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
 
   // ═════ F · Migración sin aplicar (las funciones no existen): nada se rompe ═════
   {
-    const cache = { ax_tienda: JSON.stringify({ cid: 'u1', c: productosTienda }) };   // de cuando sí había tienda
+    const cache = { ax_tienda: JSON.stringify({ uid: 'u1', c: productosTienda }) };   // de cuando sí había tienda
     const H = crear(ROOT, { sabotajes, uid: 'u1', storage: cache, tablaFalta: ['tienda_pedidos'], clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: [], uid: 'u1', sinFunciones: true } });
     const { ctx, el, toasts } = H;
     ctx.CUR.clientId = 'u1';
@@ -216,7 +243,7 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     ctx.tiendaRenderPedidos();
     const lista = el('pd-list').innerHTML;
     ok(el('pd-sub').textContent === '2 por entregar', 'G: el subtítulo dice «2 por entregar»');
-    ok(lista.indexOf('Juan Prueba · 1 × Creatina 300 g') > -1 && lista.indexOf('Juan Prueba · 1 × Creatina 300 g') < lista.indexOf('Laura Prueba · 2 × Preentreno · sachet'), 'G: los pendientes van del más viejo al más nuevo (Juan antes que Laura)');
+    ok(lista.indexOf('Laura Prueba · 2 × Preentreno · sachet') > -1 && lista.indexOf('Laura Prueba · 2 × Preentreno · sachet') < lista.indexOf('Juan Prueba · 1 × Creatina 300 g'), 'G: los pendientes van del más NUEVO al más viejo (Laura, de hace un minuto, antes que Juan, de ayer)');
     ok(/Hoy \d{1,2}:\d{2} (a|p)\. m\. · \$8\.000/.test(lista) && /Ayer \d{1,2}:\d{2} (a|p)\. m\. · \$85\.000/.test(lista), 'G: cada pedido dice «Hoy 7:42 a. m. · $8.000»: ' + (lista.match(/vt-sub">[^<]*/g) || []).join(' | '));
     ok(/Al tocar <b>Entregado<\/b>/.test(lista) && /Si cancelas, no se toca nada/.test(lista), 'G: lleva la nota de la maqueta');
     const ult = lista.split('Últimos 7 días')[1] || '';
@@ -340,6 +367,88 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     llamadas.length = 0; ctx.suplOpenVenta('u1'); ctx.suplVentaElegir('p1'); await ctx.suplGuardarVenta();
     const v1 = llamadas.find(l => l.op === 'upsert' && l.t === 'coach_ventas');
     ok(v1 && !('cantidad' in v1.row) && v1.row.precio === 85000, 'K-CONTROL: una venta de 1 unidad sube como siempre (sin la columna cantidad)');
+  }
+
+  // ═════ L · 🔒 Cambio de cuenta en la MISMA pestaña: el menor no ve nada de la adulta (con y sin señal) ═════
+  for (const modo of ['con-reinicio', 'solo-uid']) {
+    for (const senal of [true, false]) {
+      const cat = uid => (uid === 'u1' ? productosTienda : productosTienda.filter(p => p.id !== 'p1'));   // el servidor ya le quita el «No para menores» al menor
+      const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }, { id: 'u2', name: 'Sofía Prueba', age: 15 }], servidor: { catalogo: cat, uid: 'u1' } });
+      const { ctx, el, store, net } = H; const que = modo + (senal ? ' con señal' : ' sin señal');
+      ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(30);
+      ctx.tiendaPedir('p1'); await ctx.tiendaConfirmarPedido();
+      ok(/Preentreno/.test(el('tienda-body').innerHTML) && Object.keys(H.cloud.tienda_pedidos).length === 1, 'L (' + que + '): control, la adulta sí tiene catálogo y su pedido');
+      ok(/"uid":"u1"/.test(store.ax_tienda || ''), 'L (' + que + '): la caché local queda atada al uid de la adulta');
+      // ── sale de la cuenta (logout() llama a tiendaReset) y entra el menor en la misma pestaña ──
+      if (modo === 'con-reinicio') { ctx.tiendaReset(); ok(!('ax_tienda' in store), 'L (' + que + '): al salir se borra la caché local de la tienda'); }
+      ctx.CUR.clientId = 'u2'; H.setUid('u2'); H.S.uid = 'u2'; net.on = senal;
+      const menor = ctx.DB.clients[1];
+      const fila = ctx.tiendaFilaPerfil(menor); await esperar(40);
+      const fila2 = ctx.tiendaFilaPerfil(menor);
+      ctx.tiendaAbrir(); await esperar(40);
+      const sala = el('tienda-body').innerHTML;
+      ok(!/Preentreno/.test(fila + fila2 + sala), '🔴 L (' + que + '): el menor ve algo de la adulta (el «No para menores» o su pedido): ' + (fila2 + sala).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160));
+      ok(!/Mis pedidos|Esperando entrega|2 × |1 × Preentreno/.test(sala), '🔴 L (' + que + '): el menor ve «Mis pedidos» de la adulta');
+      if (senal) ok(/Creatina 300 g/.test(sala) && !/Preentreno/.test(sala), 'L (' + que + '): CONTROL, con señal el menor sí ve SU catálogo (sin el «No para menores»)');
+      else ok(!/Creatina/.test(sala) && fila === '' && fila2 === '', 'L (' + que + '): sin señal no ve ninguna tienda (ni la fila): no hay nada suyo que enseñar');
+    }
+  }
+
+  // ═════ M · El catálogo que falla (sin señal) se REINTENTA: al volver la señal y al abrir el Perfil ═════
+  {
+    const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1' } });
+    const { ctx, net, llamadas } = H;
+    ctx.CUR.clientId = 'u1'; const c = ctx.DB.clients[0];
+    net.on = false;
+    ok(ctx.tiendaFilaPerfil(c) === '', 'M: sin señal la fila no sale'); await esperar(40);
+    ok(ctx.tiendaFilaPerfil(c) === '', 'M: y sigue sin salir mientras no haya señal');
+    net.on = true; await H.disparar('online'); await esperar(40);
+    ok(/Tienda · suplementos de tu coach/.test(ctx.tiendaFilaPerfil(c)), '🔴 M: al volver la señal el catálogo se reintenta y la fila aparece (antes quedaba apagada toda la sesión)');
+    // y al abrir el Perfil (que pinta la fila), sin que haya vuelto a sonar el evento de señal
+    const H2 = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1' } });
+    H2.ctx.CUR.clientId = 'u1'; H2.net.on = false; H2.ctx.tiendaFilaPerfil(H2.ctx.DB.clients[0]); await esperar(40);
+    H2.net.on = true; H2.ctx.tiendaFilaPerfil(H2.ctx.DB.clients[0]); await esperar(40);
+    ok(/Tienda · suplementos de tu coach/.test(H2.ctx.tiendaFilaPerfil(H2.ctx.DB.clients[0])), '🔴 M: al abrir el Perfil con señal el catálogo se reintenta');
+  }
+
+  // ═════ N · S5a: el reintento sin señal NUNCA sube stock_*, y tras subir refresca el stock ═════
+  {
+    const prod = { id: 'p1', coach_id: COACH, nombre: 'Preentreno · sachet', categoria: 'preentreno', precio: 4000, costo: 2720, no_menores: true, activo: true, en_tienda: true, descripcion: '', stock_entradas: 50, stock_desde: iso(ahora - dia), stock_ultima_carga: 50, creado: iso(ahora), actualizado: iso(ahora) };
+    const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { coach_productos: [prod] }, servidor: { catalogo: [], stock: { p1: { producto_id: 'p1', lleva_stock: true, stock_actual: 32, apartado: 0, ultima_carga: 50 } } } });
+    const { ctx, el, llamadas, net } = H;
+    await ctx.suplCargar(); await ctx.tiendaStockCargar();
+    net.on = false; ctx.suplAbrirProducto('p1'); el('pr-precio').value = '4.500'; await ctx.suplGuardarProducto();   // queda pendiente en el teléfono
+    ok(ctx.__SUPL.pend.coach_productos.p1 === true, 'N: control, el producto quedó pendiente sin señal');
+    ok(ctx.__SUPL.productos.find(x => x.id === 'p1').stock_entradas === 50, 'N-CONTROL: la copia local sí trae stock_entradas (50)');
+    llamadas.length = 0; net.on = true; await H.disparar('online'); await esperar(60);
+    const up = llamadas.filter(l => l.op === 'upsert' && l.t === 'coach_productos');
+    ok(up.length >= 1, 'N: el reintento sí subió el producto');
+    ok(up.every(l => !Object.keys(l.row).some(k => /^stock_/.test(k))), '🔴 N: el reintento sin señal NO puede subir stock_entradas/stock_desde/stock_ultima_carga: ' + (up[0] && Object.keys(up[0].row).join(',')));
+    ok(llamadas.some(l => l.name === 'coach_stock'), '🔴 N: tras un reintento que sale bien se refresca el stock en pantalla');
+  }
+
+  // ═════ O · «Enviando…»: el botón se bloquea y no se manda dos veces ═════
+  {
+    const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1', demora: 60 } });
+    const { ctx, el, llamadas } = H;
+    ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(120);
+    ctx.tiendaPedir('p2');
+    const pr = ctx.tiendaConfirmarPedido(); await esperar(10);
+    ok(el('pd-ok').disabled === true && el('pd-ok').textContent === 'Enviando…', '🔴 O: mientras envía, «Confirmar pedido» se desactiva y dice «Enviando…»: ' + el('pd-ok').disabled + ' · ' + el('pd-ok').textContent);
+    ctx.tiendaConfirmarPedido();
+    await pr; await esperar(150);
+    ok(llamadas.filter(l => l.name === 'tienda_pedir').length === 1, 'O: un segundo toque mientras envía no manda otro pedido');
+    ok(el('pd-ok').disabled === false && el('pd-ok').textContent === 'Confirmar pedido', 'O: al terminar el botón vuelve a «Confirmar pedido»');
+  }
+  {
+    const row = { id: 'a', coach_id: COACH, client_uid: 'u1', client_id: 'u1', client_nombre: 'Laura Prueba', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 2, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: iso(ahora - 60000), resuelto: null };
+    const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: productosTienda, costos: { p1: 2720 }, demora: 60 } });
+    const { ctx, el } = H;
+    await ctx.suplCargar(); await ctx.tiendaCoachCargar(true); ctx.tiendaRenderPedidos();
+    const pr = ctx.tiendaEntregar('a'); await esperar(10);
+    const h = el('pd-list').innerHTML;
+    ok(/disabled[^>]*>Enviando…/.test(h) && (h.match(/ disabled aria-disabled="true"/g) || []).length === 3, '🔴 O: mientras el coach entrega, Entregado dice «Enviando…» y Cuotas y Cancelar quedan desactivados: ' + (h.match(/<button[^>]*>/g) || []).join(' '));
+    await pr;
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

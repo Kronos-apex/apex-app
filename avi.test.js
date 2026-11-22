@@ -28245,7 +28245,7 @@ test('v756 · el catálogo NUNCA devuelve costo, stock, apartado ni entradas; so
   assert.ok(/u\.coach_id = v_coach/.test(c), '🔴 quien no es asesorado del coach tiene que recibir vacío');
   // la edad sale de profile->>'age' (así se llama en la base: 39 de 39 asesorados), y solo cuenta si es un número
   const edad = _t756.fn('_tienda_edad');
-  assert.ok(/\(u\.profile ->> 'age'\) ~ '\^\\d\+\(\\\.\\d\+\)\?\$'/.test(edad), '🔴 la edad tiene que salir de profile->>\'age\' y validarse como número');
+  assert.ok(/\(u\.profile ->> 'age'\) ~ '\^\\d\{1,3\}\(\\\.\\d\+\)\?\$'/.test(edad), '🔴 la edad tiene que salir de profile->>\'age\' y validarse como número de 1 a 3 dígitos (una edad absurda desbordaba ::int y rompía el catálogo)');
   assert.ok(!/'edad'/.test(_t756.sqlSin), '🔴 el campo de la edad en la base NO se llama «edad»: es profile->>\'age\'');
   // CONTROL: el costo sí está en la función de entregar (el análisis discrimina)
   assert.ok(/costo/.test(fn('tienda_entregar')), 'control: tienda_entregar sí usa el costo');
@@ -28322,12 +28322,49 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'pocas-sin-texto': /Quedan pocas: pide más/,
     'cantidad-ignorada': /la venta se guarda con cantidad 2/,
     'agotado-activo': /desactivado \(gris\)/,
+    'sin-reset': /el menor ve algo de la adulta|al salir se borra la caché/,
+    'sin-guardia': /el menor ve algo de la adulta/,
+    'catbajado-siempre': /el catálogo se reintenta/,
+    'reintento-sube-todo': /el reintento sin señal NO puede subir/,
+    'reintento-sin-refresco': /se refresca el stock en pantalla/,
+    'agotado-texto-fijo': /No quedan tantas/,
+    'confirmar-sin-bloqueo': /Enviando…/,
+    'coach-sin-bloqueo': /Enviando…/,
+    'bandeja-al-reves': /más NUEVO al más viejo/,
+    'icono-manzana': /ícono de la caja/,
   };
   Object.keys(casos).forEach(k => {
     const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
     assert.notStrictEqual(r.status, 0, '🔴 el sabotaje «' + k + '» NO hizo caer la prueba (candado que nunca falla)');
     assert.ok(casos[k].test(r.stderr), '🔴 «' + k + '» cayó por otra razón: ' + r.stderr.slice(0, 400));
   });
+});
+test('v756 (verificador) · cambio de cuenta: logout() reinicia la tienda; la caché va atada al uid; el aviso ?avi-pedidos se quita de la URL', () => {
+  const fs = _t756.fs, path = _t756.path;
+  const login = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const lo = login.slice(login.indexOf('function logout(){'), login.indexOf('function logout(){') + 6000);
+  assert.ok(/tiendaReset\(\)/.test(lo.slice(0, lo.indexOf('\n}\n'))), '🔴 logout() no reinicia la tienda: el menor que entra después ve el catálogo de la adulta');
+  const extra = _supl748.ui;
+  const reset = (extra.match(/function tiendaReset\(\)\{[\s\S]*?\n\}/) || [''])[0];
+  assert.ok(/localStorage\.removeItem\('ax_tienda'\)/.test(reset) && /Object\.assign\(TIENDA,_tiendaNuevo\(\)\)/.test(reset), '🔴 tiendaReset no deja TIENDA en su estado inicial ni borra la caché');
+  assert.ok(/JSON\.stringify\(\{uid:u,c:TIENDA\.catalogo\}\)/.test(extra) && /d\.uid===u/.test(extra), '🔴 la caché del catálogo no está atada al uid');
+  assert.ok(/_tiendaEsDeAhora\(r\)/.test(extra), '🔴 una respuesta que llega tarde de otra cuenta no se descarta');
+  assert.ok(/_u\.searchParams\.delete\('avi-pedidos'\)[\s\S]{0,120}history\.replaceState\(history\.state/.test(login), '🔴 ?avi-pedidos=1 se queda en la URL: recargar reabre la bandeja');
+  // CONTROL: el chequeo de «reinicia» sí ve un logout sin él
+  assert.ok(!/tiendaReset\(\)/.test('function logout(){ cmtyResetIdentity(); }'), 'control');
+});
+test('v756 (verificador) · migración: la tienda es SOLO para quien entrena con el coach (ni plan libre ni app) y una edad absurda no rompe el catálogo', () => {
+  const { fn } = _t756;
+  const cond = /lower\(coalesce\(u\.profile ->> 'tier', ''\)\) not in \('libre', 'app'\)/;
+  assert.ok(cond.test(fn('tienda_catalogo')), '🔴 el catálogo deja ver la tienda a cuentas Libres o de plan app');
+  assert.ok(cond.test(fn('tienda_pedir')), '🔴 tienda_pedir deja pedir a cuentas Libres o de plan app');
+  // fiel a avi-core: clientHasCoach excluye exactamente 'libre' y 'app'
+  const core756 = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
+  assert.ok(/client\.tier !== 'app' && client\.tier !== 'libre'/.test(core756), 'control: clientHasCoach cambió, hay que volver a copiarlo a SQL');
+  assert.ok(/\^\\d\{1,3\}/.test(fn('_tienda_edad')) && !/\^\\d\+/.test(fn('_tienda_edad')), '🔴 la edad acepta más de 3 dígitos y desborda ::int');
+  const t = require('fs').readFileSync(require('path').join(__dirname, 'scripts', 'sql', 'probar-tienda.sql'), 'utf8');
+  assert.ok(/plan Libre: el catálogo sale vacío/.test(t) && /plan Libre: no puede pedir/.test(t) && /CONTROL plan premium: SÍ ve el catálogo/.test(t) && /CONTROL plan premium: SÍ puede pedir/.test(t), '🔴 faltan las pruebas SQL de la persona Libre (con su CONTROL premium)');
+  assert.ok(/99999999999/.test(t) && /edad absurda/.test(t), '🔴 falta la prueba SQL de la edad absurda');
 });
 test('v756 · el upsert de productos NO incluye stock (candado estático) y el modelo de pedidos habla solo con su tabla', () => {
   const ui = _supl748.ui;

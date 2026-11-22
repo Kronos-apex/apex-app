@@ -12,6 +12,9 @@
 --    (también la que se hizo sin señal y subió después) descuenta sola, una venta borrada con lápida
 --    devuelve las unidades, y una copia vieja del teléfono no puede pisar el stock: el teléfono NUNCA
 --    escribe `stock_entradas`, `stock_desde` ni `stock_ultima_carga` (solo `tienda_cargar_stock`).
+-- 🎯 La tienda es SOLO para quien entrena con el coach (decisión del dueño): además de `user_data.coach_id`, el plan no puede ser
+--    'libre' ni 'app' (copia fiel de `clientHasCoach` de avi-core: `tier !== 'libre' && tier !== 'app'`; el mes de PRO de bienvenida
+--    sigue siendo tier 'libre', o sea que tampoco ve la tienda). Lo único que no se lleva a SQL es `_self` (la fila del propio coach, que no es asesorada).
 -- 🧒 La edad vive en `user_data.profile->>'age'` (texto: '15', '33'). Si no es un número, la edad es
 --    DESCONOCIDA y se trata como menor: no ve ni puede pedir los «No para menores».
 --
@@ -138,7 +141,7 @@ language sql
 security definer
 set search_path = ''
 as $$
-  select case when (u.profile ->> 'age') ~ '^\d+(\.\d+)?$' then floor((u.profile ->> 'age')::numeric)::int end
+  select case when (u.profile ->> 'age') ~ '^\d{1,3}(\.\d+)?$' then floor((u.profile ->> 'age')::numeric)::int end
   from public.user_data u
   where u.user_id = p_uid;
 $$;
@@ -166,7 +169,9 @@ begin
   v_es_coach := (v_uid = v_coach);
   if not v_es_coach then
     -- Solo las personas que entrenan con este coach (user_data.coach_id) ven la tienda.
-    if not exists (select 1 from public.user_data u where u.user_id = v_uid and u.coach_id = v_coach) then
+    if not exists (select 1 from public.user_data u
+                   where u.user_id = v_uid and u.coach_id = v_coach
+                     and lower(coalesce(u.profile ->> 'tier', '')) not in ('libre', 'app')) then
       return;
     end if;
     v_edad := public._tienda_edad(v_uid);
@@ -210,7 +215,9 @@ begin
   -- Una persona a la vez: dos pedidos suyos simultáneos no se saltan el tope.
   perform pg_advisory_xact_lock(hashtext('tienda_pedir:' || v_uid::text));
 
-  select * into v_user from public.user_data u where u.user_id = v_uid and u.coach_id = v_coach;
+  select * into v_user from public.user_data u
+    where u.user_id = v_uid and u.coach_id = v_coach
+      and lower(coalesce(u.profile ->> 'tier', '')) not in ('libre', 'app');
   if not found then raise exception 'no_disponible'; end if;
   if lower(coalesce(v_user.profile ->> 'suspended', 'false')) = 'true' then raise exception 'no_disponible'; end if;
 
