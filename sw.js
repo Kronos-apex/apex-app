@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avi-v755';
+const CACHE_NAME = 'avi-v756';
 // La página pide JS/CSS con ?v=NNN (cache-bust del WebView Huawei, v230) — el precache
 // debe usar LA MISMA URL o nunca matchea (instalación fresca + offline quedaba sin JS).
 // El check 10 del pre-commit garantiza que ?v= y CACHE_NAME van siempre juntos.
@@ -167,7 +167,7 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   if(!e.data) return;
   let d = {}; try { d = e.data.json(); } catch { d = {title: 'AVI', body: e.data.text()}; }
-  const isMsg = d.type === 'message';
+  const isMsg = d.type === 'message' || d.type === 'pedido';   // v756 · un pedido de la tienda suena y vibra como un mensaje
   e.waitUntil(self.registration.showNotification(d.title || 'AVI', {
     body: d.body || '',
     icon: BASE + 'icons/icon-192.png',
@@ -194,7 +194,7 @@ self.addEventListener('notificationclick', e => {
       return cls[0].focus();
     }
     const base = self.registration.scope;
-    const url = data.chatId ? base + '?avi-chat=' + data.chatId : base;
+    const url = data.chatId ? base + '?avi-chat=' + data.chatId : (data.type === 'pedido' ? base + '?avi-pedidos=1' : base);
     if(clients.openWindow) return clients.openWindow(url);
   }));
 });

@@ -14486,6 +14486,104 @@ function suplMargenPromedio(productos) {
   return act.length ? Math.round(act.reduce((t, p) => t + suplMargen(p.precio, p.costo), 0) / act.length) : 0;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// TIENDA DE SUPLEMENTOS (v756) — lógica pura. La persona pide, el coach entrega.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// 🔒 La persona NUNCA ve costo, margen ni unidades: el catálogo (`tienda_catalogo()`) solo trae nombre,
+//    descripción, precio y «disponible». El stock vive en el servidor, «por libro» (entradas menos ventas):
+//    por eso no hay cola de pedidos sin señal.
+// 🧒 La edad del asesorado es `age` (la misma de `suplAvisoMenor`). Menor de 18 o sin edad = no ve los
+//    «No para menores». (Distinto del aviso del coach al vender, que informa y no bloquea.)
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+const TIENDA_POCAS = 5;          // con tantas unidades o menos, «quedan pocas»
+const TIENDA_MAX_CANTIDAD = 10;  // por pedido
+const TIENDA_MAX_PENDIENTES = 3; // pedidos esperando entrega por persona
+function tiendaMoneda(n) { return '$' + suplMonto(n).toLocaleString('es-CO'); }
+// Estado del stock de UN producto para pintar. `s` = fila de coach_stock():
+// {lleva_stock, stock_actual, apartado, ultima_carga}. Sin stock → siempre disponible.
+function tiendaStockEstado(s) {
+  if (!s || !s.lleva_stock) return { texto: 'Sin límite', pct: 100, nivel: 'sin_stock', actual: null, apartado: 0 };
+  const actual = Math.max(0, parseInt(s.stock_actual, 10) || 0);
+  const apartado = Math.max(0, parseInt(s.apartado, 10) || 0);
+  const base = Math.max(parseInt(s.ultima_carga, 10) || 0, actual);
+  const pct = base > 0 ? Math.min(100, Math.round(actual / base * 100)) : 0;
+  if (actual <= 0) return { texto: '0', pct: 0, nivel: 'agotado', actual: 0, apartado };
+  return { texto: actual + ' de ' + base, pct, nivel: actual <= TIENDA_POCAS ? 'pocas' : 'ok', actual, apartado };
+}
+function tiendaPedidoEtiqueta(estado) {
+  if (estado === 'entregado') return { texto: 'Entregado', tono: 'verde' };
+  if (estado === 'cancelado') return { texto: 'Cancelado', tono: 'gris' };
+  return { texto: 'Esperando entrega', tono: 'ambar' };
+}
+// ¿Ve la tienda? La entrega es en el gym: solo quien entrena con el coach. UNA sola regla, para poder cambiarla.
+function tiendaVeTienda(c) { return !!c && !isSelfClient(c) && clientHasCoach(c); }
+// ¿Se le muestra este producto a esta persona? `no_menores`: solo con edad registrada de 18 o más.
+function tiendaMuestraProducto(producto, client) {
+  if (!producto) return false;
+  if (!producto.no_menores) return true;
+  const edad = parseInt(client && client.age, 10);
+  return isFinite(edad) && edad >= SUPL_MAYORIA_EDAD;
+}
+function tiendaResumenPedido(p) {
+  return (parseInt(p && p.cantidad, 10) || 1) + ' × ' + String((p && p.producto_nombre) || '').trim();
+}
+// Aviso al coach: sin datos de salud, solo quién, qué y cuánto.
+function tiendaPushTexto(p, nombre) {
+  const quien = String(nombre || (p && p.client_nombre) || 'Alguien').trim().split(/\s+/)[0] || 'Alguien';
+  const total = suplMonto(p && p.precio_unit) * (parseInt(p && p.cantidad, 10) || 1);
+  return { title: 'Pedido de la tienda', body: quien + ' pidió ' + tiendaResumenPedido(p) + ' (' + tiendaMoneda(total) + ')' };
+}
+// El error de Postgres trae solo un código corto en el mensaje; sin señal es un fallo de red.
+const TIENDA_CODIGOS = ['agotado', 'menor', 'limite', 'sin_stock', 'no_disponible'];
+function tiendaErrorCodigo(err) {
+  const m = String((err && (err.message || err.details || err)) || '').toLowerCase();
+  if (/could not find the function|pgrst202|schema cache/.test(m)) return 'no_funcion';
+  if (/failed to fetch|networkerror|network request|load failed|fetch failed|offline|sin_red/.test(m)) return 'sin_red';
+  for (const c of TIENDA_CODIGOS) if (m.indexOf(c) >= 0) return c;
+  return 'otro';
+}
+const TIENDA_ERRORES = {
+  sin_red: 'Sin señal: tu pedido no salió. Inténtalo cuando tengas internet.',
+  agotado: 'Se acaba de agotar. Pídele a tu coach que te avise cuando llegue más.',
+  menor: 'Este producto no es para menores de 18 años.',
+  limite: 'Ya tienes 3 pedidos esperando entrega. Cuando tu coach te entregue uno, puedes pedir otro.',
+  no_disponible: 'Este producto ya no está disponible.',
+  sin_stock: 'No alcanza el stock para entregar este pedido. Agrega unidades en «Mis productos».',
+  no_funcion: 'La tienda aún no está disponible. Inténtalo más tarde.',
+  sellado: 'Esta copia es de pruebas: no manda pedidos a la nube.',
+  otro: 'No pudimos completar el pedido. Inténtalo de nuevo en un momento.',
+};
+// El coach lee distinto algunos mensajes: él entrega, cancela y carga stock (no «pide»).
+const TIENDA_ERRORES_COACH = {
+  sin_red: 'Sin señal: hace falta internet para esto. Inténtalo cuando tengas.',
+  no_disponible: 'Este pedido ya no está pendiente: otra pantalla ya lo entregó o lo canceló.',
+  otro: 'No se pudo completar. Inténtalo de nuevo en un momento.',
+};
+function tiendaErrorTexto(codigo, rol) {
+  if (rol === 'coach' && TIENDA_ERRORES_COACH[codigo]) return TIENDA_ERRORES_COACH[codigo];
+  return TIENDA_ERRORES[codigo] || TIENDA_ERRORES.otro;
+}
+// «Hoy 7:42 a. m.» · «Ayer 3:10 p. m.» · «12 de noviembre»
+function tiendaFechaTxt(iso, now) {
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const hoy = now ? new Date(now) : new Date();
+  const dia = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dif = Math.round((dia(hoy) - dia(d)) / 86400000);
+  let h = d.getHours(); const m = String(d.getMinutes()).padStart(2, '0');
+  const suf = h >= 12 ? 'p. m.' : 'a. m.'; h = h % 12 || 12;
+  const hora = h + ':' + m + ' ' + suf;
+  if (dif === 0) return 'Hoy ' + hora;
+  if (dif === 1) return 'Ayer ' + hora;
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+}
+function tiendaAvisoPocas(nombre, quedan) { return 'Quedan ' + quedan + ' de ' + nombre + ': pide más'; }
+// Pedidos de los últimos `dias` días, los más nuevos primero (para «Mis pedidos» y «Últimos 7 días»).
+function tiendaRecientes(pedidos, dias, now) {
+  const corte = (now ? new Date(now).getTime() : Date.now()) - dias * 86400000;
+  return (pedidos || []).filter(p => p && Date.parse(p.creado) >= corte).slice()
+    .sort((a, b) => Date.parse(b.creado) - Date.parse(a.creado));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     PROFILE_SECS, PROFILE_LOCK_TXT, profileRowsModel,
@@ -15254,5 +15352,23 @@ if (typeof module !== 'undefined' && module.exports) {
     suplQuienDebe,
     suplVentasDe,
     suplMargenPromedio,
+    TIENDA_POCAS,
+    TIENDA_MAX_CANTIDAD,
+    TIENDA_MAX_PENDIENTES,
+    tiendaMoneda,
+    tiendaStockEstado,
+    tiendaPedidoEtiqueta,
+    tiendaVeTienda,
+    tiendaMuestraProducto,
+    tiendaResumenPedido,
+    tiendaPushTexto,
+    TIENDA_CODIGOS,
+    tiendaErrorCodigo,
+    TIENDA_ERRORES,
+    TIENDA_ERRORES_COACH,
+    tiendaErrorTexto,
+    tiendaFechaTxt,
+    tiendaAvisoPocas,
+    tiendaRecientes,
   };
 }

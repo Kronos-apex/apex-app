@@ -1615,6 +1615,7 @@ async function tryAutoLogin(){
       return;
     }
     const _aviChat=new URLSearchParams(location.search).get('avi-chat');
+    const _aviPedidos=new URLSearchParams(location.search).get('avi-pedidos');   // v756 · el aviso de un pedido abre la bandeja
     if(session.role === 'coach'){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';
@@ -1622,6 +1623,7 @@ async function tryAutoLogin(){
       startMsgPolling();
       resetLoginAttempts();
       if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
+      if(_aviPedidos&&typeof tiendaAbrirPedidos==='function')setTimeout(tiendaAbrirPedidos,900);
       if(Notification.permission==='granted') setTimeout(()=>{subscribePush('_coach');restoreNotifications();},3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
@@ -1797,6 +1799,9 @@ function _aviCloseTopOverlay(){
   if(pu&&pu.classList.contains('on')){closePremiumUpsell();return true;}
   // v708 · la pantalla de una fila del Perfil: debajo de lo que se abre desde ella (un récord, el plan en
   // grande, el candado de un plan).
+  // v756 · la tienda del asesorado se abre desde el Perfil: el atrás la cierra primero.
+  const tnr=document.getElementById('p-tienda');
+  if(tnr&&tnr.classList.contains('on')){closeTiendaRoom();return true;}
   const pfr=document.getElementById('perfil-room');
   if(pfr&&pfr.classList.contains('on')){if(typeof closePerfilRoom==='function')closePerfilRoom();else pfr.classList.remove('on');return true;}
   const luo=document.getElementById('level-up');
@@ -1840,6 +1845,7 @@ const _COACH_PANELS={
   'p-msgs':{sbi:'sbi-msgs',title:'Mensajes',nav:4},
   'p-detail':{sbi:'sbi-clients',title:'Detalle',nav:1},
   'p-productos':{sbi:'sbi-clients',title:'Mis productos',nav:1},
+  'p-pedidos':{sbi:'sbi-clients',title:'Pedidos de la tienda',nav:1},
 };
 // Restaura un panel previo del coach SIN registrar (lo usa el "undo" del stack del botón atrás).
 // p-detail recrea el detalle del asesorado que estaba abierto; si ya no existe (borrado) cae a la lista.

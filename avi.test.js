@@ -27906,7 +27906,7 @@ test('v748 · «ventas» y «productos» NO viajan a la fila del asesorado: ni e
   // la pantalla de ventas solo habla con sus dos tablas
   const tablas = [..._supl748.ui.matchAll(/\.from\(([^)]*)\)/g)].map(m => m[1]);
   assert.ok(tablas.length >= 3, 'no se leyeron las llamadas a la base');
-  tablas.forEach(t => assert.ok(/^(SUPL_T_PROD|SUPL_T_VENT|tabla)$/.test(t), '🔴 las ventas hablan con otra tabla: ' + t));
+  tablas.forEach(t => assert.ok(/^(SUPL_T_PROD|SUPL_T_VENT|tabla|'tienda_pedidos')$/.test(t), '🔴 las ventas hablan con otra tabla: ' + t));   // v756: la tienda lee SUS pedidos
   assert.ok(/SUPL_T_PROD='coach_productos', SUPL_T_VENT='coach_ventas'/.test(_supl748.ui));
 });
 test('v748 · la migración: RLS encendido en las dos tablas y UNA sola política por tabla, solo del coach', () => {
@@ -27948,7 +27948,7 @@ test('v748 · el respaldo local y el CLAUDE.md incluyen las dos tablas nuevas', 
     assert.ok(bk.includes("fetchTableOpcional('" + t + "')"), '🔴 el respaldo no baja ' + t);
     assert.ok(new RegExp('counts: \{[^}]*' + t + ': ' + t + '\.length').test(bk), '🔴 ' + t + ' no se cuenta en el respaldo');
   });
-  assert.ok(/push_subscriptions, coach_productos, coach_ventas, auth_users/.test(bk), '🔴 las tablas nuevas no entran al archivo del respaldo');
+  assert.ok(/push_subscriptions, coach_productos, coach_ventas, tienda_pedidos, auth_users/.test(bk), '🔴 las tablas nuevas no entran al archivo del respaldo');   // v756 suma tienda_pedidos
   const md = fs.readFileSync(path.join(__dirname, 'CLAUDE.md'), 'utf8');
   assert.ok(/coach_productos/.test(md) && /coach_ventas/.test(md), '🔴 CLAUDE.md no dice que esas tablas están en el respaldo');
 });
@@ -28118,6 +28118,256 @@ test('🔒 21-nov: el asesorado no se toca los campos del coach en su fila (pago
     '🔴 sin SECURITY DEFINER el EXISTS no ve la fila del coach (RLS) y sin search_path fijo es inseguro');
   // CONTROL: la lectura de las claves funciona (si el regex no encontrara nada, todo lo de arriba fallaría igual).
   assert.ok(claves.length > 10, 'control: no se pudieron leer las claves del trigger');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 · TIENDA DE SUPLEMENTOS (la persona pide, el coach entrega)
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+const _t756 = (() => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20261122_tienda_pedidos.sql'), 'utf8');
+  const sqlSin = sql.replace(/\r/g, '').split('\n').map(l => l.replace(/--.*$/, '')).join('\n');   // sin comentarios: un candado no puede aprobar por lo que YO escribí en un comentario
+  const fn = nombre => { const i = sqlSin.indexOf('create or replace function public.' + nombre + '('); if (i < 0) return ''; const j = sqlSin.indexOf('create or replace function', i + 10); return sqlSin.slice(i, j < 0 ? undefined : j); };
+  return { fs, path, sql, sqlSin, fn };
+})();
+const _t756Corre = (script, env) => require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', script)], { encoding: 'utf8', env: Object.assign({}, process.env, env || {}) });
+
+test('v756 · stock para pintar: «32 de 50», barra, «pocas» con 5 o menos (TIENDA_POCAS), agotado en 0 y sin stock = sin límite', () => {
+  assert.strictEqual(core.TIENDA_POCAS, 5);
+  const e = core.tiendaStockEstado({ lleva_stock: true, stock_actual: 32, ultima_carga: 50 });
+  assert.deepStrictEqual([e.texto, e.pct, e.nivel], ['32 de 50', 64, 'ok']);
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: true, stock_actual: 5, ultima_carga: 50 }).nivel, 'pocas', '5 ya es «pocas» (el umbral incluye el 5)');
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: true, stock_actual: 6, ultima_carga: 50 }).nivel, 'ok', 'CONTROL: 6 todavía es «ok»');
+  const z = core.tiendaStockEstado({ lleva_stock: true, stock_actual: 0, ultima_carga: 20 });
+  assert.deepStrictEqual([z.texto, z.pct, z.nivel], ['0', 0, 'agotado']);
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: true, stock_actual: -3, ultima_carga: 20 }).nivel, 'agotado', 'un negativo se lee como agotado');
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: true, stock_actual: 60, ultima_carga: 50 }).pct, 100, 'más que la última carga: la barra no pasa de 100');
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: false }).nivel, 'sin_stock');
+  assert.strictEqual(core.tiendaStockEstado(undefined).nivel, 'sin_stock');
+  assert.strictEqual(core.tiendaStockEstado({ lleva_stock: true, stock_actual: 2, apartado: 2, ultima_carga: 10 }).apartado, 2);
+});
+test('v756 · etiquetas del pedido: «Esperando entrega» en ámbar, «Entregado» en verde, «Cancelado» en gris', () => {
+  assert.deepStrictEqual(core.tiendaPedidoEtiqueta('pendiente'), { texto: 'Esperando entrega', tono: 'ambar' });
+  assert.deepStrictEqual(core.tiendaPedidoEtiqueta('entregado'), { texto: 'Entregado', tono: 'verde' });
+  assert.deepStrictEqual(core.tiendaPedidoEtiqueta('cancelado'), { texto: 'Cancelado', tono: 'gris' });
+});
+test('v756 · quién ve la tienda (UNA función): solo quien entrena con el coach; libres, plan app, la prueba PRO y el propio coach no', () => {
+  assert.strictEqual(core.tiendaVeTienda({ id: 'u1', name: 'Mariana' }), true, 'creada por el coach (sin tier)');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'u1', tier: 'premium' }), true);
+  assert.strictEqual(core.tiendaVeTienda({ id: 'u2', tier: 'libre' }), false);
+  assert.strictEqual(core.tiendaVeTienda({ id: 'u2', tier: 'libre', proTrialUntil: new Date(Date.now() + 864e5).toISOString() }), false, 'la prueba PRO no trae coach: no hay quién entregue');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'u3', tier: 'app' }), false);
+  assert.strictEqual(core.tiendaVeTienda({ id: '_self' }), false);
+  assert.strictEqual(core.tiendaVeTienda(null), false);
+});
+test('v756 · un «No para menores» solo se muestra con edad REGISTRADA de 18 o más (la edad es `age`, como en la base)', () => {
+  const nm = { id: 'x', no_menores: true }, normal = { id: 'y', no_menores: false };
+  assert.strictEqual(core.tiendaMuestraProducto(nm, { age: 17 }), false);
+  assert.strictEqual(core.tiendaMuestraProducto(nm, { age: 18 }), true, 'CONTROL: a los 18 sí');
+  assert.strictEqual(core.tiendaMuestraProducto(nm, { age: '15' }), false, 'la edad llega como texto: «15»');
+  assert.strictEqual(core.tiendaMuestraProducto(nm, {}), false, 'sin edad = no se muestra');
+  assert.strictEqual(core.tiendaMuestraProducto(nm, { age: 'abc' }), false, 'una edad que no es número = desconocida = no');
+  assert.strictEqual(core.tiendaMuestraProducto(nm, { edad: 30 }), false, 'el campo se llama `age`: «edad» no cuenta (así lo guarda user_data.profile)');
+  assert.strictEqual(core.tiendaMuestraProducto(normal, { age: 12 }), true, 'CONTROL: un producto sin la marca se le muestra a todo el mundo');
+  assert.strictEqual(core.tiendaMuestraProducto(null, { age: 30 }), false);
+});
+test('v756 · el aviso al coach: «<Nombre> pidió 2 × Preentreno · sachet ($8.000)», sin datos de salud ni apellido', () => {
+  const p = { cantidad: 2, producto_nombre: 'Preentreno · sachet', precio_unit: 4000, client_nombre: 'Laura Gómez', nota_salud: 'rodilla operada', lesion: 'LCA' };
+  const t = core.tiendaPushTexto(p, 'Laura Gómez');
+  assert.strictEqual(t.body, 'Laura pidió 2 × Preentreno · sachet ($8.000)');
+  assert.ok(!/rodilla|LCA|salud|Gómez/.test(t.title + t.body), '🔴 el aviso lleva datos que no debía');
+  assert.strictEqual(core.tiendaPushTexto({ cantidad: 1, producto_nombre: 'Creatina 300 g', precio_unit: 85000, client_nombre: 'Juan' }).body, 'Juan pidió 1 × Creatina 300 g ($85.000)', 'sin nombre aparte usa el del pedido');
+  assert.strictEqual(core.tiendaPushTexto({ cantidad: 1, producto_nombre: 'X', precio_unit: 1 }).body, 'Alguien pidió 1 × X ($1)');
+});
+test('v756 · errores por código: cada uno con su texto, el de sin señal exacto, y el coach lo lee a su manera', () => {
+  assert.strictEqual(core.tiendaErrorTexto('sin_red'), 'Sin señal: tu pedido no salió. Inténtalo cuando tengas internet.');
+  assert.ok(/Se acaba de agotar/.test(core.tiendaErrorTexto('agotado')));
+  const codigos = ['agotado', 'menor', 'limite', 'no_disponible', 'sin_stock', 'sin_red', 'no_funcion', 'sellado', 'otro'];
+  assert.strictEqual(new Set(codigos.map(c => core.tiendaErrorTexto(c))).size, codigos.length, 'dos códigos comparten texto');
+  assert.ok(/hace falta internet/.test(core.tiendaErrorTexto('sin_red', 'coach')));
+  assert.strictEqual(core.tiendaErrorTexto('agotado', 'coach'), core.tiendaErrorTexto('agotado'), 'CONTROL: lo que el coach no lee distinto sale igual');
+  ['agotado', 'menor', 'limite', 'no_disponible', 'sin_stock'].forEach(c => assert.strictEqual(core.tiendaErrorCodigo({ message: c }), c));
+  assert.strictEqual(core.tiendaErrorCodigo({ message: 'TypeError: Failed to fetch' }), 'sin_red');
+  assert.strictEqual(core.tiendaErrorCodigo({ message: 'Could not find the function public.tienda_pedir(p_cantidad) in the schema cache', code: 'PGRST202' }), 'no_funcion');
+  assert.strictEqual(core.tiendaErrorCodigo({ message: 'algo raro' }), 'otro');
+  Object.values({ a: core.tiendaErrorTexto('agotado'), b: core.tiendaErrorTexto('menor'), c: core.tiendaErrorTexto('limite') }).forEach(t => assert.ok(!/usuario|bienvenido/i.test(t), 'lenguaje que incluya a las mujeres'));
+});
+test('v756 · precio en pesos con el formato de la app, fecha del pedido («Hoy 7:42 a. m.») y últimos días', () => {
+  assert.strictEqual(core.tiendaMoneda(8000), '$8.000');
+  assert.strictEqual(core.tiendaMoneda('85.000'), '$85.000');
+  assert.strictEqual(core.tiendaMoneda(null), '$0');
+  const hoy = new Date(2026, 10, 22, 12, 0);
+  assert.strictEqual(core.tiendaFechaTxt(new Date(2026, 10, 22, 7, 42), hoy), 'Hoy 7:42 a. m.');
+  assert.strictEqual(core.tiendaFechaTxt(new Date(2026, 10, 21, 15, 10), hoy), 'Ayer 3:10 p. m.');
+  assert.ok(/12 de noviembre/.test(core.tiendaFechaTxt(new Date(2026, 10, 12, 9, 0), hoy)));
+  assert.strictEqual(core.tiendaFechaTxt('basura', hoy), '');
+  const r = core.tiendaRecientes([{ id: 'a', creado: new Date(2026, 10, 1).toISOString() }, { id: 'b', creado: new Date(2026, 9, 1).toISOString() }, { id: 'c', creado: new Date(2026, 10, 20).toISOString() }], 30, hoy);
+  assert.deepStrictEqual(r.map(x => x.id), ['c', 'a'], 'solo los de 30 días, el más nuevo primero');
+  assert.strictEqual(core.tiendaAvisoPocas('Creatina 300 g', 4), 'Quedan 4 de Creatina 300 g: pide más');
+});
+
+test('v756 · la migración: pedidos con RLS (el coach todo; la persona SOLO select), anon sin nada, y las tablas de productos y ventas NO cambian su RLS', () => {
+  const { sqlSin } = _t756;
+  assert.ok(/alter table public\.tienda_pedidos enable row level security/.test(sqlSin), '🔴 tienda_pedidos sin RLS');
+  const pols = [...sqlSin.matchAll(/create policy (\w+) on public\.tienda_pedidos\s+for (\w+) to authenticated\s+using \(([^;]*?)\)(?:\s+with check|;)/g)];
+  assert.deepStrictEqual(pols.map(m => m[1] + ':' + m[2]).sort(), ['tienda_pedidos_coach:all', 'tienda_pedidos_propios:select'], '🔴 las políticas de tienda_pedidos tienen que ser solo: coach todo + la persona select');
+  assert.ok(/client_uid = \(select auth\.uid\(\)\)/.test(pols.find(m => m[1] === 'tienda_pedidos_propios')[3]), '🔴 la persona tiene que ver SOLO sus filas (client_uid = auth.uid())');
+  assert.ok(/revoke all on public\.tienda_pedidos from anon/.test(sqlSin), '🔴 anon no está revocada');
+  assert.ok(!/create policy[^;]*on public\.(coach_productos|coach_ventas)/.test(sqlSin) && !/(disable|alter)[^;]*row level security[^;]*coach_(productos|ventas)/.test(sqlSin.replace(/alter table public\.tienda_pedidos enable row level security/, '')), '🔴 la migración toca la RLS de coach_productos o coach_ventas: el asesorado tiene que seguir viendo 0 filas');
+  // CONTROL del regex de políticas: una política abierta SÍ la vería
+  const mala = 'create policy x on public.tienda_pedidos\n  for insert to authenticated\n  using (true);';
+  assert.ok(/create policy (\w+) on public\.tienda_pedidos\s+for (\w+) to authenticated\s+using \(([^;]*?)\)(?:\s+with check|;)/.test(mala), 'control: el análisis no ve una política de insert');
+});
+test('v756 · las 6 funciones: security definer, search_path vacío, sin permiso para anon, con permiso para authenticated', () => {
+  const { sqlSin, fn } = _t756;
+  const firmas = { tienda_catalogo: '()', tienda_pedir: '(uuid, int)', tienda_cancelar: '(uuid)', tienda_entregar: '(uuid, int, numeric)', tienda_cargar_stock: '(uuid, int, text)', coach_stock: '()' };
+  Object.keys(firmas).forEach(n => {
+    const c = fn(n);
+    assert.ok(c, '🔴 falta la función ' + n);
+    assert.ok(/security definer/.test(c) && /set search_path = ''/.test(c), '🔴 ' + n + ' sin security definer + search_path vacío');
+    assert.ok(new RegExp('revoke execute on function public\\.' + n + '\\' + firmas[n].replace(/\)/, '\\)') + ' from public, anon').test(sqlSin), '🔴 ' + n + ': no se le quita el permiso a anon');
+    assert.ok(new RegExp('grant execute on function public\\.' + n + '\\' + firmas[n].replace(/\)/, '\\)') + ' to authenticated').test(sqlSin), '🔴 ' + n + ': no se le da el permiso a authenticated');
+    // nombres totalmente calificados: ningún `from tabla` sin esquema
+    assert.ok(!/\b(from|join|update|into)\s+(coach_productos|coach_ventas|tienda_pedidos|user_data)\b/.test(c), '🔴 ' + n + ' usa una tabla sin esquema (con search_path vacío no se encuentra)');
+  });
+  ['_tienda_stock_actual', '_tienda_apartado', '_tienda_edad'].forEach(n => assert.ok(new RegExp('revoke execute on function public\\.' + n + '\\(uuid\\) from public, anon, authenticated').test(sqlSin), '🔴 el ayudante ' + n + ' quedó llamable'));
+  // CONTROL: el regex de «tabla sin esquema» sí ve una función mal escrita
+  assert.ok(/\b(from|join|update|into)\s+(coach_productos|coach_ventas|tienda_pedidos|user_data)\b/.test('select 1 from coach_productos'), 'control: el análisis no ve tablas sin esquema');
+});
+test('v756 · el catálogo NUNCA devuelve costo, stock, apartado ni entradas; solo productos activos y en la tienda; menores y sin edad sin los «No para menores»', () => {
+  const { fn } = _t756;
+  const c = fn('tienda_catalogo');
+  const firma = (c.match(/returns table \(([^)]*)\)/) || [])[1] || '';
+  assert.deepStrictEqual(firma.split(',').map(s => s.trim().split(' ')[0]), ['id', 'nombre', 'categoria', 'descripcion', 'precio', 'disponible'], '🔴 el catálogo devuelve columnas de más: ' + firma);
+  assert.ok(!/costo|stock|apartad|entradas|no_menores/.test(firma), '🔴 el catálogo expone costo/stock/apartado/entradas');
+  assert.ok(/p\.activo = true and p\.en_tienda = true/.test(c), '🔴 el catálogo no filtra por activo y en_tienda');
+  assert.ok(/v_es_coach or p\.no_menores = false or coalesce\(v_edad, 0\) >= 18/.test(c), '🔴 la regla de edad: menor de 18 o desconocida NO ve los «No para menores»');
+  assert.ok(/u\.coach_id = v_coach/.test(c), '🔴 quien no es asesorado del coach tiene que recibir vacío');
+  // la edad sale de profile->>'age' (así se llama en la base: 39 de 39 asesorados), y solo cuenta si es un número
+  const edad = _t756.fn('_tienda_edad');
+  assert.ok(/\(u\.profile ->> 'age'\) ~ '\^\\d\+\(\\\.\\d\+\)\?\$'/.test(edad), '🔴 la edad tiene que salir de profile->>\'age\' y validarse como número');
+  assert.ok(!/'edad'/.test(_t756.sqlSin), '🔴 el campo de la edad en la base NO se llama «edad»: es profile->>\'age\'');
+  // CONTROL: el costo sí está en la función de entregar (el análisis discrimina)
+  assert.ok(/costo/.test(fn('tienda_entregar')), 'control: tienda_entregar sí usa el costo');
+});
+test('v756 · tienda_pedir: el precio sale del producto (no hay parámetro), bloquea la fila, valida edad, cantidad 1-10, suspendido, límite de 3 y lo disponible', () => {
+  const c = _t756.fn('tienda_pedir');
+  assert.ok(/tienda_pedir\(p_producto uuid, p_cantidad int\)/.test(c) && !/p_precio/.test(c), '🔴 tienda_pedir recibe un precio del teléfono');
+  assert.ok(/v_prod\.precio/.test(c) && /for update/.test(c), '🔴 el precio sale del producto y la fila se bloquea');
+  assert.ok(/p_cantidad < 1 or p_cantidad > 10/.test(c) && /v_pend >= 3/.test(c) && /p_cantidad > v_stock/.test(c), '🔴 faltan los topes (1-10, 3 pendientes, lo disponible)');
+  assert.ok(/_tienda_stock_actual\(v_prod\.id\) - public\._tienda_apartado\(v_prod\.id\)/.test(c), '🔴 lo apartado tiene que restarse del disponible');
+  ['no_disponible', 'menor', 'limite', 'agotado'].forEach(k => assert.ok(c.includes("raise exception '" + k + "'"), '🔴 falta el código ' + k));
+  assert.ok(/'suspended'/.test(c), '🔴 una cuenta suspendida no puede pedir');
+  assert.ok(/coalesce\(v_edad, 0\) < 18/.test(c), '🔴 la edad menor o desconocida no puede pedir los «No para menores»');
+});
+test('v756 · el stock es POR LIBRO (entradas − ventas vivas desde stock_desde): una venta a mano descuenta sola, una borrada devuelve; entregar valida y crea la venta con abonos de la v748', () => {
+  const act = _t756.fn('_tienda_stock_actual');
+  assert.ok(/p\.stock_entradas - coalesce\(\(/.test(act) && /sum\(v\.cantidad\)/.test(act) && /v\.borrado = false/.test(act) && /v\.creado >= p\.stock_desde/.test(act), '🔴 el stock ya no se calcula por libro');
+  assert.ok(!/update public\.coach_productos[^;]*stock_entradas = stock_entradas -/.test(_t756.sqlSin), '🔴 no puede haber un número guardado que baje con cada venta (se pisaría con una copia vieja)');
+  const e = _t756.fn('tienda_entregar');
+  assert.ok(/tienda_entregar\(p_pedido uuid, p_cuotas int default 1, p_abono numeric default null\)/.test(e), '🔴 la firma de tienda_entregar cambió');
+  assert.ok(/v_uid is distinct from v_coach/.test(e) && /estado <> 'pendiente'/.test(e) && /for update/.test(e), '🔴 solo el coach, solo pendientes, con bloqueo');
+  assert.ok(/raise exception 'sin_stock'/.test(e) && /v_prod\.costo \* v_ped\.cantidad/.test(e) && /v_ped\.precio_unit \* v_ped\.cantidad/.test(e), '🔴 precio = precio_unit × cantidad y costo ACTUAL × cantidad, con «sin_stock»');
+  assert.ok(/p_cuotas = 1 and p_abono is null/.test(e) && /'monto'/.test(e) && /'fecha'/.test(e) && /'id'/.test(e), '🔴 el abono de contado y el formato {id, monto, fecha} de la v748');
+  assert.ok(/America\/Bogota/.test(e), '🔴 la fecha de la venta es la local de Bogotá');
+  assert.ok(/'pocas', \(v_stock is not null and v_stock <= 5\)/.test(e), '🔴 «pocas» = lleva stock y quedan 5 o menos');
+  const k = _t756.fn('tienda_cargar_stock');
+  ['sumar', 'fijar', 'quitar'].forEach(m => assert.ok(k.includes("'" + m + "'"), '🔴 falta el modo ' + m));
+  assert.ok(/stock_ultima_carga = v_actual/.test(k) && /v_desde := now\(\)/.test(k), '🔴 la última carga y stock_desde');
+});
+test('v756 · la migración es idempotente: todo con if not exists / create or replace / drop policy if exists', () => {
+  const { sqlSin } = _t756;
+  assert.ok(![...sqlSin.matchAll(/create table (?!if not exists)/g)].length, '🔴 un create table sin if not exists');
+  assert.ok(![...sqlSin.matchAll(/create index (?!if not exists)/g)].length, '🔴 un create index sin if not exists');
+  assert.ok(![...sqlSin.matchAll(/add column (?!if not exists)/g)].length, '🔴 un add column sin if not exists');
+  assert.ok(![...sqlSin.matchAll(/create function/g)].length, '🔴 create function sin «or replace»');
+  const politicas = [...sqlSin.matchAll(/create policy (\w+) on (public\.\w+)/g)];
+  politicas.forEach(m => assert.ok(new RegExp('drop policy if exists ' + m[1] + ' on ' + m[2]).test(sqlSin), '🔴 la política ' + m[1] + ' no se suelta antes de crearla'));
+  // columnas nuevas pedidas por el plan
+  ['descripcion', 'en_tienda', 'stock_entradas', 'stock_desde', 'stock_ultima_carga', 'cantidad', 'pedido_id'].forEach(c => assert.ok(new RegExp('add column if not exists ' + c + '\\b').test(sqlSin), '🔴 falta la columna ' + c));
+  assert.ok(/cantidad\s+int not null check \(cantidad between 1 and 10\)/.test(sqlSin) && /check \(estado in \('pendiente','entregado','cancelado'\)\)/.test(sqlSin), '🔴 los checks de tienda_pedidos');
+  assert.ok(/producto_id\s+uuid references public\.coach_productos\(id\) on delete set null/.test(sqlSin) && /venta_id\s+uuid null references public\.coach_ventas\(id\) on delete set null/.test(sqlSin), '🔴 las llaves foráneas con on delete set null');
+  ['tienda_pedidos_producto_idx', 'tienda_pedidos_venta_idx', 'tienda_pedidos_estado_idx'].forEach(i => assert.ok(sqlSin.includes(i), '🔴 falta el índice ' + i));
+});
+test('v756 · scripts/sql/probar-tienda.sql existe, corre dentro de begin…rollback, simula sesiones y trae CONTROLES', () => {
+  const p = _t756.path.join(__dirname, 'scripts', 'sql', 'probar-tienda.sql');
+  assert.ok(_t756.fs.existsSync(p), '🔴 se fue el script de prueba en SQL');
+  const t = _t756.fs.readFileSync(p, 'utf8');
+  const cuerpo = t.replace(/--.*$/gm, '');
+  assert.ok(/^begin;/m.test(cuerpo) && /^rollback;\s*$/m.test(cuerpo) && !/^commit;/m.test(cuerpo), '🔴 tiene que ir entre begin y rollback, sin commit');
+  assert.ok(/set local role authenticated/.test(cuerpo) && /set local role anon/.test(cuerpo) && /request\.jwt\.claims/.test(cuerpo));
+  assert.ok((cuerpo.match(/_probar_chk\(/g) || []).length >= 40, '🔴 muy pocas comprobaciones');
+  assert.ok((t.match(/CONTROL/g) || []).length >= 4, '🔴 faltan los CONTROLES de la sonda');
+  ['0a6484ed-42af-449d-9903-e440ac683ecf', 'age', 'edad'].forEach(x => assert.ok(t.includes(x)));
+  assert.ok(!/gmail|hotmail|@(?!prueba\.invalid)\w+\.\w+/i.test(t), '🔴 un correo real en el script (el repo es público)');
+});
+
+test('v756 · EN EJECUCIÓN: pedir, push, agotado, sin señal (sin cola), menor, push caído, cancelar, entregar y cuotas, tarjeta, Mis productos, el upsert sin stock y la cantidad (DOM y Supabase falsos)', () => {
+  const r = _t756Corre('comprobar-tienda-flujo.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1500));
+  assert.ok(/OK/.test(r.stdout));
+});
+test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y por SU razón', () => {
+  const casos = {
+    'precio-del-telefono': /tienda_pedir recibe SOLO producto y cantidad/,
+    'stock-en-upsert': /el upsert de productos NO puede llevar/,
+    'menor-ve-todo': /la menor ve la creatina y NO el «No para menores»/,
+    'sin-senal-encola': /(sin señal dice|NO hay cola)/,
+    'sin-push': /se le manda el push al coach/,
+    'push-corta-el-pedido': /el push caído tumbó el pedido/,
+    'entrega-doble': /un doble toque en «Entregado»/,
+    'tarjeta-con-cero': /la tarjeta del panel NO sale/,
+    'sin-funciones-rompe': /la persona NO ve la fila de la tienda/,
+    'pocas-no-avisa': /con pocas avisa «Quedan 4/,
+    'pocas-sin-texto': /Quedan pocas: pide más/,
+    'cantidad-ignorada': /la venta se guarda con cantidad 2/,
+    'agotado-activo': /desactivado \(gris\)/,
+  };
+  Object.keys(casos).forEach(k => {
+    const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
+    assert.notStrictEqual(r.status, 0, '🔴 el sabotaje «' + k + '» NO hizo caer la prueba (candado que nunca falla)');
+    assert.ok(casos[k].test(r.stderr), '🔴 «' + k + '» cayó por otra razón: ' + r.stderr.slice(0, 400));
+  });
+});
+test('v756 · el upsert de productos NO incluye stock (candado estático) y el modelo de pedidos habla solo con su tabla', () => {
+  const ui = _supl748.ui;
+  const cols = (ui.match(/coach_productos:\[([^\]]*)\]/) || [])[1] || '';
+  assert.ok(cols.includes("'nombre'") && cols.includes("'descripcion'") && cols.includes("'en_tienda'"), 'control: no se leyeron las columnas');
+  ['stock_entradas', 'stock_desde', 'stock_ultima_carga'].forEach(c => assert.ok(!cols.includes(c), '🔴 el upsert de productos incluye ' + c + ': una copia vieja del teléfono pisaría el stock'));
+  assert.ok(!/stock_(entradas|desde|ultima_carga)\s*[:=]/.test(ui.replace(/\/\/.*$/gm, '')), '🔴 el código del teléfono ESCRIBE una columna de stock');
+  // CONTROL: si alguien las agregara, el análisis las vería
+  assert.ok(/stock_entradas/.test("coach_productos:['id','stock_entradas']"));
+  assert.ok(/coach_ventas:\[[^\]]*'cantidad'[^\]]*'pedido_id'/.test(ui), 'coach_ventas tiene que subir cantidad y pedido_id');
+});
+test('v756 · la tienda está CABLEADA: habitaciones, modales, atrás, aviso al celular, fila del Perfil y respaldo', () => {
+  const fs = _t756.fs, path = _t756.path;
+  const leer = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const html = leer('index.html'), extra = _supl748.quitar(leer('app-6-extra.js')), login = leer('app-2-login.js'), infra = leer('app-1-infra.js'), ent = leer('app-4-entreno.js'), sw = leer('sw.js');
+  ['p-pedidos', 'pd-list', 'pd-sub', 'p-tienda', 'tienda-body', 'm-pedir', 'pd-cant', 'pd-total', 'pd-err', 'm-cuotas', 'cu-chips', 'cu-abono', 'm-stock', 'st-n', 'st-chips', 'pr-desc', 'pr-tienda', 'pr-stock-sw', 'pr-stock-n', 'pr-tienda-sec', 'vt-cant'].forEach(id =>
+    assert.ok(new RegExp('id="' + id + '"').test(html), '🔴 falta #' + id + ' en index.html'));
+  // todo onclick de lo nuevo apunta a una función que existe
+  const bloque = html.slice(html.indexOf('id="p-pedidos"'), html.indexOf('<!-- CLIENTS -->')) + html.slice(html.indexOf('id="p-tienda"'), html.indexOf('id="perfil-room"')) + html.slice(html.indexOf('<!-- v756 · pedir un producto'), html.indexOf('<!-- MODAL FOTOS -->')) + html.slice(html.indexOf('id="pr-tienda-sec"'), html.indexOf('id="pr-err"'));
+  const fns = [...bloque.matchAll(/onclick="(\w+)\(/g)].map(m => m[1]).filter(f => !['cm', 'om', 'gp'].includes(f));
+  assert.ok(fns.length >= 8, 'control: no se leyeron los onclick (' + fns.length + ')');
+  fns.forEach(f => assert.ok(new RegExp('function ' + f + '\\(').test(extra), '🔴 el HTML llama ' + f + '() y no existe'));
+  assert.ok(/'p-pedidos':\{sbi:'sbi-clients'/.test(login), '🔴 p-pedidos no está en _COACH_PANELS (el atrás del coach no lo conoce)');
+  assert.ok(/getElementById\('p-tienda'\)[\s\S]{0,120}closeTiendaRoom\(\)/.test(login), '🔴 el atrás no cierra la tienda');
+  assert.ok(/notifType==='pedido'[\s\S]{0,160}tiendaAbrirPedidos\(\)/.test(infra), '🔴 tocar el aviso del pedido no abre la bandeja');
+  assert.ok(/avi-pedidos/.test(login) && /avi-pedidos=1/.test(sw) && /d\.type === 'pedido'/.test(sw), '🔴 el aviso con la app cerrada no abre la bandeja');
+  assert.ok(/tiendaFilaPerfil\(client\)/.test(ent), '🔴 la fila «Tienda» no se pinta en el Perfil');
+  assert.ok(/tiendaFilaPerfil[\s\S]{0,400}tiendaVeTienda\(client\)/.test(extra) && /type:'pedido'/.test(extra), '🔴 la fila no pregunta por tiendaVeTienda o el push no es de tipo pedido');
+  assert.ok(/fetchTableOpcional\('tienda_pedidos'\)/.test(leer('scripts/backup-local.mjs')), '🔴 el respaldo no baja tienda_pedidos');
+  assert.ok(/ícono|aviIcon\('bag'/.test(extra) && !/[🛒⚠️✅📦]/u.test(extra.slice(extra.indexOf('TIENDA DE SUPLEMENTOS (v756)')).replace(/\/\/.*$/gm, '')), '🔴 la tienda usa emojis: tienen que ser los íconos del sistema');
+  // CONTROL: el chequeo de «onclick sin función» sí ve una función inventada
+  assert.ok(!/function funcionInventada\(/.test(extra));
+});
+test('v756 · CLAUDE.md y el historial hablan de la tienda: habitaciones, tabla, funciones, y «migración NO aplicada»', () => {
+  const md = _t756.fs.readFileSync(_t756.path.join(__dirname, 'CLAUDE.md'), 'utf8');
+  const hist = _t756.fs.readFileSync(_t756.path.join(__dirname, 'docs', 'historial-versiones.md'), 'utf8');
+  ['#p-pedidos', '#p-tienda', 'tienda_pedidos', 'tienda_pedir', 'tienda_entregar', 'coach_stock', 'v756'].forEach(k => assert.ok(md.includes(k), '🔴 CLAUDE.md no menciona ' + k));
+  const entrada = (hist.match(/- \*\*v756[^\n]*/) || [''])[0];
+  assert.ok(entrada.length > 400 && /migración NO aplicada: la aplica el director/.test(entrada), '🔴 el historial no tiene la entrada de la v756 (con «migración NO aplicada: la aplica el director»)');
+  assert.ok(hist.indexOf('- **v756') < hist.indexOf('- **v755'), '🔴 la v756 va ARRIBA de la v755');
 });
 
 // ══════════════════════════════════════════════════════

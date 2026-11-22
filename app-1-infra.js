@@ -1274,6 +1274,10 @@ if('serviceWorker' in navigator){
     if(e.data&&e.data.type==='notif-click'&&e.data.notifType==='message'){
       openChatFor(e.data.chatId);
     }
+    // v756 · «<Nombre> pidió 2 × Preentreno…»: abre la bandeja de pedidos (solo el coach la tiene).
+    if(e.data&&e.data.type==='notif-click'&&e.data.notifType==='pedido'&&CUR.loggedAs==='coach'&&typeof tiendaAbrirPedidos==='function'){
+      tiendaAbrirPedidos();
+    }
   });
 }
 

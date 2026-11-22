@@ -934,7 +934,7 @@ function renderProfileRows(client){
     return `<button type="button" class="aj-row${f.bloqueado?' pf-bloq':''}" data-pf-row="${f.sec}" onclick="perfilAbrir('${f.sec}')">`+
       `<span class="aj-ic">${I?aviIcon(ic[0],16):ic[1]}</span><span class="aj-lbl">${esc(f.label)}</span>`+
       `<span class="aj-val">${esc(f.valor)}</span><span class="aj-chev" aria-hidden="true">›</span></button>`;
-  }).join('');
+  }).join('')+(typeof tiendaFilaPerfil==='function'?tiendaFilaPerfil(client):'');   // v756 · «Tienda» solo si hay coach y productos
 }
 // Abre la pantalla de una fila: la sección guardada se MUDA a la habitación (conserva sus ids, así que cada
 // renderizador la sigue encontrando). La que estuviera de antes vuelve primero a su sitio.

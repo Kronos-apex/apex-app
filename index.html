@@ -80,7 +80,7 @@ addEventListener('appinstalled',function(){window.__aviBIP=null;try{window._aviO
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="styles.css?v=755">
+<link rel="stylesheet" href="styles.css?v=756">
 
 <!-- Supabase Auth (Fase 2 — login real + RLS por usuario). Cargado con `defer`:
      el cliente se inicializa LAZY (solo al usar login/registro), así el boot
@@ -730,6 +730,13 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><div><div class="ptitle" style="margin:0">Mis productos</div><div style="font-size:12px;color:var(--t2);margin-top:3px" id="pr-sub">Solo tú los ves</div></div><button class="btn bp bsm" onclick="suplAbrirProducto()">+ Producto</button></div>
       <div id="pr-list"></div>
       <div class="sroom-cmp flat"><span>Margen = ganancia sobre el precio de venta. Al editar un producto, las ventas ya hechas no cambian.</span></div>
+    </div>
+
+    <!-- v756 · PEDIDOS DE LA TIENDA (el coach entrega lo que la gente pide) -->
+    <div id="p-pedidos" class="panel">
+      <div class="back" onclick="history.back()">← Volver</div>
+      <div style="margin-bottom:12px"><div class="ptitle" style="margin:0">Pedidos</div><div style="font-size:12px;color:var(--t2);margin-top:3px" id="pd-sub">Nada por entregar</div></div>
+      <div id="pd-list"></div>
     </div>
 
     <!-- CLIENTS -->
@@ -1541,19 +1548,19 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
   </div>
 </div>
 
-<script src="avi-core.js?v=755"></script>
-<script src="muscle-map.js?v=755"></script>
-<script src="exercise-muscles.js?v=755"></script>
+<script src="avi-core.js?v=756"></script>
+<script src="muscle-map.js?v=756"></script>
+<script src="exercise-muscles.js?v=756"></script>
 <!-- App por dominio. ORDEN IMPORTA (carga = ejecución): toda función global queda disponible
      para las demás en runtime; el orden solo importa para el código que se ejecuta al cargar,
      que vive ordenado de fuente. Ver memoria de arquitectura. -->
-<script src="app-1-infra.js?v=755"></script>
-<script src="app-2-login.js?v=755"></script>
-<script src="app-3-coach.js?v=755"></script>
-<script src="app-4-entreno.js?v=755"></script>
-<script src="app-5-salud.js?v=755"></script>
-<script src="app-6-extra.js?v=755"></script>
-<script src="app-7-community.js?v=755"></script>
+<script src="app-1-infra.js?v=756"></script>
+<script src="app-2-login.js?v=756"></script>
+<script src="app-3-coach.js?v=756"></script>
+<script src="app-4-entreno.js?v=756"></script>
+<script src="app-5-salud.js?v=756"></script>
+<script src="app-6-extra.js?v=756"></script>
+<script src="app-7-community.js?v=756"></script>
 
 <!-- Tour guiado de novedades (v304): una slide por feature, pasos numerados, deep-links -->
 <div id="news-tour" class="news-tour hidden" role="dialog" aria-modal="true" aria-label="Novedades de la app">
@@ -1924,6 +1931,9 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     </div>
     <div class="vt-hint" style="margin:0 0 12px">Se llenan solos con el producto; cámbialos solo para esta venta.</div>
     <div class="vt-calc" style="margin-bottom:12px" id="vt-calc"></div>
+    <div class="vt-fld" style="margin-bottom:12px"><label class="llbl">Cantidad</label>
+      <div class="tn-cant" style="justify-content:flex-start;gap:14px"><button type="button" class="btn bg" aria-label="Menos" onclick="suplVentaCant(-1)">−</button><b id="vt-cant">1</b><button type="button" class="btn bg" aria-label="Más" onclick="suplVentaCant(1)">+</button></div>
+      <div class="vt-hint" style="margin:6px 0 0">El precio y el costo de arriba son el total: precio × cantidad.</div></div>
     <div class="vt-fld" style="margin-bottom:12px"><label class="llbl">Cuotas</label>
       <div class="vt-chips" style="margin-top:0" id="vt-cuotas"></div></div>
     <div class="vt-dg" style="margin-bottom:0">
@@ -1946,7 +1956,13 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div><label class="llbl" for="pr-costo">Lo que te cuesta</label><input class="inp" id="pr-costo" inputmode="numeric" style="width:100%" oninput="suplProductoCalc()"></div>
     </div>
     <div class="vt-calc" id="pr-calc"></div>
+    <div class="vt-fld"><label class="llbl" for="pr-desc">Descripción corta (opcional)</label><input class="inp" id="pr-desc" maxlength="60" placeholder="Ej: 1 porción, sellado" style="width:100%"></div>
     <div class="vt-sw"><div><div class="vt-nm" style="font-size:13.5px">No para menores</div><div class="vt-sub">Te avisa al vender a alguien menor de 18. Viene encendido en Preentreno, Cafeína y Quemador.</div></div><button type="button" class="vt-tg" id="pr-menores" role="switch" aria-checked="false" aria-label="No para menores" onclick="suplProductoMenores()"></button></div>
+    <div id="pr-tienda-sec" style="display:none">
+      <div class="vt-sw"><div><div class="vt-nm" style="font-size:13.5px">Mostrar en la tienda</div><div class="vt-sub">Tus asesorados lo ven y lo piden; tú lo entregas en el gym.</div></div><button type="button" class="vt-tg" id="pr-tienda" role="switch" aria-checked="false" aria-label="Mostrar en la tienda" onclick="suplProductoTienda()"></button></div>
+      <div class="vt-sw"><div><div class="vt-nm" style="font-size:13.5px">Llevar stock</div><div class="vt-sub">La tienda dice «Agotado» sola y te avisa cuando quedan pocas.</div></div><button type="button" class="vt-tg" id="pr-stock-sw" role="switch" aria-checked="false" aria-label="Llevar stock" onclick="suplProductoStock()"></button></div>
+      <div class="vt-fld" id="pr-stock-f" style="display:none"><label class="llbl" for="pr-stock-n">Unidades que tienes ahora</label><input class="inp" id="pr-stock-n" inputmode="numeric" style="width:100%"></div>
+    </div>
     <div id="pr-err" style="font-size:12px;color:var(--rdt);margin-bottom:8px;display:none"></div>
     <div style="text-align:center;margin-bottom:6px"><button type="button" class="vt-lnk" id="pr-arch" style="display:none" onclick="suplArchivarProducto()"></button></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-producto')">Cancelar</button><button class="btn bp" onclick="suplGuardarProducto()">Guardar producto</button></div>
@@ -1971,6 +1987,46 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     <div id="ab-hist"></div>
     <div style="text-align:center;margin-top:12px"><button type="button" class="vt-lnk" style="color:var(--rdt)" onclick="suplBorrarVenta()">Borrar esta venta</button></div>
     <div class="mdfooter"><button class="btn bg" onclick="cm('m-abono')">Cerrar</button><button class="btn bp" id="ab-guardar" onclick="suplGuardarAbono()">Guardar abono</button></div>
+  </div>
+</div>
+
+<!-- v756 · pedir un producto de la tienda (cantidad 1 a 10 y total) -->
+<div class="mdbg" id="m-pedir">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="pd-nombre">
+    <div class="mdtitle" id="pd-nombre">Pedir</div>
+    <div class="vt-sub" style="margin:0 0 14px">Tu coach te lo entrega en el gym. Se paga al recibirlo.</div>
+    <div class="tn-cant"><button type="button" class="btn bg" id="pd-menos" aria-label="Menos" onclick="tiendaCant(-1)">−</button><b id="pd-cant">1</b><button type="button" class="btn bg" id="pd-mas" aria-label="Más" onclick="tiendaCant(1)">+</button></div>
+    <div class="vt-tot" style="margin-top:14px"><span style="color:var(--t2)">Total</span><b id="pd-total">$0</b></div>
+    <div id="pd-err" style="font-size:12.5px;color:var(--rdt);margin-top:10px;display:none"></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-pedir')">Cancelar</button><button class="btn bp" onclick="tiendaConfirmarPedido()">Confirmar pedido</button></div>
+  </div>
+</div>
+
+<!-- v756 · entregar un pedido a cuotas (2 a 12) con abono de hoy opcional -->
+<div class="mdbg" id="m-cuotas">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="cu-mt">
+    <div class="mdtitle" id="cu-mt">Entregar a cuotas</div>
+    <div class="vt-sub" style="margin:0 0 12px" id="cu-para"></div>
+    <label class="llbl">Número de cuotas</label>
+    <div class="vt-chips" style="margin:0 0 14px" id="cu-chips"></div>
+    <label class="llbl" for="cu-abono">Abono de hoy (opcional)</label>
+    <input class="inp" id="cu-abono" inputmode="numeric" style="width:100%" placeholder="$0">
+    <div id="cu-err" style="font-size:12px;color:var(--rdt);margin-top:10px;display:none"></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-cuotas')">Cancelar</button><button class="btn bp" onclick="tiendaCuotasOk()">Entregar</button></div>
+  </div>
+</div>
+
+<!-- v756 · agregar unidades al stock de un producto (sumar o contar lo que tengo) -->
+<div class="mdbg" id="m-stock">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="st-mt">
+    <div class="mdtitle" id="st-mt">Stock</div>
+    <div class="vt-sub" style="margin:0 0 12px" id="st-ahora"></div>
+    <div class="vt-chips" style="margin:0 0 12px" id="st-chips"></div>
+    <label class="llbl" for="st-n" id="st-lbl">¿Cuántas unidades llegaron?</label>
+    <input class="inp" id="st-n" inputmode="numeric" style="width:100%">
+    <div id="st-err" style="font-size:12px;color:var(--rdt);margin-top:10px;display:none"></div>
+    <div style="text-align:center;margin-top:12px"><button type="button" class="vt-lnk" id="st-quitar" style="color:var(--rdt)" onclick="tiendaStockGuardar(true)">Dejar de llevar stock de este producto</button></div>
+    <div class="mdfooter"><button class="btn bg" onclick="cm('m-stock')">Cancelar</button><button class="btn bp" onclick="tiendaStockGuardar(false)">Guardar</button></div>
   </div>
 </div>
 
@@ -2163,6 +2219,14 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
      renderSoundSettings, renderGoogleLink, renderAccountActions y saveSettings los siguen
      encontrando donde estén. -->
 <!-- v708 · LA PANTALLA DE CADA FILA DEL PERFIL. Se le muda adentro la sección que se abre (perfilAbrir). -->
+<!-- v756 · TIENDA de suplementos del coach (la persona pide; el coach entrega en el gym). La pinta tiendaRender. -->
+<div id="p-tienda" class="sroom">
+  <div class="sroom-bar">
+    <button class="sroom-back" onclick="history.back()">&lsaquo; Perfil</button>
+    <span class="sroom-bar-t">Tienda</span>
+  </div>
+  <div class="sroom-body" id="tienda-body"></div>
+</div>
 <div id="perfil-room" class="sroom">
   <div class="sroom-bar">
     <button class="sroom-back" onclick="history.back()">&lsaquo; Perfil</button>

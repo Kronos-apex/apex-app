@@ -22,11 +22,11 @@ const SABOTAJES = {
   'toast-pisado': [
     ["  return ok;   // quien llama decide el aviso", "  if(!ok)toast('⚠️ No se guardó en la nube (sin conexión).',5200); return ok;   // quien llama decide el aviso"],
     ["_suplAviso(ok,'Venta guardada')", "toast('Venta guardada')"],
-    ["_suplAviso(ok,previo?'Producto actualizado':'Producto guardado')", "toast(previo?'Producto actualizado':'Producto guardado')"],
+    ["_suplAviso(ok,(previo?'Producto actualizado':'Producto guardado')+avisoStock)", "toast(previo?'Producto actualizado':'Producto guardado')"],
     ["_suplAviso(ok,val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado')", "toast(val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado')"],
   ],
   // La franja de pendientes solo en la ficha (como la v748)
-  'franja-solo-ficha': [["let h=_suplFranja();\n  if(total>0){", "let h='';\n  if(total>0){"], ["  let h=_suplFranja();\n  if(!act.length", "  let h='';\n  if(!act.length"]],
+  'franja-solo-ficha': [["let h=_suplFranja()+(typeof tiendaTarjetaHome==='function'?tiendaTarjetaHome():'');\n  if(total>0){", "let h='';\n  if(total>0){"], ["  let h=_suplFranja()+((act.length||arch.length)?_tiendaCifrasMes():'');\n  if(!act.length", "  let h='';\n  if(!act.length"]],
 };
 const sabotajes = SAB ? (SABOTAJES[SAB] || (() => { throw new Error('sabotaje desconocido: ' + SAB); })()) : [];
 
