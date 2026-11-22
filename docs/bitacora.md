@@ -4,6 +4,26 @@
 > vivo). Dos partes: el roadmap histórico por versión y los hitos crudos por sesión (más
 > reciente primero). Las lecciones que no expiran están destiladas en CLAUDE.md → GOTCHAS VIGENTES.
 
+## 🔒 2026-11-22 — el asesorado ya no se toca los campos del coach (hallazgo del 14-nov)
+- **Hueco:** `user_data_update` deja al dueño hacer UPDATE de SU fila (la policy decide filas, no columnas). Con su
+  sesión y la API, un asesorado se escribía `profile.tier`, `payments`, `suspended`, `courtesy`, `proTrialUntil`,
+  `role` y `coach_id`. También podía borrar su fila y recrearla con `coach_id` = él mismo o una segunda cuenta suya.
+- **Arreglo:** trigger `user_data_campos_del_coach` (BEFORE INSERT OR UPDATE, SECURITY DEFINER, search_path fijo),
+  migración `supabase/migrations/20261121_user_data_campos_del_coach.sql`, aplicada con `apply_migration`. En UPDATE del
+  dueño que no es su coach devuelve EN SILENCIO esos campos a lo que había (el guardado normal sube el perfil entero
+  desde su caché y no debe fallar). En INSERT propio: role 'client', tier 'libre', sin pagos/suspensión/cortesía, prueba
+  PRO ≤ 30 días y `coach_id` solo si es un coach de verdad. NO bloquea `profile.coach_id` (lo escribe «pedir coach»,
+  app-3-coach.js) ni `limitReviewedAt`.
+- **Pruebas en producción** dentro de transacciones que se deshicieron (`RAISE` al final): asesorado → tier, pagos,
+  suspensión, cortesía, prueba, rol y coach sin cambios; su nombre SÍ se guarda; su coach SÍ cambia tier y pagos;
+  borrar y recrear → libre, sin pagos, coach NULL si era él mismo u otra cuenta, el coach real se queda. CONTROL: sin la
+  regla el asesorado dejaba `tier="HACK"`; con la regla quedó `"premium"`. Repetido tras aplicar: igual. Suite 1679
+  (sabotaje: sin `tier` en las claves cae justo la prueba nueva).
+- **Por qué se trabó la primera vez:** el `execute_sql` con DELETE pide confirmación del dueño; el agente la esperó 8 h
+  sin que nadie la viera. Las pruebas destructivas en producción las corre el director, con el dueño avisado.
+- **Radar:** el dueño de la fila todavía puede BORRARLA (`user_data_delete`), y con eso se lleva su historial de pagos.
+  `delete-account` usa service role; revisar si la app necesita el DELETE propio antes de quitarlo.
+
 ## 🆕 2026-11-08 — v732: cuentas nuevas (aviso al celular + tarjeta en Inicio)
 
 ## 2026-11-11 — v745 · 19 FOTOS DEL LOTE-9

@@ -28095,6 +28095,31 @@ test('v753/v754/v755 · doce videos de demostración: el archivo existe (mp4 720
   assert.strictEqual(exVidSrc({ id: 'e1000' }), '', 'control: un id sin video no devuelve nada');
 });
 
+test('🔒 21-nov: el asesorado no se toca los campos del coach en su fila (pagos, plan, suspensión, rol, coach)', () => {
+  // Hallazgo del 14-nov: user_data_update deja al dueño hacer UPDATE de SU fila y la policy decide filas,
+  // no columnas. Probado en producción (dentro de una transacción que se deshizo): SIN la regla el
+  // asesorado se ponía tier "HACK"; CON la regla quedó "premium". Aplicada el 22-nov con apply_migration.
+  const fs = require('fs'), path = require('path');
+  const p = path.join(__dirname, 'supabase', 'migrations', '20261121_user_data_campos_del_coach.sql');
+  assert.ok(fs.existsSync(p), '🔴 se fue la migración que protege los campos del coach');
+  const sql = fs.readFileSync(p, 'utf8');
+  assert.ok(/before insert or update on public\.user_data/.test(sql), '🔴 el trigger ya no cubre INSERT y UPDATE de user_data');
+  const claves = (sql.match(/v_claves constant text\[\] := array\[([^\]]*)\]/) || [])[1] || '';
+  ['payments', 'tier', 'suspended', 'courtesy', 'proTrialUntil'].forEach(k =>
+    assert.ok(claves.includes("'" + k + "'"), '🔴 ' + k + ' salió de las claves que solo cambia el coach'));
+  // El asesorado SÍ escribe estas dos (pedir coach y la vigencia de condiciones): protegerlas rompería esos flujos.
+  ['coach_id', 'limitReviewedAt'].forEach(k =>
+    assert.ok(!claves.includes("'" + k + "'"), '🔴 ' + k + ' entró a las claves bloqueadas y la app del asesorado lo escribe'));
+  assert.ok(/new\.role := old\.role; new\.coach_id := old\.coach_id;|new\.role\s*:=\s*old\.role;[\s\S]*new\.coach_id\s*:=\s*old\.coach_id;/.test(sql),
+    '🔴 en UPDATE el asesorado podría cambiarse el rol o el coach');
+  // Borrar y recrear: el coach de una fila nueva tiene que ser un coach DE VERDAD (si no, se ponía él mismo).
+  assert.ok(/u\.user_id = new\.coach_id and u\.role = 'coach'/.test(sql), '🔴 la fila nueva acepta cualquier coach_id (él mismo o una segunda cuenta)');
+  assert.ok(/security definer/i.test(sql) && /set search_path = public, pg_temp/.test(sql),
+    '🔴 sin SECURITY DEFINER el EXISTS no ve la fila del coach (RLS) y sin search_path fijo es inseguro');
+  // CONTROL: la lectura de las claves funciona (si el regex no encontrara nada, todo lo de arriba fallaría igual).
+  assert.ok(claves.length > 10, 'control: no se pudieron leer las claves del trigger');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
