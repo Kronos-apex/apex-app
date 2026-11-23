@@ -14205,7 +14205,7 @@ function settingsPlanSummary(client, now) {
 // —medida con cuatro asesorados reales: de 4.660 a 5.759 px, entre 5,8 y 7,2 pantallas— a cinco
 // pestañas. El Resumen responde lo que el coach mira primero: cómo va la semana, cómo está su plan y
 // qué tiene que revisar; y cada «para revisar» dice en qué pestaña se resuelve.
-const DETAIL_TABS = ['resumen', 'entreno', 'comida', 'cuerpo', 'pagos'];
+const DETAIL_TABS = ['resumen', 'entreno', 'comida', 'cuerpo', 'pagos', 'compras'];   // v756 (c): Compras = lo que ha comprado en la tienda (Pagos queda solo con la membresía)
 function detailTabValid(t) { return DETAIL_TABS.indexOf(t) >= 0 ? t : 'resumen'; }
 // PURA. `flags` trae lo que los renderizadores YA decidieron mostrar y aquí no se puede recalcular
 // sin duplicar su regla (el plan de choque, la revisión del plan de comida): una segunda cuenta de

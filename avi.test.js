@@ -24451,7 +24451,7 @@ test('🔒 v707 · «Para revisar» lleva cada cosa a la pestaña donde se resue
   assert.strictEqual(core.detailTabValid('x'), 'resumen', 'una pestaña desconocida cae al Resumen');
   assert.strictEqual(core.detailTabValid('pagos'), 'pagos');
 });
-test('🔒 v707 · cada bloque de la ficha vive en SU pestaña, y la barra tiene las cinco en orden', () => {
+test('🔒 v707 · cada bloque de la ficha vive en SU pestaña, y la barra tiene las seis en orden', () => {
   const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8').replace(/\r/g, '');
   const i = html.indexOf('<div id="p-detail"'), f = html.indexOf('<!-- CARGAS / PROGRESO -->', i);
   assert.ok(i > 0 && f > i, 'no se encontró la ficha');
@@ -24467,6 +24467,7 @@ test('🔒 v707 · cada bloque de la ficha vive en SU pestaña, y la barra tiene
     comida: ['d-nutreview', 'd-nut-wrap', 'd-nut-preview', 'd-foodlog'],
     cuerpo: ['d-valoracion-card', 'd-med-wrap', 'd-photos-wrap'],
     pagos: ['d-freelead', 'd-membership'],
+    compras: ['d-compras-ver', 'd-ventas'],   // v756 (c): lo que ha comprado en la tienda y si la ve
   };
   for (const t of core.DETAIL_TABS) for (const id of DONDE[t])
     assert.ok(secs[t].includes('id="' + id + '"'), '🔴 #' + id + ' no está en la pestaña ' + t);
@@ -28346,6 +28347,7 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'toggle-no-explicito': /el interruptor guarda tiendaVer=true EXPLÍCITO/,
     'quien-sin-pestanas': /«Con coach» solo trae a la gente con coach/,
     'partes-todas-visibles': /abre SOLO la parte Pedidos|las 4 partes NO se ven a la vez/,
+    'compras-sin-interruptor': /en Compras sale «Ve la tienda/,
   };
   Object.keys(casos).forEach(k => {
     const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
@@ -28585,6 +28587,37 @@ test('v756b · B · la Tienda está en el menú ☰ con sus 4 partes y todo lo q
   ['tiendaCoachParte', 'tiendaCoachAbrir', 'tiendaRenderQuien', 'tiendaQuienTab', 'tiendaToggleVer'].forEach(f => assert.ok(new RegExp('function ' + f + '\\(').test(extra), '🔴 falta ' + f));
   // CONTROL: el chequeo sí vería un panel suelto
   assert.ok(/<div id="p-(productos|pedidos)" class="panel">/.test('<div id="p-productos" class="panel">'), 'control');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (2ª parte) · BLOQUE C — la plata separada: Mensualidades · ficha → Compras · Tienda → Ventas
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+test('v756b · C · el reporte «Mensualidades de <mes>» no lleva suplementos y la ficha tiene la pestaña Compras (Pagos queda solo con la membresía)', () => {
+  const r = _t756Corre('comprobar-pantallas-coach.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
+  const sab = { 'ingresos-con-suplementos': /trae suplementos/, 'ingresos-titulo-viejo': /tiene que llamarse «Mensualidades de/ };
+  Object.keys(sab).forEach(k => {
+    const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
+    assert.notStrictEqual(x.status, 0, '🔴 el sabotaje «' + k + '» no hizo caer la prueba');
+    assert.ok(sab[k].test(x.stderr), '🔴 «' + k + '» cayó por otra razón: ' + x.stderr.slice(0, 300));
+  });
+  const fs = _t756.fs, path = _t756.path, leer = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  assert.deepStrictEqual(core.DETAIL_TABS, ['resumen', 'entreno', 'comida', 'cuerpo', 'pagos', 'compras']);
+  assert.strictEqual(core.detailTabValid('compras'), 'compras');
+  const html = leer('index.html'), css = leer('styles.css'), extra = _supl748.quitar(leer('app-6-extra.js'));
+  assert.ok(/data-t="compras"[^>]*onclick="detailTab\('compras'\)">Compras<\/button>/.test(html), '🔴 falta la pestaña Compras');
+  const sec = html.slice(html.indexOf('data-dt="compras"'), html.indexOf('data-dt="compras"') + 400);
+  assert.ok(/id="d-compras-ver"/.test(sec) && /id="d-ventas"/.test(sec), '🔴 Compras no trae el interruptor ni la lista de compras');
+  const pagos = html.slice(html.indexOf('data-dt="pagos"'), html.indexOf('data-dt="compras"'));
+  assert.ok(!/d-ventas|d-compras-ver/.test(pagos), '🔴 Pagos vuelve a llevar suplementos: tiene que quedar SOLO con la membresía');
+  assert.ok(/#p-detail\[data-dtab="compras"\] \.dt-sec\[data-dt="compras"\]/.test(css), '🔴 el CSS no muestra la sección Compras');
+  const mem = (extra.match(/function renderDetailMembership\(id\)\{[\s\S]*?\n\}\n/) || [''])[0];
+  assert.ok(mem.length > 200 && !/id="d-ventas"/.test(mem) && !/suplRenderFicha\(/.test(mem) && /renderDetailCompras\(id\)/.test(mem), '🔴 la membresía vuelve a pintar suplementos dentro de Pagos');
+  // CONTROL: el chequeo sí ve la inyección vieja
+  assert.ok(/id="d-ventas"/.test('<div id="d-ventas" style="margin-top:13px"></div>') && /suplRenderFicha\(/.test('suplRenderFicha(id);'), 'control');
+  // el reporte de ingresos del Inicio dejó de llevar suplementos; seguirán alcanzables en Tienda → Ventas (prueba B)
+  const login = _supl748.quitar(leer('app-2-login.js'));
+  assert.ok(!/suplIngresosHTML/.test(login), '🔴 app-2-login.js vuelve a llamar suplIngresosHTML');
 });
 
 // ══════════════════════════════════════════════════════

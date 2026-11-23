@@ -88,6 +88,8 @@ const SABOTAJES = {
   'quien-sin-pestanas': [["filas=tiendaQuienLista(DB.clients,tab);", "filas=tiendaQuienLista(DB.clients,'coach').concat(tiendaQuienLista(DB.clients,'pro'),tiendaQuienLista(DB.clients,'libre'));"]],
   // las 4 partes se ven todas a la vez
   'partes-todas-visibles': [["e.classList.toggle('on',k===p);", "e.classList.add('on');"]],
+  // la pestaña Compras no trae el interruptor «Ve la tienda»
+  'compras-sin-interruptor': [["  tiendaRenderFichaVer(id); suplRenderFicha(id);\n}", "  suplRenderFicha(id);\n}"]],
   // el botón de un producto agotado queda activo
   'agotado-activo': [["'disabled aria-disabled=\"true\"'", "''"]],
 };
@@ -286,7 +288,8 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     // la venta aparece en la ficha de Laura con su marca y su cantidad
     ctx.CUR.clientId = 'u1'; ctx.suplRenderFicha('u1'); const ficha = el('d-ventas').innerHTML;
     ok(/Preentreno · sachet × 2/.test(ficha) && /Pedido de la tienda/.test(ficha) && /\$8\.000 · de contado/.test(ficha), 'G: la ficha de Laura muestra la venta «Preentreno · sachet × 2 … Pedido de la tienda»');
-    ok(!/Te debe/.test(ficha), 'G: de contado y pagada: Laura no debe nada');
+    ok(/<b class="">\$0<\/b><span>Te debe en suplementos/.test(ficha), 'G: de contado y pagada: Laura no debe nada ($0 en «Te debe en suplementos»)');
+    ok(/<b>\$8\.000<\/b><span>Ha comprado/.test(ficha), 'G: «Ha comprado» suma lo que compró ($8.000)');
     ok(ctx.__SUPL.pend.coach_ventas && !Object.keys(ctx.__SUPL.pend.coach_ventas).length, 'G: la venta que ya está en el servidor no queda como pendiente de subir');
     ok(!/Laura Prueba · 2 × Preentreno · sachet<\/div><div class="vt-sub">Hoy/.test(el('pd-list').innerHTML.split('Últimos 7 días')[0]), 'G: el pedido entregado sale de «por entregar»');
     // Cuotas: 3 cuotas y abono de 4.000
@@ -295,7 +298,7 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     const ent2 = llamadas.filter(l => l.name === 'tienda_entregar')[1];
     ok(ent2 && ent2.args.p_cuotas === 3 && ent2.args.p_abono === 4000, 'G: «Cuotas» llama tienda_entregar con 3 cuotas y abono de 4.000: ' + JSON.stringify(ent2 && ent2.args));
     ctx.CUR.clientId = 'u2'; ctx.suplRenderFicha('u2');
-    ok(/3 cuotas/.test(el('d-ventas').innerHTML) && /Te debe/.test(el('d-ventas').innerHTML), 'G: la venta a cuotas sale en la ficha de Juan con saldo');
+    ok(/3 cuotas/.test(el('d-ventas').innerHTML) && /<b class="deb">\$81\.000<\/b><span>Te debe en suplementos/.test(el('d-ventas').innerHTML), 'G: la venta a cuotas sale en la ficha de Juan con su saldo ($81.000 en «Te debe en suplementos»)');
     // abono mayor al total: no llama
     H.cloud.tienda_pedidos['z'] = p('z', 'u1', 'Laura Prueba', 'p1', 1, 'pendiente', 1000); await ctx.tiendaCoachCargar(true);
     ctx.tiendaAbrirCuotas('z'); ctx.tiendaCuotasPon(2); el('cu-abono').value = '9.000'; const antes = llamadas.filter(l => l.name === 'tienda_entregar').length;
@@ -621,6 +624,26 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     H.cloud.tienda_pedidos.z = { id: 'z', coach_id: COACH, client_uid: 'c1', client_id: 'c1', client_nombre: 'Ana Coach', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 1, estado: 'pendiente', creado: hace(0), resuelto: null };
     await ctx.tiendaCoachCargar(true); ctx.tiendaCoachAbrir(); await esperar(30);
     ok(el('p-pedidos').classList.contains('on') && !el('p-productos').classList.contains('on'), 'S: con pedidos por entregar, el menú abre en Pedidos');
+  }
+
+  // ═════ T · Ficha → Compras: el interruptor «Ve la tienda» y lo que ha comprado ═════
+  {
+    const clientes = [{ id: 'c1', name: 'Ana Coach', age: 30 }, { id: 'l1', name: 'Elena Libre', age: 16, tier: 'libre' }, { id: '_self', name: 'Yo' }];
+    const H = crear(ROOT, { sabotajes, clients: clientes, servidor: { catalogo: [], costos: {} } });
+    const { ctx, el } = H; const svs = []; ctx.sv = (k, v) => { svs.push(k); };
+    await ctx.suplCargar();
+    ctx.CUR.clientId = 'c1'; ctx.renderDetailCompras('c1');
+    let ver = el('d-compras-ver').innerHTML;
+    ok(/Ve la tienda/.test(ver) && /La prendes o la apagas tú/.test(ver) && /vt-tg on/.test(ver), '🔴 T: en Compras sale «Ve la tienda · La prendes o la apagas tú» con el interruptor (Ana, con coach: prendido)');
+    ok(/Te debe en suplementos/.test(el('d-ventas').innerHTML) && /Ha comprado/.test(el('d-ventas').innerHTML), '🔴 T: Compras trae «Te debe en suplementos» y «Ha comprado»');
+    ctx.tiendaToggleVer('c1'); ctx.renderDetailCompras('c1');
+    ok(!/vt-tg on/.test(el('d-compras-ver').innerHTML) && svs.length === 1 && ctx.DB.clients[0].tiendaVer === false, '🔴 T: apagarla desde la ficha guarda tiendaVer=false y el interruptor se apaga');
+    ctx.CUR.clientId = 'l1'; ctx.renderDetailCompras('l1');
+    ver = el('d-compras-ver').innerHTML;
+    ok(!/vt-tg on/.test(ver) && /16 años: sin «No para menores»/.test(ver), 'T: una Libre menor sale apagada y con su nota');
+    ctx.tiendaToggleVer('l1'); ok(ctx.DB.clients[1].tiendaVer === true && /vt-tg on/.test(el('d-compras-ver').innerHTML), 'T: prenderla desde la ficha la deja explícita en true');
+    ctx.renderDetailCompras('_self');
+    ok(el('d-compras-ver').innerHTML === '' && el('d-ventas').innerHTML === '', 'T: en la ficha del propio coach, Compras queda vacía');
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

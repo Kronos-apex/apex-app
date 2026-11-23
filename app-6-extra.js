@@ -3074,6 +3074,7 @@ function renderDetailMembership(id){
   if(!con)return;
   const c=DB.clients.find(x=>x.id===id);
   if(!c){con.innerHTML='';return;}
+  if(typeof renderDetailCompras==='function')renderDetailCompras(id);   // v756 (c): los suplementos viven en la pestaña Compras, no en Pagos
   // v707 · en su propia ficha el coach no se cobra a sí mismo: la pestaña lo dice en vez de enseñarle
   // una membresía «Sin pago» con botones de cobro (QA Lucas; el Resumen ya callaba el plan).
   if(typeof isSelfClient==='function'&&isSelfClient(c)){
@@ -3162,8 +3163,7 @@ function renderDetailMembership(id){
         </div>
       </div>
     </div>
-    <div id="d-ventas" style="margin-top:13px"></div>`;
-  suplRenderFicha(id); // v748 · ventas de suplementos (solo el coach), aparte de la membresía
+  `;
 }
 
 function openPaymentModal(id){
@@ -3611,16 +3611,30 @@ function suplRepintar(){
 }
 function suplPersona(id){ return (DB.clients||[]).find(x=>x.id===id)||null; }
 
-// ── FICHA · pestaña Pagos: sección «Ventas» (maqueta A) ──
+// ── FICHA · pestaña COMPRAS (v756 c): el interruptor «Ve la tienda» y lo que ha comprado ──
+function renderDetailCompras(id){
+  const c=suplPersona(id);
+  if(!c||isSelfClient(c)){ ['d-ventas','d-compras-ver'].forEach(b=>{ const e=_suplEl(b); if(e)e.innerHTML=''; }); return; }
+  tiendaRenderFichaVer(id); suplRenderFicha(id);
+}
+function tiendaRenderFichaVer(id){
+  const box=_suplEl('d-compras-ver'); if(!box)return;
+  const c=suplPersona(id);
+  if(!c||isSelfClient(c)){ box.innerHTML=''; return; }
+  const ve=tiendaVeTienda(c), nota=tiendaQuienNota(c);
+  box.innerHTML=`<div class="card"><div class="cb" style="padding:4px 14px"><div class="tq-row"><div class="tq-mid"><div class="vt-nm">Ve la tienda</div><div class="tq-nota">La prendes o la apagas tú${nota?' · '+esc(nota):''}</div></div><button type="button" class="vt-tg${ve?' on':''}" role="switch" aria-checked="${ve?'true':'false'}" aria-label="Ve la tienda" onclick="tiendaToggleVer('${esc(id)}')"></button></div></div></div>`;
+}
+
+// ── FICHA · pestaña Compras: lo que le has vendido (maqueta A) ──
 function suplRenderFicha(id){
   const box=_suplEl('d-ventas'); if(!box)return;
   suplInit();
   if(!SUPL.cargado)suplCargar().then(()=>{ if(CUR.clientId===id)suplRenderFicha(id); });
   const ventas=suplVentasDe(SUPL.ventas,id);
   const debe=ventas.reduce((t,v)=>t+suplSaldo(v),0);
-  let h=`<div class="card"><div class="ch" style="gap:10px"><div><div class="ctitle">🧴 Ventas</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Suplementos que le has vendido</div></div><span class="vt-priv">🔒 Solo tú lo ves</span></div><div class="cb">`;
-  h+=_suplFranja();
-  if(debe>0)h+=`<div class="vt-tot"><span style="color:var(--t2)">Te debe</span><b>${_suplMon(debe)}</b></div>`;
+  const compro=ventas.reduce((t,v)=>t+suplMonto(v.precio),0);
+  let h=_suplFranja()+`<div class="cm-money"><div><b class="${debe>0?'deb':''}">${_suplMon(debe)}</b><span>Te debe en suplementos</span></div><div><b>${_suplMon(compro)}</b><span>Ha comprado</span></div></div>`;
+  h+=`<div class="card"><div class="ch" style="gap:10px"><div><div class="ctitle">Compras</div><div style="font-size:12px;color:var(--t2);margin-top:3px">Suplementos que le has vendido</div></div><span class="vt-priv">🔒 Solo tú lo ves</span></div><div class="cb">`;
   if(!ventas.length)h+=`<div style="font-size:13px;color:var(--t3);text-align:center;padding:10px 0 4px">Aún no le has vendido nada.</div>`;
   ventas.forEach(v=>{
     const abonado=suplAbonado(v), precio=suplMonto(v.precio), saldo=suplSaldo(v);

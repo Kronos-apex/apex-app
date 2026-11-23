@@ -2546,7 +2546,7 @@ function openCoachStat(kind){
   if(kind==='ingresos'){
     const mesName=now.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
     const cap=mesName.charAt(0).toUpperCase()+mesName.slice(1);
-    title='Ingresos de '+cap;
+    title='Mensualidades de '+cap;   // v756 (c): solo planes; los suplementos están en Tienda → Ventas
     const rows=[]; let total=0, nPagos=0;
     DB.clients.filter(clientIsBillable).forEach(c=>{
       const pm=(c.payments||[]).filter(p=>{const d=new Date(p.date);return d.getFullYear()===y&&d.getMonth()===mo;});
@@ -2559,7 +2559,6 @@ function openCoachStat(kind){
     if(rows.length){
       const prom=Math.round(total/rows.length);
       html+=`<div class="sroom-stats">${stat('💵','Total','$'+total.toLocaleString('es-CO'),'#10b981')}${stat('👥','Pagaron',rows.length,'#3a86c8')}${stat('📊','Promedio','$'+prom.toLocaleString('es-CO'),'#9b6dd6')}</div>`;
-      html+=suplIngresosHTML(stat,empty);
       html+=`<div class="sroom-sec" style="margin-top:14px">Mensualidades · de dónde salen</div>`;
       html+=rows.map(({c,sub,pm})=>{
         const fechas=pm.map(p=>new Date(p.date).toLocaleDateString('es-CO',{day:'numeric',month:'long'})).join(', ');
@@ -2567,9 +2566,7 @@ function openCoachStat(kind){
         const meta=`${pm.length>1?pm.length+' pagos: ':''}${fechas}${nota?' · '+esc(nota):''}`;
         return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--gt)">$${sub.toLocaleString('es-CO')}</span>`);
       }).join('');
-    } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`)+suplIngresosHTML(stat,empty);
-    // v748 · las ventas llegan de su tabla aparte: si aún no cargaron, se repinta al llegar
-    if(typeof suplCargar==='function'&&!SUPL.cargado)suplCargar().then(()=>{ const r=document.getElementById('coach-stat-room'); if(r&&r.classList.contains('on')&&titleEl.textContent.indexOf('Ingresos')===0)openCoachStat('ingresos'); });
+    } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`);
   }
 
   else if(kind==='activos'){

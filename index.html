@@ -805,6 +805,7 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
           <button class="dt-tab" role="tab" data-t="comida" aria-selected="false" onclick="detailTab('comida')">Comida</button>
           <button class="dt-tab" role="tab" data-t="cuerpo" aria-selected="false" onclick="detailTab('cuerpo')">Cuerpo</button>
           <button class="dt-tab" role="tab" data-t="pagos" aria-selected="false" onclick="detailTab('pagos')">Pagos</button>
+          <button class="dt-tab" role="tab" data-t="compras" aria-selected="false" onclick="detailTab('compras')">Compras</button>
         </div>
       </div>
 
@@ -898,6 +899,12 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <section class="dt-sec" data-dt="pagos" role="tabpanel" aria-label="Pagos">
         <div id="d-freelead" style="margin-bottom:13px"></div>
         <div id="d-membership" style="margin-bottom:16px"></div>
+      </section>
+
+      <!-- ── COMPRAS (v756 b): lo que ha comprado en la tienda y si la ve. Pagos queda SOLO con la membresía ── -->
+      <section class="dt-sec" data-dt="compras" role="tabpanel" aria-label="Compras">
+        <div id="d-compras-ver" style="margin-bottom:13px"></div>
+        <div id="d-ventas"></div>
       </section>
     </div>
 

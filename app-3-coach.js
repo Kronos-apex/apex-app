@@ -2301,7 +2301,7 @@ function detailTab(t,opts){
 // Con teclado (el coach también usa la app en el computador): ← → Inicio Fin recorren las pestañas,
 // y solo la elegida queda en el orden de Tab (QA Julián: sin esto, las otras cuatro eran inalcanzables).
 function detailTabKey(e){
-  const k=e&&e.key, tabs=(typeof DETAIL_TABS!=='undefined')?DETAIL_TABS:['resumen','entreno','comida','cuerpo','pagos'];
+  const k=e&&e.key, tabs=(typeof DETAIL_TABS!=='undefined')?DETAIL_TABS:['resumen','entreno','comida','cuerpo','pagos','compras'];
   const i=tabs.indexOf(CUR.detailTab||'resumen');
   const j=k==='ArrowRight'?Math.min(tabs.length-1,i+1):k==='ArrowLeft'?Math.max(0,i-1):k==='Home'?0:k==='End'?tabs.length-1:-1;
   if(j<0)return;
@@ -2319,7 +2319,7 @@ function detailSummaryLater(){
 // ¿La tarjeta se está mostrando? Lo que ya decidió cada tarjeta se LEE de ella (el plan de choque, la
 // revisión del plan de comida): re-derivarlo sería una segunda cuenta que acaba diciendo otra cosa.
 function _detailVisible(id){ const el=document.getElementById(id); return !!(el&&el.style.display!=='none'&&el.innerHTML.trim()); }
-const _DT_NOMBRE={resumen:'Resumen',entreno:'Entreno',comida:'Comida',cuerpo:'Cuerpo',pagos:'Pagos'};
+const _DT_NOMBRE={resumen:'Resumen',entreno:'Entreno',comida:'Comida',cuerpo:'Cuerpo',pagos:'Pagos',compras:'Compras'};
 function renderDetailSummary(c){
   const el=document.getElementById('d-sum'); if(!el||!c)return;
   if(typeof detailSummary!=='function'){ el.innerHTML=''; return; }
