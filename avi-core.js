@@ -14515,8 +14515,20 @@ function tiendaPedidoEtiqueta(estado) {
   if (estado === 'cancelado') return { texto: 'Cancelado', tono: 'gris' };
   return { texto: 'Esperando entrega', tono: 'ambar' };
 }
-// ¿Ve la tienda? La entrega es en el gym: solo quien entrena con el coach. UNA sola regla, para poder cambiarla.
-function tiendaVeTienda(c) { return !!c && !isSelfClient(c) && clientHasCoach(c); }
+// ¿Ve la tienda? La entrega es en el gym. UNA sola regla, de TRES estados, que el coach cambia persona por persona (`profile.tiendaVer`):
+//   true → la ve · false → no la ve · ausente → regla por defecto: la ve quien NO es de plan 'libre' ni 'app' (Libres y PRO no).
+// 🔒 Es la MISMA que hace cumplir la base (20261123_tienda_por_persona.sql: tienda_catalogo y tienda_pedir); una prueba compara las dos
+// en todas las combinaciones. `tiendaVer` solo lo escribe el coach (el trigger de user_data se lo quita a la propia persona).
+function tiendaVerExplicito(c) { return !!c && c.tiendaVer !== undefined; }
+function tiendaVerPorDefecto(c) {
+  const t = String(c && c.tier != null ? c.tier : '').toLowerCase();
+  return t !== 'libre' && t !== 'app';
+}
+function tiendaVeTienda(c) {
+  if (!c || isSelfClient(c)) return false;
+  if (tiendaVerExplicito(c)) return String(c.tiendaVer).toLowerCase() === 'true';
+  return tiendaVerPorDefecto(c);
+}
 // ¿Se le muestra este producto a esta persona? `no_menores`: solo con edad registrada de 18 o más.
 function tiendaMuestraProducto(producto, client) {
   if (!producto) return false;
@@ -15363,6 +15375,8 @@ if (typeof module !== 'undefined' && module.exports) {
     tiendaStockEstado,
     tiendaPedidoEtiqueta,
     tiendaVeTienda,
+    tiendaVerExplicito,
+    tiendaVerPorDefecto,
     tiendaMuestraProducto,
     tiendaResumenPedido,
     tiendaPushTexto,

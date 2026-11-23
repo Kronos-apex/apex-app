@@ -28436,6 +28436,109 @@ test('v756 · CLAUDE.md y el historial hablan de la tienda: habitaciones, tabla,
   assert.ok(hist.indexOf('- **v756') < hist.indexOf('- **v755'), '🔴 la v756 va ARRIBA de la v755');
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (2ª parte) · BLOQUE A — quién ve la tienda, persona por persona (profile.tiendaVer)
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+const _t756b = (() => {
+  const fs = require('fs'), path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, 'supabase', 'migrations', '20261123_tienda_por_persona.sql'), 'utf8');
+  const sqlSin = sql.replace(/\r/g, '').split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
+  const fn = nombre => { const i = sqlSin.indexOf('create or replace function public.' + nombre + '('); if (i < 0) return ''; const j = sqlSin.indexOf('create or replace function', i + 10); return sqlSin.slice(i, j < 0 ? undefined : j); };
+  // La condición de la regla, tal cual está en la migración (primera aparición, en tienda_catalogo)
+  const cond = (fn('tienda_catalogo').match(/and (case when jsonb_exists\(u\.profile, 'tiendaVer'\)[\s\S]*?end)\) then/) || [])[1] || '';
+  // Mini-intérprete de ESA condición (solo las construcciones que usa): la convierte a JS y la evalúa con la semántica NULL de SQL
+  const aJs = c => c
+    .replace(/jsonb_exists\(u\.profile, '(\w+)'\)/g, "has('$1')")
+    .replace(/lower\(coalesce\(u\.profile ->> '(\w+)', ''\)\) not in \(([^)]*)\)/g, "!inList(lower(coalesce(txt('$1'),'')),[$2])")
+    .replace(/lower\(u\.profile ->> '(\w+)'\) = '(\w+)'/g, "eq(lower(txt('$1')),'$2')")
+    .replace(/case when ([\s\S]*?) then ([\s\S]*?) else ([\s\S]*?) end$/, '($1) ? ($2) : ($3)');
+  const reglaSql = profile => {
+    const p = JSON.parse(JSON.stringify(profile));
+    const txt = k => (p[k] === undefined || p[k] === null ? null : String(p[k]));
+    const has = k => Object.prototype.hasOwnProperty.call(p, k);
+    const lower = x => (x === null ? null : x.toLowerCase());
+    const coalesce = (x, d) => (x === null ? d : x);
+    const inList = (x, l) => l.indexOf(x) >= 0;
+    const eq = (a, b) => a !== null && a === b;
+    return !!new Function('has', 'txt', 'lower', 'coalesce', 'inList', 'eq', 'return ' + aJs(cond))(has, txt, lower, coalesce, inList, eq);
+  };
+  return { fs, path, sql, sqlSin, fn, cond, aJs, reglaSql };
+})();
+
+test('v756b · A · la regla de TRES estados: JS (tiendaVeTienda) y SQL (migración 20261123) dan lo mismo en TODAS las combinaciones', () => {
+  assert.ok(_t756b.cond.length > 60, '🔴 no se pudo leer la condición de la migración');
+  let n = 0;
+  for (const tier of [undefined, '', 'app', 'libre', 'Libre', 'premium', 'pro'])
+    for (const ver of ['ausente', true, false, 'true', 'false', null])
+      for (const prueba of ['sin', 'vigente', 'vencida']) {
+        const c = { id: 'u1', name: 'X', age: 30 };
+        if (tier !== undefined) c.tier = tier;
+        if (ver !== 'ausente') c.tiendaVer = ver;
+        if (prueba === 'vigente') c.proTrialUntil = new Date(Date.now() + 864e5).toISOString();
+        if (prueba === 'vencida') c.proTrialUntil = new Date(Date.now() - 864e5).toISOString();
+        assert.strictEqual(core.tiendaVeTienda(c), _t756b.reglaSql(c), '🔴 JS y SQL no coinciden con ' + JSON.stringify({ tier, ver, prueba }));
+        n++;
+      }
+  assert.strictEqual(n, 7 * 6 * 3);
+  // Casos de la decisión del dueño, a mano
+  assert.strictEqual(core.tiendaVeTienda({ id: 'a', tier: 'libre' }), false, 'Libre sin clave: no');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'a', tier: 'libre', tiendaVer: true }), true, 'CONTROL: Libre con la clave en true: sí');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'a', tier: 'premium', tiendaVer: false }), false, 'Premium apagada: no');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'a', tier: 'premium' }), true, 'Premium sin clave: sí');
+  assert.strictEqual(core.tiendaVeTienda({ id: 'a' }), true, 'creada por el coach (sin tier): sí');
+  assert.strictEqual(core.tiendaVeTienda({ id: '_self', tiendaVer: true }), false, 'el propio coach nunca');
+  assert.strictEqual(core.tiendaVerExplicito({ id: 'a', tiendaVer: false }), true);
+  assert.strictEqual(core.tiendaVerExplicito({ id: 'a' }), false);
+  // SABOTAJE (en la prueba): una regla vieja que ignora la clave NO coincide con SQL → el comparador la ve
+  const vieja = c => core.clientHasCoach(c);
+  const distintas = [{ id: 'a', tier: 'libre', tiendaVer: true }, { id: 'a', tier: 'premium', tiendaVer: false }].filter(c => vieja(c) !== _t756b.reglaSql(c));
+  assert.strictEqual(distintas.length, 2, 'control: el comparador no ve que la regla vieja ignora la clave');
+  // SABOTAJE 2: un intérprete SQL con la rama «ausente» rota también se descubre
+  const rota = _t756b.cond.replace("not in ('libre', 'app')", "not in ('libre')");
+  assert.notStrictEqual(rota, _t756b.cond, 'control: el sabotaje no se aplicó');
+  const aJs = _t756b.aJs(rota);
+  assert.ok(/inList\(lower\(coalesce\(txt\('tier'\),''\)\),\['libre'\]\)/.test(aJs), 'control: el intérprete lee la condición rota');
+});
+test('v756b · A · migración 20261123: tres estados en catálogo y pedir (con coach_id), la clave del coach protegida en UPDATE e INSERT, idempotente', () => {
+  const { sqlSin, fn, cond } = _t756b;
+  ['tienda_catalogo', 'tienda_pedir'].forEach(n => {
+    const c = fn(n);
+    assert.ok(c.includes(cond), '🔴 ' + n + ' no usa la regla de tres estados');
+    assert.ok(/u\.coach_id = v_coach/.test(c), '🔴 ' + n + ' dejó de exigir coach_id');
+    assert.ok(/security definer/.test(c) && /set search_path = ''/.test(c));
+    assert.ok(!/not in \('libre', 'app'\)\) then/.test(c.replace(cond, '')), '🔴 ' + n + ' conserva la condición vieja de tier suelta');
+  });
+  assert.ok(/jsonb_exists\(u\.profile, 'tiendaVer'\)/.test(cond) && /lower\(u\.profile ->> 'tiendaVer'\) = 'true'/.test(cond) && /not in \('libre', 'app'\)/.test(cond), '🔴 la condición no tiene los tres estados');
+  // el trigger: función ENTERA recreada con la clave nueva
+  const tg = fn('user_data_campos_del_coach');
+  assert.ok(/v_claves constant text\[\] := array\['payments','tier','suspended','courtesy','proTrialUntil','tiendaVer'\]/.test(tg), '🔴 tiendaVer no está en las claves protegidas del UPDATE');
+  assert.ok(/v_base := v_base - 'payments' - 'suspended' - 'courtesy' - 'tiendaVer';/.test(tg), '🔴 tiendaVer no se quita en el INSERT');
+  const viejo = _t756b.fs.readFileSync(_t756b.path.join(__dirname, 'supabase', 'migrations', '20261121_user_data_campos_del_coach.sql'), 'utf8').replace(/\r/g, '');
+  const sinClave = tg.replace(",'tiendaVer'", '').replace(" - 'tiendaVer'", '');
+  const vigente = viejo.slice(viejo.indexOf('create or replace function public.user_data_campos_del_coach()'), viejo.indexOf('$fn$;', viejo.indexOf('create or replace function')) + 5).split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
+  const _norm = x => x.replace(/\s+/g, ' ').trim().replace(/ ?\$fn\$;.*$/, '$fn$;');
+  assert.strictEqual(_norm(sinClave), _norm(vigente), '🔴 la función recreada difiere de la vigente más allá de la clave nueva (¿se copió bien?)');
+  assert.ok(/drop trigger if exists user_data_campos_del_coach on public\.user_data;\s*create trigger user_data_campos_del_coach\s+before insert or update on public\.user_data/.test(sqlSin), '🔴 falta recrear el trigger');
+  // idempotente + permisos
+  assert.ok(![...sqlSin.matchAll(/create function/g)].length && ![...sqlSin.matchAll(/create table|create index|add column/g)].length, '🔴 no idempotente');
+  ['tienda_catalogo()', 'tienda_pedir(uuid, int)'].forEach(f => {
+    assert.ok(sqlSin.includes('revoke execute on function public.' + f + ' from public, anon;') && sqlSin.includes('grant execute on function public.' + f + ' to authenticated;'), '🔴 permisos de ' + f);
+  });
+  // CONTROL: la migración vieja SÍ tiene la condición simple (el regex no es ciego)
+  assert.ok(/lower\(coalesce\(u\.profile ->> 'tier', ''\)\) not in \('libre', 'app'\)/.test(_t756.sqlSin), 'control');
+});
+test('v756b · A · probar-tienda-por-persona.sql: begin…rollback, los 8 casos y sus CONTROLES', () => {
+  const t = _t756b.fs.readFileSync(_t756b.path.join(__dirname, 'scripts', 'sql', 'probar-tienda-por-persona.sql'), 'utf8');
+  const cuerpo = t.replace(/--.*$/gm, '');
+  assert.ok(/^begin;/m.test(cuerpo) && /^rollback;\s*$/m.test(cuerpo) && !/^commit;/m.test(cuerpo));
+  assert.ok((cuerpo.match(/_probar_chk\(/g) || []).length >= 20, '🔴 muy pocas comprobaciones');
+  ['Libre sin clave: el catálogo sale vacío', 'Libre sin clave: no puede pedir', 'CONTROL Libre con tiendaVer=true: SÍ ve', 'CONTROL Libre con tiendaVer=true: SÍ puede pedir',
+    'Premium con tiendaVer=false: el catálogo sale vacío', 'Premium con tiendaVer=false: no puede pedir', 'Premium sin clave: ve', 'Menor Libre con tiendaVer=true: ve la tienda SIN',
+    'SIGUE sin ver la tienda', 'UPDATE propio', 'INSERT propio', 'CONTROL: el coach SÍ puede ponerle tiendaVer=true', 'el coach TODAVÍA ve los 2 pedidos', 'TODAVÍA puede entregar', 'SÍ puede cancelar su pedido pendiente'
+  ].forEach(k => assert.ok(t.includes(k), '🔴 falta la comprobación «' + k + '»'));
+  assert.ok(!/gmail|hotmail|@(?!prueba\.invalid)\w+\.\w+/i.test(t), '🔴 un correo real en el script');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
