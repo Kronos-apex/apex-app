@@ -2884,4 +2884,4 @@ button.vt-tg{border:0;padding:0;cursor:pointer}
 .hm-mini b.deb{color:var(--ort)}
 .hm-chev{font-size:15px;font-weight:700;color:var(--t3)}
 /* Seis pestañas en la ficha (v756 c): caben en 360 px sin cortarse */
-@media (max-width:430px){.dt-tab{padding:0 3px;font-size:11.5px}}
+@media (max-width:430px){#d-tabs .dt-tab{padding:0 3px;font-size:11.5px}}

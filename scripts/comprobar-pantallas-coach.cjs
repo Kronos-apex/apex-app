@@ -11,6 +11,12 @@ const SABOTAJES = {
   // el reporte de mensualidades vuelve a llevar los suplementos
   'ingresos-con-suplementos': { 'app-2-login.js': [["      html+=`<div class=\"sroom-sec\" style=\"margin-top:14px\">Mensualidades · de dónde salen</div>`;", "      html+=suplIngresosHTML(stat,empty);\n      html+=`<div class=\"sroom-sec\" style=\"margin-top:14px\">Mensualidades · de dónde salen</div>`;"]] },
   'ingresos-titulo-viejo': { 'app-2-login.js': [["title='Mensualidades de '+cap;", "title='Ingresos de '+cap;"]] },
+  // el reporte de mensualidades pierde la nota «ya no aparecen los suplementos»
+  'ingresos-sin-nota': { 'app-2-login.js': [["    html+=`<div class=\"sroom-cmp flat\" style=\"margin:12px 0\"><span>Aquí ya no aparecen los suplementos. Esos se ven en Tienda → Ventas.</span></div>`;\n", ""]] },
+  // el coach («Yo») vuelve a salir en Prioritarios
+  'prioritarios-con-yo': { 'app-2-login.js': [["const _hClientes=DB.clients.filter(c=>!(typeof isSelfClient==='function'&&isSelfClient(c)));", "const _hClientes=DB.clients.slice();"]] },
+  // sin asesorados, el Inicio sale antes de pintar Pendientes y Tienda
+  'pendientes-tras-return': { 'app-2-login.js': [["Añade el primero con el botón de arriba</div></div>';\n  }else{", "Añade el primero con el botón de arriba</div></div>';return;\n  }else{"]] },
   // un Pendiente se pierde: las descargas terminadas ya no entran a la lista
   'pendiente-perdido': { 'app-2-login.js': [["    descarga:(typeof deloadOverdue==='function')?deloadOverdue(DB.clients,now.getTime()):[],\n", ""]] },
   // «Ver N más» no abre el resto
@@ -73,6 +79,35 @@ const ahora = Date.now(), dia = 864e5;
     const V = montar([{ id: 'c1', name: 'Mariana Prueba', age: 30, payments: [] }]);
     V.ctx.openCoachStat('ingresos');
     ok(!V.ctx.__suplLlamado && /Aún no hay pagos registrados/.test(V.el('coach-stat-body').innerHTML), '🔴 C: sin pagos, el reporte dice que no hay pagos y NO trae suplementos');
+  }
+  // ═════ C2 · la nota del dibujo aprobado ═════
+  {
+    const M = montar([{ id: 'c1', name: 'Mariana Prueba', age: 30, payments: [{ date: iso(Date.now()), dueDate: iso(Date.now() + 30 * dia), amount: 150000, note: '' }] }]);
+    M.ctx.openCoachStat('ingresos');
+    ok(/Aquí ya no aparecen los suplementos\. Esos se ven en Tienda → Ventas\./.test(M.el('coach-stat-body').innerHTML), '🔴 C: el reporte de Mensualidades lleva la nota «Aquí ya no aparecen los suplementos. Esos se ven en Tienda → Ventas.»');
+    const V = montar([{ id: 'c1', name: 'Mariana Prueba', age: 30, payments: [] }]);
+    V.ctx.openCoachStat('ingresos');
+    ok(/Esos se ven en Tienda → Ventas/.test(V.el('coach-stat-body').innerHTML), '🔴 C: sin pagos también lleva la nota de los suplementos');
+  }
+  // ═════ D2 · «Yo» fuera de Prioritarios y Pendientes siempre pintados ═════
+  {
+    const hoy = Date.now();
+    const ven = { id: 'c3', name: 'Carla Coach', age: 28, payments: [{ date: iso(hoy - 5 * 36e5), dueDate: iso(hoy + 25 * dia), amount: 150000 }] };
+    const sinFuentes = { chatAwaiting: () => [], newAccountsList: () => [], deloadOverdue: () => [], coachPulse: () => [] };
+    const P = montar([{ id: '_self', name: 'Yo', age: 35 }, ven], sinFuentes);
+    P.ctx.renderHome();
+    const filas = P.el('h-list').hijos.map(x => x.innerHTML);
+    ok(filas.length === 1 && /Carla Coach/.test(filas[0]), '🔴 D2: Prioritarios trae SOLO a la persona (CONTROL) y no al coach «Yo»: ' + filas.length + ' filas');
+    ok(!filas.some(f => />Yo</.test(f)), '🔴 D2: el coach («Yo») NO sale en Prioritarios');
+    const dolor = { COACH_OWN_ROW: { profile: { painCare: [{ area: 'rodilla', level: 2 }] } } };
+    const S = montar([{ id: '_self', name: 'Yo', age: 35 }], Object.assign({}, sinFuentes, dolor));
+    S.ctx.renderHome();
+    ok(/Sin asesorados todavía/.test(S.el('h-list').innerHTML) && S.el('h-list').hijos.length === 0, '🔴 D2: con solo el coach, Prioritarios dice «Sin asesorados todavía» y no lista a «Yo»');
+    ok(/Reportaste dolor: rodilla/.test(S.el('h-pend').innerHTML), '🔴 D2: sin asesorados, los Pendientes SE PINTAN igual (dolor propio)');
+    ok(S.ctx.__tiendaHome === true, '🔴 D2: sin asesorados, la tarjeta de la Tienda SE PINTA igual');
+    const Z = montar([], Object.assign({}, sinFuentes, dolor));
+    Z.ctx.renderHome();
+    ok(/Reportaste dolor/.test(Z.el('h-pend').innerHTML) && Z.ctx.__tiendaHome === true, '🔴 D2: con 0 personas en la lista también se pintan Pendientes y Tienda');
   }
   // ═════ D · El Inicio limpio: Pendientes, la nota «N hoy» y el reporte de Sesiones ═════
   {

@@ -2044,14 +2044,15 @@ function renderHome(){
 
   // ── Prioritarios: vencidos y por vencer primero ──
   const list=document.getElementById('h-list');
-  if(!DB.clients.length){
+  // v756 (c) · El coach («Yo») no es un asesorado a cobrar ni a perseguir: no sale en Prioritarios (decía «Sin sesiones · Sin pago»).
+  const _hClientes=DB.clients.filter(c=>!(typeof isSelfClient==='function'&&isSelfClient(c)));
+  if(!_hClientes.length){
     list.innerHTML='<div class="empty"><div class="eico" style="color:var(--t3)">'+(typeof aviIcon==='function'?aviIcon('users',34):'👥')+'</div><div class="etxt">Sin asesorados todavía</div><div class="esub">Añade el primero con el botón de arriba</div></div>';
-    return;
-  }
+  }else{
   // v733 · Un Libre no tiene membresía que cobrar: con pagos viejos daba «Vencido» y se subía al tope de
   //    esta lista para siempre (reporte del PO, 8-nov). Se pinta su nivel y va al fondo.
   const _hStatus=c=>(clientPlan(c)==='libre')?'free':MS.getStatus(c);
-  const sorted=[...DB.clients].sort((a,b)=>{
+  const sorted=[..._hClientes].sort((a,b)=>{
     // `grace` (v528) va pegado a `overdue`: es el que todavía se alcanza a renovar. Sin su
     // entrada caía al `??9` y se iba al fondo, detrás de los suspendidos.
     const order={'overdue':0,'grace':1,'expiring':2,'pending':3,'active':4,'inactive':5,'suspended':6,'free':8};
@@ -2079,6 +2080,7 @@ function renderHome(){
     d.onclick=()=>openDetail(c.id);
     list.appendChild(d);
   });
+  }
   // v756 (b) · UNA lista de Pendientes y la tarjeta de la Tienda (todo lo que eran avisos sueltos, tope de dos y tarjetas fijas).
   if(typeof renderPendientes==='function')renderPendientes();
   if(typeof tiendaRenderHome==='function')tiendaRenderHome();
@@ -2398,6 +2400,8 @@ function openCoachStat(kind){
         return _crepRow(c.id,c.name,meta,`<span class="crep-amt" style="color:var(--gt)">$${sub.toLocaleString('es-CO')}</span>`);
       }).join('');
     } else html+=empty('🧾',`Aún no hay pagos registrados en ${esc(cap)}.<br>Regístralos desde la ficha de cada asesorado.`);
+    // v756 (c) · La nota del dibujo aprobado: de los suplementos no se habla aquí, se ven en la Tienda.
+    html+=`<div class="sroom-cmp flat" style="margin:12px 0"><span>Aquí ya no aparecen los suplementos. Esos se ven en Tienda → Ventas.</span></div>`;
   }
 
   else if(kind==='activos'){

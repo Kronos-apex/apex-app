@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 function crear(ROOT, opts) {
   opts = opts || {};
   const core = require(path.join(ROOT, 'avi-core.js'));
-  let extra = fs.readFileSync(path.join(ROOT, 'app-6-extra.js'), 'utf8');
+  let extra = fs.readFileSync(path.join(ROOT, 'app-6-extra.js'), 'utf8').replace(/\r\n/g, '\n');   // v756 (c): en Windows el árbol trae CRLF y la extracción busca «\n}\n»
   const ini = extra.indexOf('// VENTAS DE SUPLEMENTOS (v748) — pantallas y escritura');
   if (ini < 0) throw new Error('no hay bloque de ventas');
   // v756 (b): lo que decide «quién ve la tienda» vive junto a toggleCourtesy (fuera del bloque de ventas): también se corre de verdad.

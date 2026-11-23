@@ -90,6 +90,10 @@ const SABOTAJES = {
   'partes-todas-visibles': [["e.classList.toggle('on',k===p);", "e.classList.add('on');"]],
   // la pestaña Compras no trae el interruptor «Ve la tienda»
   'compras-sin-interruptor': [["  tiendaRenderFichaVer(id); suplRenderFicha(id);\n}", "  suplRenderFicha(id);\n}"]],
+  // la pestaña Compras del propio coach queda en blanco
+  'compras-yo-en-blanco': [["    const e=_suplEl('d-compras-ver'); if(e)e.innerHTML='<div class=\"card\"><div class=\"cb\" style=\"font-size:13px;color:var(--t2);line-height:1.5\">Esta es tu propia ficha: no te vendes a ti mismo, así que aquí no hay compras ni interruptor de la tienda.</div></div>';", "    const e=_suplEl('d-compras-ver'); if(e)e.innerHTML='';"]],
+  // apagar «Ve la tienda» esconde al coach los pedidos pendientes de esa persona
+  'apagar-esconde-pedidos': [["function tiendaPorEntregar(){ return (TIENDA.pedidos||[]).filter(p=>p&&p.estado==='pendiente'); }", "function tiendaPorEntregar(){ return (TIENDA.pedidos||[]).filter(p=>p&&p.estado==='pendiente'&&((DB.clients||[]).find(c=>c.id===p.client_id)||{}).tiendaVer!==false); }"]],
   // el botón de un producto agotado queda activo
   'agotado-activo': [["'disabled aria-disabled=\"true\"'", "''"]],
 };
@@ -642,7 +646,24 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     ok(!/vt-tg on/.test(ver) && /16 años: sin «No para menores»/.test(ver), 'T: una Libre menor sale apagada y con su nota');
     ctx.tiendaToggleVer('l1'); ok(ctx.DB.clients[1].tiendaVer === true && /vt-tg on/.test(el('d-compras-ver').innerHTML), 'T: prenderla desde la ficha la deja explícita en true');
     ctx.renderDetailCompras('_self');
-    ok(el('d-compras-ver').innerHTML === '' && el('d-ventas').innerHTML === '', 'T: en la ficha del propio coach, Compras queda vacía');
+    ok(el('d-ventas').innerHTML === '' && /Esta es tu propia ficha: no te vendes a ti mismo/.test(el('d-compras-ver').innerHTML) && !/vt-tg/.test(el('d-compras-ver').innerHTML), '🔴 T: en la ficha del propio coach, Compras NO queda en blanco: dice que es su propia ficha y no trae interruptor ni compras');
+    ctx.renderDetailCompras('c1'); ok(/vt-tg/.test(el('d-compras-ver').innerHTML), 'T: CONTROL, en la ficha de una persona Compras sí trae el interruptor');
+  }
+
+  // ═════ U · Apagar «Ve la tienda» NO esconde al coach lo que esa persona ya pidió ═════
+  {
+    const hace = ms => iso(ahora - ms);
+    const ped = { id: 'u-p1', coach_id: COACH, client_uid: 'c1', client_id: 'c1', client_nombre: 'Ana Coach', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 1, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: hace(60000), resuelto: null };
+    const H = crear(ROOT, { sabotajes, clients: [{ id: 'c1', name: 'Ana Coach', age: 30 }], cloud: { tienda_pedidos: [ped] }, servidor: { catalogo: productosTienda, costos: { p1: 2720 } } });
+    const { ctx, el } = H; ctx.sv = () => {};
+    await ctx.suplCargar(); await ctx.tiendaCoachCargar(true);
+    ctx.tiendaToggleVer('c1');
+    ok(ctx.DB.clients[0].tiendaVer === false && ctx.tiendaVeTienda(ctx.DB.clients[0]) === false, 'U: CONTROL, Ana quedó con la tienda APAGADA');
+    await ctx.tiendaCoachCargar(true); ctx.tiendaRenderPedidos(); ctx.tiendaRenderHome(); await esperar(30);
+    ok(ctx.tiendaPorEntregar().length === 1, '🔴 U: con la tienda apagada, su pedido pendiente sigue en «por entregar» (' + ctx.tiendaPorEntregar().length + ')');
+    ok(/Ana Coach · 1 × Preentreno · sachet/.test(el('pd-list').innerHTML) && el('pd-sub').textContent === '1 por entregar', '🔴 U: Tienda → Pedidos sigue mostrando el pedido de Ana: «' + el('pd-sub').textContent + '»');
+    ok(/Tienda · 1 pedido por entregar/.test(el('h-tienda').innerHTML), '🔴 U: la tarjeta de la Tienda en el Inicio sigue diciendo «1 pedido por entregar»');
+    ctx.tiendaToggleVer('c1'); ok(ctx.DB.clients[0].tiendaVer === true && ctx.tiendaPorEntregar().length === 1, 'U: CONTROL, prenderla otra vez tampoco cambia el pedido');
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

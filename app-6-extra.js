@@ -3614,7 +3614,12 @@ function suplPersona(id){ return (DB.clients||[]).find(x=>x.id===id)||null; }
 // ── FICHA · pestaña COMPRAS (v756 c): el interruptor «Ve la tienda» y lo que ha comprado ──
 function renderDetailCompras(id){
   const c=suplPersona(id);
-  if(!c||isSelfClient(c)){ ['d-ventas','d-compras-ver'].forEach(b=>{ const e=_suplEl(b); if(e)e.innerHTML=''; }); return; }
+  if(!c){ ['d-ventas','d-compras-ver'].forEach(b=>{ const e=_suplEl(b); if(e)e.innerHTML=''; }); return; }
+  if(isSelfClient(c)){   // v756 (c) · como Pagos en su propia ficha: lo dice en vez de quedar en blanco
+    const v=_suplEl('d-ventas'); if(v)v.innerHTML='';
+    const e=_suplEl('d-compras-ver'); if(e)e.innerHTML='<div class="card"><div class="cb" style="font-size:13px;color:var(--t2);line-height:1.5">Esta es tu propia ficha: no te vendes a ti mismo, así que aquí no hay compras ni interruptor de la tienda.</div></div>';
+    return;
+  }
   tiendaRenderFichaVer(id); suplRenderFicha(id);
 }
 function tiendaRenderFichaVer(id){

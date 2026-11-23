@@ -28313,6 +28313,8 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'quien-sin-pestanas': /«Con coach» solo trae a la gente con coach/,
     'partes-todas-visibles': /abre SOLO la parte Pedidos|las 4 partes NO se ven a la vez/,
     'compras-sin-interruptor': /en Compras sale «Ve la tienda/,
+    'compras-yo-en-blanco': /Compras NO queda en blanco/,
+    'apagar-esconde-pedidos': /con la tienda apagada, su pedido pendiente sigue/,
   };
   Object.keys(casos).forEach(k => {
     const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
@@ -28560,7 +28562,7 @@ test('v756b · B · la Tienda está en el menú ☰ con sus 4 partes y todo lo q
 test('v756b · C · el reporte «Mensualidades de <mes>» no lleva suplementos y la ficha tiene la pestaña Compras (Pagos queda solo con la membresía)', () => {
   const r = _t756Corre('comprobar-pantallas-coach.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
-  const sab = { 'ingresos-con-suplementos': /trae suplementos/, 'ingresos-titulo-viejo': /tiene que llamarse «Mensualidades de/ };
+  const sab = { 'ingresos-con-suplementos': /trae suplementos/, 'ingresos-titulo-viejo': /tiene que llamarse «Mensualidades de/, 'ingresos-sin-nota': /lleva la nota «Aquí ya no aparecen los suplementos/, 'prioritarios-con-yo': /NO sale en Prioritarios/, 'pendientes-tras-return': /SE PINTAN igual/ };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
     assert.notStrictEqual(x.status, 0, '🔴 el sabotaje «' + k + '» no hizo caer la prueba');
@@ -28692,6 +28694,29 @@ test('v756b · E · saveNutrition repinta la alerta de revisión y el Resumen (E
   assert.ok(f.indexOf("sv('ax_nut'") < f.indexOf('renderNutReviewCard(_cNut)') && /detailSummaryLater\(\)/.test(f), '🔴 saveNutrition no repinta la alerta y el Resumen después de guardar');
   // CONTROL: el chequeo vería un saveNutrition viejo
   assert.ok(!/renderNutReviewCard\(_cNut\)/.test("sv('ax_nut',DB.nutrition);cm('m-nut');renderNutritionCoach(clientId);"), 'control');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (c) · arreglos del verificador: pestañas de la ficha, documentación
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+test('v756c · las pestañas con 11,5 px son SOLO las de la ficha (Progreso, Asesorados y Tienda siguen en 12,5 px)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8').replace(/\r/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  // todas las reglas que bajan la letra de una pestaña `.dt-tab` a 11,5 px
+  const reglas = [...css.matchAll(/([^{}]*\.dt-tab[^{}]*)\{([^{}]*font-size:11\.5px[^{}]*)\}/g)].map(m => m[1].trim());
+  assert.ok(reglas.length >= 1, '🔴 se perdió la regla que encoge las pestañas de la ficha (seis pestañas no caben en 360 px)');
+  reglas.forEach(sel => assert.ok(/#d-tabs \.dt-tab$/.test(sel.replace(/\s+/g, ' ')),'🔴 «' + sel + '» baja a 11,5 px las pestañas de OTRAS pantallas (Progreso, Asesorados, Tienda)'));
+  assert.ok(/\.dt-tab\{[^}]*font-size:12\.5px/.test(css), '🔴 la pestaña base ya no es de 12,5 px');
+  // CONTROL: el chequeo sí ve la regla vieja (global)
+  const vieja = '@media (max-width:430px){.dt-tab{padding:0 3px;font-size:11.5px}}';
+  const rv = [...vieja.matchAll(/([^{}]*\.dt-tab[^{}]*)\{([^{}]*font-size:11\.5px[^{}]*)\}/g)].map(m => m[1].trim());
+  assert.ok(rv.length === 1 && !/#d-tabs \.dt-tab$/.test(rv[0]), 'control: la regla global vieja tiene que contar como global');
+});
+test('v756c · CLAUDE.md ya no dice que la migración 20261123 está pendiente de aplicar', () => {
+  const md = require('fs').readFileSync(require('path').join(__dirname, 'CLAUDE.md'), 'utf8');
+  assert.ok(!/20261123[^\n]{0,80}pendiente de aplicar/.test(md) && !/migración `20261123`[^)\n]{0,20}pendiente/.test(md), '🔴 CLAUDE.md sigue diciendo que la migración 20261123 está pendiente de aplicar');
+  assert.ok(/20261123_tienda_por_persona\.sql`[^)\n]{0,40}aplicada/.test(md), '🔴 CLAUDE.md no dice que 20261123 está aplicada');
+  // CONTROL
+  assert.ok(/20261123[^\n]{0,80}pendiente de aplicar/.test('migración `20261123_tienda_por_persona.sql` pendiente de aplicar'), 'control');
 });
 
 // ══════════════════════════════════════════════════════
