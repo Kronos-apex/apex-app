@@ -2032,7 +2032,21 @@ function renderHome(){
     vencEl.style.color=inactivos>0?'var(--rdt)':'var(--gt)';
   }
 
-  // (La retención semanal salió del Inicio: vive en el reporte «Sesiones semana». Los vencimientos próximos, en Pendientes.)
+  // ── Retención semanal ── v757: vuelve al Inicio (bajo las 4 cifras) y SIGUE en el reporte «Sesiones semana»; las dos usan _retencionBarras.
+  // Sin asesorados la tarjeta se oculta, como antes de v756. Los vencimientos próximos siguen en Pendientes.
+  const retCard=document.getElementById('h-retention-card');
+  if(retCard){
+    const _ret=_retencionBarras(now);
+    const retBars=document.getElementById('h-ret-bars'), retLbl=document.getElementById('h-ret-label');
+    if(_ret){
+      if(retLbl)retLbl.textContent=_ret.pct+'% entrenaron esta semana';
+      if(retBars)retBars.innerHTML=_ret.html;
+    }else{
+      if(retLbl)retLbl.textContent='';
+      if(retBars)retBars.innerHTML='';
+    }
+    retCard.style.display=_ret?'':'none';
+  }
 
   // ⛔ v592 · EL BANNER DE ADHERENCIA SALIÓ DEL INICIO, por reporte del PO (8-sep): *«quita esa
   //    tarjeta… y la de empujar asesorados, eso me contamina la pantalla y me oculta a los que SÍ
@@ -2352,19 +2366,28 @@ function _entrenaronHoyHTML(now){
     return _crepRow(c.id,c.name,`${esc(rutinas)}${sess.length>1?' · '+sess.length+' sesiones':''}`,`<span style="font-size:11px;color:var(--t3)">${esc(hora)}</span>`);
   }).join('');
 }
-function _retencionHTML(now){
-  if(!DB.clients.length)return '';
+// v757 · UNA sola función arma las barras de la retención: el Inicio (tarjeta bajo las 4 cifras) y el reporte «Sesiones semana»
+// la usan las dos. Cuenta a TODOS los de DB.clients, el coach (`_self`) incluido: es la regla de siempre (lo pidió el PO).
+// Sin asesorados devuelve null (no hay a quién medir) y cada sitio decide: el Inicio oculta la tarjeta, el reporte no pinta nada.
+function _retencionBarras(now){
+  if(!DB.clients.length)return null;
   const ordered=retentionByDay(DB.history,now);
   const maxC=Math.max(...ordered.map(o=>o.count),1);
   const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
-  const ret=Math.round(totalEnt/DB.clients.length*100);
-  return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${ret}% entrenaron esta semana</div><div style="padding:4px 2px 12px"><div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
+  const pct=Math.round(totalEnt/DB.clients.length*100);
+  const html=`<div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
     ordered.map(o=>{
       const h=Math.max(4,Math.round(o.count/maxC*52));
       const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${o.count||''}</div><div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></div><div style="font-size:9px;color:var(--t3)">${o.label}</div></div>`;
     }).join('')
-  }</div></div>`;
+  }</div>`;
+  return {pct,html};
+}
+function _retencionHTML(now){
+  const r=_retencionBarras(now);
+  if(!r)return '';
+  return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${r.pct}% entrenaron esta semana</div><div style="padding:4px 2px 12px">${r.html}</div>`;
 }
 function closeCoachStat(){ const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
 function openCoachStat(kind){

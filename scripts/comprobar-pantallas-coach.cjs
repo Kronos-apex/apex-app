@@ -7,6 +7,8 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..'));
 const SAB = process.env.SAB || '';
 const core = require(path.join(ROOT, 'avi-core.js'));
+const TARJ_RET = '      <div class="card" style="margin-bottom:13px;display:none" id="h-retention-card">\n        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="chart">📊</span> Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>\n        <div id="h-ret-bars" style="padding:4px 12px 12px"></div>\n      </div>\n';
+const PEND_DIV = '      <div id="h-pend" style="display:none;margin-bottom:13px"></div>\n';
 const SABOTAJES = {
   // el reporte de mensualidades vuelve a llevar los suplementos
   'ingresos-con-suplementos': { 'app-2-login.js': [["      html+=`<div class=\"sroom-sec\" style=\"margin-top:14px\">Mensualidades · de dónde salen</div>`;", "      html+=suplIngresosHTML(stat,empty);\n      html+=`<div class=\"sroom-sec\" style=\"margin-top:14px\">Mensualidades · de dónde salen</div>`;"]] },
@@ -31,6 +33,14 @@ const SABOTAJES = {
   'nutricion-sin-resumen': { 'app-5-salud.js': [["  if(typeof detailSummaryLater==='function')detailSummaryLater();", ""]] },
   // el Inicio no pinta los Pendientes
   'inicio-sin-pendientes': { 'app-2-login.js': [["  if(typeof renderPendientes==='function')renderPendientes();\n  if(typeof tiendaRenderHome", "  if(typeof tiendaRenderHome"]] },
+  // v757 · la retención no se pinta en el Inicio (la tarjeta queda vacía)
+  'inicio-sin-retencion': { 'app-2-login.js': [["      if(retBars)retBars.innerHTML=_ret.html;\n", ""]] },
+  // v757 · la tarjeta de retención se cae del Inicio
+  'inicio-sin-tarjeta-retencion': { 'index.html': [[TARJ_RET, ""]] },
+  // v757 · la tarjeta de retención queda DEBAJO de Pendientes (fuera de su lugar)
+  'retencion-fuera-de-lugar': { 'index.html': [[TARJ_RET, ""], [PEND_DIV, PEND_DIV + TARJ_RET]] },
+  // v757 · el Inicio arma las barras por su cuenta (no usa la función compartida con el reporte)
+  'inicio-barras-propias': { 'app-2-login.js': [["    const _ret=_retencionBarras(now);\n", "    const _ret={pct:0,html:'<i></i>'};\n"]] },
 };
 const sab = SAB ? (SABOTAJES[SAB] || (() => { throw new Error('sabotaje desconocido: ' + SAB); })()) : {};
 const leer = f => { let s = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n'); (sab[f] || []).forEach(([a, b]) => { if (s.split(a).length !== 2) throw new Error('el sabotaje no aplica: ' + a.slice(0, 60)); s = s.replace(a, () => b); }); return s; };
@@ -54,7 +64,7 @@ function montar(clients, extra) {
     _coachClears: () => ({}), _newSeen: () => ({}), gp: (id) => { ctx.__gp = id; }, whatsappReminder() {}, openCoachChat: id => { ctx.__chat = id; }, openMyTraining() {}, newAccountOpen() {}, _pulseGo() {},
     openCoachNote() {}, tiendaRenderHome: () => { ctx.__tiendaHome = true; }, painCareActive: a => a, COACH_OWN_ROW: null,
   }, extra || {}));
-  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
+  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionBarras(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
   vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\n', ctx);
   return { ctx, els, el: id => ctx.document.getElementById(id) };
 }
@@ -159,6 +169,32 @@ const ahora = Date.now(), dia = 864e5;
     const r = I.el('coach-stat-body').innerHTML;
     ok(/Entrenaron hoy · /.test(r) && /_crepGoDetail\('c3'\)/.test(r) && /Empuje, Core/.test(r), '🔴 D: «Sesiones semana» dice quién entrenó hoy, tocable (Carla: Empuje, Core)');
     ok(/Retención semanal · \d+% entrenaron esta semana/.test(r) && /border-radius:4px 4px 0 0/.test(r), '🔴 D: «Sesiones semana» trae la Retención semanal con sus barras');
+    // v757 · la retención VUELVE al Inicio (bajo las 4 cifras, antes de Pendientes) y es la MISMA que la del reporte
+    const barrasInicio = I.el('h-ret-bars').innerHTML, etq = I.el('h-ret-label').textContent;
+    ok(/border-radius:4px 4px 0 0/.test(barrasInicio) && /^\d+% entrenaron esta semana$/.test(etq) && I.el('h-retention-card').style.display === '', '🔴 v757: el Inicio pinta la tarjeta «Retención semanal» con sus barras y su porcentaje: «' + etq + '»');
+    ok(r.includes(barrasInicio) && r.includes('Retención semanal · ' + etq), '🔴 v757: el Inicio y el reporte de Sesiones usan LA MISMA función de barras (mismo HTML y mismo porcentaje)');
+    const nBarras = (barrasInicio.match(/border-radius:4px 4px 0 0/g) || []).length;
+    ok(nBarras === 7, 'v757: CONTROL, son 7 barras (una por día): ' + nBarras);
+    ok(new Set((barrasInicio.match(/height:\d+px;width:100%/g) || [])).size > 1, '🔴 v757: con datos sembrados las barras salen DISTINTAS (si todas miden igual, no se ve nada)');
+    // El coach (_self) cuenta en la retención, como antes de v756: 1 de 2 entrenó = 50 %
+    const hoyD = new Date();
+    const Y = montar([{ id: '_self', name: 'Yo', age: 35 }, { id: 'c9', name: 'Dora Coach', age: 30, payments: [] }], { __history: { _self: [{ date: iso(+hoyD - 3600000), routineName: 'Mío' }] } });
+    Y.ctx.renderHome();
+    ok(Y.el('h-ret-label').textContent === '50% entrenaron esta semana', '🔴 v757: el coach (_self) cuenta en la retención como antes de v756 (1 de 2 = 50 %): «' + Y.el('h-ret-label').textContent + '»');
+    // Estados no felices: sin asesorados la tarjeta se oculta; con uno y sin sesiones sale 0 %; con uno que entrenó, 100 %
+    const Z0 = montar([]);
+    Z0.ctx.renderHome();
+    ok(Z0.el('h-retention-card').style.display === 'none' && Z0.el('h-ret-bars').innerHTML === '', '🔴 v757: sin asesorados la tarjeta de retención se OCULTA (como antes de v756)');
+    const U0 = montar([{ id: 'c9', name: 'Dora Coach', age: 30, payments: [] }]);
+    U0.ctx.renderHome();
+    ok(U0.el('h-retention-card').style.display === '' && U0.el('h-ret-label').textContent === '0% entrenaron esta semana' && /border-radius:4px 4px 0 0/.test(U0.el('h-ret-bars').innerHTML), '🔴 v757: con un asesorado y sin sesiones sale 0 % y las 7 barras bajas (no se rompe)');
+    const U1 = montar([{ id: 'c9', name: 'Dora Coach', age: 30, payments: [] }], { __history: { c9: [{ date: iso(+hoyD - 3600000), routineName: 'X' }] } });
+    U1.ctx.renderHome();
+    ok(U1.el('h-ret-label').textContent === '100% entrenaron esta semana', '🔴 v757: con un asesorado que entrenó sale 100 %: «' + U1.el('h-ret-label').textContent + '»');
+    // El orden en index.html: 4 cifras → Retención semanal → Pendientes → Tienda → Prioritarios
+    const html = leer('index.html').replace(/<!--[\s\S]*?-->/g, '');
+    const pos = id => html.indexOf('id="' + id + '"');
+    ok(pos('h-ingr') > 0 && pos('h-venc') > 0 && pos('h-venc') < pos('h-retention-card') && pos('h-retention-card') < pos('h-pend') && pos('h-pend') < pos('h-tienda') && pos('h-tienda') < pos('h-list'), '🔴 v757: el orden del Inicio es 4 cifras · Retención semanal · Pendientes · Tienda · Prioritarios (posiciones: ' + ['h-venc', 'h-retention-card', 'h-pend', 'h-tienda', 'h-list'].map(pos).join(' / ') + ')');
   }
 
   // ═════ E · Guardar el plan de comida repinta la alerta de revisión y el Resumen (sin salir de la ficha) ═════

@@ -28642,12 +28642,15 @@ test('v756b · D · coachVencimientos: por vencer, en gracia o vencido dentro de
   assert.deepStrictEqual(r.map(x => x.id), ['c', 'b'], 'vencido primero, luego el que vence en 3 días; sin los de al día, sin pagos, libres ni lejanos');
   assert.deepStrictEqual(core.coachVencimientos(null, now), []);
 });
-test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, Pendientes, Tienda y Prioritarios; lo que salió sigue alcanzable', () => {
+test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, Retención semanal (v757), Pendientes, Tienda y Prioritarios; lo que salió sigue alcanzable', () => {
   const r = _t756Corre('comprobar-pantallas-coach.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1500));
   const sab = {
     'pendiente-perdido': /Ver 6 más|no se pierde ninguno/, 'pendientes-sin-ver-mas': /«Ver más» abre TODOS/, 'sesiones-sin-hoy': /dice quién entrenó hoy/,
     'sesiones-sin-retencion': /trae la Retención semanal/, 'inicio-sin-pendientes': /el Inicio pinta los Pendientes/,
+    // v757 · la retención vuelve al Inicio: sin pintar, sin tarjeta, fuera de lugar o con barras propias (no la función compartida) → cae
+    'inicio-sin-retencion': /el Inicio pinta la tarjeta «Retención semanal»/, 'inicio-sin-tarjeta-retencion': /el orden del Inicio es 4 cifras · Retención semanal/,
+    'retencion-fuera-de-lugar': /el orden del Inicio es 4 cifras · Retención semanal/, 'inicio-barras-propias': /usan LA MISMA función de barras/,
   };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
@@ -28658,12 +28661,22 @@ test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, 
   const html = leer('index.html');
   const home = html.slice(html.indexOf('<div id="p-home"'), html.indexOf('<!-- v756 (b) · TIENDA del coach'));
   const ids = [...home.replace(/<!--[\s\S]*?-->/g, '').matchAll(/id="([^"]+)"/g)].map(m => m[1]);
-  ['greeting', 'h-push-nudge', 'h-reports', 'h-fbqueue', 'h-ingr', 'h-actv', 'h-sess', 'h-sess-nota', 'h-venc', 'h-pend', 'h-tienda', 'h-list'].forEach(id => assert.ok(ids.includes(id), '🔴 falta #' + id + ' en el Inicio'));
-  ['h-today-banner', 'h-new', 'h-await', 'h-retention-card', 'h-mytraining', 'h-expiry-banner', 'h-deload', 'h-pulse', 'h-more', 'h-page', 'h-supl'].forEach(id => assert.ok(!ids.includes(id), '🔴 #' + id + ' sigue en el Inicio (debía salir)'));
+  ['greeting', 'h-push-nudge', 'h-reports', 'h-fbqueue', 'h-ingr', 'h-actv', 'h-sess', 'h-sess-nota', 'h-venc', 'h-retention-card', 'h-ret-label', 'h-ret-bars', 'h-pend', 'h-tienda', 'h-list'].forEach(id => assert.ok(ids.includes(id), '🔴 falta #' + id + ' en el Inicio'));
+  ['h-today-banner', 'h-new', 'h-await', 'h-mytraining', 'h-expiry-banner', 'h-deload', 'h-pulse', 'h-more', 'h-page', 'h-supl'].forEach(id => assert.ok(!ids.includes(id), '🔴 #' + id + ' sigue en el Inicio (debía salir)'));
   assert.ok(/class="sml">Mensualidades<\/div>/.test(home) && !/Ingresos mes/.test(home), '🔴 «Ingresos mes» tiene que llamarse «Mensualidades»');
   assert.ok(!/Comunidad de mi gym|Tus dos direcciones/.test(home), '🔴 Comunidad y Mi página siguen como tarjetas en el Inicio');
-  // El orden del Inicio: cifras → Pendientes → Tienda → Prioritarios
-  assert.ok(home.indexOf('id="h-ingr"') < home.indexOf('id="h-pend"') && home.indexOf('id="h-pend"') < home.indexOf('id="h-tienda"') && home.indexOf('id="h-tienda"') < home.indexOf('id="h-list"'), '🔴 el orden del Inicio no es cifras · Pendientes · Tienda · Prioritarios');
+  // El orden del Inicio (v757): cifras → Retención semanal → Pendientes → Tienda → Prioritarios
+  const _sinCom = home.replace(/<!--[\s\S]*?-->/g, '');
+  const _p = id => _sinCom.indexOf('id="' + id + '"');
+  assert.ok(_p('h-venc') < _p('h-retention-card') && _p('h-retention-card') < _p('h-pend') && _p('h-pend') < _p('h-tienda') && _p('h-tienda') < _p('h-list'), '🔴 el orden del Inicio no es cifras · Retención semanal · Pendientes · Tienda · Prioritarios');
+  // CONTROL del orden: la misma sonda SÍ ve una tarjeta puesta debajo de Pendientes
+  const _mov = _sinCom.replace(/<div class="card"[^>]*id="h-retention-card">[\s\S]*?<div id="h-ret-bars"[^>]*><\/div>\s*<\/div>/, '').replace('id="h-tienda"', 'id="h-retention-card"></div><div id="h-tienda"');
+  assert.ok(!(_mov.indexOf('id="h-retention-card"') < _mov.indexOf('id="h-pend"')), 'control: la sonda no vio la tarjeta movida debajo de Pendientes');
+  // El reporte de Sesiones la sigue teniendo y las dos pantallas comparten UNA función de barras (sin lógica duplicada)
+  const _login = _supl748.quitar(leer('app-2-login.js'));
+  assert.ok(/function _retencionBarras\(now\)/.test(_login) && (_login.match(/_retencionBarras\(now\)/g) || []).length >= 3, '🔴 el Inicio y el reporte tienen que usar _retencionBarras');
+  assert.strictEqual((_login.match(/retentionByDay\(/g) || []).length, 1, '🔴 retentionByDay se llama en UN solo sitio (_retencionBarras): hay lógica duplicada');
+  assert.ok(/html\+=_retencionHTML\(now\);/.test(_login), '🔴 el reporte de Sesiones dejó de traer la Retención semanal');
   // Lo que salió, sigue alcanzable: Comunidad y Mi página en el menú; Mi entrenamiento ya estaba
   assert.ok(/onclick="openGymMgr\(\)" id="sbi-comunidad"/.test(html) && /id="sbi-mipagina"/.test(html) && /id="sbi-mytraining"/.test(html), '🔴 el menú ☰ no trae Comunidad de mi gym, Mi página y Mi entrenamiento');
   assert.ok(/id="p-mipagina" class="panel"[\s\S]{0,300}id="h-page"/.test(html) && /renderPageCard\(\)/.test(html.slice(html.indexOf('id="sbi-mipagina"') - 120, html.indexOf('id="sbi-mipagina"') + 60)), '🔴 «Mi página» no abre la tarjeta de las dos direcciones');
