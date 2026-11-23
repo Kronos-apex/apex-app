@@ -26,7 +26,7 @@ const SABOTAJES = {
     ["_suplAviso(ok,val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado')", "toast(val.saldoDespues===0?'Abono guardado: venta saldada':'Abono guardado')"],
   ],
   // La franja de pendientes solo en la ficha (como la v748)
-  'franja-solo-ficha': [["let h=_suplFranja()+(typeof tiendaTarjetaHome==='function'?tiendaTarjetaHome():'');\n  if(total>0){", "let h='';\n  if(total>0){"], ["  let h=_suplFranja()+((act.length||arch.length)?_tiendaCifrasMes():'');\n  if(!act.length", "  let h='';\n  if(!act.length"]],
+  'franja-solo-ficha': [["box.innerHTML=_suplFranja()+`<button type=\"button\" class=\"card hm-tienda\"", "box.innerHTML=`<button type=\"button\" class=\"card hm-tienda\""], ["  let h=_suplFranja()+((act.length||arch.length)?_tiendaCifrasMes():'');\n  if(!act.length", "  let h='';\n  if(!act.length"]],
 };
 const sabotajes = SAB ? (SABOTAJES[SAB] || (() => { throw new Error('sabotaje desconocido: ' + SAB); })()) : [];
 
@@ -113,12 +113,12 @@ const ok = (cond, msg) => { if (!cond) fallas.push(msg); };
   // la franja de pendientes en las TRES pantallas
   ctx.suplRenderFicha('c1'); ok(franja(el('d-ventas').innerHTML), 'franja de pendientes en la ficha');
   el('p-productos').classList.add('on'); ctx.suplRenderProductos(); ok(franja(el('pr-list').innerHTML), 'franja de pendientes en «Mis productos»');
-  ctx.suplRenderHome(); ok(franja(el('h-supl').innerHTML), 'franja de pendientes en la tarjeta del panel');
+  ctx.tiendaRenderHome(); ok(franja(el('h-tienda').innerHTML), 'franja de pendientes en la tarjeta del panel');
   // vuelve la señal: se sube, avisa y la franja se va
   toasts.length = 0; net.on = true; await H.disparar('online');
   ok(cloud.coach_ventas[vOff.id] && cloud.coach_productos[pOff.id] && !Object.keys(ctx.__SUPL.pend.coach_ventas).length && !Object.keys(ctx.__SUPL.pend.coach_productos).length, 'al volver la señal se sube todo lo pendiente');
   ok(toasts.includes('✅ Las ventas pendientes ya se guardaron'), 'al volver la señal avisa que ya se guardó');
-  ok(!franja(el('d-ventas').innerHTML) && !franja(el('pr-list').innerHTML) && !franja(el('h-supl').innerHTML), 'al volver la señal la franja desaparece de las tres pantallas');
+  ok(!franja(el('d-ventas').innerHTML) && !franja(el('pr-list').innerHTML) && !franja(el('h-tienda').innerHTML), 'al volver la señal la franja desaparece de las tres pantallas');
 
   // ── S2: todo el flujo no tocó a ningún asesorado ──
   ok(JSON.stringify(ctx.DB.clients) === antesJSON, 'S2: DB.clients cambió durante el flujo de ventas (ficha, catálogo, abonos, editar, archivar, borrar)');

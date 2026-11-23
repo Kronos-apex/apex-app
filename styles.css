@@ -2865,5 +2865,23 @@ button.vt-tg{border:0;padding:0;cursor:pointer}
 .cm-money b{display:block;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:var(--t1);overflow:hidden;text-overflow:ellipsis}
 .cm-money b.deb{color:var(--ort)}
 .cm-money span{font-size:11px;color:var(--t2)}
+/* v756 (b) · el Inicio limpio: Pendientes y la tarjeta de la Tienda */
+.pend-row{display:flex;align-items:center;gap:8px;border-top:1px solid var(--br);min-height:44px}
+.pend-row:first-child{border-top:0}
+.pend-main{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:9px 0;background:none;border:0;font-family:inherit;text-align:left;color:var(--t1);cursor:pointer;min-height:44px}
+.pend-dot{width:8px;height:8px;border-radius:99px;flex:0 0 auto;background:var(--br2)}
+.pend-dot.rojo{background:var(--rd)}
+.pend-dot.ambar{background:var(--yl)}
+.pend-dot.verde{background:var(--g2)}
+.pend-tx{flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.pend-go{color:var(--t3);font-size:18px;flex:0 0 auto}
+.pend-act{flex:0 0 auto;min-height:36px}
+.pend-more{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--br);padding:11px 0 4px;min-height:40px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--gt);cursor:pointer}
+.hm-tienda{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-family:inherit;color:var(--t1);cursor:pointer;border-left:3px solid var(--or)!important;padding:12px 14px}
+.hm-ic{color:var(--ort);display:flex}
+.hm-mini{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:6px;font-size:11.5px;color:var(--t2)}
+.hm-mini b{display:block;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t1)}
+.hm-mini b.deb{color:var(--ort)}
+.hm-chev{font-size:15px;font-weight:700;color:var(--t3)}
 /* Seis pestañas en la ficha (v756 c): caben en 360 px sin cortarse */
 @media (max-width:430px){.dt-tab{padding:0 3px;font-size:11.5px}}

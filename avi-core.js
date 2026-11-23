@@ -11466,47 +11466,65 @@ function todayCardPlan(presentes, opts) {
   return _capPlan(presentes, TODAY_CARD_PRIORITY, max);
 }
 
-// ── EL TOPE DE AVISOS DEL INICIO DEL COACH (v581) ──────────────────────────────────────
-// Decisión del PO (6-sep-2026), sobre su propia pantalla: hasta v580 se le pintaban hasta CINCO
-// avisos a la vez y eligió el mismo tope que ya tiene el asesorado desde v505 —dos—, con
-// vencimientos y empujón como los que siempre quiere ver.
-// 🔴 REORDENADO EN v592, POR REPORTE DEL PO: *«me ocultaste a los asesorados que han entrenado en
-// el día… eso me contamina la pantalla y me oculta a los que SÍ utilizan la aplicación»*. El orden
-// de v581 era de FRECUENCIA × caducidad y por eso dejó «entrenaron hoy» de CUARTO — con el tope de
-// dos, y estando casi siempre presentes los dos de arriba, no salía nunca. Medido el 8-sep:
-// **7 personas entrenaron ese día y ninguna se veía**, mientras la pantalla la ocupaban 7
-// vencimientos y 16 dormidos.
-// La regla de v567 no era falsa; lo que estaba mal era aplicarla a una pantalla cuyo dueño quiere
-// ver, primero, quién SÍ está usando la app. Eso lo decide él, no una heurística.
-//   1. entrenaron hoy — lo que el coach quiere ver primero (decisión del PO, 8-sep).
-//   2. vencimientos   — es PLATA y tiene fecha: quien vence en 5 días se renueva o se pierde.
-//   3. descarga vencida — una TAREA que no expira sola: sin ella alguien se queda semanas al 60%.
-//   4. el pulso       — sugerencias para escribirles; se puede hacer en cualquier momento.
-// 🔴 NUNCA entran al tope: las cifras, la retención, los prioritarios, «Mi entrenamiento», las
-// dos direcciones y las colas de moderación — no son avisos, son la pantalla.
-// ⛔ `h-adherence-banner` SE RETIRÓ del Inicio en v592 (mismo reporte). No desapareció: la lista
-//    completa, con sus dos secciones y el botón de empujar, vive en el reporte «Sin entrenar»,
-//    detrás de la cifra que sigue en la pantalla.
-// v647 · `h-await` («esperan tu respuesta») va SEGUNDO, justo después de lo que el PO pidió ver
-// primero: solo aparece cuando alguien lleva más de 24 h sin respuesta, y es el remedio directo a
-// las esperas de 15 días medidas el 21-sep.
-const COACH_NOTICE_PRIORITY = [
-  'h-today-banner',
-  'h-await',
-  'h-expiry-banner',
-  'h-deload',
-  'h-pulse',
-];
-const COACH_MAX_NOTICES = 2;
-// v732 · Van DENTRO del grupo de avisos (el orden del marcado, que `_coachRestoreOrder` mantiene)
-// pero NUNCA cuentan para el tope: «Cuentas nuevas» lo pidió el PO para no perderse a nadie, y sin
-// estar en el grupo el reordenador la dejaba detrás de «Tienes N avisos más» (medido en
-// `_verify-cuentas-nuevas`: quedaba de última, después de la fila de apartados).
-const COACH_NOTICE_FIXED = ['h-new'];
-function coachNoticePlan(presentes, opts) {
-  opts = opts || {};
-  const max = (opts.max === undefined) ? COACH_MAX_NOTICES : opts.max;
-  return _capPlan(presentes, COACH_NOTICE_PRIORITY, max);
+// ── LOS PENDIENTES DEL INICIO DEL COACH (v756 b) ───────────────────────────────────────────────────
+// Decisión del PO (22-nov): el Inicio queda en las cifras, UNA lista de Pendientes, la Tienda y los Prioritarios. Esta lista REEMPLAZA
+// el tope de dos avisos de v581/v592 («Tienes N avisos más»): junta lo que eran cinco avisos sueltos, muestra 3 —del más urgente al
+// menos urgente— y «Ver N más» abre el resto (nada se silencia). Si no hay nada pendiente, la tarjeta no aparece. El orden de urgencia:
+//   await    · chats que llevan más de 24 h sin respuesta (v647)          — las esperas largas son lo que más cuesta
+//   dolor    · el dolor que el propio coach reportó en «Mi entrenamiento» — salía en la tarjeta que se quitó del Inicio
+//   vence    · planes que vencen en 5 días o ya vencieron (con WhatsApp)  — plata con fecha
+//   nuevas   · cuentas que se registraron solas esta semana (v732)
+//   descarga · semana de descarga terminada (v434): una tarea que no expira sola
+//   pulso    · motivos para felicitar o escribir (v353)
+const COACH_NOTICE_PRIORITY = ['await', 'dolor', 'vence', 'nuevas', 'descarga', 'pulso'];
+const COACH_MAX_NOTICES = 3;
+// Planes que vencen en 5 días o ya vencieron (por vencer, en gracia o vencido): el más urgente primero. PURA.
+function coachVencimientos(clients, now) {
+  const t = new Date(now == null ? Date.now() : now).getTime();
+  return (clients || []).filter(c => c && clientIsChargeable(c)).map(c => {
+    const pays = (c.payments || []).slice().sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+    if (!pays.length) return null;
+    const dueMs = new Date(pays[0].dueDate).getTime();
+    const st = MS.getStatus(c, new Date(t));
+    if (!(st === 'expiring' || st === 'overdue' || st === 'grace') || !(dueMs <= t + 5 * 86400000)) return null;
+    return { id: c.id, name: c.name || '', dueMs, st };
+  }).filter(Boolean).sort((a, b) => a.dueMs - b.dueMs);
+}
+// «venció hace 3 días» · «vence hoy» · «vence mañana» · «vence el jueves» · «vence el 28 de noviembre». PURA.
+function pendVenceTxt(dueMs, now) {
+  const t = new Date(now == null ? Date.now() : now);
+  const dia = x => { const d = new Date(x); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+  const dif = Math.round((dia(dueMs) - dia(t)) / 86400000);
+  if (dif < 0) return 'venció hace ' + (-dif) + (dif === -1 ? ' día' : ' días');
+  if (dif === 0) return 'vence hoy';
+  if (dif === 1) return 'vence mañana';
+  const d = new Date(dueMs);
+  return dif <= 6 ? 'vence el ' + d.toLocaleDateString('es-CO', { weekday: 'long' }) : 'vence el ' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+}
+// Convierte lo que hay pendiente en UNA lista de filas {cat, id, nivel, texto, accion}. `d` = {now, await, dolor, vence, nuevas, descarga, pulso}.
+// Los chats que esperan van en UNA fila (su acción abre Mensajes o el chat); lo demás, una fila por persona. PURA.
+function coachPendientesLista(d) {
+  d = d || {};
+  const now = d.now == null ? Date.now() : d.now;
+  const out = [];
+  const aw = d.await || [];
+  if (aw.length) {
+    const h = Math.max.apply(null, aw.map(x => x.horas || 0));
+    out.push({ cat: 'await', id: 'await', nivel: 'rojo', texto: aw.length + ' ' + (aw.length === 1 ? 'chat espera' : 'chats esperan') + ' tu respuesta · ' + chatWaitText(h), accion: { t: aw.length === 1 ? 'chat' : 'mensajes', id: aw[0].id } });
+  }
+  (d.dolor || []).forEach(x => out.push({ cat: 'dolor', id: 'dolor', nivel: 'ambar', texto: x.texto, accion: { t: 'entreno' } }));
+  (d.vence || []).forEach(x => out.push({ cat: 'vence', id: 'vence:' + x.id, nivel: x.dueMs < now ? 'rojo' : 'ambar', texto: x.name + ' ' + pendVenceTxt(x.dueMs, now), accion: { t: 'detalle', id: x.id }, wa: x.id }));
+  (d.nuevas || []).forEach(x => out.push({ cat: 'nuevas', id: 'nuevas:' + x.id, nivel: 'verde', texto: x.name + ' · cuenta nueva' + (x.when ? ' · ' + x.when : ''), accion: { t: 'nueva', id: x.id } }));
+  (d.descarga || []).forEach(x => out.push({ cat: 'descarga', id: 'descarga:' + x.id, nivel: 'ambar', texto: x.name + ': terminó su descarga · devuélvele el plan', accion: { t: 'detalle', id: x.id } }));
+  (d.pulso || []).forEach(x => out.push({ cat: 'pulso', id: 'pulso:' + x.id + ':' + x.type, nivel: 'verde', texto: x.name + ' · ' + x.label, accion: { t: 'pulso', id: x.id, type: x.type }, descartable: true }));
+  return out;
+}
+// Las 3 de arriba (por urgencia, y dentro de cada tipo en el orden en que llegaron) y el resto. Lo que no tenga puesto va AL FINAL, nunca se pierde.
+function coachPendientesPlan(items, opts) {
+  const max = Math.max(0, parseInt(opts && opts.max !== undefined ? opts.max : COACH_MAX_NOTICES, 10) || 0);
+  const rango = c => { const i = COACH_NOTICE_PRIORITY.indexOf(c); return i < 0 ? COACH_NOTICE_PRIORITY.length : i; };
+  const orden = (items || []).map((x, i) => ({ x, i })).sort((a, b) => (rango(a.x.cat) - rango(b.x.cat)) || (a.i - b.i)).map(o => o.x);
+  return { visibles: orden.slice(0, max), ocultos: orden.slice(max), total: orden.length };
 }
 
 // Config del HIIT de un ejercicio (trabajo/descanso en segundos) y segundos de un isométrico.
@@ -14859,7 +14877,10 @@ if (typeof module !== 'undefined' && module.exports) {
     todayCardPlan,
     TODAY_CARD_PRIORITY,
     TODAY_MAX_CARDS,
-    coachNoticePlan,
+    coachVencimientos,
+    pendVenceTxt,
+    coachPendientesLista,
+    coachPendientesPlan,
     COACH_NOTICE_PRIORITY,
     COACH_MAX_NOTICES,
     generarRutinas,
@@ -14900,7 +14921,6 @@ if (typeof module !== 'undefined' && module.exports) {
     coachNoteMsg,
     coachNoteToShow,
     coachNoteAudience,
-    COACH_NOTICE_FIXED,
     parseLimitations,
     warmupContraindicated,
     warmupWarnZones,

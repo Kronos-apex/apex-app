@@ -1844,6 +1844,7 @@ const _COACH_PANELS={
   'p-templates':{sbi:'sbi-templates',title:'Plantillas',nav:-1},
   'p-msgs':{sbi:'sbi-msgs',title:'Mensajes',nav:4},
   'p-detail':{sbi:'sbi-clients',title:'Detalle',nav:1},
+  'p-mipagina':{sbi:'sbi-mipagina',title:'Mi página',nav:-1},   // v756 (b): «Tus dos direcciones» salió del Inicio
   'p-tiendac':{sbi:'sbi-tienda',title:'Tienda',nav:-1},   // v756 (b): Pedidos · Productos · Ventas · Quién la ve
 };
 // Restaura un panel previo del coach SIN registrar (lo usa el "undo" del stack del botón atrás).
@@ -1976,7 +1977,6 @@ function renderHome(){
     });
   });
   const elIngr=document.getElementById('h-ingr');if(elIngr)elIngr.textContent='$'+ingr.toLocaleString('es-CO');
-  if(typeof suplRenderHome==='function')suplRenderHome(); // v748 · tarjetas de suplementos (aparte de los ingresos)
 
   // ── Activos ── (métrica de NEGOCIO: asesorados con membresía al día → sin el coach)
   const activos=DB.clients.filter(c=>{ if(!clientIsChargeable(c))return false; const s=MS.getStatus(c); return s==='active'||s==='expiring'; }).length;
@@ -2014,30 +2014,11 @@ function renderHome(){
   });
   const elSess=document.getElementById('h-sess');if(elSess)elSess.textContent=sesiones;
 
-  // ── Entrenaron HOY (quién, con nombre + rutina + hora) ──
-  const todayBanner=document.getElementById('h-today-banner');
-  if(todayBanner){
-    const hoy=clientsTrainedToday(DB.clients,DB.history,now);
-    if(hoy.length){
-      todayBanner.style.display='block';
-      todayBanner.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--gt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('check',13):'✅'} ${hoy.length} ${hoy.length>1?'asesorados entrenaron':'asesorado entrenó'} hoy</div>
-        ${hoy.map(({client:c,sessions:sess})=>{
-          const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ');
-          const hora=new Date(sess[0].date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br);cursor:pointer" onclick="openDetail('${esc(c.id)}')">
-            <div style="min-width:0;flex:1">
-              <div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
-              <div style="font-size:11px;color:var(--t2)">${typeof aviIcon==='function'?aviIcon('dumbbell',12):'🏋️'} ${esc(rutinas||'Entrenó')}${sess.length>1?` · ${sess.length} sesiones`:''}</div>
-            </div>
-            <span style="font-size:11px;color:var(--t3);flex-shrink:0">${esc(hora)}</span>
-          </div>`;
-        }).join('')}
-      </div>`;
-    } else {
-      todayBanner.style.display='none';
-    }
-  }
+  // ── Entrenaron HOY ── v756 (b): ya no es un banner del Inicio; es la nota «N hoy» de la cifra Sesiones, y al tocarla el reporte
+  // dice QUIÉN entrenó hoy (tocable, a su ficha) y trae la retención semanal.
+  const _nHoy=clientsTrainedToday(DB.clients,DB.history,now).length;
+  const _nSess=document.getElementById('h-sess-nota');
+  if(_nSess){ _nSess.style.display=_nHoy?'block':'none'; _nSess.textContent=_nHoy?_nHoy+' hoy':''; }
 
   // ── Sin entrenar 4+ días (con membresía activa) ──
   const inactivos=DB.clients.filter(c=>{
@@ -2051,66 +2032,7 @@ function renderHome(){
     vencEl.style.color=inactivos>0?'var(--rdt)':'var(--gt)';
   }
 
-  // ── Retención semanal (barras SVG por día) ──
-  const retCard=document.getElementById('h-retention-card');
-  const retBars=document.getElementById('h-ret-bars');
-  const retLbl=document.getElementById('h-ret-label');
-  if(retCard&&retBars){
-    // Lógica de fechas extraída a avi-core.js (testeada): agrupa por día de
-    // calendario real, no por día de la semana.
-    const ordered=retentionByDay(DB.history,now);
-    const maxC=Math.max(...ordered.map(o=>o.count),1);
-    const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
-    const ret=DB.clients.length?Math.round(totalEnt/DB.clients.length*100):0;
-    if(retLbl) retLbl.textContent=`${ret}% entrenaron esta semana`;
-    retBars.innerHTML=`<div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
-      ordered.map(o=>{
-        const h=Math.max(4,Math.round(o.count/maxC*52));
-        const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-          <div style="font-size:9px;color:var(--t2)">${o.count||''}</div>
-          <div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0;transition:height .3s"></div>
-          <div style="font-size:9px;color:var(--t3)">${o.label}</div>
-        </div>`;
-      }).join('')
-    }</div>`;
-    retCard.style.display=DB.clients.length?'':'none';
-  }
-
-  // ── Banner de vencimientos próximos ──
-  const banner=document.getElementById('h-expiry-banner');
-  if(banner){
-    const in5days=new Date(Date.now()+5*24*60*60*1000);
-    const expiring=DB.clients.filter(clientIsChargeable).filter(c=>{
-      const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
-      if(!pays.length)return false;
-      const due=new Date(pays[0].dueDate);
-      const st=MS.getStatus(c);
-      // `grace` (v528) ENTRA aquí: es el estado en el que el coach todavía llega a tiempo, y
-      // dejarlo fuera era sacar del banner justo a quien hay que llamar hoy (mismo defecto que
-      // el tier del ranking, cazado por su test al caer).
-      return (st==='expiring'||st==='overdue'||st==='grace')&&due<=in5days;
-    });
-    if(expiring.length){
-      banner.style.display='block';
-      banner.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--ort);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('alert',13):'⚠️'} ${expiring.length} plan${expiring.length>1?'es':''} vence${expiring.length>1?'n':''} en 5 días</div>
-        ${expiring.map(c=>{
-          const pays=(c.payments||[]).slice().sort((a,b)=>new Date(b.dueDate)-new Date(a.dueDate));
-          const dStr=new Date(pays[0].dueDate).toLocaleDateString('es-CO',{day:'numeric',month:'long'});
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--br)">
-            <span style="font-size:13px;font-weight:600">${esc(c.name.split(' ')[0])} ${esc(c.name.split(' ')[1]||'')}</span>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:11px;color:var(--t2)">${dStr}</span>
-              <button class="btn bo bsm" style="font-size:11px;padding:3px 8px" onclick="whatsappReminder('${esc(c.id)}')">WhatsApp</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`;
-    } else {
-      banner.style.display='none';
-    }
-  }
+  // (La retención semanal salió del Inicio: vive en el reporte «Sesiones semana». Los vencimientos próximos, en Pendientes.)
 
   // ⛔ v592 · EL BANNER DE ADHERENCIA SALIÓ DEL INICIO, por reporte del PO (8-sep): *«quita esa
   //    tarjeta… y la de empujar asesorados, eso me contamina la pantalla y me oculta a los que SÍ
@@ -2157,176 +2079,81 @@ function renderHome(){
     d.onclick=()=>openDetail(c.id);
     list.appendChild(d);
   });
-  // 🫀 El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles. Al final para no
-  // competir con los banners de urgencia (vencimientos/adherencia). Guard por caché vieja de core.
-  if(typeof renderMyTrainingCard==='function')renderMyTrainingCard();
-  if(typeof renderDeloadAlerts==='function')renderDeloadAlerts();
-  if(typeof renderPulse==='function')renderPulse();
-  if(typeof renderAwaitCard==='function')renderAwaitCard();
-  if(typeof renderNewAccountsCard==='function')renderNewAccountsCard(); // v732 · cuentas nuevas de la semana
-  if(typeof renderPageCard==='function')renderPageCard();
+  // v756 (b) · UNA lista de Pendientes y la tarjeta de la Tienda (todo lo que eran avisos sueltos, tope de dos y tarjetas fijas).
+  if(typeof renderPendientes==='function')renderPendientes();
+  if(typeof tiendaRenderHome==='function')tiendaRenderHome();
   // Notificaciones del coach (2026-07-11): self-heal 1×/sesión + tarjeta si falta permiso.
   if(typeof ensureCoachPush==='function')ensureCoachPush();
   // 🛡️ Reportes de comunidad (lote v3-a #1): async, se pinta sola solo si hay reportes abiertos.
   if(typeof renderReportsCard==='function')renderReportsCard();
   // 📷 Cola de productos escaneados (F6): igual — un no-moderador recibe 0 filas y no ve nada.
   if(typeof renderFbQueueCard==='function')renderFbQueueCard();
-  // 🔒 AL FINAL y no en medio: el tope reparte lo que de verdad quedó pintado, así que tiene que
-  //    correr DESPUÉS de todos los render* que crean avisos. Es el mismo sitio (el único por el
-  //    que pasan todos los caminos) que ocupa `_applyTodayCap` en la pantalla del asesorado.
-  _applyCoachCap();
 }
 
-// ── EL TOPE DE AVISOS DEL INICIO DEL COACH (v581) ──────────────────────────────────────
-// Decisión del PO: máximo DOS avisos a la vez, con vencimientos y empujón como los que siempre
-// quiere ver. Lo que no cabe se APARTA en la fila «Tienes N avisos más», nunca se silencia —
-// misma promesa que le hace la app al asesorado desde v505.
-// 🔒 Se apaga con CLASE propia (`.cap-off`), JAMÁS con `style.display`: varios de estos
-//    contenedores ya gestionan su propio `display` (`h-deload`, `h-pulse` y los tres banners se
-//    encienden y apagan solos), y dos mecanismos peleando la misma propiedad se tapan entre sí —
-//    la lección de v505, que allá costó un sabotaje verde.
-let _coachMoreOpen=false;
-// 🔴 Abrir MUEVE nodos (los apartados suben a pegarse a la fila), y un movimiento no se deshace
-//    solo: sin esto, abrir y cerrar UNA vez dejaría los avisos descolocados hasta recargar la
-//    app, y el siguiente que subiera al top-2 se pintaría debajo de la fila. El orden canónico se
-//    fotografía del MARCADO la primera vez —no se escribe a mano, o sería una segunda copia del
-//    orden del HTML esperando a separarse— y se restaura en cada pasada.
-let _coachNoticeOrder=null, _coachNoticePrev=null;
-function _coachRestoreOrder(){
-  const more=document.getElementById('h-more'); if(!more)return;
-  const padre=more.parentElement; if(!padre)return;
-  // v732 · `COACH_NOTICE_FIXED` (Cuentas nuevas) entra al GRUPO que se reordena, no al tope.
-  const ids=((typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[]).concat((typeof COACH_NOTICE_FIXED!=='undefined')?COACH_NOTICE_FIXED:[],['h-more']);
-  if(!_coachNoticeOrder){
-    _coachNoticeOrder=[...padre.children].map(e=>e.id).filter(id=>ids.indexOf(id)>=0);
-    // El grupo también necesita saber DÓNDE empieza, o al restaurarlo quedaría contiguo y en
-    // orden pero corrido de sitio (detrás de donde lo dejó el último movimiento). El vecino de
-    // arriba es marcado estático que nunca se borra, así que la referencia sobrevive.
-    const primero=document.getElementById(_coachNoticeOrder[0]);
-    _coachNoticePrev=primero?primero.previousElementSibling:null;
-    return; // la primera vez el DOM YA está en su orden: fotografiarlo basta
-  }
-  let ancla=(_coachNoticePrev&&_coachNoticePrev.parentElement===padre)?_coachNoticePrev:null;
-  _coachNoticeOrder.forEach(id=>{
-    const e=document.getElementById(id);
-    if(!e||e.parentElement!==padre)return;
-    if(ancla)ancla.insertAdjacentElement('afterend',e);
-    else padre.insertBefore(e,padre.firstChild);
-    ancla=e;
-  });
+// ══════════ PENDIENTES DEL INICIO (v756 b) ══════════
+// La lógica (qué es un pendiente, el orden de urgencia, las 3 de arriba) vive en avi-core (`coachPendientesLista/Plan`, probada);
+// aquí solo se juntan los datos y se pinta. Sustituye al tope de dos avisos (v581) y a las cinco tarjetas sueltas.
+let _pendAbierto=false, _pendItems=[];
+// El dolor que el propio coach reportó entrenando (antes salía en la tarjeta «Mi entrenamiento» del Inicio, que se quitó).
+function _pendDolorPropio(){
+  try{
+    const row=(typeof COACH_OWN_ROW!=='undefined'&&COACH_OWN_ROW)||(typeof _readAuthRow==='function'&&typeof _authUid!=='undefined'&&_authUid?_readAuthRow(_authUid):null);
+    const act=(typeof painCareActive==='function')?painCareActive((row&&row.profile&&row.profile.painCare)||[]):[];
+    if(!act.length)return [];
+    const lv={1:'leve',2:'molesto',3:'no pudiste hacerlo'}, p=act[act.length-1];
+    return [{texto:'Reportaste dolor: '+p.area+(p.side?' ('+p.side+')':'')+' · '+(lv[p.level]||p.level)+(act.length>1?' · +'+(act.length-1)+' más':'')}];
+  }catch(_e){ return []; }
 }
-function _applyCoachCap(){
-  const ids=(typeof COACH_NOTICE_PRIORITY!=='undefined')?COACH_NOTICE_PRIORITY:[];
-  const more=document.getElementById('h-more');
-  _coachRestoreOrder();
-  // 1) Encender de vuelta lo que ESTE tope apagó antes (nunca lo que apagó su propio dueño).
-  ids.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.remove('cap-off');});
-  if(more)more.innerHTML='';
-  if(typeof coachNoticePlan!=='function')return;
-  // 2) Presentes = los que de verdad tienen algo pintado y su dueño dejó visibles.
-  const presentes=ids.filter(id=>{const e=document.getElementById(id);
-    return !!(e && e.innerHTML.trim() && e.style.display!=='none');});
-  const plan=coachNoticePlan(presentes);
-  if(!plan.ocultas.length)return;
-  plan.ocultas.forEach(id=>{const e=document.getElementById(id); if(e)e.classList.add('cap-off');});
-  if(!more)return;
-  const n=plan.ocultas.length;
-  more.innerHTML=`<button type="button" class="tod-more" onclick="coachMoreToggle()" aria-expanded="${_coachMoreOpen?'true':'false'}">
-    <span class="tod-more-ic" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('bell',15):'🔔'}</span>
-    <span class="tod-more-tx">${_coachMoreOpen?'Ocultar':'Tienes'} <b>${n}</b> aviso${n!==1?'s':''} más</span>
-    <span class="tod-more-chev${_coachMoreOpen?' up':''}" aria-hidden="true">${typeof aviIcon==='function'?aviIcon('tridown',12):'▾'}</span>
-  </button>`;
-  // Abierto: se encienden de nuevo y quedan JUSTO DEBAJO de la fila, en su orden de prioridad.
-  // (El asesorado los manda al final de su panel; aquí abajo hay más tarjetas, así que dejarlos
-  //  pegados a la fila es lo que hace que abrir se sienta como abrir.)
-  if(_coachMoreOpen){
-    let ancla=more;
-    plan.ocultas.forEach(id=>{const e=document.getElementById(id);
-      if(e&&e.parentElement===more.parentElement){ e.classList.remove('cap-off');
-        ancla.insertAdjacentElement('afterend',e); ancla=e; }
-      else if(e){ e.classList.remove('cap-off'); }});
-  }
+function _pendDatos(){
+  const now=new Date();
+  const muted={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+    if(k&&k.indexOf('coachpulse_')===0){const v=parseInt(localStorage.getItem(k));if(v)muted[k.slice(11)]=v;}}
+  const vistos=(typeof _newSeen==='function')?_newSeen():{};
+  return {
+    now:now.getTime(),
+    await:(typeof chatAwaiting==='function'&&typeof _coachClears==='function')?chatAwaiting(DB.clients,DB.msgs,_coachClears(),now):[],
+    dolor:_pendDolorPropio(),
+    vence:(typeof coachVencimientos==='function')?coachVencimientos(DB.clients,now):[],
+    nuevas:(typeof newAccountsList==='function')?newAccountsList(DB.clients,DB.history,vistos,now).map(x=>({id:x.id,name:x.name,when:(typeof newAccountWhen==='function')?newAccountWhen(x.at,now):''})):[],
+    descarga:(typeof deloadOverdue==='function')?deloadOverdue(DB.clients,now.getTime()):[],
+    pulso:(typeof coachPulse==='function')?coachPulse(DB.clients,DB.history,DB.prs,now.getTime(),{muted}):[],
+  };
 }
-function coachMoreToggle(){
-  _coachMoreOpen=!_coachMoreOpen;
-  renderHome();
+function renderPendientes(){
+  const el=document.getElementById('h-pend'); if(!el)return;
+  if(typeof coachPendientesLista!=='function'){ el.style.display='none'; el.innerHTML=''; return; }
+  const items=coachPendientesLista(_pendDatos());
+  if(!items.length){ el.style.display='none'; el.innerHTML=''; _pendItems=[]; return; }   // sin nada pendiente, la tarjeta no aparece
+  const plan=coachPendientesPlan(items);
+  const orden=plan.visibles.concat(plan.ocultos);
+  _pendItems=orden;
+  const ver=_pendAbierto?orden:plan.visibles;
+  const fila=it=>`<div class="pend-row"><button type="button" class="pend-main" onclick="pendIr('${esc(it.id)}')"><span class="pend-dot ${it.nivel}" aria-hidden="true"></span><span class="pend-tx">${esc(it.texto)}</span><span class="pend-go" aria-hidden="true">›</span></button>${it.wa?`<button type="button" class="btn bo bsm pend-act" onclick="whatsappReminder('${esc(it.wa)}')">WhatsApp</button>`:''}${it.descartable?`<button type="button" class="btn bg bsm pend-act" aria-label="Descartar aviso" onclick="pendDescartar('${esc(it.id)}')">✕</button>`:''}</div>`;
+  const hayNuevas=items.some(x=>x.cat==='nuevas');
+  el.style.display='block';
+  el.innerHTML=`<div class="card"><div class="ch"><div class="ctitle">Pendientes</div></div><div class="cb" style="padding:2px 14px 8px">${ver.map(fila).join('')}${plan.ocultos.length?`<button type="button" class="pend-more" onclick="pendMasToggle()" aria-expanded="${_pendAbierto?'true':'false'}">${_pendAbierto?'Ver menos':'Ver '+plan.ocultos.length+' más'} ›</button>`:''}${hayNuevas?`<button type="button" class="pend-more" onclick="openCoachNote(null,'nuevos')">Escribirles a las cuentas nuevas en su app ›</button>`:''}</div></div>`;
+}
+function pendMasToggle(){ _pendAbierto=!_pendAbierto; renderPendientes(); }
+function pendIr(id){
+  const it=_pendItems.find(x=>x.id===id); if(!it)return;
+  const a=it.accion||{};
+  if(a.t==='chat'&&typeof openCoachChat==='function')openCoachChat(a.id);
+  else if(a.t==='mensajes')gp('p-msgs',document.getElementById('sbi-msgs'),'Mensajes');
+  else if(a.t==='detalle')openDetail(a.id);
+  else if(a.t==='nueva'&&typeof newAccountOpen==='function')newAccountOpen(a.id);
+  else if(a.t==='entreno')openMyTraining();
+  else if(a.t==='pulso')_pulseGo(a.id,a.type);
+}
+function pendDescartar(id){
+  const it=_pendItems.find(x=>x.id===id); if(!it||!it.accion)return;
+  dismissPulse(it.accion.id,it.accion.type);
 }
 
 // ── El pulso del coach (v353): tarjeta en Inicio con los motivos positivos/técnicos para
 // escribirle a cada asesorado (récord/estancamiento/deload/racha). La lógica vive en
 // avi-core.coachPulse (pura, determinista); aquí solo UI + estado. El ✕ silencia esa fila
 // por 3 días (localStorage coachpulse_<cid>_<type>, LOCAL — preferencia de UI del coach).
-// Mi entrenamiento (v369, fix v371, idea Camilo 2026-07-18): tarjeta en el Inicio del coach con las
-// cifras de SU propio entreno. Camilo entrena con "Mi entrenamiento" (COACH_SELF), que se guarda en
-// SU PROPIA fila (no en un cliente). Por eso leemos de COACH_OWN_ROW — la MISMA fuente que
-// openMyTraining — sin marcar nada. Toca → abre "Mi entrenamiento". Se oculta sola si no hay
-// historial propio. (v369 leía de un cliente marcado; Camilo no entrena en un cliente → nunca salía.)
-function renderMyTrainingCard(){
-  const el=document.getElementById('h-mytraining'); if(!el)return;
-  if(typeof myTrainingSummary!=='function'){ el.style.display='none'; el.innerHTML=''; return; }
-  const row=(typeof COACH_OWN_ROW!=='undefined'&&COACH_OWN_ROW)
-    || (typeof _readAuthRow==='function'&&typeof _authUid!=='undefined'&&_authUid?_readAuthRow(_authUid):null);
-  const hist=(row&&row.history)||[];
-  const planClient={routines:(row&&row.routines)||[],days:(row&&row.profile&&row.profile.days)};
-  const s=myTrainingSummary(planClient,hist,Date.now());
-  // v372 (reserva Fable): guard por s.hasData, NO por hist.length — un historial con TODAS las
-  // fechas inválidas tiene length>0 pero daysSince=Infinity → pintaba "Hace Infinity días". hasData
-  // ya filtra fechas válidas (y cubre el historial vacío). Nota: la tarjeta se refresca al entrar/
-  // volver de "Mi entrenamiento", no en el poll de 15s (COACH_OWN_ROW se re-snapshotea en backToCoachPanel).
-  if(!s.hasData){ el.style.display='none'; el.innerHTML=''; return; }
-  const ic=(nm,sz)=>(typeof aviIcon==='function'?aviIcon(nm,sz):'');
-  const lastTxt=s.daysSince<=0?'Hoy':s.daysSince===1?'Ayer':('Hace '+s.daysSince+' días');
-  const stat=(v,l)=>`<div style="flex:1;text-align:center;min-width:0"><div style="font-size:17px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">${v}</div><div style="font-size:10.5px;color:var(--t2);margin-top:2px">${l}</div></div>`;
-  // 🔴 EL DOLOR QUE REPORTA EL COACH EN SU PROPIO ENTRENO NO LLEGABA A NINGUNA PARTE.
-  // Reportado por el PO: «marqué dolor y le envié mensaje al coach —o sea, a mí mismo— pero no me
-  // llegó al panel, así que no pude hacer nada». Causa: entrenando con «Mi entrenamiento» él NO es
-  // un cliente (sus datos viven en su propia fila), y el panel del coach solo lee los hilos de las
-  // filas de CLIENTE — el aviso se guardaba donde ninguna pantalla lo muestra. Misma familia que
-  // el bug de v371, donde esta misma tarjeta leía de un cliente que no existía.
-  // Se resuelve donde él ya mira: su propio reporte sale AQUÍ, en la tarjeta de su entrenamiento.
-  let _misDolores='';
-  try{
-    const _act=(typeof painCareActive==='function')?painCareActive((row&&row.profile&&row.profile.painCare)||[]):[];
-    if(_act.length){
-      const _lv={1:'🟡 leve',2:'🟠 molesto',3:'🔴 no pude hacerlo'};
-      const _p=_act[_act.length-1];
-      _misDolores=`<div style="margin-top:9px;background:var(--orl);border:1px solid var(--or);border-radius:var(--rsm);padding:7px 9px;font-size:11.5px;line-height:1.5;color:var(--ort)">`+
-        `🩹 <b>Reportaste dolor:</b> ${esc(_p.area)}${_p.side?' ('+esc(_p.side)+')':''} · ${_lv[_p.level]||_p.level}`+
-        `${_act.length>1?` <span style="opacity:.85">+${_act.length-1} más</span>`:''}</div>`;
-    }
-  }catch(_e){}
-  el.style.display='block';
-  el.innerHTML=`<div class="card" style="padding:12px 14px;cursor:pointer" onclick="openMyTraining()">
-    <div style="font-size:12px;font-weight:700;color:var(--gt);display:flex;align-items:center;gap:6px;margin-bottom:8px">${ic('dumbbell',14)} Mi entrenamiento</div>
-    <div style="display:flex;gap:6px">
-      ${stat(s.streakWeeks+' sem','Racha')}
-      ${stat(s.thisWeekDays+'/'+s.target,'Esta semana')}
-      ${stat(lastTxt,'Último')}
-    </div>
-    ${_misDolores}
-    <div style="margin-top:10px"><button class="btn bg bsm" style="width:100%;min-height:36px" onclick="event.stopPropagation();openMyTraining()">Ver mi entrenamiento →</button></div>
-  </div>`;
-}
-// 🍃 Descargas VENCIDAS (v434). La descarga no se quita sola: el coach la cierra con un toque
-// (decisión del PO, sin temporizador). Este aviso existe para que no se le olvide y alguien se
-// quede semanas al 60% de su volumen. Va arriba del pulso porque es una tarea, no una sugerencia.
-function renderDeloadAlerts(){
-  const el=document.getElementById('h-deload'); if(!el)return;
-  if(typeof deloadOverdue!=='function'){el.style.display='none';return;}
-  const rows=deloadOverdue(DB.clients,Date.now());
-  if(!rows.length){el.style.display='none';el.innerHTML='';return;}
-  el.style.display='block';
-  el.innerHTML=`<div class="card" style="padding:10px 14px;background:var(--yll);border-left:3px solid var(--yl)">
-    <div style="font-size:12px;font-weight:700;color:var(--ylt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('wind',13):'🍃'} Semana de descarga terminada</div>
-    ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br);cursor:pointer" onclick="openDetail('${esc(r.id)}')">
-      <div style="min-width:0;flex:1">
-        <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
-        <div style="font-size:11px;color:var(--t2)">${r.daysOver===0?'terminó hoy':'terminó hace '+r.daysOver+(r.daysOver===1?' día':' días')} — devuélvele el plan completo</div>
-      </div>
-      <div style="font-size:12px;color:var(--t3);flex-shrink:0">›</div>
-    </div>`).join('')}
-  </div>`;
-}
 // ── TU PÁGINA PÚBLICA, CON SU PUERTA (v542) ─────────────────────────────────────────────────
 // Reporte del PO: *«aparece un botón de compartir datos de asesorados en la página, pero no
 // aparece un link para visitar esa página»*. Publicaba a ciegas desde v523. Esta tarjeta es la
@@ -2465,27 +2292,6 @@ function salirVistaPagina(){ location.href=location.pathname; }
 // `scripts/versiones-telefonos.mjs`, que lee la nube sin ocupar su Inicio.
 // `coachBuildReport` (avi-core) se queda: la usa el script y sigue con sus tests.
 
-function renderPulse(){
-  const el=document.getElementById('h-pulse'); if(!el)return;
-  if(typeof coachPulse!=='function'){el.style.display='none';return;}
-  // Junta los mutes vigentes por fila (prefijo coachpulse_) → clave '<cid>_<type>' para coachPulse.
-  const muted={};
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
-    if(k&&k.indexOf('coachpulse_')===0){const v=parseInt(localStorage.getItem(k));if(v)muted[k.slice(11)]=v;}}
-  const rows=coachPulse(DB.clients,DB.history,DB.prs,Date.now(),{muted});
-  if(!rows.length){el.style.display='none';el.innerHTML='';return;}
-  el.style.display='block';
-  el.innerHTML=`<div class="card" style="padding:10px 14px">
-    <div style="font-size:12px;font-weight:700;color:var(--gt);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('bolt',13):'⚡'} El pulso de tus asesorados</div>
-    ${rows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--br)">
-      <div style="min-width:0;flex:1;cursor:pointer" onclick="_pulseGo('${esc(r.id)}','${esc(r.type)}')">
-        <div style="font-size:13px;font-weight:600">${esc(r.name)}</div>
-        <div style="font-size:11px;color:var(--t2)">${esc(r.label)}</div>
-      </div>
-      <button class="btn bg bsm" style="min-height:36px;padding:0 11px;flex-shrink:0" aria-label="Descartar aviso" onclick="event.stopPropagation();dismissPulse('${esc(r.id)}','${esc(r.type)}')">✕</button>
-    </div>`).join('')}
-  </div>`;
-}
 // Tap en una fila del pulso → la ficha. Si la fila es un estancamiento, el coach viene a HACER
 // algo: lo aterrizamos en el plan de choque (#d-shock), no en el tope de la ficha (v354).
 function _pulseGo(id,type){
@@ -2501,7 +2307,7 @@ function _pulseGo(id,type){
 function dismissPulse(id,type){
   if(!id||!type)return;
   localStorage.setItem('coachpulse_'+id+'_'+type,String(Date.now()+3*86400000));
-  renderPulse();
+  renderPendientes();
 }
 
 // ══════════════════════ HABITACIONES-REPORTE DEL PANEL ══════════════════════
@@ -2533,6 +2339,31 @@ function _crepHero(ic,hex,val,label){
 }
 // dueDate del pago más reciente (ms) o Infinity si no hay pagos.
 function _dueMs(c){ const p=(c.payments||[]); if(!p.length)return Infinity; const last=p.reduce((a,b)=>new Date(a.dueDate)>new Date(b.dueDate)?a:b); return new Date(last.dueDate).getTime(); }
+// v756 (b) · lo que eran dos tarjetas del Inicio ahora vive en el reporte «Sesiones semana»:
+// QUIÉN entrenó hoy (con su rutina y la hora, tocable → ficha) y la RETENCIÓN semanal (barras por día).
+function _entrenaronHoyHTML(now){
+  const hoy=clientsTrainedToday(DB.clients,DB.history,now);
+  if(!hoy.length)return '';
+  return `<div class="sroom-sec">Entrenaron hoy · ${hoy.length}</div>`+hoy.map(({client:c,sessions:sess})=>{
+    const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
+    const hora=new Date(sess[0].date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    return _crepRow(c.id,c.name,`${esc(rutinas)}${sess.length>1?' · '+sess.length+' sesiones':''}`,`<span style="font-size:11px;color:var(--t3)">${esc(hora)}</span>`);
+  }).join('');
+}
+function _retencionHTML(now){
+  if(!DB.clients.length)return '';
+  const ordered=retentionByDay(DB.history,now);
+  const maxC=Math.max(...ordered.map(o=>o.count),1);
+  const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
+  const ret=Math.round(totalEnt/DB.clients.length*100);
+  return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${ret}% entrenaron esta semana</div><div style="padding:4px 2px 12px"><div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
+    ordered.map(o=>{
+      const h=Math.max(4,Math.round(o.count/maxC*52));
+      const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${o.count||''}</div><div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></div><div style="font-size:9px;color:var(--t3)">${o.label}</div></div>`;
+    }).join('')
+  }</div></div>`;
+}
 function closeCoachStat(){ const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
 function openCoachStat(kind){
   const room=document.getElementById('coach-stat-room'), body=document.getElementById('coach-stat-body'), titleEl=document.getElementById('coach-stat-title');
@@ -2599,6 +2430,7 @@ function openCoachStat(kind){
     if(byClient.length){
       const prom=(totalSess/byClient.length).toFixed(1).replace('.0','');
       html+=`<div class="sroom-stats">${stat('🔥','Sesiones',totalSess,'#e0772e')}${stat('👥','Entrenaron',byClient.length,'#3a86c8')}${stat('📊','Promedio',prom,'#9b6dd6')}</div>`;
+      html+=_entrenaronHoyHTML(now);
       html+=`<div class="sroom-sec">Quién entrenó</div>`;
       html+=byClient.map(({c,sess})=>{
         const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
@@ -2607,6 +2439,7 @@ function openCoachStat(kind){
         return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--ort)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
       }).join('');
     } else html+=empty('🏋️','Nadie ha entrenado esta semana todavía.');
+    html+=_retencionHTML(now);
   }
 
   else if(kind==='sinentrenar'){

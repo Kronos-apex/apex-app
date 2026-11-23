@@ -3605,7 +3605,7 @@ window.addEventListener('online',()=>{
 // ── Pantallas que se vuelven a pintar cuando cambia algo ──
 function suplRepintar(){
   if(CUR.clientId&&_suplEl('d-ventas'))suplRenderFicha(CUR.clientId);
-  suplRenderHome();
+  tiendaRenderHome();
   if(_suplEl('p-productos')&&_suplEl('p-productos').classList.contains('on'))suplRenderProductos();
   if(_suplEl('p-ventas')&&_suplEl('p-ventas').classList.contains('on'))tiendaRenderVentas();
 }
@@ -3650,28 +3650,6 @@ function suplRenderFicha(id){
   });
   h+=`<button class="btn bg" style="width:100%;justify-content:center;margin-top:13px;min-height:42px" onclick="suplOpenVenta('${esc(id)}')">+ Venta</button>
     <div style="text-align:center;margin-top:12px"><button class="vt-lnk" onclick="suplAbrirProductos()">Mis productos y precios ›</button></div></div></div>`;
-  box.innerHTML=h;
-}
-
-// ── PANEL · tarjetas «Te deben en suplementos» y «Mis productos» (maqueta G) ──
-function suplRenderHome(){
-  const box=_suplEl('h-supl'); if(!box)return;
-  suplInit();
-  if(!SUPL.cargado)suplCargar().then(()=>suplRenderHome());
-  const debe=suplQuienDebe(SUPL.ventas,DB.clients,new Date());
-  const total=debe.reduce((t,g)=>t+g.saldo,0);
-  const activos=SUPL.productos.filter(p=>p.activo!==false);
-  if(typeof tiendaCoachCargar==='function')tiendaCoachCargar().then(()=>{ if(tiendaPorEntregar().length!==(SUPL.ui.nPedHome||0)){ SUPL.ui.nPedHome=tiendaPorEntregar().length; suplRenderHome(); } });
-  let h=_suplFranja()+(typeof tiendaTarjetaHome==='function'?tiendaTarjetaHome():'');
-  if(total>0){
-    const dias=Math.max.apply(null,debe.map(g=>g.diasMasAntigua));
-    h+=`<button class="card vt-debt" style="margin-bottom:13px;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="openCoachStat('ingresos')">
-      <div style="color:var(--ort);display:flex">${aviIcon('bag',24)}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--t2)">Te deben en suplementos</div><div style="font-size:20px;font-weight:800;color:var(--ort);font-family:'JetBrains Mono',monospace">${_suplMon(total)}</div><div style="font-size:11.5px;color:var(--t2);margin-top:1px">${debe.length} ${debe.length===1?'persona':'personas'} · la más antigua, ${dias===0?'de hoy':dias===1?'de hace 1 día':'de hace '+dias+' días'}</div></div>
-      <span style="font-size:15px;font-weight:700;color:var(--t3)">›</span></button>`;
-  }
-  const sub=activos.length?`${activos.length} ${activos.length===1?'producto':'productos'} · margen promedio ${suplMargenPromedio(activos)}%`:'Arma tu catálogo para vender más rápido';
-  h+=`<button class="card" style="color:var(--t1);margin-bottom:13px;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer" onclick="suplAbrirProductos()"><div style="color:var(--gt);display:flex">${aviIcon('box',22)}</div><div style="flex:1"><div style="font-size:14px;font-weight:800">Mis productos</div><div style="font-size:11.5px;color:var(--t2)">${esc(sub)}</div></div><span style="font-size:15px;font-weight:700;color:var(--t3)">›</span></button>`;
   box.innerHTML=h;
 }
 
@@ -4150,11 +4128,21 @@ async function tiendaCoachCargar(force){
   TIENDA.pedidos=r.data; TIENDA.listo=true; TIENDA.sinFunciones=false; TIENDA.uid=r.uid||TIENDA.uid;
 }
 function tiendaPorEntregar(){ return (TIENDA.pedidos||[]).filter(p=>p&&p.estado==='pendiente'); }
-// Tarjeta del Inicio: solo si hay algo por entregar (y las funciones existen).
-function tiendaTarjetaHome(){
-  if(TIENDA.sinFunciones)return '';
-  const n=tiendaPorEntregar().length; if(!n)return '';
-  return `<button class="card vt-debt" style="margin-bottom:13px;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="tiendaAbrirPedidos()"><div style="color:var(--gt);display:flex">${aviIcon('bag',24)}</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--t1)">Pedidos de la tienda</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${n} por entregar</div></div><span style="font-size:15px;font-weight:700;color:var(--t3)">›</span></button>`;
+// La tarjeta de la TIENDA en el Inicio (v756 b): «N pedidos por entregar», lo vendido este mes y lo que te deben; toca → la Tienda
+// (en Pedidos si hay algo por entregar). Sin productos ni ventas: «Arma tu catálogo». Reemplaza las tres tarjetas sueltas de antes
+// (pedidos, «Te deben en suplementos» y «Mis productos»).
+function tiendaRenderHome(){
+  const box=_suplEl('h-tienda'); if(!box)return;
+  suplInit();
+  if(!SUPL.cargado)suplCargar().then(()=>tiendaRenderHome());
+  if(typeof tiendaCoachCargar==='function')tiendaCoachCargar().then(()=>{ const k=tiendaPorEntregar().length; if(k!==(TIENDA.ui.nPedHome||0)){ TIENDA.ui.nPedHome=k; tiendaRenderHome(); } });
+  const ag=suplAgregadoMes(SUPL.ventas,new Date());
+  const hayProd=SUPL.productos.some(p=>p.activo!==false), hayVentas=SUPL.ventas.some(v=>!v.borrado);
+  const n=TIENDA.sinFunciones?0:tiendaPorEntregar().length;
+  const cuerpo=(!hayProd&&!hayVentas&&!n)
+    ?`<div style="font-size:14px;font-weight:800;color:var(--t1)">Tienda</div><div style="font-size:12px;color:var(--t2);margin-top:2px">Arma tu catálogo</div>`
+    :`<div style="font-size:14px;font-weight:800;color:var(--t1)">Tienda${n?' · '+n+' '+(n===1?'pedido':'pedidos')+' por entregar':''}</div><div class="hm-mini"><span><b>${_suplMon(ag.vendido)}</b>vendido este mes</span>${ag.debe>0?`<span><b class="deb">${_suplMon(ag.debe)}</b>te deben</span>`:''}</div>`;
+  box.innerHTML=_suplFranja()+`<button type="button" class="card hm-tienda" onclick="tiendaCoachAbrir()" aria-label="Abrir la tienda"><div class="hm-ic">${aviIcon('bag',22)}</div><div style="flex:1;min-width:0">${cuerpo}</div><span class="hm-chev" aria-hidden="true">›</span></button>`;
 }
 // «Pedidos» es una parte de la Tienda del coach (menú ☰): el aviso del celular y la tarjeta del Inicio caen aquí.
 function tiendaAbrirPedidos(){ tiendaCoachAbrir('pedidos'); }
@@ -4170,7 +4158,7 @@ function tiendaCoachParte(p){
   Object.keys(TIENDA_PARTE_SEC).forEach(k=>{ const e=_suplEl(TIENDA_PARTE_SEC[k]); if(e)e.classList.toggle('on',k===p); });
   const seg=_suplEl('tc-seg');
   if(seg&&seg.querySelectorAll)seg.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===p; b.setAttribute('aria-selected',on?'true':'false'); });
-  if(p==='pedidos'){ tiendaRenderPedidos(); tiendaCoachCargar(true).then(()=>{ tiendaRenderPedidos(); suplRenderHome(); }); }
+  if(p==='pedidos'){ tiendaRenderPedidos(); tiendaCoachCargar(true).then(()=>{ tiendaRenderPedidos(); tiendaRenderHome(); }); }
   else if(p==='productos')suplRenderProductos();
   else if(p==='ventas')tiendaRenderVentas();
   else tiendaRenderQuien();
@@ -4247,7 +4235,7 @@ async function _tiendaEntregarYa(id,cuotas,abono){
   const r=await _tiendaRpc('tienda_entregar',args);
   delete TIENDA.ui.ocupado[id];
   if(!_tiendaEsDeAhora(r))return false;   // la venta ya quedó en el servidor; la pantalla es de otra cuenta: no se le avisa nada
-  if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); suplRenderHome(); return false; }
+  if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); tiendaRenderHome(); return false; }
   const d=r.data||{};
   _tiendaAnotarVenta(d.venta);
   ped.estado='entregado'; ped.venta_id=d.venta&&d.venta.id; ped.resuelto=new Date().toISOString();
@@ -4290,10 +4278,10 @@ async function tiendaCancelarCoach(id){
   const r=await _tiendaRpc('tienda_cancelar',{p_pedido:id});
   delete TIENDA.ui.ocupado[id];
   if(!_tiendaEsDeAhora(r))return;
-  if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); suplRenderHome(); return; }
+  if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); tiendaRenderHome(); return; }
   p.estado='cancelado'; p.cancelado_por='coach'; p.resuelto=new Date().toISOString();
   toast('Pedido cancelado',2500);
-  tiendaRenderPedidos(); suplRenderHome(); tiendaStockCargar();
+  tiendaRenderPedidos(); tiendaRenderHome(); tiendaStockCargar();
 }
 
 // ═══════════════ COACH · stock en «Mis productos» ═══════════════

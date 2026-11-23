@@ -30,8 +30,8 @@ const SABOTAJES = {
     ["{type:'pedido',tag:'avi-pedido-'+(p.id||'')})).catch(()=>{});\n  }catch(_e){}", "{type:'pedido',tag:'avi-pedido-'+(p.id||'')}));\n  }"]],
   // un doble toque en «Entregado» llama dos veces
   'entrega-doble': [["if(TIENDA.ui.ocupado[id])return false;\n  const ped=", "const ped="]],
-  // la tarjeta del panel sale aunque no haya nada por entregar
-  'tarjeta-con-cero': [["const n=tiendaPorEntregar().length; if(!n)return '';", "const n=tiendaPorEntregar().length;"]],
+  // la tarjeta del panel dice «0 pedidos por entregar» cuando no hay ninguno
+  'tarjeta-con-cero': [["Tienda${n?' · '+n+' '+(n===1?'pedido':'pedidos')+' por entregar':''}", "Tienda · ${n} pedidos por entregar"]],
   // sin la migración, la app sigue creyendo en la caché y enseña la fila
   'sin-funciones-rompe': [["codigo:_tiendaFaltaFuncion(r.error)?'no_funcion':tiendaErrorCodigo(r.error)", "codigo:'otro'"]],
   // al entregar no avisa «Quedan N: pide más»
@@ -239,9 +239,8 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     const H = crear(ROOT, { sabotajes, tablaFalta: ['tienda_pedidos'], clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: [], sinFunciones: true } });
     const { ctx, el, toasts, llamadas } = H;
     await ctx.suplCargar(); await ctx.tiendaCoachCargar(true);
-    ok(ctx.tiendaTarjetaHome() === '', 'F: sin la tabla el coach NO ve la tarjeta de pedidos');
-    ctx.suplRenderHome(); await esperar(30);
-    ok(!/Pedidos de la tienda/.test(el('h-supl').innerHTML), 'F: el panel del coach no pinta la tarjeta');
+    ctx.tiendaRenderHome(); await esperar(30);
+    ok(!/por entregar/.test(el('h-tienda').innerHTML), 'F: sin la tabla el coach NO ve pedidos por entregar en la tarjeta de la Tienda');
     // «Mis productos» y guardar un producto siguen igual que en la v750 (sin columnas nuevas en el upsert)
     el('p-productos').classList.add('on');
     ctx.suplAbrirProducto(); el('pr-nombre').value = 'Omega 3'; el('pr-cat').value = 'omega3'; el('pr-precio').value = '65.000'; el('pr-costo').value = '42.000';
@@ -266,10 +265,9 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }, { id: 'u2', name: 'Juan Prueba', age: 28 }], cloud: { tienda_pedidos: filas }, servidor: { catalogo: productosTienda, costos: { p1: 2720, p2: 55000 }, stock: { p1: { producto_id: 'p1', lleva_stock: true, stock_actual: 6, apartado: 2, ultima_carga: 50 } } } });
     const { ctx, el, llamadas, toasts, net } = H;
     await ctx.suplCargar(); await ctx.tiendaCoachCargar(true);
-    const tarjeta = ctx.tiendaTarjetaHome();
-    ok(/Pedidos de la tienda/.test(tarjeta) && /2 por entregar/.test(tarjeta), 'G: la tarjeta del panel dice «Pedidos de la tienda · 2 por entregar»: ' + tarjeta.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
-    ctx.suplRenderHome(); await esperar(30);
-    ok(/Pedidos de la tienda/.test(el('h-supl').innerHTML), 'G: el panel de Inicio pinta la tarjeta');
+    ctx.tiendaRenderHome(); await esperar(30);
+    const tarjeta = el('h-tienda').innerHTML;
+    ok(/Tienda · 2 pedidos por entregar/.test(tarjeta), '🔴 G: la tarjeta de la Tienda en el Inicio dice «Tienda · 2 pedidos por entregar»: ' + tarjeta.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
     ctx.tiendaRenderPedidos();
     const lista = el('pd-list').innerHTML;
     ok(el('pd-sub').textContent === '2 por entregar', 'G: el subtítulo dice «2 por entregar»');
@@ -320,7 +318,8 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
     // Con 0 por entregar la tarjeta NO sale
     Object.values(H.cloud.tienda_pedidos).forEach(x => { if (x.estado === 'pendiente') x.estado = 'cancelado'; });
     await ctx.tiendaCoachCargar(true);
-    ok(ctx.tiendaTarjetaHome() === '', 'G: sin pedidos por entregar la tarjeta del panel NO sale');
+    ctx.tiendaRenderHome(); await esperar(30);
+    ok(!/por entregar/.test(el('h-tienda').innerHTML), '🔴 G: sin pedidos por entregar la tarjeta de la Tienda NO dice «0 por entregar»');
     ctx.tiendaRenderPedidos();
     ok(/No tienes pedidos por entregar/.test(el('pd-list').innerHTML) && el('pd-sub').textContent === 'Nada por entregar', 'G: y la bandeja dice que no hay nada por entregar');
   }

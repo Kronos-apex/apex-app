@@ -616,6 +616,8 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
     <div class="sbi" onclick="gp('p-exercises',this,'Ejercicios')" id="sbi-exercises"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12h10"/><path d="M7 9v6"/><path d="M17 9v6"/><path d="M4.5 10.5v3"/><path d="M19.5 10.5v3"/></svg></span>Ejercicios</div>
     <div class="sbi" onclick="gp('p-templates',this,'Plantillas')" id="sbi-templates"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg></span>Plantillas</div>
     <div class="sbi" onclick="tiendaCoachAbrir()" id="sbi-tienda"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg></span>Tienda</div>
+    <div class="sbi" onclick="openGymMgr()" id="sbi-comunidad"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17.5 14.4a6 6 0 0 1 3.5 5.6"/></svg></span>Comunidad de mi gym</div>
+    <div class="sbi" onclick="gp('p-mipagina',this,'Mi página');renderPageCard()" id="sbi-mipagina"><span class="ic"><svg viewBox="0 0 24 24"><path d="M10 13.6a4 4 0 0 0 6 .4l2.4-2.4a4 4 0 1 0-5.7-5.7L11.4 7.2"/><path d="M14 10.4a4 4 0 0 0-6-.4l-2.4 2.4a4 4 0 1 0 5.7 5.7l1.3-1.3"/></svg></span>Mi página</div>
     <div class="sbi" onclick="gp('p-msgs',this,'Mensajes')" id="sbi-msgs"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20.5l1.4-5.2A8 8 0 1 1 21 12z"/></svg></span>Mensajes<span class="bdg" id="sb-msgs-bdg" style="display:none">0</span></div>
     <div class="sbbot">
       <div class="sbuser">
@@ -674,50 +676,16 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       <div id="h-fbqueue" style="display:none;margin-bottom:13px"></div>
       <!-- Stats de negocio -->
       <div class="g4" style="margin-bottom:16px">
-        <button class="sm sm-tap" onclick="openCoachStat('ingresos')" aria-label="Ver reporte de ingresos del mes"><div class="smv" style="color:var(--gt)" id="h-ingr">$0</div><div class="sml">Ingresos mes</div><div class="smn" id="h-ingr-nota" style="display:none"></div><span class="sm-chev">›</span></button>
+        <button class="sm sm-tap" onclick="openCoachStat('ingresos')" aria-label="Ver las mensualidades del mes"><div class="smv" style="color:var(--gt)" id="h-ingr">$0</div><div class="sml">Mensualidades</div><div class="smn" id="h-ingr-nota" style="display:none"></div><span class="sm-chev">›</span></button>
         <button class="sm sm-tap" onclick="openCoachStat('activos')" aria-label="Ver asesorados activos"><div class="smv" style="color:var(--blt)" id="h-actv">0</div><div class="sml">Activos</div><div class="smn" id="h-actv-nota" style="display:none"></div><span class="sm-chev">›</span></button>
-        <button class="sm sm-tap" onclick="openCoachStat('sesiones')" aria-label="Ver sesiones de la semana"><div class="smv" style="color:var(--ort)" id="h-sess">0</div><div class="sml">Sesiones semana</div><span class="sm-chev">›</span></button>
+        <button class="sm sm-tap" onclick="openCoachStat('sesiones')" aria-label="Ver sesiones de la semana y quién entrenó hoy"><div class="smv" style="color:var(--ort)" id="h-sess">0</div><div class="sml">Sesiones semana</div><div class="smn" id="h-sess-nota" style="display:none"></div><span class="sm-chev">›</span></button>
         <button class="sm sm-tap" onclick="openCoachStat('sinentrenar')" aria-label="Ver asesorados sin entrenar"><div class="smv" style="color:var(--rdt)" id="h-venc">0</div><div class="sml">Sin entrenar</div><span class="sm-chev">›</span></button>
       </div>
-      <!-- v748 · suplementos: lo que te deben y tu catálogo (solo el coach) -->
-      <div id="h-supl"></div>
-      <!-- 🔴 v592 · QUIÉN ENTRENÓ HOY, ARRIBA DEL TODO. Estaba después de la retención, «Mi
-           entrenamiento» y «Comunidad de mi gym», o sea a dos pantallas de scroll — y encima
-           con el tope de avisos de v581 casi nunca salía. El PO: «me ocultaste a los asesorados
-           que han entrenado en el día… me oculta a los que SÍ utilizan la aplicación». Es lo
-           primero que quiere ver, así que va lo primero. -->
-      <div id="h-today-banner" style="display:none;margin-bottom:13px"></div>
-      <!-- v732 · cuentas nuevas de la semana (quien se registró solo): fuera del tope de avisos, como el de arriba -->
-      <div id="h-new" style="display:none;margin-bottom:13px"></div>
-      <!-- v647 · quién lleva más de 24 h esperando tu respuesta en el chat -->
-      <div id="h-await" style="display:none;margin-bottom:13px"></div>
-      <!-- Retención semanal -->
-      <div class="card" style="margin-bottom:13px" id="h-retention-card">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="chart">📊</span> Retención semanal</div><div id="h-ret-label" style="font-size:12px;color:var(--t2)"></div></div>
-        <div id="h-ret-bars" style="padding:4px 12px 12px"></div>
-      </div>
-      <!-- Mi entrenamiento (v369): stats del propio entreno del coach (cuenta marcada como "mi cuenta") -->
-      <div id="h-mytraining" style="display:none;margin-bottom:13px"></div>
-      <!-- Comunidad del gym (C5): el coach controla quién de su gym se ve en la comunidad -->
-      <div class="card" style="margin-bottom:13px">
-        <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="users">👥</span> Comunidad de mi gym</div></div>
-        <div class="cb" style="padding:12px 14px">
-          <div style="font-size:12.5px;color:var(--t2);line-height:1.5;margin-bottom:10px">Elige qué asesorados se ven entre sí en la comunidad de AVI. Solo aparecen los que tú actives.</div>
-          <button class="btn bg" style="width:100%;min-height:40px" onclick="openGymMgr()">Gestionar</button>
-        </div>
-      </div>
-      <!-- Banner de vencimientos próximos -->
-      <div id="h-expiry-banner" style="display:none;margin-bottom:13px"></div>
-      <!-- El pulso de tus asesorados (v353): motivos POSITIVOS para escribirles (récord/racha/estancamiento/deload) -->
-      <div id="h-deload" style="display:none;margin-bottom:13px"></div>
-      <div id="h-pulse" style="display:none;margin-bottom:13px"></div>
-      <!-- v581 · «Tienes N avisos más». Decisión del PO (6-sep): hasta v580 se le pintaban hasta
-           CINCO avisos a la vez y eligió el mismo tope que el asesorado tiene desde v505 —dos—,
-           con vencimientos y empujón como los que siempre quiere ver. Lo que no cabe se APARTA
-           aquí, nunca se silencia: se abre con un toque y en el sitio. -->
-      <div id="h-more" style="margin-bottom:13px"></div>
-      <!-- Tu página pública (v542): verla como la ve un visitante y compartir el link -->
-      <div id="h-page" style="margin-bottom:13px"></div>
+      <!-- v756 (b) · UNA lista de PENDIENTES (chats que esperan, planes por vencer, cuentas nuevas, descargas terminadas, motivos para
+           felicitar): muestra 3 por urgencia y «Ver N más». Sin nada pendiente, la tarjeta no aparece. La pinta renderPendientes. -->
+      <div id="h-pend" style="display:none;margin-bottom:13px"></div>
+      <!-- v756 (b) · la tarjeta de la TIENDA: pedidos por entregar, lo vendido este mes y lo que te deben. La pinta tiendaRenderHome. -->
+      <div id="h-tienda" style="margin-bottom:13px"></div>
       <!-- Asesorados prioritarios -->
       <div class="card" style="margin-bottom:13px">
         <div class="ch"><div class="ctitle"><span class="t-ic" data-ic="bolt">⚡</span> Prioritarios</div><button class="btn bg bsm" onclick="gp('p-clients',document.getElementById('sbi-clients'),'Asesorados')">Ver todos →</button></div>
@@ -748,6 +716,13 @@ window.__aviSplashAt = (window.performance && performance.now) ? performance.now
       </section>
       <section id="p-ventas" class="tc-sec" role="tabpanel" aria-label="Ventas"><div id="tc-ventas"></div></section>
       <section id="p-quien" class="tc-sec" role="tabpanel" aria-label="Quién la ve"><div id="tc-quien"></div></section>
+    </div>
+
+    <!-- v756 (b) · MI PÁGINA (antes tarjeta «Tus dos direcciones» en el Inicio): las dos direcciones, verla, compartirla y copiarla -->
+    <div id="p-mipagina" class="panel">
+      <div class="back" onclick="history.back()">← Volver</div>
+      <div class="ptitle" style="margin:0 0 12px">Mi página</div>
+      <div id="h-page"></div>
     </div>
 
     <!-- CLIENTS -->

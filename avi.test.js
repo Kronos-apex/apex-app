@@ -6425,9 +6425,9 @@ test('🔒 la puerta a la página existe y abre la página REAL, no una maqueta'
   // 🔒 El cableado se afirma DENTRO de `renderHome`, no en todo el archivo: `renderPageCard()`
   // aparece también en su propia declaración, así que borrar la llamada salía VERDE (lo dijo su
   // sabotaje). Es el mismo hueco que v536 pagó con un check anclado en el archivo entero.
-  const rh = src.indexOf('function renderHome');
-  const cuerpoHome = src.slice(rh, src.indexOf('\nfunction ', rh + 10));
-  assert.ok(/renderPageCard\(\);/.test(cuerpoHome), 'la tarjeta se pinta al renderizar el Inicio');
+  // v756 (b) · «Tus dos direcciones» salió del Inicio: se pinta al abrir «Mi página» del menú ☰ (y sigue siendo la misma tarjeta)
+  const sb = html.slice(html.indexOf('id="sbi-mipagina"') - 150, html.indexOf('id="sbi-mipagina"') + 20);
+  assert.ok(/gp\('p-mipagina',this,'Mi página'\);renderPageCard\(\)/.test(sb), 'la tarjeta se pinta al abrir «Mi página»');
   const i = src.indexOf('function verMiPagina');
   const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10));
   // 🔒 La marca tiene que ir EN la llamada que abre. Pedirla «en el cuerpo» dejaba pasar un
@@ -17279,97 +17279,67 @@ test('🔴 v580 · CONTROL · los inalcanzables no se esconden: se dicen y lleva
 // mismo tope que el asesorado tiene desde v505 —dos—, con vencimientos y empujón como los que
 // siempre quiere ver. Lo que no cabe se APARTA, nunca se silencia.
 
-test('v581+v592 · el tope deja 2, y los dos que el PO eligió el 8-sep', () => {
-  // 🔴 v592 — CAMBIÓ EL ORDEN, NO EL TOPE. El PO: «me ocultaste a los asesorados que han
-  //    entrenado en el día». Con el orden de v581, «entrenaron hoy» iba de cuarto y los dos de
-  //    arriba están casi siempre presentes: medido el 8-sep, 7 personas entrenaron y ninguna se
-  //    veía. Ahora va PRIMERO, y el banner de empujar salió de la pantalla.
-  const p = core.coachNoticePlan(['h-pulse', 'h-today-banner', 'h-deload', 'h-expiry-banner']);
-  assert.deepStrictEqual(p.visibles, ['h-today-banner', 'h-expiry-banner'],
-    '🔴 «entrenaron hoy» volvió a quedarse fuera del Inicio');
-  // El orden de salida es el de PRIORIDAD, no el que traiga quien llame: dos pantallas con la
-  // misma gente tienen que decidir igual.
-  assert.deepStrictEqual(p.ocultas, ['h-deload', 'h-pulse']);
-  // 🔒 Y el banner retirado no puede robarle el puesto a los dos de arriba: si alguien lo repone
-  //    sin decidirlo, entra como aviso SIN RANGO, que por la regla de v581 se respeta pero va al
-  //    FINAL — nunca desplaza a «entrenaron hoy» ni a los vencimientos.
-  const q = core.coachNoticePlan(['h-today-banner', 'h-expiry-banner', 'h-adherence-banner']);
-  assert.deepStrictEqual(q.visibles.slice(0, 2), ['h-today-banner', 'h-expiry-banner']);
-  assert.strictEqual(q.visibles[2], 'h-adherence-banner', 'un aviso sin rango tiene que seguir saliendo (v581)');
+test('v581+v592+v756 · Pendientes: el tope deja 3 y van del más urgente al menos urgente (chats, dolor propio, plata, cuentas nuevas, descarga, pulso)', () => {
+  // v756 (b): el tope de dos avisos de v581 pasó a ser UNA lista de Pendientes con 3 a la vista y «Ver N más».
+  // Se conserva lo que el PO decidió el 8-sep: los vencimientos van arriba del pulso, y nada se silencia.
+  const lista = [{ cat: 'pulso', id: 'p' }, { cat: 'descarga', id: 'd' }, { cat: 'vence', id: 'v' }, { cat: 'await', id: 'a' }, { cat: 'nuevas', id: 'n' }];
+  const p = core.coachPendientesPlan(lista);
+  assert.deepStrictEqual(p.visibles.map(x => x.id), ['a', 'v', 'n'], '🔴 el orden de urgencia cambió: chats, plata y cuentas nuevas primero');
+  assert.deepStrictEqual(p.ocultos.map(x => x.id), ['d', 'p'], 'la descarga y el pulso quedan en «Ver más», nunca se silencian');
+  assert.strictEqual(core.COACH_MAX_NOTICES, 3);
+  assert.deepStrictEqual(core.COACH_NOTICE_PRIORITY.slice(0, 3), ['await', 'dolor', 'vence']);
 });
 
-test('🔒 v592 · «entrenaron hoy» va ARRIBA en la pantalla, no solo primero en la lista', () => {
-  // Ser el primer AVISO no basta: el contenedor estaba después de la retención, «Mi entrenamiento»
-  // y «Comunidad de mi gym», o sea a dos pantallas de scroll. El PO lo pidió por lo que VE.
-  const html = require('fs').readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
+test('🔒 v592+v756 · «entrenaron hoy» ya no es un banner del Inicio: es la nota «N hoy» de Sesiones, y tocarla dice QUIÉN entrenó', () => {
+  // v756 (b): el Inicio queda en cifras · Pendientes · Tienda · Prioritarios. Lo que el PO pidió ver primero (v592: quién usa la app)
+  // vive en la cifra «Sesiones semana» —con «N hoy»— y su reporte lo lista, tocable. La prueba EN EJECUCIÓN está en comprobar-pantallas-coach.cjs.
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const pos = id => html.indexOf('id="' + id + '"');
-  assert.ok(pos('h-today-banner') > 0, 'desapareció el aviso de quién entrenó hoy');
-  ['h-retention-card', 'h-mytraining', 'h-expiry-banner'].forEach(id =>
-    assert.ok(pos('h-today-banner') < pos(id), '🔴 «entrenaron hoy» volvió a quedar debajo de ' + id));
+  assert.ok(pos('h-sess-nota') > pos('h-sess') && pos('h-sess') > 0, '🔴 la cifra Sesiones perdió su nota «N hoy»');
+  assert.strictEqual(pos('h-today-banner'), -1, '🔴 volvió el banner de «entrenaron hoy» al Inicio');
+  const login = fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // (sinComentarios aún no existe en este punto del archivo)
+  const rep = login.slice(login.indexOf("else if(kind==='sesiones')"), login.indexOf("else if(kind==='sinentrenar')"));
+  assert.ok(/_entrenaronHoyHTML\(now\)/.test(rep) && /_retencionHTML\(now\)/.test(rep), '🔴 el reporte de Sesiones no trae quién entrenó hoy ni la retención');
   // Y las dos tarjetas que el PO mandó sacar no vuelven al marcado.
   assert.strictEqual(pos('h-adherence-banner'), -1, '🔴 volvió el banner de empujar al Inicio');
   assert.strictEqual(pos('h-builds'), -1, '🔴 volvió la tarjeta de versiones al Inicio');
 });
 
-test('v581 · con 2 o menos no se aparta nada, y el orden sigue mandando', () => {
-  assert.deepStrictEqual(core.coachNoticePlan(['h-pulse', 'h-expiry-banner']).ocultas, []);
-  assert.deepStrictEqual(core.coachNoticePlan(['h-pulse', 'h-expiry-banner']).visibles,
-    ['h-expiry-banner', 'h-pulse'], 'con hueco de sobra el pulso SÍ sale, pero después de la plata');
-  assert.deepStrictEqual(core.coachNoticePlan([]).visibles, []);
-  assert.deepStrictEqual(core.coachNoticePlan(null).ocultas, [], 'sin lista no puede lanzar');
+test('v581+v756 · con 3 o menos no se aparta nada, y el orden sigue mandando', () => {
+  const dos = core.coachPendientesPlan([{ cat: 'pulso', id: 'p' }, { cat: 'vence', id: 'v' }]);
+  assert.deepStrictEqual(dos.ocultos, []);
+  assert.deepStrictEqual(dos.visibles.map(x => x.id), ['v', 'p'], 'con hueco de sobra el pulso SÍ sale, pero después de la plata');
+  assert.deepStrictEqual(core.coachPendientesPlan([]).visibles, []);
+  assert.deepStrictEqual(core.coachPendientesPlan(null).ocultos, [], 'sin lista no puede lanzar');
+  assert.strictEqual(core.coachPendientesPlan([{ cat: 'await', id: 'a' }, { cat: 'vence', id: 'v' }, { cat: 'pulso', id: 'p' }]).ocultos.length, 0, 'justo 3: no se aparta nada');
 });
 
-test('v581 · un aviso NUEVO sin puesto en la lista NO desaparece en silencio', () => {
-  // Preferimos que salga uno de más a que se pierda por habérsenos olvidado prioritizarlo — es
-  // la misma decisión que tomó v505 para el asesorado, y aquí importa igual: el que se pierda
-  // sería justo el que nadie está mirando.
-  const p = core.coachNoticePlan(['h-expiry-banner', 'h-today-banner', 'h-deload', 'h-inventado']);
-  assert.ok(p.visibles.indexOf('h-inventado') >= 0, 'un aviso sin rango se perdió');
-  assert.deepStrictEqual(p.ocultas, ['h-deload']);
+test('v581+v756 · un pendiente NUEVO sin puesto en la lista NO desaparece en silencio', () => {
+  // Preferimos que salga uno de más a que se pierda por habérsenos olvidado prioritizarlo (v505 para el asesorado; aquí igual).
+  const p = core.coachPendientesPlan([{ cat: 'vence', id: 'v' }, { cat: 'await', id: 'a' }, { cat: 'descarga', id: 'd' }, { cat: 'pulso', id: 'p' }, { cat: 'inventado', id: 'x' }], { max: 3 });
+  assert.deepStrictEqual(p.visibles.map(x => x.id), ['a', 'v', 'd']);
+  assert.deepStrictEqual(p.ocultos.map(x => x.id), ['p', 'x'], 'un pendiente sin rango va al final de «Ver más», pero NO se pierde');
+  assert.strictEqual(p.total, 5);
 });
 
-test('🔒 v581 · el reparto es UNA implementación, compartida con el tope del asesorado', () => {
-  // Dos copias del «quién cabe y quién no» acaban decidiendo distinto (clase v448/v511 aplicada
-  // al orden). El CONTROL de que la extracción fue fiel son los tests de `todayCardPlan`, que
-  // siguen verdes sin tocarse; aquí se afirma que ninguno de los dos se re-implementó.
+test('🔒 v581+v756 · el reparto del asesorado es UNO (todayCardPlan → _capPlan) y el del coach es la lista de Pendientes', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, 'avi-core.js'), 'utf8');
   const cuerpo = f => { const i = src.indexOf('function ' + f + '('); assert.ok(i > 0, f + ' desapareció'); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
-  assert.ok(/_capPlan\(presentes,\s*TODAY_CARD_PRIORITY,\s*max\)/.test(cuerpo('todayCardPlan')),
-    'todayCardPlan volvió a implementar el reparto por su cuenta');
-  assert.ok(/_capPlan\(presentes,\s*COACH_NOTICE_PRIORITY,\s*max\)/.test(cuerpo('coachNoticePlan')),
-    'coachNoticePlan volvió a implementar el reparto por su cuenta');
-  assert.strictEqual(core.COACH_MAX_NOTICES, 2, 'cambió el tope sin que el PO lo decidiera');
+  assert.ok(/_capPlan\(presentes,\s*TODAY_CARD_PRIORITY,\s*max\)/.test(cuerpo('todayCardPlan')), 'todayCardPlan volvió a implementar el reparto por su cuenta');
+  assert.ok(/COACH_NOTICE_PRIORITY/.test(cuerpo('coachPendientesPlan')) && /COACH_MAX_NOTICES/.test(cuerpo('coachPendientesPlan')), '🔴 coachPendientesPlan no usa la prioridad ni el tope compartidos');
+  assert.ok(!/function coachNoticePlan\(/.test(src), '🔴 volvió el tope de dos avisos (coachNoticePlan)');
+  assert.strictEqual(core.COACH_MAX_NOTICES, 3, 'cambió el tope sin que el PO lo decidiera');
 });
 
-test('🔒 CABLEADO v581: el tope corre al FINAL de renderHome y apaga con su propia clase', () => {
+test('🔒 CABLEADO v756: renderHome pinta los Pendientes y la tarjeta de la Tienda (sentencias peladas) y no queda tope de avisos', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, 'app-2-login.js'), 'utf8');
   const i = src.indexOf('function renderHome(');
-  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10))
-    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  // La llamada tiene que ser la sentencia pelada: un `if(false)` delante la mataría dejando el
-  // nombre intacto (la clase que dos sabotajes de v579 destaparon).
-  assert.ok(/^\s*_applyCoachCap\(\);\s*$/m.test(cuerpo),
-    '🔴 el tope dejó de aplicarse: vuelven los 5 avisos a la vez');
-  // Y DESPUÉS de quien pinta los avisos, o repartiría sobre una pantalla a medio pintar.
-  const iPulse = cuerpo.indexOf('renderPulse'), iCap = cuerpo.indexOf('_applyCoachCap()');
-  assert.ok(iPulse > 0 && iCap > iPulse, 'el tope corre ANTES de que los avisos existan');
-
-  const j = src.indexOf('function _applyCoachCap(');
-  const cap = src.slice(j, src.indexOf('\nfunction coachMoreToggle', j))
-    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
-  // 🔒 Clase propia y NUNCA style.display: varios de estos contenedores gestionan su propio
-  //    display, y dos mecanismos peleando la misma propiedad se tapan (v505).
-  assert.ok(/classList\.add\('cap-off'\)/.test(cap), 'el tope dejó de apagar con su clase');
-  assert.ok(!/\.style\.display\s*=/.test(cap),
-    '🔴 el tope volvió a tocar style.display: se pisa con el dueño de cada banner (v505)');
-  // Restaurar el ORDEN no es opcional: abrir mueve nodos y sin esto la pantalla queda
-  // descolocada hasta recargar la app.
-  // Sentencia PELADA, no «el nombre aparece»: con `if(false)` delante este sabotaje salió VERDE
-  // en la primera corrida de la matriz — la misma clase que ya me mordió en v579, dos features
-  // antes. La CONSECUENCIA (que abrir y cerrar no descoloque la pantalla) la afirma T3b del
-  // harness `_verify-tope-coach`, que es donde de verdad se puede medir.
-  assert.ok(/^\s*_coachRestoreOrder\(\);\s*$/m.test(cap),
-    'se perdió la restauración del orden del marcado: abrir y cerrar descoloca los avisos');
+  const cuerpo = src.slice(i, src.indexOf('\nfunction ', i + 10)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  // La llamada tiene que ser la sentencia pelada (con su guarda de módulo): un `if(false)` delante la mataría dejando el nombre intacto.
+  assert.ok(/^\s*if\(typeof renderPendientes==='function'\)renderPendientes\(\);\s*$/m.test(cuerpo), '🔴 el Inicio dejó de pintar los Pendientes');
+  assert.ok(/^\s*if\(typeof tiendaRenderHome==='function'\)tiendaRenderHome\(\);\s*$/m.test(cuerpo), '🔴 el Inicio dejó de pintar la tarjeta de la Tienda');
+  assert.ok(!/_applyCoachCap|cap-off|COACH_NOTICE_FIXED/.test(cuerpo), '🔴 volvió el tope de avisos viejo al Inicio');
 });
 
 // ══════════════════════════════════════════════════════
@@ -21438,17 +21408,13 @@ test('v647 · las respuestas guardadas: sin tocar salen las de fábrica, vaciar 
   assert.strictEqual(core.coachQuickReplies(Array.from({ length: 20 }, (_, i) => 'f' + i)).length, core.COACH_QR_MAX);
   core.COACH_QR_DEFAULT.forEach(f => assert.ok(!/\b(mirá|tenés|podés|vos)\b/i.test(f), 'voz colombiana, sin voseo'));
 });
-test('🔒 CABLEADO v647 · el aviso entra al Inicio con prioridad y la frase guardada NO se envía sola', () => {
+test('🔒 CABLEADO v647+v756 · «esperan tu respuesta» entra a los Pendientes con la prioridad más alta y la frase guardada NO se envía sola', () => {
   const fs = require('fs'), path = require('path');
   const a2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
   const a3 = sinComentarios(_srcApp3());
-  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const cuerpo = (src, fn) => { const i = src.indexOf(fn); assert.ok(i > 0, 'desapareció ' + fn); return src.slice(i, src.indexOf('\n}', i)); };
-  assert.strictEqual(core.COACH_NOTICE_PRIORITY[1], 'h-await', 'va justo después de «entrenaron hoy»');
-  assert.ok(/id="h-await"/.test(html), 'falta el contenedor del aviso');
-  const home = cuerpo(a2, 'function renderHome(');
-  assert.ok(home.indexOf('renderAwaitCard()') > 0 && home.indexOf('renderAwaitCard()') < home.indexOf('_applyCoachCap()'), '🔴 el aviso se pinta DESPUÉS del tope: el tope no lo vería');
-  assert.ok(/chatAwaiting\(DB\.clients,DB\.msgs,_coachClears\(\)/.test(cuerpo(a3, 'function renderAwaitCard(')), 'el aviso ignora lo que el coach eliminó');
+  assert.strictEqual(core.COACH_NOTICE_PRIORITY[0], 'await', 'los chats que esperan van PRIMERO en los Pendientes');
+  assert.ok(/chatAwaiting\(DB\.clients,DB\.msgs,_coachClears\(\)/.test(cuerpo(a2, 'function _pendDatos(')), '🔴 el aviso ignora lo que el coach eliminó');
   const usar = cuerpo(a3, 'function coachQrUse(');
   assert.ok(!/sendCoachChatMsg|svNow\('ax_m'|DB\.msgs/.test(usar) && /ta\.value\s*=\s*t/.test(usar), '🔴 la frase guardada tiene que ir a la caja, no salir sola');
   assert.ok(/renderCoachQr\(\)/.test(cuerpo(a3, 'function openCoachChat(')), 'el chat no pinta las respuestas guardadas');
@@ -26542,11 +26508,10 @@ test('🔴 v732 · newAccountWhen y newAccountPush: el día de calendario y un a
   assert.ok(core.newAccountPush({}).body.length > 0 && /Alguien/.test(core.newAccountPush({}).title), 'sin datos el aviso no sale vacío');
 });
 
-test('🔒 v732 · CABLEADO: el aviso sale DESPUÉS de crear la fila, una vez, y la tarjeta se pinta en Inicio', () => {
+test('🔒 v732+v756 · CABLEADO: el aviso sale DESPUÉS de crear la fila, una vez, y las cuentas nuevas entran a los Pendientes', () => {
   const fs = require('fs'), path = require('path');
   const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
   const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
-  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const i = e3.indexOf('async function _provisionFreeClient('); const pv = e3.slice(i, e3.indexOf('\nfunction ', i + 10));
   const crea = pv.indexOf('UD.createFromClient('), aviso = pv.indexOf('_selfRegNewAlert(rec)');
   assert.ok(aviso > 0, '🔴 el registro no le avisa al coach que llegó una cuenta');
@@ -26554,23 +26519,21 @@ test('🔒 v732 · CABLEADO: el aviso sale DESPUÉS de crear la fila, una vez, y
   const f = e3.slice(e3.indexOf('function _selfRegNewAlert('), e3.indexOf('\n}', e3.indexOf('function _selfRegNewAlert(')));
   assert.ok(/\|\|c\.newAlertAt\|\|/.test(f) && /c\.newAlertAt=new Date/.test(f), '🔴 sin candado, el aviso se repite');
   assert.ok(/pushToClient\('_coach'/.test(f) && /newAccountPush\(/.test(f), 'el aviso va al coach con el texto de la función pura');
-  assert.ok(/renderNewAccountsCard\(\)/.test(e2.slice(e2.indexOf('function renderHome('))), '🔴 Inicio no pinta las cuentas nuevas');
-  assert.ok(/id="h-new"/.test(html), 'falta #h-new en Inicio');
-  const r = e3.slice(e3.indexOf('function renderNewAccountsCard('), e3.indexOf('\nfunction ', e3.indexOf('function renderNewAccountsCard(') + 10));
-  assert.ok(/esc\(x\.name\)/.test(r) && /esc\(det\)/.test(r) && /newAccountsList\(/.test(r), '🔴 la tarjeta pinta datos de la persona sin esc() o no delega en la pura');
+  const pd = e2.slice(e2.indexOf('function _pendDatos('), e2.indexOf('\nfunction ', e2.indexOf('function _pendDatos(') + 10));
+  assert.ok(/nuevas:[\s\S]{0,40}newAccountsList\(/.test(pd), '🔴 los Pendientes no incluyen las cuentas nuevas');
+  const r = e2.slice(e2.indexOf('function renderPendientes('), e2.indexOf('\nfunction ', e2.indexOf('function renderPendientes(') + 10));
+  assert.ok(/esc\(it\.texto\)/.test(r), '🔴 los Pendientes pintan el texto de una persona sin esc()');
 });
 
-test('🔒 v732 · «Cuentas nuevas» va en el GRUPO de avisos (su sitio) y FUERA del tope (no le quita cupo a nadie)', () => {
+test('🔒 v732+v756 · «Cuentas nuevas» sigue en los Pendientes (con su puerta de escribirles) y abrir a la persona la saca de la lista', () => {
   const fs = require('fs'), path = require('path');
-  assert.ok(core.COACH_NOTICE_FIXED.indexOf('h-new') >= 0, '🔴 fuera del grupo, el reordenador la deja detrás de «Tienes N avisos más»');
-  assert.ok(core.COACH_NOTICE_PRIORITY.indexOf('h-new') < 0, '🔴 dentro del tope le quitaría el cupo a «espera tu respuesta»');
-  // CONTROL: el tope de 2 sigue igual para los que sí cuentan.
-  assert.deepStrictEqual(core.coachNoticePlan(['h-today-banner', 'h-await', 'h-pulse']).ocultas, ['h-pulse']);
+  assert.ok(core.COACH_NOTICE_PRIORITY.indexOf('nuevas') >= 0, '🔴 las cuentas nuevas salieron de los Pendientes');
+  assert.ok(core.COACH_NOTICE_PRIORITY.indexOf('nuevas') > core.COACH_NOTICE_PRIORITY.indexOf('await'), '🔴 las cuentas nuevas no pueden quitarle el cupo a «esperan tu respuesta»');
+  const e3 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
   const e2 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
-  const f = e2.slice(e2.indexOf('function _coachRestoreOrder('), e2.indexOf('\nfunction ', e2.indexOf('function _coachRestoreOrder(') + 10));
-  assert.ok(/COACH_NOTICE_FIXED/.test(f), '🔴 el reordenador no conoce a los avisos fijos');
-  const c = e2.slice(e2.indexOf('function _applyCoachCap('), e2.indexOf('\nfunction ', e2.indexOf('function _applyCoachCap(') + 10));
-  assert.ok(!/COACH_NOTICE_FIXED/.test(c), '🔴 los avisos fijos entraron al tope');
+  const a = e3.slice(e3.indexOf('function newAccountOpen('), e3.indexOf('\n}', e3.indexOf('function newAccountOpen(')));
+  assert.ok(/_newSeenSave\(m\)/.test(a) && /renderPendientes\(\)/.test(a), '🔴 abrir una cuenta nueva no la saca de los Pendientes');
+  assert.ok(/openCoachNote\(null,'nuevos'\)/.test(e2.slice(e2.indexOf('function renderPendientes('))), '🔴 se perdió la puerta «Escribirles a las cuentas nuevas en su app»');
 });
 
 // ── v733 · A UN LIBRE NO SE LE COBRA ────────────────────────────────────────────────────────────
@@ -26608,7 +26571,9 @@ test('🔒 v733 · las superficies de COBRO preguntan clientIsChargeable (o el n
   const e6 = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-6-extra.js'), 'utf8'));
   const cuerpo = (src, firma) => { const i = src.indexOf(firma); assert.ok(i >= 0, 'no está ' + firma); return src.slice(i, src.indexOf('\nfunction ', i + 10)); };
   const home = cuerpo(e2, 'function renderHome(');
-  assert.ok(/const expiring=DB\.clients\.filter\(clientIsChargeable\)/.test(home), '🔴 el banner de vencimientos le cobra a Libres');
+  const core2 = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8');
+  assert.ok(/function coachVencimientos\([\s\S]{0,200}filter\(c => c && clientIsChargeable\(c\)\)/.test(core2), '🔴 los vencimientos de Pendientes le cobran a Libres');
+  assert.ok(/coachVencimientos\(DB\.clients,now\)/.test(e2), '🔴 los Pendientes no usan coachVencimientos');
   assert.ok(/if\(!clientIsChargeable\(c\)\)return false; const s=MS\.getStatus\(c\); return s==='active'/.test(home), '🔴 «Activos» cuenta Libres');
   assert.ok(/const _hStatus=c=>\(clientPlan\(c\)==='libre'\)\?'free':MS\.getStatus\(c\)/.test(home) && /order\[_hStatus\(a\)\]/.test(home), '🔴 los prioritarios suben a un Libre «Vencido»');
   assert.ok(/clientIsChargeable\(client\)\|\|MS\.getStatus\(client\)!=='overdue'/.test(cuerpo(e4, 'function renderLapsedBand(')), '🔴 a un Libre le dice «tu plan venció»');
@@ -28317,7 +28282,7 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'sin-push': /se le manda el push al coach/,
     'push-corta-el-pedido': /el push caído tumbó el pedido/,
     'entrega-doble': /un doble toque en «Entregado»/,
-    'tarjeta-con-cero': /la tarjeta del panel NO sale/,
+    'tarjeta-con-cero': /la tarjeta de la Tienda NO dice/,
     'sin-funciones-rompe': /la persona NO ve la fila de la tienda/,
     'pocas-no-avisa': /con pocas avisa «Quedan 4/,
     'pocas-sin-texto': /Quedan pocas: pide más/,
@@ -28618,6 +28583,95 @@ test('v756b · C · el reporte «Mensualidades de <mes>» no lleva suplementos y
   // el reporte de ingresos del Inicio dejó de llevar suplementos; seguirán alcanzables en Tienda → Ventas (prueba B)
   const login = _supl748.quitar(leer('app-2-login.js'));
   assert.ok(!/suplIngresosHTML/.test(login), '🔴 app-2-login.js vuelve a llamar suplIngresosHTML');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (2ª parte) · BLOQUE D — el Inicio limpio (cifras · Pendientes · Tienda · Prioritarios)
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+test('v756b · D · Pendientes: el orden de urgencia, las 3 de arriba, «Ver N más» y que no se pierda ninguno', () => {
+  assert.deepStrictEqual(core.COACH_NOTICE_PRIORITY, ['await', 'dolor', 'vence', 'nuevas', 'descarga', 'pulso']);
+  assert.strictEqual(core.COACH_MAX_NOTICES, 3, 'el tope es 3 (decisión del dueño: «muestra 3 y Ver más»)');
+  const now = Date.UTC(2026, 10, 23, 15, 0);
+  const d = {
+    now,
+    await: [{ id: 'c1', name: 'Ana', horas: 30, n: 1 }, { id: 'c2', name: 'Beto', horas: 52, n: 2 }],
+    dolor: [{ texto: 'Reportaste dolor: hombro' }],
+    vence: [{ id: 'v2', name: 'Carla', dueMs: now + 3 * 864e5 }, { id: 'v1', name: 'Dora', dueMs: now - 4 * 864e5 }],
+    nuevas: [{ id: 'n1', name: 'Eva', when: 'hoy' }],
+    descarga: [{ id: 'd1', name: 'Fito', daysOver: 2 }],
+    pulso: [{ id: 'p1', name: 'Gina', type: 'record', label: 'subió su récord' }],
+  };
+  const lista = core.coachPendientesLista(d);
+  assert.strictEqual(lista.length, 7, '1 fila de chats + dolor + 2 vencimientos + 1 cuenta nueva + 1 descarga + 1 pulso');
+  assert.strictEqual(lista[0].texto, '2 chats esperan tu respuesta · hace 2 días', 'los chats van en UNA fila, con la espera más larga');
+  assert.deepStrictEqual(core.coachPendientesLista({ now, await: [{ id: 'c1', name: 'Ana', horas: 30, n: 1 }] })[0].accion, { t: 'chat', id: 'c1' }, 'con un solo chat, la acción abre ese chat');
+  // desordenada a propósito: el plan la ordena por urgencia
+  const revuelta = lista.slice().reverse();
+  const plan = core.coachPendientesPlan(revuelta);
+  assert.deepStrictEqual(plan.visibles.map(x => x.cat), ['await', 'dolor', 'vence'], 'las 3 de arriba: chats, dolor propio, vencimiento');
+  assert.strictEqual(plan.ocultos.length, 4);
+  assert.strictEqual(plan.total, 7);
+  assert.strictEqual(plan.visibles.length + plan.ocultos.length, lista.length, '🔴 se perdió un pendiente');
+  const v = lista.filter(x => x.cat === 'vence');
+  assert.strictEqual(v.find(x => x.id === 'vence:v1').nivel, 'rojo', 'vencido = rojo');
+  assert.strictEqual(v.find(x => x.id === 'vence:v2').nivel, 'ambar', 'por vencer = ámbar');
+  assert.ok(v.every(x => x.wa), 'los vencimientos llevan su WhatsApp');
+  assert.strictEqual(lista.find(x => x.cat === 'pulso').descartable, true);
+  assert.deepStrictEqual(core.coachPendientesLista({}), [], 'sin nada pendiente, lista vacía (la tarjeta no aparece)');
+  assert.deepStrictEqual(core.coachPendientesPlan([], {}).visibles, []);
+  // lo que llegue sin puesto va AL FINAL y no se pierde
+  const raro = core.coachPendientesPlan([{ cat: 'inventado', id: 'x' }, { cat: 'await', id: 'a' }], { max: 1 });
+  assert.deepStrictEqual([raro.visibles[0].id, raro.ocultos[0].id], ['a', 'x']);
+  // textos de vencimiento
+  assert.strictEqual(core.pendVenceTxt(now - 864e5, now), 'venció hace 1 día');
+  assert.strictEqual(core.pendVenceTxt(now - 4 * 864e5, now), 'venció hace 4 días');
+  assert.strictEqual(core.pendVenceTxt(now, now), 'vence hoy');
+  assert.strictEqual(core.pendVenceTxt(now + 864e5, now), 'vence mañana');
+  assert.ok(/^vence el /.test(core.pendVenceTxt(now + 3 * 864e5, now)));
+});
+test('v756b · D · coachVencimientos: por vencer, en gracia o vencido dentro de 5 días, el más urgente primero', () => {
+  const now = new Date(2026, 10, 23, 12, 0).getTime();
+  const pago = (diasDesde, diasVence) => [{ date: new Date(now - diasDesde * 864e5).toISOString(), dueDate: new Date(now + diasVence * 864e5).toISOString(), amount: 150000 }];
+  const cl = [
+    { id: 'a', name: 'A al día', payments: pago(5, 25) }, { id: 'b', name: 'B por vencer', payments: pago(27, 3) }, { id: 'c', name: 'C vencido', payments: pago(40, -4) },
+    { id: 'd', name: 'D sin pagos', payments: [] }, { id: 'e', name: 'E libre', tier: 'libre', payments: pago(40, -4) }, { id: 'f', name: 'F lejos', payments: pago(5, 8) },
+  ];
+  const r = core.coachVencimientos(cl, now);
+  assert.deepStrictEqual(r.map(x => x.id), ['c', 'b'], 'vencido primero, luego el que vence en 3 días; sin los de al día, sin pagos, libres ni lejanos');
+  assert.deepStrictEqual(core.coachVencimientos(null, now), []);
+});
+test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, Pendientes, Tienda y Prioritarios; lo que salió sigue alcanzable', () => {
+  const r = _t756Corre('comprobar-pantallas-coach.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1500));
+  const sab = {
+    'pendiente-perdido': /Ver 6 más|no se pierde ninguno/, 'pendientes-sin-ver-mas': /«Ver más» abre TODOS/, 'sesiones-sin-hoy': /dice quién entrenó hoy/,
+    'sesiones-sin-retencion': /trae la Retención semanal/, 'inicio-sin-pendientes': /el Inicio pinta los Pendientes/,
+  };
+  Object.keys(sab).forEach(k => {
+    const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
+    assert.notStrictEqual(x.status, 0, '🔴 el sabotaje «' + k + '» no hizo caer la prueba (un Pendiente perdido no se vería)');
+    assert.ok(sab[k].test(x.stderr), '🔴 «' + k + '» cayó por otra razón: ' + x.stderr.slice(0, 300));
+  });
+  const fs = _t756.fs, path = _t756.path, leer = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const html = leer('index.html');
+  const home = html.slice(html.indexOf('<div id="p-home"'), html.indexOf('<!-- v756 (b) · TIENDA del coach'));
+  const ids = [...home.replace(/<!--[\s\S]*?-->/g, '').matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+  ['greeting', 'h-push-nudge', 'h-reports', 'h-fbqueue', 'h-ingr', 'h-actv', 'h-sess', 'h-sess-nota', 'h-venc', 'h-pend', 'h-tienda', 'h-list'].forEach(id => assert.ok(ids.includes(id), '🔴 falta #' + id + ' en el Inicio'));
+  ['h-today-banner', 'h-new', 'h-await', 'h-retention-card', 'h-mytraining', 'h-expiry-banner', 'h-deload', 'h-pulse', 'h-more', 'h-page', 'h-supl'].forEach(id => assert.ok(!ids.includes(id), '🔴 #' + id + ' sigue en el Inicio (debía salir)'));
+  assert.ok(/class="sml">Mensualidades<\/div>/.test(home) && !/Ingresos mes/.test(home), '🔴 «Ingresos mes» tiene que llamarse «Mensualidades»');
+  assert.ok(!/Comunidad de mi gym|Tus dos direcciones/.test(home), '🔴 Comunidad y Mi página siguen como tarjetas en el Inicio');
+  // El orden del Inicio: cifras → Pendientes → Tienda → Prioritarios
+  assert.ok(home.indexOf('id="h-ingr"') < home.indexOf('id="h-pend"') && home.indexOf('id="h-pend"') < home.indexOf('id="h-tienda"') && home.indexOf('id="h-tienda"') < home.indexOf('id="h-list"'), '🔴 el orden del Inicio no es cifras · Pendientes · Tienda · Prioritarios');
+  // Lo que salió, sigue alcanzable: Comunidad y Mi página en el menú; Mi entrenamiento ya estaba
+  assert.ok(/onclick="openGymMgr\(\)" id="sbi-comunidad"/.test(html) && /id="sbi-mipagina"/.test(html) && /id="sbi-mytraining"/.test(html), '🔴 el menú ☰ no trae Comunidad de mi gym, Mi página y Mi entrenamiento');
+  assert.ok(/id="p-mipagina" class="panel"[\s\S]{0,300}id="h-page"/.test(html) && /renderPageCard\(\)/.test(html.slice(html.indexOf('id="sbi-mipagina"') - 120, html.indexOf('id="sbi-mipagina"') + 60)), '🔴 «Mi página» no abre la tarjeta de las dos direcciones');
+  assert.ok(/'p-mipagina':\{sbi:'sbi-mipagina'/.test(leer('app-2-login.js')), '🔴 p-mipagina no está en _COACH_PANELS (el atrás no la conoce)');
+  // El código viejo de avisos sueltos ya no existe (nada de tope de dos ni «Tienes N avisos más»)
+  const login = _supl748.quitar(leer('app-2-login.js')), coach = _supl748.quitar(leer('app-3-coach.js'));
+  ['_applyCoachCap', 'renderAwaitCard', 'renderNewAccountsCard', 'renderDeloadAlerts', 'renderPulse', 'renderMyTrainingCard', 'coachMoreToggle'].forEach(f => assert.ok(!new RegExp('\\b' + f + '\\b').test(login + coach), '🔴 sigue ' + f + ' (código muerto del Inicio viejo)'));
+  assert.ok(!/Tienes <b>/.test(login) && !/avisos más/.test(login), '🔴 sigue «Tienes N avisos más»');
+  // CONTROL: el chequeo de ids sí vería un bloque viejo
+  assert.ok(['h-more'].every(id => ['h-ingr', 'h-more'].includes(id)), 'control');
 });
 
 // ══════════════════════════════════════════════════════

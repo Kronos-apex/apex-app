@@ -4692,21 +4692,6 @@ function markCoachRead(id){
 
 // ══════════ v647 · QUIÉN ESPERA TU RESPUESTA + TUS RESPUESTAS GUARDADAS ══════════
 // Medido 21-sep: la mitad de las respuestas del coach tardan 13 h o más; 1 de cada 10, 15 días.
-function renderAwaitCard(){
-  const el=document.getElementById('h-await'); if(!el)return;
-  const lista=(typeof chatAwaiting==='function')?chatAwaiting(DB.clients,DB.msgs,_coachClears(),new Date()):[];
-  if(!lista.length){ el.style.display='none'; el.innerHTML=''; return; }
-  el.style.display='block';
-  const n=lista.length, top=lista.slice(0,5);
-  el.innerHTML=`<div class="card" style="border-left:3px solid var(--or);padding:10px 14px">
-    <div style="font-size:12px;font-weight:700;color:var(--ort);margin-bottom:6px">${typeof aviIcon==='function'?aviIcon('chat',13):'💬'} ${n} ${n>1?'personas esperan':'persona espera'} tu respuesta</div>
-    ${top.map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--br);cursor:pointer;min-height:36px" onclick="openCoachChat('${esc(x.id)}')">
-      <div style="font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div>
-      <span style="font-size:11px;color:var(--t2);flex-shrink:0">${esc(chatWaitText(x.horas))}${x.n>1?` · ${x.n} mensajes`:''}</span>
-    </div>`).join('')}
-    ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Mensajes</div>`:''}
-  </div>`;
-}
 // ══════════ v732 · CUENTAS NUEVAS — quién llegó esta semana ══════════
 // Decisión del PO (8-nov): tarjeta en Inicio con quien se registró solo en los últimos 7 días
 // (`newAccountsList`, avi-core), hasta que la abra. Va FUERA del tope de avisos (v581) a propósito,
@@ -4723,34 +4708,7 @@ function _newSeenSave(m){
 function newAccountOpen(id){
   const m=_newSeen(); m[id]=new Date().toISOString(); _newSeenSave(m);
   if(typeof openDetail==='function')openDetail(id);
-  renderNewAccountsCard();
-}
-function newAccountsSeenAll(){
-  const m=_newSeen(), ahora=new Date().toISOString();
-  ((typeof newAccountsList==='function')?newAccountsList(DB.clients,DB.history,m,new Date()):[]).forEach(x=>{ m[x.id]=ahora; });
-  _newSeenSave(m); renderNewAccountsCard();
-}
-function renderNewAccountsCard(){
-  const el=document.getElementById('h-new'); if(!el)return;
-  const now=new Date();
-  const lista=(typeof newAccountsList==='function')?newAccountsList(DB.clients,DB.history,_newSeen(),now):[];
-  if(!lista.length){ el.style.display='none'; el.innerHTML=''; return; }
-  el.style.display='block';
-  const n=lista.length, top=lista.slice(0,5);
-  const entrenos=k=>k?(k+' entreno'+(k!==1?'s':'')):'sin entrenar todavía';
-  el.innerHTML=`<div class="card" style="border-left:3px solid var(--g);padding:10px 14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
-      <div style="font-size:12px;font-weight:700;color:var(--gt);min-width:0">${typeof aviIcon==='function'?aviIcon('users',13):'🆕'} ${n} ${n>1?'cuentas nuevas':'cuenta nueva'} esta semana</div>
-      <button class="btn bg bsm" style="min-height:36px;flex-shrink:0" onclick="newAccountsSeenAll()">Ya las vi</button>
-    </div>
-    ${top.map(x=>{ const canal=(typeof canalLabel==='function')?canalLabel(x.canal):''; const det=[newAccountWhen(x.at,now),canal,entrenos(x.sesiones)].filter(Boolean).join(' · ');
-      return `<div role="button" tabindex="0" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--br);cursor:pointer;min-height:40px" onclick="newAccountOpen('${esc(x.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();newAccountOpen('${esc(x.id)}')}" aria-label="Ver la ficha de ${esc(x.name)}">
-      <div style="min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div><div style="font-size:11px;color:var(--t2);margin-top:1px">${esc(det)}</div></div>
-      <span aria-hidden="true" style="flex-shrink:0;color:var(--t3);font-size:20px;line-height:1">›</span>
-    </div>`; }).join('')}
-    ${n>top.length?`<div style="font-size:11px;color:var(--t3);padding-top:6px;border-top:1px solid var(--br)">y ${n-top.length} más en Asesorados → Libres</div>`:''}
-    <button class="btn bg bsm" style="width:100%;min-height:36px;margin-top:8px" onclick="openCoachNote(null,'nuevos')">✉️ Escribirles en su app</button>
-  </div>`;
+  if(typeof renderPendientes==='function')renderPendientes();   // v756 (b): ya vista, sale de Pendientes
 }
 // ── v735 · MENSAJE EN SU APP ───────────────────────────────────────────────────────────────────
 // A una persona (desde su ficha) o a un grupo (desde Inicio). Solo a quien NO tiene chat: a quien
