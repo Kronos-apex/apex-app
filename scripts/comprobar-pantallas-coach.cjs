@@ -19,6 +19,10 @@ const SABOTAJES = {
   'sesiones-sin-hoy': { 'app-2-login.js': [["      html+=_entrenaronHoyHTML(now);\n", ""]] },
   // «Sesiones semana» ya no trae la retención
   'sesiones-sin-retencion': { 'app-2-login.js': [["    html+=_retencionHTML(now);\n", ""]] },
+  // al guardar el plan de comida no se repinta la alerta de revisión
+  'nutricion-sin-alerta': { 'app-5-salud.js': [["  if(_cNut&&typeof renderNutReviewCard==='function')renderNutReviewCard(_cNut);\n", ""]] },
+  // al guardar el plan de comida no se repinta el Resumen
+  'nutricion-sin-resumen': { 'app-5-salud.js': [["  if(typeof detailSummaryLater==='function')detailSummaryLater();", ""]] },
   // el Inicio no pinta los Pendientes
   'inicio-sin-pendientes': { 'app-2-login.js': [["  if(typeof renderPendientes==='function')renderPendientes();\n  if(typeof tiendaRenderHome", "  if(typeof tiendaRenderHome"]] },
 };
@@ -120,6 +124,30 @@ const ahora = Date.now(), dia = 864e5;
     const r = I.el('coach-stat-body').innerHTML;
     ok(/Entrenaron hoy · /.test(r) && /_crepGoDetail\('c3'\)/.test(r) && /Empuje, Core/.test(r), '🔴 D: «Sesiones semana» dice quién entrenó hoy, tocable (Carla: Empuje, Core)');
     ok(/Retención semanal · \d+% entrenaron esta semana/.test(r) && /border-radius:4px 4px 0 0/.test(r), '🔴 D: «Sesiones semana» trae la Retención semanal con sus barras');
+  }
+
+  // ═════ E · Guardar el plan de comida repinta la alerta de revisión y el Resumen (sin salir de la ficha) ═════
+  {
+    const salud = leer('app-5-salud.js');
+    const els = {}; const llamadas = [];
+    class El2 { constructor(id) { this.id = id; this.value = ''; this.innerHTML = ''; } }
+    const ctxE = vm.createContext({
+      console, JSON, Math, Date, Object, Array, String, Number, parseInt,
+      document: { getElementById: id => els[id] || (els[id] = new El2(id)) },
+      CUR: { clientId: 'c1' }, DB: { clients: [{ id: 'c1', name: 'Ana Coach' }, { id: 'c2', name: 'Beto Coach' }], nutrition: {} },
+      sv: () => {}, cm: () => {}, toast: () => {},
+      renderNutritionCoach: id => llamadas.push('plan:' + id),
+      renderNutReviewCard: c => llamadas.push('alerta:' + c.id),
+      detailSummaryLater: () => llamadas.push('resumen'),
+      renderNutritionClient: id => llamadas.push('cliente:' + id),
+    });
+    els['nut-kcal'] = Object.assign(new El2('nut-kcal'), { value: '2200' }); els['nut-plan'] = Object.assign(new El2('nut-plan'), { value: ' Plan de prueba ' });
+    vm.runInContext(sacar(salud, 'function saveNutrition(') + '\nthis.__guardar=saveNutrition;', ctxE);
+    ctxE.__guardar();
+    ok(llamadas.includes('plan:c1'), 'E: CONTROL, guardar repinta el plan (lo que ya hacía)');
+    ok(llamadas.includes('alerta:c1'), '🔴 E: al guardar el plan de comida se repinta la alerta de revisión DE ESA PERSONA (sin salir de la ficha)');
+    ok(llamadas.includes('resumen'), '🔴 E: al guardar el plan de comida se repinta el Resumen (la marca de la pestaña Comida se apaga)');
+    ok(ctxE.DB.nutrition.c1 && ctxE.DB.nutrition.c1.kcal === 2200 && ctxE.DB.nutrition.c1.plan === 'Plan de prueba', 'E: CONTROL, el plan se guardó');
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

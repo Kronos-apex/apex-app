@@ -230,6 +230,11 @@ function saveNutrition(){
   };
   sv('ax_nut',DB.nutrition);
   cm('m-nut');renderNutritionCoach(clientId);
+  // v756 (e) · la alerta «revisa el plan de comida» (y la marca del Resumen) se apaga AL GUARDAR, sin salir de la ficha:
+  // antes solo se repintaba la vista previa del plan y la alerta seguía ahí hasta volver a entrar.
+  const _cNut=DB.clients.find(x=>x.id===clientId);
+  if(_cNut&&typeof renderNutReviewCard==='function')renderNutReviewCard(_cNut);
+  if(typeof detailSummaryLater==='function')detailSummaryLater();
   // En el propio entrenamiento del coach (COACH_SELF) la vista visible es la del
   // asesorado, as\u00ed que refrescamos tambi\u00e9n ese render para que el cambio se vea.
   if(typeof renderNutritionClient==='function')renderNutritionClient(clientId);

@@ -28674,6 +28674,26 @@ test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, 
   assert.ok(['h-more'].every(id => ['h-ingr', 'h-more'].includes(id)), 'control');
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (2ª parte) · BLOQUE E — guardar el plan de comida apaga la alerta sin salir de la ficha
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+test('v756b · E · saveNutrition repinta la alerta de revisión y el Resumen (EN EJECUCIÓN, con sabotaje)', () => {
+  const r = _t756Corre('comprobar-pantallas-coach.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
+  const sab = { 'nutricion-sin-alerta': /se repinta la alerta de revisión/, 'nutricion-sin-resumen': /se repinta el Resumen/ };
+  Object.keys(sab).forEach(k => {
+    const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
+    assert.notStrictEqual(x.status, 0, '🔴 el sabotaje «' + k + '» no hizo caer la prueba (la alerta seguiría encendida al guardar)');
+    assert.ok(sab[k].test(x.stderr), '🔴 «' + k + '» cayó por otra razón: ' + x.stderr.slice(0, 300));
+  });
+  // Estático: las dos llamadas están DENTRO de saveNutrition, después de guardar
+  const salud = _t756.fs.readFileSync(_t756.path.join(__dirname, 'app-5-salud.js'), 'utf8').replace(/\r/g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  const f = salud.slice(salud.indexOf('function saveNutrition('), salud.indexOf('\nfunction renderNutritionCoach('));
+  assert.ok(f.indexOf("sv('ax_nut'") < f.indexOf('renderNutReviewCard(_cNut)') && /detailSummaryLater\(\)/.test(f), '🔴 saveNutrition no repinta la alerta y el Resumen después de guardar');
+  // CONTROL: el chequeo vería un saveNutrition viejo
+  assert.ok(!/renderNutReviewCard\(_cNut\)/.test("sv('ax_nut',DB.nutrition);cm('m-nut');renderNutritionCoach(clientId);"), 'control');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
