@@ -3991,6 +3991,7 @@ async function _tiendaCatalogoBajar(){
   else if(r.error.codigo==='no_funcion'){ TIENDA.catalogo=[]; TIENDA.sinFunciones=true; TIENDA.catBajado=true; TIENDA.uid=r.uid||TIENDA.uid; tiendaCacheGuardar(); }
   else return;
   const c=suplPersona(CUR.clientId); if(c&&typeof renderProfileRows==='function')renderProfileRows(c);
+  return true;   // trajo dato fresco
 }
 // Sin señal al abrir: al volver la señal se reintenta (y también al abrir el Perfil, que pinta la fila).
 window.addEventListener('online',()=>{
@@ -4069,33 +4070,39 @@ function tiendaPedirPintar(){
 async function tiendaConfirmarPedido(){
   const u=TIENDA.ui.pedir; if(!u||u.enviando)return;
   const err=_suplEl('pd-err'), btn=_suplEl('pd-ok');
+  const quien=(suplPersona(CUR.clientId)||{}).name||null;   // quién pide: se anota ANTES de esperar (si cambia la cuenta, el aviso lleva SU nombre)
   u.enviando=true; err.style.display='none';
   if(btn){ btn.disabled=true; btn.textContent='Enviando…'; }
   const r=await _tiendaRpc('tienda_pedir',{p_producto:u.id,p_cantidad:u.cant});
-  u.enviando=false;
-  if(btn){ btn.disabled=false; btn.textContent='Confirmar pedido'; }
+  const vigente=_tiendaEsDeAhora(r);   // ¿sigue siendo la misma persona? (si salió y entró otra mientras viajaba, la pantalla nueva no se toca)
+  if(vigente){ u.enviando=false; if(btn){ btn.disabled=false; btn.textContent='Confirmar pedido'; } }
   if(r.error){
+    if(!vigente)return;
     let texto=tiendaErrorTexto(r.error.codigo);
     if(r.error.codigo==='agotado'){
       // Se vuelve a bajar el catálogo: si quedan algunas, «prueba con menos»; si ya no queda ninguna, «se acaba de agotar».
       if(TIENDA.bajandoP)await TIENDA.bajandoP;
-      await tiendaCatalogoBajar();
-      const p2=(TIENDA.catalogo||[]).find(x=>x.id===u.id);
-      texto=tiendaErrorAgotado(!!(p2&&p2.disponible!==false));
+      const fresco=await tiendaCatalogoBajar();
+      if(!_tiendaEsDeAhora({uid:r.uid}))return;
+      if(fresco){
+        const p2=(TIENDA.catalogo||[]).find(x=>x.id===u.id);
+        texto=tiendaErrorAgotado(!!(p2&&p2.disponible!==false));
+      }else texto=tiendaErrorAgotado(u.cant>1);   // sin dato fresco: pidió 1 → se agotó; pidió más → no quedan tantas
       tiendaRender();
     }else if(r.error.codigo==='no_disponible'||r.error.codigo==='menor'){ tiendaCatalogoBajar().then(tiendaRender); }
     err.textContent=texto; err.style.display='block';
     return;
   }
-  cm('m-pedir');
   const p=r.data||{};
-  const c=suplPersona(CUR.clientId);
-  TIENDA.ui.exito='Pediste '+tiendaResumenPedido(p)+'. Tu coach te lo entrega en el gym. Lo ves en «Mis pedidos».';
-  // El aviso al coach va por el camino de siempre (asesorado → '_coach'). Si falla, el pedido igual queda: el coach lo ve en su bandeja.
+  // El aviso al coach va por el camino de siempre (asesorado → '_coach') y lleva el nombre de QUIEN PIDIÓ (no el de la cuenta actual).
+  // Si falla, el pedido igual queda: el coach lo ve en su bandeja.
   try{
-    const t=tiendaPushTexto(p,(c&&c.name)||p.client_nombre);
+    const t=tiendaPushTexto(p,quien||p.client_nombre);
     Promise.resolve(pushToClient('_coach',t.title,t.body,{type:'pedido',tag:'avi-pedido-'+(p.id||'')})).catch(()=>{});
   }catch(_e){}
+  if(!vigente)return;   // el pedido salió, pero la pantalla ya es de otra persona: no se le muestra «Pediste …»
+  cm('m-pedir');
+  TIENDA.ui.exito='Pediste '+tiendaResumenPedido(p)+'. Tu coach te lo entrega en el gym. Lo ves en «Mis pedidos».';
   await Promise.all([tiendaMisCargar(),tiendaCatalogoBajar()]);
   tiendaRender();
 }
@@ -4105,6 +4112,7 @@ async function tiendaCancelarMio(id){
   TIENDA.ui.ocupado[id]=true;
   const r=await _tiendaRpc('tienda_cancelar',{p_pedido:id});
   delete TIENDA.ui.ocupado[id];
+  if(!_tiendaEsDeAhora(r))return;
   if(r.error){ toast(tiendaErrorTexto(r.error.codigo),5200); await tiendaMisCargar(); tiendaRender(); return; }
   toast('Pedido cancelado',2500);
   await Promise.all([tiendaMisCargar(),tiendaCatalogoBajar()]); tiendaRender();
@@ -4139,8 +4147,8 @@ function tiendaRenderPedidos(){
   let h='';
   if(!pend.length)h+=`<div class="card"><div class="cb" style="text-align:center;font-size:13px;color:var(--t2);padding:22px 16px">No tienes pedidos por entregar.</div></div>`;
   pend.forEach(p=>{
-    const total=suplMonto(p.precio_unit)*(parseInt(p.cantidad,10)||1), id=esc(p.id), oc=!!TIENDA.ui.ocupado[p.id], dis=oc?' disabled aria-disabled="true"':'';
-    h+=`<div class="pd-card"><div class="vt-nm">${esc(_tiendaNombrePersona(p))} · ${esc(tiendaResumenPedido(p))}</div><div class="vt-sub">${esc(tiendaFechaTxt(p.creado))} · ${esc(tiendaMoneda(total))}</div><div class="pd-act"><button type="button" class="btn bp bsm"${dis} onclick="tiendaEntregar('${id}')">${oc?'Enviando…':aviIcon('check',14)+' Entregado'}</button><button type="button" class="btn bg bsm"${dis} onclick="tiendaAbrirCuotas('${id}')">Cuotas</button><button type="button" class="btn bd bsm"${dis} onclick="tiendaCancelarCoach('${id}')">Cancelar</button></div></div>`;
+    const total=suplMonto(p.precio_unit)*(parseInt(p.cantidad,10)||1), id=esc(p.id), oc=TIENDA.ui.ocupado[p.id]||'', dis=oc?' disabled aria-disabled="true"':'';
+    h+=`<div class="pd-card"><div class="vt-nm">${esc(_tiendaNombrePersona(p))} · ${esc(tiendaResumenPedido(p))}</div><div class="vt-sub">${esc(tiendaFechaTxt(p.creado))} · ${esc(tiendaMoneda(total))}</div><div class="pd-act"><button type="button" class="btn bp bsm"${dis} onclick="tiendaEntregar('${id}')">${oc==='entregar'?'Enviando…':aviIcon('check',14)+' Entregado'}</button><button type="button" class="btn bg bsm"${dis} onclick="tiendaAbrirCuotas('${id}')">${oc==='cuotas'?'Enviando…':'Cuotas'}</button><button type="button" class="btn bd bsm"${dis} onclick="tiendaCancelarCoach('${id}')">${oc==='cancelar'?'Enviando…':'Cancelar'}</button></div></div>`;
   });
   h+=`<div class="sroom-cmp flat" style="margin:12px 0"><span>Al tocar <b>Entregado</b>: queda como venta en la ficha de la persona (con abonos si es a cuotas) y el stock baja lo que se entregó. Si cancelas, no se toca nada.</span></div>`;
   const hace7=Date.now()-7*86400000;
@@ -4166,11 +4174,12 @@ function _tiendaAnotarVenta(v){
 async function _tiendaEntregarYa(id,cuotas,abono){
   if(TIENDA.ui.ocupado[id])return false;
   const ped=(TIENDA.pedidos||[]).find(p=>p.id===id); if(!ped)return false;
-  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();
+  TIENDA.ui.ocupado[id]=(cuotas===1&&abono==null)?'entregar':'cuotas'; tiendaRenderPedidos();
   const args={p_pedido:id,p_cuotas:cuotas};
   if(abono!=null)args.p_abono=abono;
   const r=await _tiendaRpc('tienda_entregar',args);
   delete TIENDA.ui.ocupado[id];
+  if(!_tiendaEsDeAhora(r))return false;   // la venta ya quedó en el servidor; la pantalla es de otra cuenta: no se le avisa nada
   if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); suplRenderHome(); return false; }
   const d=r.data||{};
   _tiendaAnotarVenta(d.venta);
@@ -4210,9 +4219,10 @@ async function tiendaCancelarCoach(id){
   if(TIENDA.ui.ocupado[id])return;
   const p=(TIENDA.pedidos||[]).find(x=>x.id===id); if(!p)return;
   if(!confirm('¿Cancelar el pedido de '+_tiendaNombrePersona(p)+' ('+tiendaResumenPedido(p)+')? No se toca nada: ni la venta ni el stock.'))return;
-  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();
+  TIENDA.ui.ocupado[id]='cancelar'; tiendaRenderPedidos();
   const r=await _tiendaRpc('tienda_cancelar',{p_pedido:id});
   delete TIENDA.ui.ocupado[id];
+  if(!_tiendaEsDeAhora(r))return;
   if(r.error){ toast(tiendaErrorTexto(r.error.codigo,'coach'),5200); await tiendaCoachCargar(true); tiendaRenderPedidos(); suplRenderHome(); return; }
   p.estado='cancelado'; p.cancelado_por='coach'; p.resuelto=new Date().toISOString();
   toast('Pedido cancelado',2500);

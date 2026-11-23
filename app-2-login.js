@@ -1617,18 +1617,14 @@ async function tryAutoLogin(){
       document.getElementById('lu')&&document.getElementById('lu').focus();
       return;
     }
-    const _aviChat=new URLSearchParams(location.search).get('avi-chat');
-    const _aviPedidos=new URLSearchParams(location.search).get('avi-pedidos');   // v756 · el aviso de un pedido abre la bandeja
-    // Se quita de la URL al leerla (sin tocar el historial): recargar no vuelve a abrir la bandeja.
-    if(_aviPedidos){ try{ const _u=new URL(location.href); _u.searchParams.delete('avi-pedidos'); history.replaceState(history.state,'',_u.pathname+_u.search+_u.hash); }catch(_e){} }
+    // (El aviso del celular `?avi-chat=` / `?avi-pedidos=1` ya NO se lee aquí: este camino solo corre sin sesión de Auth y lee
+    //  `ax_session`, que nadie escribe desde el «login solo por Auth». Lo lee `abrirDeAviso`, en la entrada REAL.)
     if(session.role === 'coach'){
       showScreen('s-coach');
       CUR.loggedAs = 'coach';
       initCoach();
       startMsgPolling();
       resetLoginAttempts();
-      if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
-      if(_aviPedidos&&typeof tiendaAbrirPedidos==='function')setTimeout(tiendaAbrirPedidos,900);
       if(Notification.permission==='granted') setTimeout(()=>{subscribePush('_coach');restoreNotifications();},3000);
     } else if(session.role === 'client'){
       const client = DB.clients.find(c => c.id === session.clientId);
@@ -1652,7 +1648,6 @@ async function tryAutoLogin(){
         initClientView(client);
         startMsgPolling();
         resetLoginAttempts();
-        if(_aviChat)setTimeout(()=>openChatFor(_aviChat),600);
         if(Notification.permission==='granted') setTimeout(()=>{
           const _plan=pushPlanFromRoutines(client.routines);
           subscribePush(client.id,_plan.days,Object.keys(_plan.shift).length?_plan.shift:null);

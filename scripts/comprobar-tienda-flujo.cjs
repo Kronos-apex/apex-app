@@ -26,7 +26,7 @@ const SABOTAJES = {
   'sin-push': [["Promise.resolve(pushToClient('_coach',t.title,t.body,{type:'pedido',tag:'avi-pedido-'+(p.id||'')})).catch(()=>{});", ";"]],
   // si el push falla, el pedido se pierde en la pantalla
   'push-corta-el-pedido': [
-    ["  try{\n    const t=tiendaPushTexto(p,(c&&c.name)||p.client_nombre);\n    Promise.resolve(pushToClient(", "  {\n    const t=tiendaPushTexto(p,(c&&c.name)||p.client_nombre);\n    await (pushToClient("],
+    ["  try{\n    const t=tiendaPushTexto(p,quien||p.client_nombre);\n    Promise.resolve(pushToClient(", "  {\n    const t=tiendaPushTexto(p,quien||p.client_nombre);\n    await (pushToClient("],
     ["{type:'pedido',tag:'avi-pedido-'+(p.id||'')})).catch(()=>{});\n  }catch(_e){}", "{type:'pedido',tag:'avi-pedido-'+(p.id||'')}));\n  }"]],
   // un doble toque en «Entregado» llama dos veces
   'entrega-doble': [["if(TIENDA.ui.ocupado[id])return false;\n  const ped=", "const ped="]],
@@ -54,12 +54,32 @@ const SABOTAJES = {
   // el botón de confirmar no se bloquea mientras envía
   'confirmar-sin-bloqueo': [["if(btn){ btn.disabled=true; btn.textContent='Enviando…'; }", ""]],
   // los botones del coach no se bloquean mientras envía
-  'coach-sin-bloqueo': [["  TIENDA.ui.ocupado[id]=true; tiendaRenderPedidos();\n  const args=", "  TIENDA.ui.ocupado[id]=true;\n  const args="]],
+  'coach-sin-bloqueo': [["  TIENDA.ui.ocupado[id]=(cuotas===1&&abono==null)?'entregar':'cuotas'; tiendaRenderPedidos();\n  const args=", "  TIENDA.ui.ocupado[id]=(cuotas===1&&abono==null)?'entregar':'cuotas';\n  const args="]],
   // la bandeja vuelve al orden viejo (más viejo primero)
   'bandeja-al-reves': [["Date.parse(b.creado)-Date.parse(a.creado));   // el más nuevo arriba (como la maqueta)", "Date.parse(a.creado)-Date.parse(b.creado));"]],
   // la barra de proteína vuelve a llevar la manzana
   'icono-manzana': [["barras:'box'};", "barras:'apple'};"]],
   // el ?avi-pedidos=1 se queda en la URL (solo se mira el texto: está en app-2-login, lo cubre la prueba estática)
+  // la respuesta de otra cuenta se acepta siempre (cambio de cuenta con una llamada en vuelo)
+  'esdeahora-siempre': [["function _tiendaEsDeAhora(r){ const u=_tiendaUid(); return !(r&&r.uid&&u&&r.uid!==u); }", "function _tiendaEsDeAhora(r){ return true; }"]],
+  // la caché local de OTRA persona se muestra tras recargar
+  'cache-sin-uid': [["if(d&&u&&d.uid===u&&Array.isArray(d.c))", "if(d&&Array.isArray(d.c))"]],
+  // la respuesta tardía de tienda_pedir pinta «Pediste…» en la cuenta nueva
+  'pedir-tardio-sin-guardia': [["const vigente=_tiendaEsDeAhora(r);", "const vigente=true;"]],
+  // el aviso al coach lleva el nombre de la cuenta ACTUAL, no el de quien pidió
+  'push-nombre-actual': [["tiendaPushTexto(p,quien||p.client_nombre)", "tiendaPushTexto(p,(suplPersona(CUR.clientId)||{}).name||p.client_nombre)"]],
+  // la respuesta tardía de entregar avisa «Venta anotada…» a la cuenta nueva
+  'entrega-tardia-sin-guardia': [["if(!_tiendaEsDeAhora(r))return false;", ""]],
+  // «agotado» decide con el catálogo VIEJO (el de antes de volver a bajarlo)
+  'agotado-catalogo-viejo': [["const fresco=await tiendaCatalogoBajar();", "const __v=(TIENDA.catalogo||[]).map(x=>Object.assign({},x)); const fresco=await tiendaCatalogoBajar();"], ["const p2=(TIENDA.catalogo||[]).find(x=>x.id===u.id);\n        texto=", "const p2=__v.find(x=>x.id===u.id);\n        texto="]],
+  // si la segunda bajada falla, dice siempre «No quedan tantas» (aunque pidió 1)
+  'agotado-sin-dato-tantas': [["else texto=tiendaErrorAgotado(u.cant>1);", "else texto=tiendaErrorAgotado(true);"]],
+  // el botón «Enviando…» del modal de cuotas no existe
+  'cuotas-sin-bloqueo': [["const b=_suplEl('cu-ok'); if(b){ b.disabled=true; b.textContent='Enviando…'; }", "const b=null;"]],
+  // al cancelar, el «Enviando…» sale en Entregado (el botón equivocado)
+  'cancelar-boton-equivocado': [["oc==='cancelar'?'Enviando…':'Cancelar'", "'Cancelar'"], ["oc==='entregar'?'Enviando…'", "oc?'Enviando…'"]],
+  // al cancelar el coach no se repinta: el botón no muestra «Enviando…»
+  'cancelar-coach-sin-repintar': [["TIENDA.ui.ocupado[id]='cancelar'; tiendaRenderPedidos();", "TIENDA.ui.ocupado[id]='cancelar';"]],
   // el botón de un producto agotado queda activo
   'agotado-activo': [["'disabled aria-disabled=\"true\"'", "''"]],
 };
@@ -429,9 +449,9 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
 
   // ═════ O · «Enviando…»: el botón se bloquea y no se manda dos veces ═════
   {
-    const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1', demora: 60 } });
+    const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1', demora: 250 } });
     const { ctx, el, llamadas } = H;
-    ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(120);
+    ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(550);
     ctx.tiendaPedir('p2');
     const pr = ctx.tiendaConfirmarPedido(); await esperar(10);
     ok(el('pd-ok').disabled === true && el('pd-ok').textContent === 'Enviando…', '🔴 O: mientras envía, «Confirmar pedido» se desactiva y dice «Enviando…»: ' + el('pd-ok').disabled + ' · ' + el('pd-ok').textContent);
@@ -442,13 +462,109 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
   }
   {
     const row = { id: 'a', coach_id: COACH, client_uid: 'u1', client_id: 'u1', client_nombre: 'Laura Prueba', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 2, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: iso(ahora - 60000), resuelto: null };
-    const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: productosTienda, costos: { p1: 2720 }, demora: 60 } });
+    const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: productosTienda, costos: { p1: 2720 }, demora: 250 } });
     const { ctx, el } = H;
     await ctx.suplCargar(); await ctx.tiendaCoachCargar(true); ctx.tiendaRenderPedidos();
     const pr = ctx.tiendaEntregar('a'); await esperar(10);
     const h = el('pd-list').innerHTML;
     ok(/disabled[^>]*>Enviando…/.test(h) && (h.match(/ disabled aria-disabled="true"/g) || []).length === 3, '🔴 O: mientras el coach entrega, Entregado dice «Enviando…» y Cuotas y Cancelar quedan desactivados: ' + (h.match(/<button[^>]*>/g) || []).join(' '));
     await pr;
+  }
+
+  // ═════ P · Respuestas TARDÍAS tras un cambio de cuenta: la cuenta nueva no ve nada de la anterior ═════
+  {
+    const cat = uid => [{ id: 'p2', nombre: 'Creatina 300 g', categoria: 'creatina', descripcion: '', precio: 85000, disponible: true }].concat(uid === 'uA' ? [{ id: 'px', nombre: 'Quemador X', categoria: 'quemador', descripcion: '', precio: 50000, disponible: true }] : []);
+    const montar = () => {
+      const H = crear(ROOT, { sabotajes, uid: 'uA', clients: [{ id: 'uA', name: 'Mariana Prueba', age: 30 }, { id: 'uB', name: 'Beto Prueba', age: 15 }], servidor: { catalogo: cat, uid: 'uA', nombre: 'Mariana Prueba' } });
+      H.ctx._authUid = 'uA'; H.ctx.CUR.clientId = 'uA';
+      const salir = () => { H.ctx.tiendaReset(); H.ctx._authUid = null; H.ctx.CUR.loggedAs = null; H.ctx.CUR.clientId = null; };
+      const entrarMenor = () => { H.setUid('uB'); H.S.uid = 'uB'; H.S.nombre = 'Beto Prueba'; H.ctx._authUid = 'uB'; H.ctx.CUR.clientId = 'uB'; };
+      return { H, salir, entrarMenor, B: H.ctx.DB.clients[1] };
+    };
+    const vista = H => { const h = H.el('tienda-body').innerHTML; return { cat: (h.match(/<div class="tn-card">[\s\S]*?vt-nm">([^<]*)/g) || []).map(x => x.replace(/[\s\S]*vt-nm">/, '')), mis: /Mis pedidos/.test(h), franja: /tn-franja/.test(h), h }; };
+    // P1 · el catálogo y «Mis pedidos» de la adulta llegan TARDE, cuando el menor ya entró
+    for (const senal of [true, false]) {
+      const M = montar(); const { H } = M, { ctx } = H;
+      ctx.tiendaFilaPerfil(ctx.DB.clients[0]); await esperar(30); ctx.tiendaAbrir(); await esperar(40);
+      ctx.tiendaPedir('px'); await ctx.tiendaConfirmarPedido(); await esperar(30);
+      H.S.demora = 300; ctx.tiendaAbrir(); await esperar(20);
+      M.salir(); await esperar(20); M.entrarMenor(); H.S.demora = 0; H.net.on = senal;
+      ctx.tiendaFilaPerfil(M.B); await esperar(30); ctx.tiendaAbrir(); await esperar(650); ctx.tiendaRender();
+      const v = vista(H); const q = 'P1 respuestas tardías, menor ' + (senal ? 'con' : 'sin') + ' señal';
+      ok(!v.cat.some(n => /Quemador/.test(n)) && !v.mis, '🔴 ' + q + ': el menor ve algo de la adulta (catálogo ' + JSON.stringify(v.cat) + ', «Mis pedidos»: ' + v.mis + ')');
+      if (senal) ok(v.cat.some(n => /Creatina/.test(n)), '🔴 ' + q + ': CONTROL, el menor SE QUEDA SIN SU PROPIA TIENDA (la respuesta tardía de la adulta le borró el catálogo): ' + JSON.stringify(v.cat));
+    }
+    // P2 · el pedido de la adulta sale mientras entra el menor: «Pediste…» no es del menor y el aviso lleva SU nombre
+    {
+      const M = montar(); const { H } = M, { ctx } = H;
+      ctx.tiendaFilaPerfil(ctx.DB.clients[0]); await esperar(30); ctx.tiendaAbrir(); await esperar(40);
+      H.S.demora = 300; ctx.tiendaPedir('px'); const pr = ctx.tiendaConfirmarPedido();
+      await esperar(20); M.salir(); await esperar(20); M.entrarMenor(); H.S.demora = 0;
+      ctx.tiendaFilaPerfil(M.B); await esperar(30); ctx.tiendaAbrir(); await esperar(40);
+      await pr; await esperar(60); ctx.tiendaRender();
+      const v = vista(H);
+      ok(!v.franja && !/Pediste/.test(v.h), '🔴 P2: la cuenta nueva ve «Pediste 1 × …» de la anterior');
+      ok(H.pushes.length === 1 && /^Mariana pidió 1 × Quemador X/.test(H.pushes[0][2]), '🔴 P2: el aviso al coach tiene que llevar el nombre de quien pidió (Mariana): ' + JSON.stringify(H.pushes.map(p => p[2])));
+      ok(Object.keys(H.cloud.tienda_pedidos).length === 1, 'P2: el pedido sí salió (la respuesta tardía no lo cancela)');
+    }
+    // P3 · el coach entrega, sale, entra una asesorada y la respuesta llega tarde
+    {
+      const COACH2 = '0a6484ed-42af-449d-9903-e440ac683ecf';
+      const row = { id: 'a', coach_id: COACH2, client_uid: 'u1', client_id: 'u1', client_nombre: 'Laura Prueba', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 2, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: iso(ahora - 60000), resuelto: null };
+      const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }, { id: 'u9', name: 'Otra Persona', age: 40 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: [], costos: { p1: 2720 } } });
+      const { ctx } = H; ctx._authUid = COACH2; ctx.CUR.loggedAs = 'coach';
+      await ctx.suplCargar(); await ctx.tiendaCoachCargar(true);
+      H.S.demora = 250; const pr = ctx.tiendaEntregar('a'); await esperar(10);
+      ctx.tiendaReset(); ctx._authUid = null; ctx.CUR.loggedAs = null; ctx.CUR.clientId = null;
+      await esperar(10); ctx._authUid = 'u9'; ctx.CUR.loggedAs = 'client'; ctx.CUR.clientId = 'u9';
+      const antes = H.toasts.length; await pr; await esperar(200);
+      ok(H.toasts.length === antes, '🔴 P3: la asesorada que entró ve un aviso del coach: ' + JSON.stringify(H.toasts.slice(antes)));
+      ok(Object.values(H.cloud.tienda_pedidos)[0].estado === 'entregado', 'P3: CONTROL, la entrega sí quedó hecha en el servidor');
+    }
+    // P4 · recarga de la página: la caché local es de OTRA persona y entra el menor (sin señal)
+    {
+      const otro = JSON.stringify({ uid: 'uA', c: cat('uA') });
+      const H = crear(ROOT, { sabotajes, uid: 'uB', storage: { ax_tienda: otro }, clients: [{ id: 'uB', name: 'Beto Prueba', age: 15 }], servidor: { catalogo: cat, uid: 'uB' } });
+      H.ctx._authUid = 'uB'; H.ctx.CUR.clientId = 'uB'; H.net.on = false;
+      const f = H.ctx.tiendaFilaPerfil(H.ctx.DB.clients[0]); H.ctx.tiendaAbrir(); await esperar(40);
+      const v = vista(H);
+      ok(f === '' && !v.cat.length, '🔴 P4: tras recargar el menor ve la caché de otra persona: fila «' + f.replace(/<[^>]+>/g, ' ').trim() + '», catálogo ' + JSON.stringify(v.cat));
+      ok(!('ax_tienda' in H.store), 'P4: la caché de otra persona se borra');
+    }
+  }
+
+  // ═════ Q · «agotado» sin dato fresco, y el «Enviando…» en el botón que se tocó ═════
+  {
+    for (const [cant, esperado] of [[1, 'Se acaba de agotar.'], [3, 'No quedan tantas. Prueba con menos o pregúntale a tu coach.']]) {
+      const H = crear(ROOT, { sabotajes, uid: 'u1', clients: [{ id: 'u1', name: 'Mariana Prueba', age: 33 }], servidor: { catalogo: productosTienda, uid: 'u1', falla: { tienda_pedir: 'agotado' } } });
+      const { ctx, el, net } = H;
+      ctx.CUR.clientId = 'u1'; await ctx.tiendaCatalogoBajar(); ctx.tiendaAbrir(); await esperar(30);
+      ctx.tiendaPedir('p1'); for (let i = 1; i < cant; i++) ctx.tiendaCant(1);
+      H.S.falla.tienda_catalogo = 'Failed to fetch';   // la segunda bajada del catálogo falla
+      await ctx.tiendaConfirmarPedido(); await esperar(30);
+      ok(el('pd-err').textContent === esperado, '🔴 Q: «agotado» con la segunda bajada caída y cantidad ' + cant + ' tiene que decir «' + esperado + '» y dijo «' + el('pd-err').textContent + '»');
+    }
+    const row = { id: 'a', coach_id: COACH, client_uid: 'u1', client_id: 'u1', client_nombre: 'Laura Prueba', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 2, estado: 'pendiente', cancelado_por: null, venta_id: null, creado: iso(ahora - 60000), resuelto: null };
+    const botones = h => (h.match(/<button[^>]*bsm[^>]*>[^<]*(?:<svg[^]*?<\/svg>)?[^<]*/g) || []).map(b => (/disabled/.test(b) ? 'D' : 'A') + ':' + b.replace(/<button[^>]*>/, '').replace(/<[^>]+>/g, '').trim());
+    {   // cancelar: «Enviando…» en CANCELAR
+      const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: [], costos: { p1: 2720 }, demora: 250, rol: 'coach' } });
+      const { ctx, el } = H; await ctx.suplCargar(); await ctx.tiendaCoachCargar(true); ctx.tiendaRenderPedidos();
+      const pr = ctx.tiendaCancelarCoach('a'); await esperar(10);
+      const b = botones(el('pd-list').innerHTML).join(' | ');
+      ok(/^D:Entregado \| D:Cuotas \| D:Enviando…$/.test(b), '🔴 Q: al cancelar, «Enviando…» tiene que salir en CANCELAR (y Entregado/Cuotas desactivados): ' + b);
+      await pr;
+    }
+    {   // cuotas: «Enviando…» en el botón del modal y en CUOTAS de la lista
+      const H = crear(ROOT, { sabotajes, clients: [{ id: 'u1', name: 'Laura Prueba', age: 30 }], cloud: { tienda_pedidos: [row] }, servidor: { catalogo: [], costos: { p1: 2720 }, demora: 250 } });
+      const { ctx, el, llamadas } = H; await ctx.suplCargar(); await ctx.tiendaCoachCargar(true); ctx.tiendaRenderPedidos();
+      ctx.tiendaAbrirCuotas('a'); el('cu-abono').value = '2.000';
+      const pr = ctx.tiendaCuotasOk(); await esperar(10);
+      ok(el('cu-ok').disabled === true && el('cu-ok').textContent === 'Enviando…', '🔴 Q: en el modal de cuotas el botón «Entregar» tiene que pasar a «Enviando…» y desactivarse: ' + el('cu-ok').disabled + ' · ' + el('cu-ok').textContent);
+      const b = botones(el('pd-list').innerHTML).join(' | ');
+      ok(/^D:Entregado \| D:Enviando… \| D:Cancelar$/.test(b), 'Q: en la lista, «Enviando…» sale en CUOTAS: ' + b);
+      ctx.tiendaCuotasOk(); await pr; await esperar(200);
+      ok(llamadas.filter(l => l.name === 'tienda_entregar').length === 1 && el('cu-ok').textContent === 'Entregar' && el('cu-ok').disabled === false, 'Q: un segundo toque no entrega dos veces y al terminar el botón vuelve a «Entregar»');
+    }
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

@@ -10,7 +10,8 @@ const FALTA = n => ({ data: null, error: { message: 'Could not find the function
 // `S.demora` (ms): el servidor tarda, para poder mirar el botón «Enviando…» a medio camino.
 function servidorFalso(S) {
   const base = servidorBase(S);
-  return (nombre, args, cloud) => S.demora ? new Promise(res => setTimeout(() => res(base(nombre, args, cloud)), S.demora)) : base(nombre, args, cloud);
+  // La respuesta se CALCULA al llamar (con quien preguntó entonces) y solo se ENTREGA tarde: así una respuesta lenta es de quien la pidió.
+  return (nombre, args, cloud) => { const out = base(nombre, args, cloud); return S.demora ? new Promise(res => setTimeout(() => res(out), S.demora)) : out; };
 }
 function servidorBase(S) {
   let n = 0;
@@ -19,7 +20,7 @@ function servidorBase(S) {
     if (S.sinFunciones) return FALTA(nombre);
     if (S.falla && S.falla[nombre]) return { data: null, error: { message: S.falla[nombre] } };   // el código corto, como el SQL real
     const ped = id => Object.values(cloud.tienda_pedidos).find(p => p.id === id);
-    if (nombre === 'tienda_catalogo') return { data: typeof S.catalogo === 'function' ? S.catalogo(S.uid) : S.catalogo, error: null };
+    if (nombre === 'tienda_catalogo') return { data: JSON.parse(JSON.stringify(typeof S.catalogo === 'function' ? S.catalogo(S.uid) : S.catalogo)), error: null };   // COPIAS: el servidor real no comparte objetos con el teléfono
     if (nombre === 'tienda_pedir') {
       const p = (typeof S.catalogo === 'function' ? S.catalogo(S.uid) : S.catalogo).find(x => x.id === args.p_producto);
       if (!p) return { data: null, error: { message: 'no_disponible' } };

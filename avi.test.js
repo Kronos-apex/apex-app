@@ -28332,6 +28332,16 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'coach-sin-bloqueo': /Enviando…/,
     'bandeja-al-reves': /más NUEVO al más viejo/,
     'icono-manzana': /ícono de la caja/,
+    'esdeahora-siempre': /el menor SE QUEDA SIN SU PROPIA TIENDA|la cuenta nueva ve «Pediste/,
+    'cache-sin-uid': /tras recargar el menor ve la caché de otra persona/,
+    'pedir-tardio-sin-guardia': /la cuenta nueva ve «Pediste/,
+    'push-nombre-actual': /el aviso al coach tiene que llevar el nombre de quien pidió/,
+    'entrega-tardia-sin-guardia': /la asesorada que entró ve un aviso del coach/,
+    'agotado-catalogo-viejo': /si ya no queda ninguna|si todavía quedan algunas/,
+    'agotado-sin-dato-tantas': /segunda bajada caída y cantidad 1/,
+    'cuotas-sin-bloqueo': /botón «Entregar» tiene que pasar a «Enviando…»/,
+    'cancelar-boton-equivocado': /«Enviando…» tiene que salir en CANCELAR/,
+    'cancelar-coach-sin-repintar': /«Enviando…» tiene que salir en CANCELAR/,
   };
   Object.keys(casos).forEach(k => {
     const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
@@ -28349,7 +28359,8 @@ test('v756 (verificador) · cambio de cuenta: logout() reinicia la tienda; la ca
   assert.ok(/localStorage\.removeItem\('ax_tienda'\)/.test(reset) && /Object\.assign\(TIENDA,_tiendaNuevo\(\)\)/.test(reset), '🔴 tiendaReset no deja TIENDA en su estado inicial ni borra la caché');
   assert.ok(/JSON\.stringify\(\{uid:u,c:TIENDA\.catalogo\}\)/.test(extra) && /d\.uid===u/.test(extra), '🔴 la caché del catálogo no está atada al uid');
   assert.ok(/_tiendaEsDeAhora\(r\)/.test(extra), '🔴 una respuesta que llega tarde de otra cuenta no se descarta');
-  assert.ok(/_u\.searchParams\.delete\('avi-pedidos'\)[\s\S]{0,120}history\.replaceState\(history\.state/.test(login), '🔴 ?avi-pedidos=1 se queda en la URL: recargar reabre la bandeja');
+  const coachJs = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.ok(/u\.searchParams\.delete\('avi-pedidos'\)[\s\S]{0,160}history\.replaceState\(history\.state/.test(coachJs), '🔴 ?avi-pedidos=1 se queda en la URL: recargar reabre la bandeja');
   // CONTROL: el chequeo de «reinicia» sí ve un logout sin él
   assert.ok(!/tiendaReset\(\)/.test('function logout(){ cmtyResetIdentity(); }'), 'control');
 });
@@ -28365,6 +28376,24 @@ test('v756 (verificador) · migración: la tienda es SOLO para quien entrena con
   const t = require('fs').readFileSync(require('path').join(__dirname, 'scripts', 'sql', 'probar-tienda.sql'), 'utf8');
   assert.ok(/plan Libre: el catálogo sale vacío/.test(t) && /plan Libre: no puede pedir/.test(t) && /CONTROL plan premium: SÍ ve el catálogo/.test(t) && /CONTROL plan premium: SÍ puede pedir/.test(t), '🔴 faltan las pruebas SQL de la persona Libre (con su CONTROL premium)');
   assert.ok(/99999999999/.test(t) && /edad absurda/.test(t), '🔴 falta la prueba SQL de la edad absurda');
+});
+test('v756 (verificador) · el aviso del celular con la app CERRADA abre el chat o la bandeja en el arranque REAL (sesión de Auth, sin ax_session) y deja la URL limpia', () => {
+  const r = _t756Corre('comprobar-aviso-arranque.cjs');
+  assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
+  const sab = { 'lectura-en-tryautologin': /NO abre la bandeja en el arranque real/, 'url-sucia': /la URL tiene que quedar limpia/, 'url-con-push': /replaceState, sin pushState/ };
+  Object.keys(sab).forEach(k => {
+    const s = _t756Corre('comprobar-aviso-arranque.cjs', { SAB: k });
+    assert.notStrictEqual(s.status, 0, '🔴 el sabotaje «' + k + '» no hizo caer la prueba del aviso');
+    assert.ok(sab[k].test(s.stderr), '🔴 «' + k + '» cayó por otra razón: ' + s.stderr.slice(0, 300));
+  });
+  // Estático: tryAutoLogin (solo corre sin sesión de Auth y lee ax_session, que nadie escribe) ya no lee el aviso; la entrada real sí
+  const fs = _t756.fs, path = _t756.path;
+  const login = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  assert.ok(!/avi-chat|avi-pedidos/.test(login), '🔴 app-2-login.js vuelve a leer el aviso en tryAutoLogin (código que nunca corre con sesión de Auth)');
+  const coachJs = _supl748.quitar(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  assert.ok(/initCoach\(\);\s*abrirDeAviso\('coach'\)/.test(coachJs) && /startMsgPolling\(\);\s*abrirDeAviso\('client'\)/.test(coachJs), '🔴 la entrada real (coach y asesorada) no llama a abrirDeAviso');
+  // CONTROL: el chequeo estático sí ve la lectura vieja
+  assert.ok(/avi-chat/.test("new URLSearchParams(location.search).get('avi-chat')"), 'control');
 });
 test('v756 · el upsert de productos NO incluye stock (candado estático) y el modelo de pedidos habla solo con su tabla', () => {
   const ui = _supl748.ui;
@@ -28390,7 +28419,7 @@ test('v756 · la tienda está CABLEADA: habitaciones, modales, atrás, aviso al 
   assert.ok(/'p-pedidos':\{sbi:'sbi-clients'/.test(login), '🔴 p-pedidos no está en _COACH_PANELS (el atrás del coach no lo conoce)');
   assert.ok(/getElementById\('p-tienda'\)[\s\S]{0,120}closeTiendaRoom\(\)/.test(login), '🔴 el atrás no cierra la tienda');
   assert.ok(/notifType==='pedido'[\s\S]{0,160}tiendaAbrirPedidos\(\)/.test(infra), '🔴 tocar el aviso del pedido no abre la bandeja');
-  assert.ok(/avi-pedidos/.test(login) && /avi-pedidos=1/.test(sw) && /d\.type === 'pedido'/.test(sw), '🔴 el aviso con la app cerrada no abre la bandeja');
+  assert.ok(/avi-pedidos/.test(leer('app-3-coach.js')) && /avi-pedidos=1/.test(sw) && /d\.type === 'pedido'/.test(sw), '🔴 el aviso con la app cerrada no abre la bandeja');
   assert.ok(/tiendaFilaPerfil\(client\)/.test(ent), '🔴 la fila «Tienda» no se pinta en el Perfil');
   assert.ok(/tiendaFilaPerfil[\s\S]{0,400}tiendaVeTienda\(client\)/.test(extra) && /type:'pedido'/.test(extra), '🔴 la fila no pregunta por tiendaVeTienda o el push no es de tipo pedido');
   assert.ok(/fetchTableOpcional\('tienda_pedidos'\)/.test(leer('scripts/backup-local.mjs')), '🔴 el respaldo no baja tienda_pedidos');

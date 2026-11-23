@@ -979,6 +979,7 @@ async function _enterAuthSession(authUser,opts){
   showScreen('s-client');
   initClientView(client);
   startMsgPolling();
+  abrirDeAviso('client');   // el aviso de un mensaje del coach con la app cerrada abre su chat
   // v650 · sus fotos de progreso viejas (base64 o enlace público) se mudan al bucket privado.
   setTimeout(()=>{ if(typeof migrateProgressPhotosPrivate==='function')migrateProgressPhotosPrivate(); },4000);
   // Push: el registro vivía SOLO en tryAutoLogin (camino legacy) → desde el cutover a auth
@@ -1428,6 +1429,23 @@ async function _ensureClientHeavy(id){
   _heavyLoaded[id]=true;
 }
 
+// 🔔 El aviso del celular con la app CERRADA abre la app con `?avi-chat=<id>` (mensaje) o `?avi-pedidos=1` (pedido de la tienda).
+// Se lee en la entrada REAL (sesión de Supabase Auth), cuando ya se sabe quién es y su pantalla está pintada: abre el chat o la bandeja
+// y limpia la URL con replaceState (sin añadir ni quitar entradas: el atrás sigue igual, y recargar no lo reabre).
+// 🔴 Antes vivía en `tryAutoLogin`, que solo corre sin sesión de Auth y lee `ax_session` (nadie la escribe): nunca se ejecutaba.
+function abrirDeAviso(rol){
+  let chat=null, pedidos=null;
+  try{
+    const q=new URLSearchParams(location.search);
+    chat=q.get('avi-chat'); pedidos=q.get('avi-pedidos');
+    if(chat!==null||pedidos!==null){
+      const u=new URL(location.href); u.searchParams.delete('avi-chat'); u.searchParams.delete('avi-pedidos');
+      history.replaceState(history.state,'',u.pathname+u.search+u.hash);
+    }
+  }catch(_e){}
+  if(chat)setTimeout(()=>{ try{ openChatFor(chat); }catch(_e){} },600);
+  if(pedidos&&rol==='coach')setTimeout(()=>{ try{ if(typeof tiendaAbrirPedidos==='function')tiendaAbrirPedidos(); }catch(_e){} },900);
+}
 async function _enterCoachAuth(authUser, ownRow, opts){
   COACH_OWN_ROW=ownRow||null;                    // ya la cargamos aquí → "Mi entrenamiento" no re-pide red
   if(ownRow&&_authUid) _cacheAuthRow(_authUid,ownRow); // respaldo local (también sirve offline)
@@ -1482,6 +1500,7 @@ async function _enterCoachAuth(authUser, ownRow, opts){
   if(typeof coachStampName==='function')coachStampName();   // v640: su nombre, en la ficha de cada asesorado
   showScreen('s-coach');
   initCoach();
+  abrirDeAviso('coach');   // el aviso con la app cerrada: abre el chat o la bandeja de pedidos
   // Push del coach ('_coach'): igual que el cliente, el registro se perdió con el cutover
   // a auth (vivía solo en tryAutoLogin). Ver nota en el camino del cliente (2026-07-06).
   if(typeof Notification!=='undefined'&&Notification.permission==='granted') setTimeout(()=>{
