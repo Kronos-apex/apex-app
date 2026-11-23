@@ -80,6 +80,14 @@ const SABOTAJES = {
   'cancelar-boton-equivocado': [["oc==='cancelar'?'Enviando…':'Cancelar'", "'Cancelar'"], ["oc==='entregar'?'Enviando…'", "oc?'Enviando…'"]],
   // al cancelar el coach no se repinta: el botón no muestra «Enviando…»
   'cancelar-coach-sin-repintar': [["TIENDA.ui.ocupado[id]='cancelar'; tiendaRenderPedidos();", "TIENDA.ui.ocupado[id]='cancelar';"]],
+  // el interruptor no guarda en el perfil
+  'toggle-no-guarda': [["  c.tiendaVer=valor;\n  sv('ax_c',DB.clients);", "  c.tiendaVer=valor;"]],
+  // el interruptor no deja la clave EXPLÍCITA
+  'toggle-no-explicito': [["  c.tiendaVer=valor;\n", "  delete c.tiendaVer;\n"]],
+  // «Quién la ve» enseña a TODOS en todas las pestañas
+  'quien-sin-pestanas': [["filas=tiendaQuienLista(DB.clients,tab);", "filas=tiendaQuienLista(DB.clients,'coach').concat(tiendaQuienLista(DB.clients,'pro'),tiendaQuienLista(DB.clients,'libre'));"]],
+  // las 4 partes se ven todas a la vez
+  'partes-todas-visibles': [["e.classList.toggle('on',k===p);", "e.classList.add('on');"]],
   // el botón de un producto agotado queda activo
   'agotado-activo': [["'disabled aria-disabled=\"true\"'", "''"]],
 };
@@ -565,6 +573,54 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
       ctx.tiendaCuotasOk(); await pr; await esperar(200);
       ok(llamadas.filter(l => l.name === 'tienda_entregar').length === 1 && el('cu-ok').textContent === 'Entregar' && el('cu-ok').disabled === false, 'Q: un segundo toque no entrega dos veces y al terminar el botón vuelve a «Entregar»');
     }
+  }
+
+  // ═════ S · La Tienda del coach en el menú: 4 partes y «Quién la ve» ═════
+  {
+    const hace = d => iso(ahora - d * dia);
+    const clientes = [
+      { id: 'c1', name: 'Ana Coach', age: 30 }, { id: 'c2', name: 'Beto Coach', age: 41 }, { id: 'c3', name: 'Carla Coach', age: 28 },
+      { id: 'p1', name: 'Perla Pro', age: 33, tier: 'libre', proTrialUntil: iso(ahora + 10 * dia) },
+      { id: 'l1', name: 'Elena Libre', age: 16, tier: 'libre' }, { id: 'l2', name: 'Fabio Libre', tier: 'libre' }, { id: 'l3', name: 'Gina Libre', age: 25, tier: 'libre', tiendaVer: true },
+      { id: '_self', name: 'Yo' },
+    ];
+    const H = crear(ROOT, { sabotajes, clients: clientes, servidor: { catalogo: [], costos: {} } });
+    const { ctx, el } = H; const svs = []; ctx.sv = (k, v) => { svs.push([k, JSON.stringify(v)]); };
+    await ctx.suplCargar(); await ctx.tiendaCoachCargar(true);
+    ctx.tiendaCoachAbrir(); await esperar(30);
+    ok(el('p-tiendac').classList.contains('on') && el('p-productos').classList.contains('on') && !el('p-pedidos').classList.contains('on'), 'S: sin pedidos por entregar, la Tienda abre en Productos');
+    ctx.tiendaAbrirPedidos(); await esperar(30);
+    ok(el('p-pedidos').classList.contains('on') && !el('p-productos').classList.contains('on') && !el('p-ventas').classList.contains('on') && !el('p-quien').classList.contains('on'), '🔴 S: «Pedidos» (el aviso del celular) abre SOLO la parte Pedidos');
+    ctx.tiendaCoachParte('ventas'); await esperar(30);
+    const v = el('tc-ventas').innerHTML;
+    ok(el('p-ventas').classList.contains('on') && !el('p-pedidos').classList.contains('on') && /Suplementos · aparte de las mensualidades/.test(v) && /Aún no has registrado ventas|Vendido/.test(v), '🔴 S: «Ventas» pinta lo que antes pintaba el reporte de ingresos (suplementos)');
+    ctx.tiendaCoachParte('quien'); await esperar(10);
+    let q = el('tc-quien').innerHTML;
+    ok(el('p-quien').classList.contains('on') && !el('p-ventas').classList.contains('on') && !el('p-pedidos').classList.contains('on') && !el('p-productos').classList.contains('on'), '🔴 S: las 4 partes NO se ven a la vez');
+    ok(/Quién ve la tienda/.test(q) && /4 de 7 la ven/.test(q), 'S: «Quién ve la tienda · 4 de 7 la ven» (3 con coach + Gina prendida; el propio coach no cuenta): ' + (q.match(/tq-sub">[^<]*/) || [''])[0]);
+    ok(/Con coach · 3/.test(q) && /PRO · 1/.test(q) && /Libres · 3/.test(q), 'S: las pestañas traen los conteos (Con coach 3 · PRO 1 · Libres 3)');
+    ok(/Ana Coach/.test(q) && !/Gina Libre|Yo</.test(q), '🔴 S: «Con coach» solo trae a la gente con coach (ni Libres ni el propio coach)');
+    ok((q.match(/vt-tg on/g) || []).length === 3, 'S: los 3 con coach salen prendidos (regla por defecto)');
+    ctx.tiendaQuienTab('libre'); q = el('tc-quien').innerHTML;
+    ok(/Elena Libre/.test(q) && /16 años: sin «No para menores»/.test(q) && /Fabio Libre/.test(q) && /Sin edad: sin «No para menores»/.test(q) && !/Gina Libre[^]*?años/.test(q.split('Gina Libre')[1].split('tq-row')[0]), '🔴 S: a una menor y a quien no tiene edad se les dice «sin «No para menores»»; a una adulta, nada');
+    const filaGina = q.split('Gina Libre')[1].split('</button>')[0];
+    ok(/vt-tg on/.test(filaGina) && /aria-checked="true"/.test(filaGina), 'S: Gina (Libre con tiendaVer=true) sale prendida');
+    const filaElena = q.split('Elena Libre')[1].split('</button>')[0];
+    ok(!/vt-tg on/.test(filaElena), 'S: Elena (Libre sin clave) sale apagada');
+    // tocar: prende a Elena → explícito true, guarda, el conteo sube
+    ctx.tiendaToggleVer('l1');
+    const elena = ctx.DB.clients.find(x => x.id === 'l1');
+    ok(elena.tiendaVer === true && svs.length === 1 && svs[0][0] === 'ax_c' && /"tiendaVer":true/.test(svs[0][1]), '🔴 S: el interruptor guarda tiendaVer=true EXPLÍCITO en ax_c: ' + JSON.stringify(svs.map(x => x[0])) + ' ' + elena.tiendaVer);
+    ok(/5 de 7 la ven/.test(el('tc-quien').innerHTML), 'S: el conteo se actualiza (5 de 7)');
+    // apagar a una con coach → false explícito
+    ctx.tiendaToggleVer('c1');
+    ok(ctx.DB.clients.find(x => x.id === 'c1').tiendaVer === false && /4 de 7 la ven/.test(el('tc-quien').innerHTML), '🔴 S: apagar a alguien con coach deja tiendaVer=false explícito');
+    // el propio coach no se toca
+    ctx.tiendaToggleVer('_self'); ok(!('tiendaVer' in ctx.DB.clients.find(x => x.id === '_self')), 'S: el propio coach no tiene interruptor');
+    // con pedidos por entregar, el menú abre en Pedidos
+    H.cloud.tienda_pedidos.z = { id: 'z', coach_id: COACH, client_uid: 'c1', client_id: 'c1', client_nombre: 'Ana Coach', producto_id: 'p1', producto_nombre: 'Preentreno · sachet', precio_unit: 4000, cantidad: 1, estado: 'pendiente', creado: hace(0), resuelto: null };
+    await ctx.tiendaCoachCargar(true); ctx.tiendaCoachAbrir(); await esperar(30);
+    ok(el('p-pedidos').classList.contains('on') && !el('p-productos').classList.contains('on'), 'S: con pedidos por entregar, el menú abre en Pedidos');
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

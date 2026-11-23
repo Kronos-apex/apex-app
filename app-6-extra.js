@@ -3247,6 +3247,16 @@ function toggleCourtesy(id){
   toast(c.courtesy?'Listo: a esta persona no se le cobra':'Vuelve a contar para cobros');
 }
 
+// 🔑 Quién ve la tienda (v756 b): la prende o la apaga el COACH y queda EXPLÍCITO en el perfil (`tiendaVer`), con el mismo guardado
+// que «Cortesía» (`sv('ax_c')`). La persona no puede escribirlo: el trigger de la base se lo quita. Vive aquí, fuera del bloque de ventas,
+// porque una venta de suplementos no toca al asesorado, pero la decisión de «quién ve la tienda» SÍ es un dato suyo.
+function setClientTiendaVer(id,valor){
+  const c=(DB.clients||[]).find(x=>x.id===id); if(!c||isSelfClient(c))return null;
+  c.tiendaVer=valor;
+  sv('ax_c',DB.clients);
+  return c;
+}
+
 function whatsappReminder(id){
   const c=DB.clients.find(x=>x.id===id);
   if(!c)return;
@@ -3597,6 +3607,7 @@ function suplRepintar(){
   if(CUR.clientId&&_suplEl('d-ventas'))suplRenderFicha(CUR.clientId);
   suplRenderHome();
   if(_suplEl('p-productos')&&_suplEl('p-productos').classList.contains('on'))suplRenderProductos();
+  if(_suplEl('p-ventas')&&_suplEl('p-ventas').classList.contains('on'))tiendaRenderVentas();
 }
 function suplPersona(id){ return (DB.clients||[]).find(x=>x.id===id)||null; }
 
@@ -3651,11 +3662,7 @@ function suplRenderHome(){
 }
 
 // ── MIS PRODUCTOS (maqueta E) ──
-function suplAbrirProductos(){
-  const room=_suplEl('coach-stat-room');
-  const ir=()=>{ gp('p-productos',_suplEl('sbi-clients'),'Mis productos'); suplRenderProductos(); };
-  if(room&&room.classList.contains('on')){ history.back(); setTimeout(ir,60); } else ir();
-}
+function suplAbrirProductos(){ tiendaCoachAbrir('productos'); }   // v756 (b): «Mis productos» es la parte Productos de la Tienda
 function suplRenderProductos(){
   const box=_suplEl('pr-list'); if(!box)return;
   suplInit();
@@ -4135,10 +4142,56 @@ function tiendaTarjetaHome(){
   const n=tiendaPorEntregar().length; if(!n)return '';
   return `<button class="card vt-debt" style="margin-bottom:13px;width:100%;text-align:left;font-family:inherit;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="tiendaAbrirPedidos()"><div style="color:var(--gt);display:flex">${aviIcon('bag',24)}</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--t1)">Pedidos de la tienda</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${n} por entregar</div></div><span style="font-size:15px;font-weight:700;color:var(--t3)">›</span></button>`;
 }
-function tiendaAbrirPedidos(){
+// «Pedidos» es una parte de la Tienda del coach (menú ☰): el aviso del celular y la tarjeta del Inicio caen aquí.
+function tiendaAbrirPedidos(){ tiendaCoachAbrir('pedidos'); }
+const TIENDA_PARTE_SEC={pedidos:'p-pedidos',productos:'p-productos',ventas:'p-ventas',quien:'p-quien'};
+function tiendaParteInicial(){ return tiendaPorEntregar().length?'pedidos':'productos'; }
+function tiendaCoachAbrir(parte){
   const room=_suplEl('coach-stat-room');
-  const ir=()=>{ gp('p-pedidos',_suplEl('sbi-clients'),'Pedidos de la tienda'); tiendaRenderPedidos(); tiendaCoachCargar(true).then(()=>{ tiendaRenderPedidos(); suplRenderHome(); }); };
+  const ir=()=>{ gp('p-tiendac',_suplEl('sbi-tienda'),'Tienda'); tiendaCoachParte(parte||tiendaParteInicial()); };
   if(room&&room.classList.contains('on')){ history.back(); setTimeout(ir,60); } else ir();
+}
+function tiendaCoachParte(p){
+  p=tiendaParteValida(p); TIENDA.ui.parte=p;
+  Object.keys(TIENDA_PARTE_SEC).forEach(k=>{ const e=_suplEl(TIENDA_PARTE_SEC[k]); if(e)e.classList.toggle('on',k===p); });
+  const seg=_suplEl('tc-seg');
+  if(seg&&seg.querySelectorAll)seg.querySelectorAll('.dt-tab').forEach(b=>{ const on=b.getAttribute('data-t')===p; b.setAttribute('aria-selected',on?'true':'false'); });
+  if(p==='pedidos'){ tiendaRenderPedidos(); tiendaCoachCargar(true).then(()=>{ tiendaRenderPedidos(); suplRenderHome(); }); }
+  else if(p==='productos')suplRenderProductos();
+  else if(p==='ventas')tiendaRenderVentas();
+  else tiendaRenderQuien();
+}
+// VENTAS: lo que antes pintaba el reporte de ingresos (vendido, cobrado, costo, ganancia y quién te debe), ahora aparte de las mensualidades.
+function tiendaRenderVentas(){
+  const box=_suplEl('tc-ventas'); if(!box)return;
+  suplInit();
+  if(!SUPL.cargado)suplCargar().then(()=>tiendaRenderVentas());
+  const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
+  const empty=(ic,txt)=>`<div class="crep-empty"><div class="crep-empty-ic">${ic}</div>${txt}</div>`;
+  box.innerHTML=_suplFranja()+suplIngresosHTML(stat,empty);
+}
+// QUIÉN LA VE: cada asesorado, en su pestaña (Con coach · PRO · Libres), con su interruptor. Guarda `tiendaVer` EXPLÍCITO.
+function tiendaQuienTab(k){ TIENDA.ui.quienTab=TIENDA_QUIEN_TABS.indexOf(k)>=0?k:'coach'; tiendaRenderQuien(); }
+function tiendaRenderQuien(){
+  const box=_suplEl('tc-quien'); if(!box)return;
+  const tab=TIENDA_QUIEN_TABS.indexOf(TIENDA.ui.quienTab)>=0?TIENDA.ui.quienTab:'coach';
+  const r=tiendaQuienResumen(DB.clients), filas=tiendaQuienLista(DB.clients,tab);
+  const t=(k,l)=>`<button type="button" class="tq-tab${tab===k?' on':''}" onclick="tiendaQuienTab('${k}')">${l} · ${r.cuenta[k]}</button>`;
+  let h=`<div class="tq-head">Quién ve la tienda</div><div class="tq-sub">${r.ven} de ${r.total} la ven</div><div class="tq-tabs">${t('coach','Con coach')}${t('pro','PRO')}${t('libre','Libres')}</div>`;
+  h+=filas.length
+    ?`<div class="card"><div class="cb" style="padding:2px 14px">${filas.map(f=>`<div class="tq-row"><div class="tq-mid"><div class="vt-nm">${esc(f.nombre)}</div><div class="tq-nota">${esc(f.plan)}${f.nota?' · '+esc(f.nota):''}</div></div><button type="button" class="vt-tg${f.ve?' on':''}" role="switch" aria-checked="${f.ve?'true':'false'}" aria-label="Ve la tienda: ${esc(f.nombre)}" onclick="tiendaToggleVer('${esc(f.id)}')"></button></div>`).join('')}</div></div>`
+    :`<div class="card"><div class="cb" style="text-align:center;font-size:13px;color:var(--t2);padding:22px 16px">No hay nadie en esta pestaña.</div></div>`;
+  h+=`<div class="sroom-cmp flat"><span>Si apagas a alguien, deja de ver la tienda la próxima vez que abra la app. Lo que ya pidió te sigue llegando.</span></div>`;
+  box.innerHTML=h;
+}
+// El interruptor (aquí y en la ficha → Compras): la prende o la apaga el COACH y queda EXPLÍCITO en su perfil (`tiendaVer`),
+// con el mismo guardado que «Cortesía». La persona no puede escribirlo (lo quita el trigger de la base).
+function tiendaToggleVer(id){
+  const c=(DB.clients||[]).find(x=>x.id===id); if(!c)return;
+  if(!setClientTiendaVer(id,!tiendaVeTienda(c)))return;
+  tiendaRenderQuien();
+  if(typeof tiendaRenderFichaVer==='function')tiendaRenderFichaVer(id);
+  toast(c.tiendaVer?(String(c.name||'').split(' ')[0]+' ya ve la tienda'):(String(c.name||'').split(' ')[0]+' ya no ve la tienda'),2500);
 }
 function tiendaRenderPedidos(){
   const box=_suplEl('pd-list'); if(!box)return;

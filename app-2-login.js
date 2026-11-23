@@ -1844,8 +1844,7 @@ const _COACH_PANELS={
   'p-templates':{sbi:'sbi-templates',title:'Plantillas',nav:-1},
   'p-msgs':{sbi:'sbi-msgs',title:'Mensajes',nav:4},
   'p-detail':{sbi:'sbi-clients',title:'Detalle',nav:1},
-  'p-productos':{sbi:'sbi-clients',title:'Mis productos',nav:1},
-  'p-pedidos':{sbi:'sbi-clients',title:'Pedidos de la tienda',nav:1},
+  'p-tiendac':{sbi:'sbi-tienda',title:'Tienda',nav:-1},   // v756 (b): Pedidos · Productos · Ventas · Quién la ve
 };
 // Restaura un panel previo del coach SIN registrar (lo usa el "undo" del stack del botón atrás).
 // p-detail recrea el detalle del asesorado que estaba abierto; si ya no existe (borrado) cae a la lista.

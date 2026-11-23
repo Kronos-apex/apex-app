@@ -2846,3 +2846,17 @@ button.vt-tg{border:0;padding:0;cursor:pointer}
 .pr-st-aviso{font-size:12px;font-weight:700;color:var(--rdt)}
 .pfill.pf-ok{background:var(--g)}
 .pfill.pf-pocas,.pfill.pf-agotado{background:var(--rd)}
+/* v756 (b) · la Tienda del coach: 4 partes y «Quién la ve» */
+.tc-sec{display:none}
+.tc-sec.on{display:block}
+.tc-seg{margin-bottom:14px}
+.tc-seg .dt-tab{padding:0 4px}
+.tq-head{font-size:16px;font-weight:800;color:var(--t1)}
+.tq-sub{font-size:12px;color:var(--t2);margin:2px 0 10px}
+.tq-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.tq-tab{font-family:inherit;font-size:12px;font-weight:700;padding:6px 11px;min-height:36px;border-radius:99px;border:1px solid var(--br2);background:var(--w);color:var(--t2);cursor:pointer}
+.tq-tab.on{background:var(--g);border-color:var(--g);color:#fff}
+.tq-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--br)}
+.tq-row:first-child{border-top:0}
+.tq-mid{flex:1;min-width:0}
+.tq-nota{font-size:11px;color:var(--t2);margin-top:2px;line-height:1.35}

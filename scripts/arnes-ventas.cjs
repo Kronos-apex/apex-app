@@ -7,7 +7,9 @@ function crear(ROOT, opts) {
   let extra = fs.readFileSync(path.join(ROOT, 'app-6-extra.js'), 'utf8');
   const ini = extra.indexOf('// VENTAS DE SUPLEMENTOS (v748) — pantallas y escritura');
   if (ini < 0) throw new Error('no hay bloque de ventas');
-  let code = extra.slice(ini);
+  // v756 (b): lo que decide «quién ve la tienda» vive junto a toggleCourtesy (fuera del bloque de ventas): también se corre de verdad.
+  const _sacarFn = (src, firma) => { const i = src.indexOf(firma); if (i < 0) throw new Error('no hay ' + firma); const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
+  let code = _sacarFn(extra, 'function setClientTiendaVer(') + '\n' + extra.slice(ini);
   (opts.sabotajes || []).forEach(([a, b]) => { if (!code.includes(a)) throw new Error('sabotaje no aplica: ' + a); code = code.replace(a, b); });
   const login = fs.readFileSync(path.join(ROOT, 'app-2-login.js'), 'utf8');
   const infra = fs.readFileSync(path.join(ROOT, 'app-1-infra.js'), 'utf8');

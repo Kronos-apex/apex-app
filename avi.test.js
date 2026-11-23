@@ -28342,6 +28342,10 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'cuotas-sin-bloqueo': /botón «Entregar» tiene que pasar a «Enviando…»/,
     'cancelar-boton-equivocado': /«Enviando…» tiene que salir en CANCELAR/,
     'cancelar-coach-sin-repintar': /«Enviando…» tiene que salir en CANCELAR/,
+    'toggle-no-guarda': /el interruptor guarda tiendaVer=true EXPLÍCITO/,
+    'toggle-no-explicito': /el interruptor guarda tiendaVer=true EXPLÍCITO/,
+    'quien-sin-pestanas': /«Con coach» solo trae a la gente con coach/,
+    'partes-todas-visibles': /abre SOLO la parte Pedidos|las 4 partes NO se ven a la vez/,
   };
   Object.keys(casos).forEach(k => {
     const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
@@ -28416,7 +28420,7 @@ test('v756 · la tienda está CABLEADA: habitaciones, modales, atrás, aviso al 
   const fns = [...bloque.matchAll(/onclick="(\w+)\(/g)].map(m => m[1]).filter(f => !['cm', 'om', 'gp'].includes(f));
   assert.ok(fns.length >= 8, 'control: no se leyeron los onclick (' + fns.length + ')');
   fns.forEach(f => assert.ok(new RegExp('function ' + f + '\\(').test(extra), '🔴 el HTML llama ' + f + '() y no existe'));
-  assert.ok(/'p-pedidos':\{sbi:'sbi-clients'/.test(login), '🔴 p-pedidos no está en _COACH_PANELS (el atrás del coach no lo conoce)');
+  assert.ok(/'p-tiendac':\{sbi:'sbi-tienda'/.test(login), '🔴 la Tienda no está en _COACH_PANELS (el atrás del coach no la conoce)');
   assert.ok(/getElementById\('p-tienda'\)[\s\S]{0,120}closeTiendaRoom\(\)/.test(login), '🔴 el atrás no cierra la tienda');
   assert.ok(/notifType==='pedido'[\s\S]{0,160}tiendaAbrirPedidos\(\)/.test(infra), '🔴 tocar el aviso del pedido no abre la bandeja');
   assert.ok(/avi-pedidos/.test(leer('app-3-coach.js')) && /avi-pedidos=1/.test(sw) && /d\.type === 'pedido'/.test(sw), '🔴 el aviso con la app cerrada no abre la bandeja');
@@ -28537,6 +28541,50 @@ test('v756b · A · probar-tienda-por-persona.sql: begin…rollback, los 8 casos
     'SIGUE sin ver la tienda', 'UPDATE propio', 'INSERT propio', 'CONTROL: el coach SÍ puede ponerle tiendaVer=true', 'el coach TODAVÍA ve los 2 pedidos', 'TODAVÍA puede entregar', 'SÍ puede cancelar su pedido pendiente'
   ].forEach(k => assert.ok(t.includes(k), '🔴 falta la comprobación «' + k + '»'));
   assert.ok(!/gmail|hotmail|@(?!prueba\.invalid)\w+\.\w+/i.test(t), '🔴 un correo real en el script');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// v756 (2ª parte) · BLOQUE B — la Tienda del coach en el menú, con 4 partes
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+test('v756b · B · «Quién la ve»: filas por pestaña (Con coach · PRO · Libres), nota de menores/sin edad, conteos y el propio coach fuera', () => {
+  const cl = [
+    { id: 'c1', name: 'Zoe Coach', age: 30 }, { id: 'c2', name: 'Ana Coach', age: 41 },
+    { id: 'p1', name: 'Pro Uno', age: 33, tier: 'libre', proTrialUntil: new Date(Date.now() + 864e5).toISOString() }, { id: 'a1', name: 'App Uno', age: 33, tier: 'app' },
+    { id: 'l1', name: 'Lib Menor', age: 16, tier: 'libre' }, { id: 'l2', name: 'Lib SinEdad', tier: 'libre' }, { id: 'l3', name: 'Lib Adulta', age: 25, tier: 'libre', tiendaVer: true },
+    { id: '_self', name: 'Yo' },
+  ];
+  const r = core.tiendaQuienResumen(cl);
+  assert.deepStrictEqual([r.ven, r.total, r.cuenta.coach, r.cuenta.pro, r.cuenta.libre], [3, 7, 2, 2, 3], 'conteos: ven 3 (2 con coach + Lib Adulta) de 7; Con coach 2 · PRO 2 · Libres 3');
+  assert.deepStrictEqual(core.tiendaQuienLista(cl, 'coach').map(f => f.nombre), ['Ana Coach', 'Zoe Coach'], 'por nombre, sin el propio coach');
+  const libres = core.tiendaQuienLista(cl, 'libre');
+  assert.deepStrictEqual(libres.map(f => f.nombre), ['Lib Adulta', 'Lib Menor', 'Lib SinEdad']);
+  assert.strictEqual(libres.find(f => f.nombre === 'Lib Menor').nota, '16 años: sin «No para menores»');
+  assert.strictEqual(libres.find(f => f.nombre === 'Lib SinEdad').nota, 'Sin edad: sin «No para menores»');
+  assert.strictEqual(libres.find(f => f.nombre === 'Lib Adulta').nota, '', 'CONTROL: a una adulta no se le pone nota');
+  assert.deepStrictEqual([libres[0].ve, libres[0].explicito, libres[1].ve, libres[1].explicito], [true, true, false, false], 'el estado EFECTIVO (con la regla por defecto) y si es explícito');
+  assert.strictEqual(core.tiendaQuienLista(cl, 'pro').length, 2);
+  assert.strictEqual(core.tiendaQuienLista(cl, 'raro').length, 2, 'una pestaña inválida cae en «Con coach»');
+  assert.strictEqual(core.tiendaParteValida('quien'), 'quien'); assert.strictEqual(core.tiendaParteValida('x'), 'pedidos');
+  assert.deepStrictEqual(core.TIENDA_PARTES, ['pedidos', 'productos', 'ventas', 'quien']);
+});
+test('v756b · B · la Tienda está en el menú ☰ con sus 4 partes y todo lo que ya existía sigue alcanzable', () => {
+  const fs = _t756.fs, path = _t756.path, leer = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const html = leer('index.html'), login = leer('app-2-login.js'), extra = _supl748.quitar(leer('app-6-extra.js'));
+  assert.ok(/id="sbi-tienda"[^>]*>|onclick="tiendaCoachAbrir\(\)" id="sbi-tienda"/.test(html), '🔴 la Tienda no está en el menú lateral');
+  assert.ok(/<div class="sbi" onclick="tiendaCoachAbrir\(\)" id="sbi-tienda">/.test(html));
+  const panel = html.slice(html.indexOf('id="p-tiendac"'), html.indexOf('<!-- CLIENTS -->'));
+  ['p-pedidos', 'p-productos', 'p-ventas', 'p-quien', 'pd-list', 'pd-sub', 'pr-list', 'pr-sub', 'tc-ventas', 'tc-quien', 'tc-seg'].forEach(id => assert.ok(panel.includes('id="' + id + '"'), '🔴 falta #' + id + ' en la Tienda'));
+  ['pedidos', 'productos', 'ventas', 'quien'].forEach(p => assert.ok(panel.includes("tiendaCoachParte('" + p + "')"), '🔴 falta el botón de la parte ' + p));
+  assert.ok(/class="dt-seg tc-seg"/.test(panel) && /Quién la ve<\/button>/.test(panel));
+  assert.ok(!/<div id="p-(productos|pedidos)" class="panel">/.test(html), '🔴 «Mis productos» o «Pedidos» siguen como pantallas sueltas: son partes de la Tienda');
+  assert.ok(/'p-tiendac':\{sbi:'sbi-tienda'/.test(login), '🔴 p-tiendac no está en _COACH_PANELS (el atrás del coach no lo conoce)');
+  // Lo de antes SIGUE alcanzable: Mis productos (ficha y Tienda), Pedidos (aviso y Tienda), Ventas (donde estaba en Ingresos)
+  assert.ok(/function suplAbrirProductos\(\)\{ tiendaCoachAbrir\('productos'\); \}/.test(extra), '🔴 «Mis productos y precios ›» (ficha) ya no abre la parte Productos');
+  assert.ok(/function tiendaAbrirPedidos\(\)\{ tiendaCoachAbrir\('pedidos'\); \}/.test(extra), '🔴 el aviso del celular ya no abre la parte Pedidos');
+  assert.ok(/function tiendaRenderVentas\(\)[\s\S]{0,500}suplIngresosHTML\(stat,empty\)/.test(extra), '🔴 la parte Ventas ya no pinta suplIngresosHTML');
+  ['tiendaCoachParte', 'tiendaCoachAbrir', 'tiendaRenderQuien', 'tiendaQuienTab', 'tiendaToggleVer'].forEach(f => assert.ok(new RegExp('function ' + f + '\\(').test(extra), '🔴 falta ' + f));
+  // CONTROL: el chequeo sí vería un panel suelto
+  assert.ok(/<div id="p-(productos|pedidos)" class="panel">/.test('<div id="p-productos" class="panel">'), 'control');
 });
 
 // ══════════════════════════════════════════════════════

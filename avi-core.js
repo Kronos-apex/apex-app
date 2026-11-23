@@ -14529,6 +14529,34 @@ function tiendaVeTienda(c) {
   if (tiendaVerExplicito(c)) return String(c.tiendaVer).toLowerCase() === 'true';
   return tiendaVerPorDefecto(c);
 }
+// ── La TIENDA del coach (v756 b): 4 partes en una pantalla y «Quién la ve» ─────────────────────────────────────────────
+const TIENDA_PARTES = ['pedidos', 'productos', 'ventas', 'quien'];
+function tiendaParteValida(p) { return TIENDA_PARTES.indexOf(p) >= 0 ? p : 'pedidos'; }
+const TIENDA_QUIEN_TABS = ['coach', 'pro', 'libre'];
+const TIENDA_QUIEN_PLAN = { coach: 'Con coach', pro: 'PRO', libre: 'Libre' };
+// Debajo del nombre: a un menor (o a quien no tiene edad) se le dice que NO verá los «No para menores» (la base lo exige igual).
+function tiendaQuienNota(c) {
+  const edad = parseInt(c && c.age, 10);
+  if (!(edad > 0)) return 'Sin edad: sin «No para menores»';
+  return edad < SUPL_MAYORIA_EDAD ? edad + ' años: sin «No para menores»' : '';
+}
+function tiendaQuienFila(c) {
+  const tab = clientListTab(c);
+  return { id: c.id, nombre: String(c.name || ''), tab, plan: TIENDA_QUIEN_PLAN[tab], ve: tiendaVeTienda(c), explicito: tiendaVerExplicito(c), nota: tiendaQuienNota(c) };
+}
+// Las filas de una pestaña (Con coach · PRO · Libres), por nombre; el propio coach (_self) no aparece.
+function tiendaQuienLista(clients, tab) {
+  const t = TIENDA_QUIEN_TABS.indexOf(tab) >= 0 ? tab : 'coach';
+  return (clients || []).filter(c => c && !isSelfClient(c) && clientListTab(c) === t).map(tiendaQuienFila)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+}
+// «14 de 39 la ven» y los conteos de las pestañas (los de clientListCounts, sin «todos»).
+function tiendaQuienResumen(clients) {
+  const cuenta = { coach: 0, pro: 0, libre: 0 };
+  let ven = 0, total = 0;
+  (clients || []).forEach(c => { if (!c || isSelfClient(c)) return; cuenta[clientListTab(c)]++; total++; if (tiendaVeTienda(c)) ven++; });
+  return { ven, total, cuenta };
+}
 // ¿Se le muestra este producto a esta persona? `no_menores`: solo con edad registrada de 18 o más.
 function tiendaMuestraProducto(producto, client) {
   if (!producto) return false;
@@ -15375,6 +15403,13 @@ if (typeof module !== 'undefined' && module.exports) {
     tiendaStockEstado,
     tiendaPedidoEtiqueta,
     tiendaVeTienda,
+    TIENDA_PARTES,
+    tiendaParteValida,
+    TIENDA_QUIEN_TABS,
+    tiendaQuienNota,
+    tiendaQuienFila,
+    tiendaQuienLista,
+    tiendaQuienResumen,
     tiendaVerExplicito,
     tiendaVerPorDefecto,
     tiendaMuestraProducto,
