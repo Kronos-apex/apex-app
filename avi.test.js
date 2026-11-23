@@ -28400,12 +28400,12 @@ test('v756 · la tienda está CABLEADA: habitaciones, modales, atrás, aviso al 
   // CONTROL: el chequeo de «onclick sin función» sí ve una función inventada
   assert.ok(!/function funcionInventada\(/.test(extra));
 });
-test('v756 · CLAUDE.md y el historial hablan de la tienda: habitaciones, tabla, funciones, y «migración NO aplicada»', () => {
+test('v756 · CLAUDE.md y el historial hablan de la tienda: habitaciones, tabla, funciones, y el estado de su migración', () => {
   const md = _t756.fs.readFileSync(_t756.path.join(__dirname, 'CLAUDE.md'), 'utf8');
   const hist = _t756.fs.readFileSync(_t756.path.join(__dirname, 'docs', 'historial-versiones.md'), 'utf8');
   ['#p-pedidos', '#p-tienda', 'tienda_pedidos', 'tienda_pedir', 'tienda_entregar', 'coach_stock', 'v756'].forEach(k => assert.ok(md.includes(k), '🔴 CLAUDE.md no menciona ' + k));
-  const entrada = (hist.match(/- \*\*v756[^\n]*/) || [''])[0];
-  assert.ok(entrada.length > 400 && /migración NO aplicada: la aplica el director/.test(entrada), '🔴 el historial no tiene la entrada de la v756 (con «migración NO aplicada: la aplica el director»)');
+  const entrada = (hist.match(/- \*\*v756 \(2026-11-22\)[^\n]*/) || [''])[0];
+  assert.ok(entrada.length > 400 && /20261122_tienda_pedidos\.sql`, aplicada en producción/.test(entrada) && /NO volver a correrla/.test(entrada), '🔴 el historial no tiene la entrada de la v756 (con su migración 20261122 aplicada y el aviso de no volver a correrla)');
   assert.ok(hist.indexOf('- **v756') < hist.indexOf('- **v755'), '🔴 la v756 va ARRIBA de la v755');
 });
 
