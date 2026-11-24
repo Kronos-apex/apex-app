@@ -193,8 +193,12 @@ print(f'\n{BOLD}[8] Tests de negocio{RESET}')
 test_file = os.path.join(ROOT, 'avi.test.js')
 suite_count = None  # lo usa el check 11 (anti-borrado de tests)
 if os.path.exists(test_file):
+    # 🔒 La PRIMERA corrida es la COMPLETA (la única que corre los tests «pesados»). Si el entorno trae AVI_SUITE_RAPIDA=1 (exportada por
+    # costumbre o por error), se QUITA aquí: heredarla haría que los pesados no corrieran en NINGUNA corrida y el hook diría, falso,
+    # que «corren en la primera». Y abajo se EXIGE que no haya saltado nada.
+    env_completa = {k: v for k, v in os.environ.items() if k != 'AVI_SUITE_RAPIDA'}
     result = subprocess.run(['node', test_file], capture_output=True,
-                            encoding='utf-8', errors='replace', cwd=ROOT)
+                            encoding='utf-8', errors='replace', cwd=ROOT, env=env_completa)
     stdout = (result.stdout or '').strip()
     m_cnt = re.search(r'AVI Tests: (\d+)/(\d+)', stdout)
     if m_cnt: suite_count = int(m_cnt.group(2))
@@ -218,6 +222,8 @@ if os.path.exists(test_file):
             m = re.search(r'AVI Tests: (\d+)/(\d+) pasaron(?: · (\d+) pesados saltados)?', texto or '')
             return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)) if m else None
         _c1 = _cuenta(stdout)
+        if _c1 is None or _c1[2] != 0 or _c1[0] != _c1[1]:
+            fail('La primera corrida de la suite tiene que ser COMPLETA (0 saltados, todo aprobado) y fue %s: los tests pesados no corrieron en ninguna corrida' % (_c1,))
         def _verifica_rapida(etq, out):
             # 🔒 CONTROL: la corrida rápida mide el MISMO total de tests definidos que la completa y lo que no aprobó es lo que saltó.
             c = _cuenta(out)
