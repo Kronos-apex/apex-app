@@ -65,6 +65,15 @@ const MIDE = `(()=>{ const card=document.getElementById('h-retention-card'), con
   const marcados=bts.filter(b=>b.getAttribute('aria-pressed')==='true').length;
   const sinEtq=bts.filter(b=>!(b.getAttribute('aria-label')||'').match(/: (nadie entrenó|\\d+ entren)/)).length;
   return {botones:bts.length, minW:Math.min(...tam.map(t=>t.w)), minH:Math.min(...tam.map(t=>t.h)), numTopOk: maxTop>=caja.top-0.5 && maxTop>=ch.bottom-0.5, filas:filas.length, filasH:filas.map(f=>Math.round(f.getBoundingClientRect().height)), fueraX, marcados, sinEtq, n6:bts[6].children[0].textContent.trim()}; })()`;
+// PÁGINA COMPLETA: la app es un «cascarón» con el contenido dentro de un contenedor que se desplaza; se busca ese contenedor (el que
+// desplaza y contiene el elemento) y se pone la ventana tan alta como su contenido, para que la captura traiga TODO el panel.
+async function altoCompleto(w, selector) {
+  for (let k = 0; k < 3; k++) {
+    const h = await ev(`(()=>{ let n=document.querySelector('${selector}'); while(n&&n!==document.documentElement){ const o=getComputedStyle(n).overflowY; if((o==='auto'||o==='scroll')&&n.scrollHeight>n.clientHeight+4){ n.scrollTop=0; return n.scrollHeight+(innerHeight-n.clientHeight); } n=n.parentElement; } return Math.max(document.scrollingElement.scrollHeight, innerHeight); })()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: Math.min(6000, Math.ceil(h) + 8), deviceScaleFactor: 2, mobile: true });
+    await sleep(350);
+  }
+}
 const tocar = i => ev(`document.querySelector('#h-ret-bars button.ret-dia[data-ret="${i}"]').click(); 'ok'`);
 const ver = r => !r.err && r.botones === 7 && r.minW >= 36 && r.minH >= 36 && r.numTopOk && r.fueraX === 0 && r.sinEtq === 0;
 let primera = true;
@@ -79,9 +88,7 @@ for (const w of [360, 390]) for (const tema of ['light', 'dark']) for (const fs 
   const r1 = await ev(MIDE);
   A.ok(ver(r1) && r1.marcados === 1 && r1.filas === Number(r1.n6) && r1.filas === 4 && r1.filasH.every(h => h >= 36), `${w}px · ${tema} · ${fs}: con hoy marcado hay ${r1.filas} filas (= el número de la barra, 4 personas, cada una de 36 px o más) y nada se sale del ancho`, r1);
   if (OUT && !(fs === 'xl' && w !== 360)) {
-    const dim = await ev(`Math.max(document.scrollingElement.scrollHeight, document.body.scrollHeight)`);
-    await send('Emulation.setDeviceMetricsOverride', { width: w, height: Math.min(4500, Math.max(800, Math.ceil(dim) + 40)), deviceScaleFactor: 2, mobile: true });
-    await sleep(400);
+    await altoCompleto(w, '#h-retention-card');
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
     if (shot.data) writeFileSync(`${OUT}/inicio-${w}-${tema === 'light' ? 'claro' : 'oscuro'}-${fs === 'xl' ? 'letra-grande' : 'normal'}-dia-marcado.png`, Buffer.from(shot.data, 'base64'));
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: 800, deviceScaleFactor: 2, mobile: true });
@@ -115,10 +122,7 @@ await ev(`(()=>{ const r=document.getElementById('ret-rep'); if(!r.querySelector
 const rep = await ev(`(()=>{const r=document.getElementById('ret-rep'); return {filas:r.querySelectorAll('.ret-fila').length, n6:r.querySelector('button.ret-dia[data-ret="6"]').children[0].textContent.trim(), fueraX:[...r.querySelectorAll('*')].filter(e=>{const b=e.getBoundingClientRect(); return b.width>0&&(b.right>innerWidth+1||b.left<-1);}).length};})()`);
 A.ok(rep.filas === Number(rep.n6) && rep.filas === 4 && rep.fueraX === 0, 'el reporte de Sesiones: hoy marcado trae las mismas 4 filas que dice su barra, sin salirse', rep);
 if (OUT) {
-  await ev(`(()=>{const b=document.getElementById('coach-stat-body'); b.scrollTop=0; return 'ok';})()`);
-  const dim = await ev(`Math.max(document.scrollingElement.scrollHeight, (document.getElementById('coach-stat-body')||{}).scrollHeight||0, 900)`);
-  await send('Emulation.setDeviceMetricsOverride', { width: 360, height: Math.min(4500, Math.ceil(dim) + 140), deviceScaleFactor: 2, mobile: true });
-  await sleep(500);
+  await altoCompleto(360, '#coach-stat-body');
   const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
   if (shot.data) writeFileSync(`${OUT}/reporte-sesiones-360-claro-dia-marcado.png`, Buffer.from(shot.data, 'base64'));
 }
