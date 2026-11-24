@@ -41,14 +41,14 @@ await ev(`(()=>{CUR.loggedAs='coach';showScreen('s-coach');gp('p-home',document.
 await sleep(600);
 const MIDE = `(()=>{ const card=document.getElementById('h-retention-card'), cont=document.getElementById('h-ret-bars'); if(!card||card.style.display==='none')return {err:'sin tarjeta'};
   const ch=card.querySelector('.ch').getBoundingClientRect(), caja=cont.firstElementChild.getBoundingClientRect();
-  const cols=[...cont.firstElementChild.children]; const nums=cols.map(c=>c.children[0]).filter(n=>n.textContent.trim());
+  const cols=[...cont.firstElementChild.children]; /* v759: se mide contra la BARRA DE COLOR (si la barra va dentro de una ranura de alto fijo, la ranura NO es la barra) */ const barDe=c=>{const x=c.children[1]; return (x&&x.firstElementChild)||x;}; const nums=cols.map(c=>c.children[0]).filter(n=>n.textContent.trim());
   const altos=nums.map(n=>({t:n.textContent, top:n.getBoundingClientRect().top, bottom:n.getBoundingClientRect().bottom}));
   const maxN=Math.min(...altos.map(a=>a.top));
   // el número va JUSTO encima de SU barra: distancia entre la base del número y el tope de su barra (debe ser ~3 px, nunca decenas)
-  const gaps=cols.filter(c=>c.children[0].textContent.trim()).map(c=>Math.round((c.children[1].getBoundingClientRect().top-c.children[0].getBoundingClientRect().bottom)*10)/10);
+  const gaps=cols.filter(c=>c.children[0].textContent.trim()).map(c=>Math.round((barDe(c).getBoundingClientRect().top-c.children[0].getBoundingClientRect().bottom)*10)/10);
   const gapMax=gaps.length?Math.max(...gaps):-1, gapMin=gaps.length?Math.min(...gaps):-1;
-  const barMax=Math.max(...cols.map(c=>c.children[1].getBoundingClientRect().height));   // la barra más alta mide 52 px: una caja de alto fijo la APRIETA
-  const fuera=cols.filter(c=>c.children[1].getBoundingClientRect().top < caja.top-0.5 || c.children[1].getBoundingClientRect().bottom > caja.bottom+0.5).length;
+  const barMax=Math.max(...cols.map(c=>barDe(c).getBoundingClientRect().height));   // la barra más alta mide 52 px: una caja de alto fijo la APRIETA
+  const fuera=cols.filter(c=>barDe(c).getBoundingClientRect().top < caja.top-0.5 || barDe(c).getBoundingClientRect().bottom > caja.bottom+0.5).length;
   return {cajaTop:Math.round(caja.top*10)/10, cajaH:Math.round(caja.height*10)/10, chBottom:Math.round(ch.bottom*10)/10, numTop:Math.round(maxN*10)/10, hay: nums.length, barrasFuera: fuera, gapMin, gapMax, barMax: Math.round(barMax*10)/10}; })()`;
 const ver = (r) => !r.err && r.hay >= 1 && r.numTop >= r.cajaTop - 0.5 && r.numTop >= r.chBottom - 0.5 && r.barrasFuera === 0 && r.gapMax <= 6 && r.gapMin >= 0 && r.barMax >= 51.5;
 for (const w of [360, 390]) for (const tema of ['light', 'dark']) for (const fs of ['normal', 'xl']) {
@@ -72,4 +72,10 @@ await ev(`setTheme('light'); applyTextSize('normal'); renderHome(); document.get
 await sleep(400);
 const viejo = await ev(MIDE);
 A.ok(!ver(viejo), 'CONTROL: con la caja vieja de 60 px la sonda ve el número fuera de su caja', viejo);
+// CONTROL 2 (v759): la estructura de 070942c — la barra de color dentro de una RANURA de 52 px — deja el número flotando lejos de una barra baja.
+// Antes la sonda medía contra children[1] (la ranura) y NO lo habría visto; ahora mide contra la barra de color.
+await ev(`setTheme('light'); applyTextSize('normal'); renderHome(); document.querySelectorAll('#h-ret-bars button.ret-dia').forEach(b=>{ const bar=b.children[1]; const slot=document.createElement('span'); slot.style.cssText='height:52px;width:100%;display:flex;align-items:flex-end'; bar.replaceWith(slot); slot.appendChild(bar); }); 'ok'`);
+await sleep(400);
+const ranura = await ev(MIDE);
+A.ok(!ver(ranura) && ranura.gapMax > 20, 'CONTROL: con la ranura de 52 px de 070942c la sonda ve el número lejos de su barra baja (mide contra la barra de color)', ranura);
 salir(A, { chrome, srv });

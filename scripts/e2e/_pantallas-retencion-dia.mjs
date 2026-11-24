@@ -56,6 +56,17 @@ const SIEMBRA = `(()=>{
 const sembrado = await ev(SIEMBRA);
 A.ok(/Mariana Prueba/.test(sembrado) && !/Julián Restrepo|Andrea Molina/.test(sembrado), 'los datos son sembrados de prueba (nombres «… Prueba»)', sembrado);
 await sleep(600);
+// v759 · UNA sola semana, medido en Chrome con cuentas HECHAS APARTE (no con la función de la app): el % de la tarjeta = personas de la unión de
+// las 7 barras ÷ personas, y «Sesiones semana» = suma de las sesiones de los 7 días de calendario de las personas que existen.
+const SEMANA = `(()=>{ const ids=new Set(); for(let i=0;i<7;i++){ const b=document.querySelector('#h-ret-bars button.ret-dia[data-ret="'+i+'"]'); b.click();
+    document.querySelectorAll('#h-ret-bars .ret-fila').forEach(f=>{ const m=(f.getAttribute('onclick')||'').match(/'([^']+)'/); if(m)ids.add(m[1]); });
+    document.querySelector('#h-ret-bars button.ret-dia[data-ret="'+i+'"]').click(); }
+  const hoy0=new Date(); hoy0.setHours(0,0,0,0); const ini=+hoy0-6*86400000, quienes=new Set(DB.clients.map(c=>c.id)); let ses=0;
+  Object.keys(DB.history).forEach(id=>{ if(!quienes.has(id))return; (DB.history[id]||[]).forEach(x=>{ const t=new Date(x.date); const d0=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime(); if(d0>=ini&&d0<=+hoy0) ses++; }); });
+  return { union:ids.size, personas:DB.clients.length, pctEsperado:Math.round(ids.size/DB.clients.length*100), etq:document.getElementById('h-ret-label').textContent, sesEsperado:ses, sess:document.getElementById('h-sess').textContent, marcados:document.querySelectorAll('#h-ret-bars [aria-pressed="true"]').length }; })()`;
+const sem = await ev(SEMANA);
+A.ok(sem.union >= 3 && sem.etq === sem.pctEsperado + '% entrenaron esta semana', 'el % de la tarjeta («' + sem.etq + '») = personas de la unión de las 7 barras ÷ personas (' + sem.union + ' de ' + sem.personas + ')', sem);
+A.ok(sem.sesEsperado >= 5 && String(sem.sess) === String(sem.sesEsperado) && sem.marcados === 0, '«Sesiones semana» (' + sem.sess + ') = la suma de las sesiones de los 7 días', sem);
 const MIDE = `(()=>{ const card=document.getElementById('h-retention-card'), cont=document.getElementById('h-ret-bars'); if(!card||card.style.display==='none')return {err:'sin tarjeta'};
   const ch=card.querySelector('.ch').getBoundingClientRect(), cajaEl=cont.firstElementChild, caja=cajaEl.getBoundingClientRect();
   const bts=[...cajaEl.querySelectorAll('button.ret-dia')];
@@ -130,6 +141,13 @@ if (!OUT) {
   const v2 = await ev(`({det: document.getElementById('p-detail').classList.contains('on'), room: document.getElementById('coach-stat-room').classList.contains('on'), home: document.getElementById('p-home').classList.contains('on')})`);
   A.ok(v2.home && !v2.det && !v2.room, 'desde el reporte: UN solo atrás vuelve al Inicio', v2);
   await ev(`openCoachStat('sesiones'); 'ok'`); await sleep(500);
+  // CONTROL (v759): con la fila llamando openDetail directo (el defecto de antes) la ficha queda DEBAJO del reporte y esta sonda TIENE que verlo
+  await ev(`(()=>{ const r=document.getElementById('ret-rep'); if(!r.querySelector('.ret-fila')) r.querySelector('button.ret-dia[data-ret="6"]').click(); document.querySelectorAll('#ret-rep .ret-fila').forEach(b=>b.setAttribute('onclick', b.getAttribute('onclick').replace('_crepGoDetail(','openDetail('))); return 'ok'; })()`); await sleep(300);
+  await ev(`document.querySelector('#ret-rep .ret-fila').click(); 'ok'`); await sleep(900);
+  const f3 = await ev(`({det: document.getElementById('p-detail').classList.contains('on'), room: document.getElementById('coach-stat-room').classList.contains('on')})`);
+  A.ok(f3.det && f3.room, 'CONTROL: con openDetail directo la ficha queda DEBAJO del reporte abierto y la sonda lo ve', f3);
+  await ev(`closeCoachStat(); history.back(); 'ok'`); await sleep(900);
+  await ev(`gp('p-home',document.getElementById('sbi-home'),'Inicio'); renderHome(); openCoachStat('sesiones'); 'ok'`); await sleep(500);
 }
 if (OUT) {
   await altoCompleto(360, '#coach-stat-body');
