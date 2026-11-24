@@ -84,8 +84,8 @@
 - Editar perfil de un libre (place/goal/level/days) AVISA de usar «Generar semana» (v746: ya no regenera ni pregunta con `confirm()` nativo; `saveClient`).
 
 ### Agregados de actividad por fecha (v1.5 — `avi-core.js`, deterministas, reciben `now`)
-- `retentionByDay(history, now)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
-- `weeklyActiveCount` / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
+- `retentionByDay(history, now, clientIds)` — barras de retención por **día de calendario real** (no `getDay()`; arregla el bug de entrenos fantasma del mismo día de la semana pasada).
+- `semanaEntreno(history, now, clientIds)` (v759) — LA semana de entreno, construida sobre `retentionByDay`: `{dias, personas, total, desde}`; de ahí salen el % «entrenaron esta semana», «Sesiones semana» y el reporte de Sesiones (`_semanaCoach` en app-2-login). `weeklyActiveCount` se borró. / `clientsTrainedToday` / `daysSinceLastSession` / `sortRoutinesByDay` (rutinas ordenadas Lunes→Domingo, migración de arranque).
 
 ### Hábitos diarios (v300 — 💧 agua por vasos · v362 — 👟 pasos)
 - Tarjeta `#cn-habits` en Hoy (render `renderHabitsCard` en app-5, arma `_waterBlockHtml`+`_stepsBlockHtml` en el mismo `.hb-card` con divisor `.hb-sep`; llamada desde `renderClientToday` ANTES de los early-returns → sale también en descanso/sin rutina)
