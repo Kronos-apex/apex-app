@@ -259,9 +259,13 @@ const SIN_SENAL = 'Sin señal: tu pedido no salió. Inténtalo cuando tengas int
   // ═════ G · El coach: panel, bandeja, entregar, cuotas, cancelar, sin señal ═════
   {
     const p = (id, uid, nombre, prod, cant, estado, hace, extra) => Object.assign({ id, coach_id: COACH, client_uid: uid, client_id: uid, client_nombre: nombre, producto_id: prod, producto_nombre: prod === 'p1' ? 'Preentreno · sachet' : 'Creatina 300 g', precio_unit: prod === 'p1' ? 4000 : 85000, cantidad: cant, estado, cancelado_por: null, venta_id: null, creado: iso(ahora - hace), resuelto: estado === 'pendiente' ? null : iso(ahora - hace + 3600000) }, extra || {});
+    // 🔴 CI del 24-nov: «hace 26 h» y «hace 60 s» solo caen en «ayer» y «hoy» si la hora local es de las 02:00 en adelante (y no es el primer minuto
+    //    del día). A las 00:31 UTC el pedido de ayer cayó anteayer. Los dos se anclan a la MEDIANOCHE LOCAL: ayer a mediodía, hoy dentro de lo que lleva el día.
+    const medianoche = new Date(ahora); medianoche.setHours(0, 0, 0, 0);
+    const haceAyer = (ahora - medianoche.getTime()) + 12 * 3600000, haceHoy = Math.min(60000, ahora - medianoche.getTime());
     const filas = [
-      p('b', 'u2', 'Juan Prueba', 'p2', 1, 'pendiente', 26 * 3600000),
-      p('a', 'u1', 'Laura Prueba', 'p1', 2, 'pendiente', 60000),
+      p('b', 'u2', 'Juan Prueba', 'p2', 1, 'pendiente', haceAyer),
+      p('a', 'u1', 'Laura Prueba', 'p1', 2, 'pendiente', haceHoy),
       p('c', 'u1', 'Laura Prueba', 'p2', 1, 'entregado', 3 * dia),
       p('d', 'u2', 'Juan Prueba', 'p1', 1, 'cancelado', 10 * dia, { cancelado_por: 'coach' }),
       p('e', 'u2', 'Juan Prueba', 'p1', 3, 'cancelado', 2 * dia, { cancelado_por: 'asesorado' }),

@@ -28732,6 +28732,35 @@ test('v756c · CLAUDE.md ya no dice que la migración 20261123 está pendiente d
   assert.ok(/20261123[^\n]{0,80}pendiente de aplicar/.test('migración `20261123_tienda_por_persona.sql` pendiente de aplicar'), 'control');
 });
 
+// 🔴 24-nov · CI en rojo a las 00:31 UTC: el arnés de la tienda armaba un pedido «de hace 26 h» y esperaba «Ayer», lo cual solo
+// vale desde las 02:00 locales (a las 00:31 UTC cayó anteayer). El defecto estaba en la PRUEBA, no en la app. Candado: el arnés se
+// corre con el reloj FIJO en la franja mala de cada huso (UTC ya cambió de día, o pasada la medianoche local) y tiene que pasar.
+test('🔒 24-nov · el arnés de la tienda no depende de la hora del día: pasa con el reloj fijo a las 00:48 UTC y a las 00:30 de Bogotá (sabotaje: el pedido «de hace 26 h» cae)', () => {
+  const cp = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
+  const pre = path.join(__dirname, 'scripts', 'hooks', '_reloj-fijo.cjs');
+  const corre = (script, tz, iso) => cp.spawnSync(process.execPath, ['--require', pre, script], { encoding: 'utf8', cwd: __dirname, env: Object.assign({}, process.env, { TZ: tz, AVI_AHORA: String(Date.parse(iso)) }) });
+  const arnes = path.join(__dirname, 'scripts', 'comprobar-tienda-flujo.cjs');
+  // CONTROL: la precarga de verdad fija el reloj (si no, todo lo de abajo mediría la hora real y aprobaría o fallaría al azar)
+  const c = cp.spawnSync(process.execPath, ['--require', pre, '-e', 'process.stdout.write(new Date().toISOString()+"|"+Date.now()+"|"+new Date(2020,0,2).getFullYear())'], { encoding: 'utf8', env: Object.assign({}, process.env, { AVI_AHORA: String(Date.parse('2026-11-24T00:48:00Z')) }) });
+  assert.strictEqual(c.stdout, '2026-11-24T00:48:00.000Z|' + Date.parse('2026-11-24T00:48:00Z') + '|2020', '🔴 la precarga no fija el reloj (o rompe las fechas con argumentos)');
+  [['UTC', '2026-11-24T00:48:00Z'], ['America/Bogota', '2026-11-24T05:30:00Z']].forEach(([tz, iso]) => {
+    const r = corre(arnes, tz, iso);
+    assert.strictEqual(r.status, 0, '🔴 el arnés de la tienda cae a las ' + iso + ' en ' + tz + ': ' + (r.stderr || '').slice(0, 400));
+  });
+  // SABOTAJE: la fixture vieja (hace 26 h) tiene que caer en la franja mala; si no cae, este candado no prueba nada
+  const src = fs.readFileSync(arnes, 'utf8');
+  assert.strictEqual(src.split("'pendiente', haceAyer)").length, 2, 'la fixture de «ayer» cambió: actualizar el sabotaje');
+  const tmp = path.join(os.tmpdir(), 'avi-tienda-viejo-' + process.pid + '.cjs');
+  fs.writeFileSync(tmp, src.replace("'pendiente', haceAyer)", "'pendiente', 26 * 3600000)").replace("require('./arnes-tienda.cjs')", "require(" + JSON.stringify(path.join(__dirname, 'scripts', 'arnes-tienda.cjs')) + ")").split("path.join(__dirname,").join("path.join(" + JSON.stringify(path.join(__dirname, 'scripts')) + ","));
+  try {
+    const mala = corre(tmp, 'UTC', '2026-11-24T00:48:00Z');
+    assert.notStrictEqual(mala.status, 0, '🔴 la fixture vieja (hace 26 h) NO cayó a las 00:48 UTC: el candado no discrimina');
+    assert.ok(/Ayer|22 de noviembre/.test(mala.stderr), '🔴 cayó por otra razón: ' + (mala.stderr || '').slice(0, 300));
+    const buena = corre(tmp, 'UTC', '2026-11-24T12:00:00Z');
+    assert.strictEqual(buena.status, 0, '🔴 CONTROL: la fixture vieja tiene que pasar a mediodía (si no, el sabotaje cae por otra cosa): ' + (buena.stderr || '').slice(0, 300));
+  } finally { try { fs.unlinkSync(tmp); } catch (e) {} }
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════
