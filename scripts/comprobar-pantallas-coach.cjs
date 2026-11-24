@@ -47,7 +47,9 @@ const SABOTAJES = {
   // v758 · tocar el mismo día otra vez NO lo cierra
   'retencion-no-cierra': { 'app-2-login.js': [["_retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};", "_retDia={dow:o.dow,dia:o.dia};"]] },
   // v758 · la fila no abre la ficha
-  'retencion-fila-muerta': { 'app-2-login.js': [["onclick=\"openDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
+  'retencion-fila-muerta': { 'app-2-login.js': [["onclick=\"_crepGoDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
+  // v758 · la fila llama openDetail directo: en el reporte de Sesiones la ficha se abre DEBAJO del reporte (dos atrás para volver)
+  'retencion-fila-directa': { 'app-2-login.js': [["onclick=\"_crepGoDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "onclick=\"openDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
   // v758 · el nombre del coach sale como un asesorado más
   'retencion-yo-sin-etiqueta': { 'app-2-login.js': [["?'Yo (tu entreno)':(c.name||'Sin nombre')", "?(c.name||'Sin nombre'):(c.name||'Sin nombre')"]] },
   'inicio-barras-propias': { 'app-2-login.js': [["    const _ret=_retencionBarras(now);\n", "    const _ret={pct:0,html:'<i></i>'};\n"]] },
@@ -74,7 +76,7 @@ function montar(clients, extra) {
     _coachClears: () => ({}), _newSeen: () => ({}), gp: (id) => { ctx.__gp = id; }, whatsappReminder() {}, openCoachChat: id => { ctx.__chat = id; }, openMyTraining() {}, newAccountOpen() {}, _pulseGo() {},
     openCoachNote() {}, tiendaRenderHome: () => { ctx.__tiendaHome = true; }, painCareActive: a => a, COACH_OWN_ROW: null,
   }, extra || {}));
-  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionDias(', 'function _retEtq(', 'function _retTexto(', 'function _retencionBarras(', 'function retencionDia(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
+  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepGoDetail(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionDias(', 'function _retEtq(', 'function _retTexto(', 'function _retencionBarras(', 'function retencionDia(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
   vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\nlet _retDia=null; const _RET_DIAS=[\'Domingo\',\'Lunes\',\'Martes\',\'Miércoles\',\'Jueves\',\'Viernes\',\'Sábado\'];\n', ctx);
   return { ctx, els, el: id => ctx.document.getElementById(id) };
 }
@@ -132,12 +134,16 @@ const ahora = Date.now(), dia = 864e5;
   // ═════ D · El Inicio limpio: Pendientes, la nota «N hoy» y el reporte de Sesiones ═════
   {
     const hoy = new Date(), hace = h => iso(+hoy - h * 3600000);
+    // 🔴 24-nov, 00:01 locales: «hace 0,03 h» (108 s) cae AYER en el primer minuto del día y la cifra «N hoy» salía 1 en vez de 2. Las
+    //    sesiones de «hoy» se anclan a la medianoche local (k = el orden), como las de la sección R.
+    const d00 = new Date(hoy); d00.setHours(0, 0, 0, 0);
+    const haceHoy = (h, k) => iso(Math.max(+hoy - h * 3600000, +d00 + k * 1000));
     const clientes = [
       { id: 'c1', name: 'Ana Coach', age: 30, payments: [{ date: hace(24 * 25), dueDate: hace(-24 * 3), amount: 150000 }] },        // vence en 3 días
       { id: 'c2', name: 'Beto Coach', age: 41, payments: [{ date: hace(24 * 40), dueDate: hace(24 * 4), amount: 150000 }] },      // venció hace 4 días
       { id: 'c3', name: 'Carla Coach', age: 28, payments: [{ date: hace(5), dueDate: hace(-24 * 25), amount: 150000 }] },
     ];
-    const history = { c1: [{ date: hace(0.03), routineName: 'Pierna A' }], c3: [{ date: hace(0.02), routineName: 'Empuje' }, { date: hace(0.01), routineName: 'Core' }], c2: [{ date: hace(24 * 3), routineName: 'Tirón' }] };
+    const history = { c1: [{ date: haceHoy(0.03, 1), routineName: 'Pierna A' }], c3: [{ date: haceHoy(0.02, 2), routineName: 'Empuje' }, { date: haceHoy(0.01, 3), routineName: 'Core' }], c2: [{ date: hace(24 * 3), routineName: 'Tirón' }] };
     const fuentes = {
       chatAwaiting: () => [{ id: 'c1', name: 'Ana Coach', horas: 30, n: 1 }, { id: 'c3', name: 'Carla Coach', horas: 52, n: 2 }],
       newAccountsList: () => [{ id: 'n1', name: 'Nuria Libre', at: hace(5), sesiones: 0 }, { id: 'n2', name: 'Omar Libre', at: hace(30), sesiones: 1 }],
@@ -272,7 +278,21 @@ const ahora = Date.now(), dia = 864e5;
     const hoyH = R.el('h-ret-bars').innerHTML;
     ok(num(hoyH, 6) === 3 && (hoyH.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: hoy hay 4 sesiones de 3 personas: la barra dice 3 y la lista trae 3 filas (una por PERSONA): barra ' + num(hoyH, 6) + ', filas ' + (hoyH.match(/class="ret-fila"/g) || []).length);
     ok(/Pierna A · Core/.test(hoyH) && /Yo \(tu entreno\)/.test(hoyH) && /Ana Prueba/.test(hoyH) && /Carla Prueba/.test(hoyH), '🔴 R: cada fila lleva el nombre y la(s) rutina(s) del día; el coach sale como «Yo (tu entreno)»');
-    ok(/onclick="openDetail\('c1'\)"/.test(hoyH) && /onclick="openDetail\('_self'\)"/.test(hoyH), '🔴 R: tocar la fila abre la ficha con openDetail (la misma de Prioritarios)');
+    // 🔒 se EJECUTA el toque de la fila (no se lee el texto): en el Inicio abre la ficha de una vez; con el reporte de Sesiones ABIERTO tiene que
+    //    cerrar el reporte primero (history.back) y abrir la ficha después, como el resto de filas del reporte (_crepGoDetail).
+    const alTocar = S => S.el('h-ret-bars').innerHTML.split('class="ret-fila"').slice(1).map(x => (x.match(/onclick="([^"]+)"/) || [])[1]);
+    const llamadas = [], atras = []; R.ctx.openDetail = id => llamadas.push(id); R.ctx.history = { back() { atras.push(1); } };
+    const toques = alTocar(R);   // hoy sigue marcado en el Inicio (el reporte de Sesiones aún no se abrió: la sala está cerrada)
+    ok(toques.length === 3 && toques.every(x => x), '🔴 R: las filas traen su toque');
+    vm.runInContext(toques[0], R.ctx);
+    ok(llamadas.length === 1 && atras.length === 0, '🔴 R: en el Inicio (sin reporte abierto) tocar la fila abre la ficha de una vez y no toca el historial: ' + JSON.stringify({ llamadas, atras: atras.length }));
+    R.el('coach-stat-room').classList.add('on');   // ahora el reporte de Sesiones está ABIERTO
+    llamadas.length = 0;
+    vm.runInContext(toques[1], R.ctx);
+    ok(atras.length === 1 && llamadas.length === 0, '🔴 R: con el reporte abierto, tocar la fila lo CIERRA primero (history.back) y NO abre la ficha debajo del reporte: ' + JSON.stringify({ llamadas, atras: atras.length }));
+    await new Promise(r => setTimeout(r, 150));
+    ok(llamadas.length === 1, '🔴 R: y luego abre la ficha (tras cerrar el reporte): ' + JSON.stringify(llamadas));
+    R.el('coach-stat-room').classList.remove('on');
     ok(/aria-label="[^"]+ \d+: 3 entrenaron"/.test(hoyH) && /aria-label="[^"]+ \d+: nadie entrenó"/.test(hoyH), '🔴 R: cada barra es un botón con aria-label «Viernes 21: 3 entrenaron» / «…: nadie entrenó»');
     ok(!/<b>Prueba<\/b>/.test(hoyH), 'R: CONTROL, el nombre con HTML se escapa (esc)');
     R.ctx.retencionDia(5);

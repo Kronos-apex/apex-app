@@ -28674,7 +28674,7 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
     'retencion-fuera-de-lugar': /el orden del Inicio es 4 cifras · Retención semanal/, 'inicio-barras-propias': /usan LA MISMA función de barras/,
     // v758 · tocar una barra: la lista de quién entrenó cuenta lo que dice la barra, una fila por PERSONA, y se cierra al tocar otra vez
     'retencion-lista-por-sesion': /la lista trae 4 filas|una fila por PERSONA/, 'retencion-lista-otra-fuente': /tienen que ser las mismas/,
-    'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /tocar la fila abre la ficha/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
+    'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /las filas traen su toque/, 'retencion-fila-directa': /CIERRA primero/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
   };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
@@ -28770,6 +28770,12 @@ testPesado('🔒 24-nov · el arnés de la tienda no depende de la hora del día
   [['UTC', '2026-11-24T00:48:00Z'], ['America/Bogota', '2026-11-24T05:30:00Z']].forEach(([tz, iso]) => {
     const r = corre(arnes, tz, iso);
     assert.strictEqual(r.status, 0, '🔴 el arnés de la tienda cae a las ' + iso + ' en ' + tz + ': ' + (r.stderr || '').slice(0, 400));
+  });
+  // 🔴 24-nov 00:01 locales (hook en rojo): el arnés de pantallas del coach armaba sesiones «de hace 2 minutos» y en el primer minuto del día
+  // caían AYER («1 hoy» en vez de 2). Se corre con el reloj fijo en esa franja, en los dos husos.
+  [['UTC', '2026-11-24T00:01:10Z'], ['America/Bogota', '2026-11-24T05:01:10Z']].forEach(([tz, iso]) => {
+    const r = corre(path.join(__dirname, 'scripts', 'comprobar-pantallas-coach.cjs'), tz, iso);
+    assert.strictEqual(r.status, 0, '🔴 el arnés de pantallas del coach cae a las ' + iso + ' en ' + tz + ' (primer minuto del día): ' + (r.stderr || '').slice(0, 400));
   });
   // SABOTAJE: la fixture vieja (hace 26 h) tiene que caer en la franja mala; si no cae, este candado no prueba nada
   const src = fs.readFileSync(arnes, 'utf8');

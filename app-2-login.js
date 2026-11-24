@@ -2370,7 +2370,8 @@ function _entrenaronHoyHTML(now){
 // la usan las dos. Cuenta a TODOS los de DB.clients, el coach (`_self`) incluido: es la regla de siempre (lo pidió el PO).
 // Sin asesorados devuelve null (no hay a quién medir) y cada sitio decide: el Inicio oculta la tarjeta, el reporte no pinta nada.
 // v758 · Cada barra es un botón: al tocarla se marca y DEBAJO sale quién entrenó ese día (una fila por PERSONA, con su rutina y un ›
-// que abre su ficha con la misma `openDetail` de Prioritarios). Barra y lista salen de UNA fuente (`retentionByDay`): la fila cuenta
+// que abre su ficha por `_crepGoDetail`: con el reporte de Sesiones abierto lo cierra primero (si no, la ficha se abría DEBAJO del reporte y
+// el primer atrás la mostraba y el segundo volvía al Inicio); en el Inicio no hay reporte abierto y es `openDetail`, como Prioritarios). Barra y lista salen de UNA fuente (`retentionByDay`): la fila cuenta
 // lo que dice el número. El día marcado vive aquí (`_retDia`), no en los datos: al cargar no hay ninguno.
 let _retDia=null;
 const _RET_DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -2411,7 +2412,7 @@ function _retencionBarras(now){
       const c=DB.clients.find(x=>x.id===p.id)||{};
       const nombre=(typeof isSelfClient==='function'&&isSelfClient(c))?'Yo (tu entreno)':(c.name||'Sin nombre');
       const rut=p.routines.length?p.routines.join(' · '):'Entrenó';
-      return `<button type="button" class="ret-fila" onclick="openDetail('${esc(String(p.id))}')" style="display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:8px 4px;border:0;border-top:1px solid var(--br);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-size:13px;font-weight:600;color:var(--t1)">${esc(nombre)}</span><span style="display:block;font-size:12px;color:var(--t2)">${esc(rut)}</span></span><span aria-hidden="true" style="color:var(--t3);font-size:18px">›</span></button>`;
+      return `<button type="button" class="ret-fila" onclick="_crepGoDetail('${esc(String(p.id))}')" style="display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:8px 4px;border:0;border-top:1px solid var(--br);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-size:13px;font-weight:600;color:var(--t1)">${esc(nombre)}</span><span style="display:block;font-size:12px;color:var(--t2)">${esc(rut)}</span></span><span aria-hidden="true" style="color:var(--t3);font-size:18px">›</span></button>`;
     }).join('');
     lista=`<div aria-live="polite" style="margin-top:8px"><div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">${o.count===0?'Nadie entrenó este día':esc(_retEtq(o))+' · '+o.count+(o.count===1?' entrenó':' entrenaron')}</div>${filas}</div>`;
   }

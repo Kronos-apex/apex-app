@@ -121,6 +121,16 @@ await ev(`gp('p-home',document.getElementById('sbi-home'),'Inicio'); renderHome(
 await ev(`(()=>{ const r=document.getElementById('ret-rep'); if(!r.querySelector('.ret-fila')) r.querySelector('button.ret-dia[data-ret="6"]').click(); return 'ok'; })()`); await sleep(300);
 const rep = await ev(`(()=>{const r=document.getElementById('ret-rep'); return {filas:r.querySelectorAll('.ret-fila').length, n6:r.querySelector('button.ret-dia[data-ret="6"]').children[0].textContent.trim(), fueraX:[...r.querySelectorAll('*')].filter(e=>{const b=e.getBoundingClientRect(); return b.width>0&&(b.right>innerWidth+1||b.left<-1);}).length};})()`);
 A.ok(rep.filas === Number(rep.n6) && rep.filas === 4 && rep.fueraX === 0, 'el reporte de Sesiones: hoy marcado trae las mismas 4 filas que dice su barra, sin salirse', rep);
+// Desde el REPORTE: tocar una fila cierra el reporte y abre la ficha; UN solo atrás vuelve al Inicio (no la ficha debajo del reporte)
+if (!OUT) {
+  await ev(`document.querySelector('#ret-rep .ret-fila').click(); 'ok'`); await sleep(900);
+  const f2 = await ev(`({det: document.getElementById('p-detail').classList.contains('on'), room: document.getElementById('coach-stat-room').classList.contains('on')})`);
+  A.ok(f2.det && !f2.room, 'desde el reporte: tocar la fila abre la ficha y el reporte queda cerrado (no debajo)', f2);
+  await ev(`history.back(); 'ok'`); await sleep(900);
+  const v2 = await ev(`({det: document.getElementById('p-detail').classList.contains('on'), room: document.getElementById('coach-stat-room').classList.contains('on'), home: document.getElementById('p-home').classList.contains('on')})`);
+  A.ok(v2.home && !v2.det && !v2.room, 'desde el reporte: UN solo atrás vuelve al Inicio', v2);
+  await ev(`openCoachStat('sesiones'); 'ok'`); await sleep(500);
+}
 if (OUT) {
   await altoCompleto(360, '#coach-stat-body');
   const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
