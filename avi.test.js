@@ -401,7 +401,17 @@ const LIB = [
   { id: 'ca3', name: 'Burpees HIIT', muscle: 'cardio', type: 'HIIT', sets: 4, reps: 8, icon: '🔥' },
 ];
 
-let passed = 0, failed = 0, total = 0;
+let passed = 0, failed = 0, total = 0, saltados = 0;
+
+// 🔴 23-nov · SUITE RÁPIDA. Un test «pesado» lanza un arnés completo (a veces con ~30 sabotajes) y tarda decenas de segundos; el hook corre
+// la suite 4 veces (huso local, UTC, inglés+UTC, LF) y CI repetía todo: la suite pasó de ~2,5 min a 30. Con AVI_SUITE_RAPIDA=1 los
+// `testPesado` NO se ejecutan (corren UNA vez por commit, en la primera corrida del hook). Siguen CONTANDO en el total —el baseline [11] mide
+// los tests DEFINIDOS— pero NO cuentan como aprobados: la salida dice cuántos se saltaron por diseño.
+const RAPIDA = process.env.AVI_SUITE_RAPIDA === '1';
+function testPesado(name, fn) {
+  if (RAPIDA) { total++; saltados++; console.log(`  ⏭️  ${name}  [pesado: se corre en la primera corrida]`); return; }
+  test(name, fn);
+}
 
 function test(name, fn) {
   total++;
@@ -27918,7 +27928,7 @@ test('v748 · el respaldo local y el CLAUDE.md incluyen las dos tablas nuevas', 
   const md = fs.readFileSync(path.join(__dirname, 'CLAUDE.md'), 'utf8');
   assert.ok(/coach_productos/.test(md) && /coach_ventas/.test(md), '🔴 CLAUDE.md no dice que esas tablas están en el respaldo');
 });
-test('v748 · sin red nada se pierde en silencio: la fila queda pendiente en el teléfono y el aviso lo dice', () => {
+testPesado('v748 · sin red nada se pierde en silencio: la fila queda pendiente en el teléfono y el aviso lo dice', () => {
   const r = require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', 'comprobar-ventas-sin-red.cjs')], { encoding: 'utf8' });
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
   assert.ok(/OK/.test(r.stdout));
@@ -27926,21 +27936,21 @@ test('v748 · sin red nada se pierde en silencio: la fila queda pendiente en el 
 
 // v750 · correcciones del verificador a la v748: se prueba EN EJECUCIÓN el bloque real de ventas (DOM y Supabase falsos)
 const _suplCorre = (script, env) => require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', script)], { encoding: 'utf8', env: Object.assign({}, process.env, env || {}) });
-test('v750 · flujo completo de ventas: sin red UN solo aviso (el de «guardado en el celular»), lo pendiente queda en ax_supl y la franja sale en las 3 pantallas', () => {
+testPesado('v750 · flujo completo de ventas: sin red UN solo aviso (el de «guardado en el celular»), lo pendiente queda en ax_supl y la franja sale en las 3 pantallas', () => {
   const r = _suplCorre('comprobar-ventas-flujo.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
 });
-test('v750 · S2 EN EJECUCIÓN: ni la ficha, ni el catálogo, ni abonos, editar, archivar o borrar tocan DB.clients ni clientToRow (sabotaje: colgar las ventas de _p)', () => {
+testPesado('v750 · S2 EN EJECUCIÓN: ni la ficha, ni el catálogo, ni abonos, editar, archivar o borrar tocan DB.clients ni clientToRow (sabotaje: colgar las ventas de _p)', () => {
   const r = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'muta-cliente' });
   assert.notStrictEqual(r.status, 0, '🔴 el candado S2 no detecta que la ficha cuelgue las ventas del asesorado');
   assert.ok(/S2: DB\.clients cambió/.test(r.stderr), '🔴 falló por otra razón: ' + r.stderr.slice(0, 300));
 });
-test('v750 · S6 EN EJECUCIÓN: subir el precio del producto no cambia la venta vieja en la ficha (sabotaje: mostrar el precio vivo)', () => {
+testPesado('v750 · S6 EN EJECUCIÓN: subir el precio del producto no cambia la venta vieja en la ficha (sabotaje: mostrar el precio vivo)', () => {
   const r = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'precio-vivo' });
   assert.notStrictEqual(r.status, 0, '🔴 el candado S6 no detecta el precio vivo en la ficha');
   assert.ok(/S6: la venta vieja/.test(r.stderr), '🔴 falló por otra razón: ' + r.stderr.slice(0, 300));
 });
-test('v750 · los avisos no se pisan (sabotaje: el aviso del código de la v748) y la franja de pendientes sale en ficha, productos y panel', () => {
+testPesado('v750 · los avisos no se pisan (sabotaje: el aviso del código de la v748) y la franja de pendientes sale en ficha, productos y panel', () => {
   const a = _suplCorre('comprobar-ventas-flujo.cjs', { SAB: 'toast-pisado' });
   assert.notStrictEqual(a.status, 0, '🔴 el candado no detecta dos avisos que se pisan');
   assert.ok(/QUEDA en pantalla/.test(a.stderr), a.stderr.slice(0, 300));
@@ -27948,7 +27958,7 @@ test('v750 · los avisos no se pisan (sabotaje: el aviso del código de la v748)
   assert.notStrictEqual(b.status, 0, '🔴 el candado no detecta la franja solo en la ficha');
   assert.ok(/franja de pendientes en «Mis productos»/.test(b.stderr), b.stderr.slice(0, 300));
 });
-test('v750 · la carrera de la primera carga: una venta guardada mientras llega la nube no se pierde (sabotaje: mezcla que solo protege lo pendiente)', () => {
+testPesado('v750 · la carrera de la primera carga: una venta guardada mientras llega la nube no se pierde (sabotaje: mezcla que solo protege lo pendiente)', () => {
   const r = _suplCorre('comprobar-ventas-carrera.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout));
   const s = _suplCorre('comprobar-ventas-carrera.cjs', { SAB: 'mezcla-nube' });
@@ -27991,7 +28001,7 @@ test('v751 · las 9 fotos nuevas están registradas en EX_IMG_IDS y son JPEG 720
   assert.ok(!registrados.has('e303'), '🔴 e303 (dominadas agarre neutro) la rechazó el dueño: no entra');
 });
 
-test('🔒 15-nov · publicar-hogar no llama a Vercel con la carpeta vacía y no usa %TEMP%', () => {
+testPesado('🔒 15-nov · publicar-hogar no llama a Vercel con la carpeta vacía y no usa %TEMP%', () => {
   const fs = require('fs'), os = require('os'), path = require('path'), cp = require('child_process');
   const src = fs.readFileSync(path.join(__dirname, 'scripts', 'publicar-hogar.mjs'), 'utf8');
   const cod = sinComentarios(src);
@@ -28268,12 +28278,12 @@ test('v756 · scripts/sql/probar-tienda.sql existe, corre dentro de begin…roll
   assert.ok(!/gmail|hotmail|@(?!prueba\.invalid)\w+\.\w+/i.test(t), '🔴 un correo real en el script (el repo es público)');
 });
 
-test('v756 · EN EJECUCIÓN: pedir, push, agotado, sin señal (sin cola), menor, push caído, cancelar, entregar y cuotas, tarjeta, Mis productos, el upsert sin stock y la cantidad (DOM y Supabase falsos)', () => {
+testPesado('v756 · EN EJECUCIÓN: pedir, push, agotado, sin señal (sin cola), menor, push caído, cancelar, entregar y cuotas, tarjeta, Mis productos, el upsert sin stock y la cantidad (DOM y Supabase falsos)', () => {
   const r = _t756Corre('comprobar-tienda-flujo.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1500));
   assert.ok(/OK/.test(r.stdout));
 });
-test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y por SU razón', () => {
+testPesado('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y por SU razón', () => {
   const casos = {
     'precio-del-telefono': /tienda_pedir recibe SOLO producto y cantidad/,
     'stock-en-upsert': /el upsert de productos NO puede llevar/,
@@ -28316,8 +28326,17 @@ test('v756 · SABOTAJES de la tienda: cada candado cae con el código roto, y po
     'compras-yo-en-blanco': /Compras NO queda en blanco/,
     'apagar-esconde-pedidos': /con la tienda apagada, su pedido pendiente sigue/,
   };
+  // En CI (7 GB, sin nada más abierto) los casos van de 3 en 3; en local EN SERIE (la PC del dueño no aguanta tres arneses a la vez).
+  const _res = {};
+  if (process.env.CI) {
+    const pr = require('child_process').spawnSync(process.execPath, [require('path').join(__dirname, 'scripts', 'hooks', '_paralelo.cjs'), require('path').join(__dirname, 'scripts', 'comprobar-tienda-flujo.cjs'), '3'].concat(Object.keys(casos)), { encoding: 'utf8', maxBuffer: 1 << 26 });
+    JSON.parse(pr.stdout || '[]').forEach(x => { _res[x.k] = x; });
+  } else {
+    Object.keys(casos).forEach(k => { const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k }); _res[k] = { k, status: r.status, stderr: r.stderr }; });
+  }
   Object.keys(casos).forEach(k => {
-    const r = _t756Corre('comprobar-tienda-flujo.cjs', { SAB: k });
+    const r = _res[k];
+    assert.ok(r, '🔴 el sabotaje «' + k + '» no corrió');
     assert.notStrictEqual(r.status, 0, '🔴 el sabotaje «' + k + '» NO hizo caer la prueba (candado que nunca falla)');
     assert.ok(casos[k].test(r.stderr), '🔴 «' + k + '» cayó por otra razón: ' + r.stderr.slice(0, 400));
   });
@@ -28350,7 +28369,7 @@ test('v756 (verificador) · migración: la tienda es SOLO para quien entrena con
   assert.ok(/plan Libre: el catálogo sale vacío/.test(t) && /plan Libre: no puede pedir/.test(t) && /CONTROL plan premium: SÍ ve el catálogo/.test(t) && /CONTROL plan premium: SÍ puede pedir/.test(t), '🔴 faltan las pruebas SQL de la persona Libre (con su CONTROL premium)');
   assert.ok(/99999999999/.test(t) && /edad absurda/.test(t), '🔴 falta la prueba SQL de la edad absurda');
 });
-test('v756 (verificador) · el aviso del celular con la app CERRADA abre el chat o la bandeja en el arranque REAL (sesión de Auth, sin ax_session) y deja la URL limpia', () => {
+testPesado('v756 (verificador) · el aviso del celular con la app CERRADA abre el chat o la bandeja en el arranque REAL (sesión de Auth, sin ax_session) y deja la URL limpia', () => {
   const r = _t756Corre('comprobar-aviso-arranque.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
   const sab = { 'lectura-en-tryautologin': /NO abre la bandeja en el arranque real/, 'url-sucia': /la URL tiene que quedar limpia/, 'url-con-push': /replaceState, sin pushState/ };
@@ -28559,7 +28578,7 @@ test('v756b · B · la Tienda está en el menú ☰ con sus 4 partes y todo lo q
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // v756 (2ª parte) · BLOQUE C — la plata separada: Mensualidades · ficha → Compras · Tienda → Ventas
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-test('v756b · C · el reporte «Mensualidades de <mes>» no lleva suplementos y la ficha tiene la pestaña Compras (Pagos queda solo con la membresía)', () => {
+testPesado('v756b · C · el reporte «Mensualidades de <mes>» no lleva suplementos y la ficha tiene la pestaña Compras (Pagos queda solo con la membresía)', () => {
   const r = _t756Corre('comprobar-pantallas-coach.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
   const sab = { 'ingresos-con-suplementos': /trae suplementos/, 'ingresos-titulo-viejo': /tiene que llamarse «Mensualidades de/, 'ingresos-sin-nota': /lleva la nota «Aquí ya no aparecen los suplementos/, 'prioritarios-con-yo': /NO sale en Prioritarios/, 'pendientes-tras-return': /SE PINTAN igual/ };
@@ -28642,7 +28661,7 @@ test('v756b · D · coachVencimientos: por vencer, en gracia o vencido dentro de
   assert.deepStrictEqual(r.map(x => x.id), ['c', 'b'], 'vencido primero, luego el que vence en 3 días; sin los de al día, sin pagos, libres ni lejanos');
   assert.deepStrictEqual(core.coachVencimientos(null, now), []);
 });
-test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, Retención semanal (v757), Pendientes, Tienda y Prioritarios; lo que salió sigue alcanzable', () => {
+testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, Retención semanal (v757), Pendientes, Tienda y Prioritarios; lo que salió sigue alcanzable', () => {
   const r = _t756Corre('comprobar-pantallas-coach.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1500));
   const sab = {
@@ -28692,7 +28711,7 @@ test('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 cifras, 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // v756 (2ª parte) · BLOQUE E — guardar el plan de comida apaga la alerta sin salir de la ficha
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-test('v756b · E · saveNutrition repinta la alerta de revisión y el Resumen (EN EJECUCIÓN, con sabotaje)', () => {
+testPesado('v756b · E · saveNutrition repinta la alerta de revisión y el Resumen (EN EJECUCIÓN, con sabotaje)', () => {
   const r = _t756Corre('comprobar-pantallas-coach.cjs');
   assert.strictEqual(r.status, 0, '🔴 ' + (r.stderr || r.stdout).slice(0, 1200));
   const sab = { 'nutricion-sin-alerta': /se repinta la alerta de revisión/, 'nutricion-sin-resumen': /se repinta el Resumen/ };
@@ -28735,7 +28754,7 @@ test('v756c · CLAUDE.md ya no dice que la migración 20261123 está pendiente d
 // 🔴 24-nov · CI en rojo a las 00:31 UTC: el arnés de la tienda armaba un pedido «de hace 26 h» y esperaba «Ayer», lo cual solo
 // vale desde las 02:00 locales (a las 00:31 UTC cayó anteayer). El defecto estaba en la PRUEBA, no en la app. Candado: el arnés se
 // corre con el reloj FIJO en la franja mala de cada huso (UTC ya cambió de día, o pasada la medianoche local) y tiene que pasar.
-test('🔒 24-nov · el arnés de la tienda no depende de la hora del día: pasa con el reloj fijo a las 00:48 UTC y a las 00:30 de Bogotá (sabotaje: el pedido «de hace 26 h» cae)', () => {
+testPesado('🔒 24-nov · el arnés de la tienda no depende de la hora del día: pasa con el reloj fijo a las 00:48 UTC y a las 00:30 de Bogotá (sabotaje: el pedido «de hace 26 h» cae)', () => {
   const cp = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
   const pre = path.join(__dirname, 'scripts', 'hooks', '_reloj-fijo.cjs');
   const corre = (script, tz, iso) => cp.spawnSync(process.execPath, ['--require', pre, script], { encoding: 'utf8', cwd: __dirname, env: Object.assign({}, process.env, { TZ: tz, AVI_AHORA: String(Date.parse(iso)) }) });
@@ -28768,7 +28787,9 @@ test('🔒 24-nov · el arnés de la tienda no depende de la hora del día: pasa
 const line = '─'.repeat(50);
 console.log(`\n${line}`);
 if (failed === 0) {
-  console.log(`✅ AVI Tests: ${passed}/${total} pasaron`);
+  console.log(saltados
+    ? `✅ AVI Tests: ${passed}/${total} pasaron · ${saltados} pesados saltados por diseño (corrida rápida)`
+    : `✅ AVI Tests: ${passed}/${total} pasaron`);
 } else {
   console.log(`❌ AVI Tests: ${passed}/${total} pasaron — ${failed} FALLARON`);
   process.exit(1);

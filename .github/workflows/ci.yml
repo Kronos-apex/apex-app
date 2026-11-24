@@ -17,9 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Suite de negocio (avi.test.js)
-        run: node avi.test.js
-      - name: Audit completo (mismo script que el pre-commit hook)
+      # 23-nov · UNA sola suite completa. Antes este paso corría `node avi.test.js` y el audit repetía la suite 4 veces más (5 corridas,
+      # 30 min el 23-nov; antes de los arneses de v756 eran ~2,5 min). El pre-commit hook YA corre la suite: su primera corrida es la
+      # completa (aquí en UTC, con los arneses y sus sabotajes) y las demás —inglés+UTC y LF— van en modo rápido (AVI_SUITE_RAPIDA);
+      # la variante UTC se omite porque el runner ya es UTC. `CI` hace que los ~30 sabotajes de la tienda corran de 3 en 3.
+      - name: Audit completo + suite de negocio (el mismo script que el pre-commit hook)
         run: python3 scripts/hooks/pre-commit
 
   # 11-oct-2026: kronos-apex.github.io dejó de servir la app (decisión del PO). GitHub Pages publica la

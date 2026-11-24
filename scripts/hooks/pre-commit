@@ -207,23 +207,47 @@ if os.path.exists(test_file):
         # de diciembre y daba false, o sea que el test correcto no podía fallar aquí. Lo
         # cazó CI cinco «Run failed» después. Correr la suite en los dos husos cuesta
         # segundos y cierra la clase entera, no solo este caso.
-        env_utc = dict(os.environ, TZ='UTC')
-        r_utc = subprocess.run(['node', test_file], capture_output=True,
-                               encoding='utf-8', errors='replace', cwd=ROOT, env=env_utc)
-        out_utc = (r_utc.stdout or '').strip()
-        if r_utc.returncode == 0:
-            ok('avi.test.js en UTC — ' + (out_utc.split('\n')[-1].strip() if out_utc else 'OK'))
+        # 🔴 23-nov · SUITE RÁPIDA. Esta primera corrida lo trae TODO (también los tests «pesados»: los que lanzan arneses con sus
+        # sabotajes; solo los de la tienda son 313 s). Las tres variantes de abajo (UTC, inglés+UTC y LF) corren con AVI_SUITE_RAPIDA=1:
+        # se saltan SOLO los `testPesado` —que siguen contando en el total— y van EN SERIE (la PC del dueño tiene 8 GB y poca libre).
+        # Medido 23-nov: hook = 4 corridas completas de 463 s; ahora 1 completa + 3 rápidas. Si la máquina ya está en UTC (CI) la
+        # variante UTC es la MISMA corrida y se omite.
+        def _rapida(env):
+            return dict(env, AVI_SUITE_RAPIDA='1')
+        def _cuenta(texto):
+            m = re.search(r'AVI Tests: (\d+)/(\d+) pasaron(?: · (\d+) pesados saltados)?', texto or '')
+            return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)) if m else None
+        _c1 = _cuenta(stdout)
+        def _verifica_rapida(etq, out):
+            # 🔒 CONTROL: la corrida rápida mide el MISMO total de tests definidos que la completa y lo que no aprobó es lo que saltó.
+            c = _cuenta(out)
+            if c is None or _c1 is None:
+                fail(etq + ': no se pudo leer el conteo de la suite')
+            elif c[1] != _c1[1] or c[0] + c[2] != c[1] or c[2] < 1:
+                fail('%s: el conteo no cuadra (completa %s; rápida %d aprobados + %d saltados de %d): se salta algo de más o de menos' % (etq, _c1, c[0], c[2], c[1]))
+            else:
+                ok('%s — %d aprobados + %d pesados saltados por diseño (corren en la primera corrida) = %d' % (etq, c[0], c[2], c[1]))
+        import time as _time
+        if _time.timezone == 0 and os.environ.get('TZ') in (None, '', 'UTC'):
+            ok('avi.test.js en UTC — omitida: esta máquina ya corre en UTC, la primera corrida ES la de UTC (así corre CI)')
         else:
-            fail('Tests fallaron SOLO en UTC (así corre CI):\n' + '\n'.join(out_utc.split('\n')[-10:]))
+            env_utc = _rapida(dict(os.environ, TZ='UTC'))
+            r_utc = subprocess.run(['node', test_file], capture_output=True,
+                                   encoding='utf-8', errors='replace', cwd=ROOT, env=env_utc)
+            out_utc = (r_utc.stdout or '').strip()
+            if r_utc.returncode == 0:
+                _verifica_rapida('avi.test.js en UTC (rápida)', out_utc)
+            else:
+                fail('Tests fallaron SOLO en UTC (así corre CI):\n' + '\n'.join(out_utc.split('\n')[-10:]))
         # 🔴 Y EN INGLÉS (v638). CI estuvo rojo desde v628 con todo verde aquí: un test esperaba
         # `(4320).toLocaleString()`, que aquí da «4.320» (Windows en es-CO) y en el runner «4,320».
         # En Windows Node no hace caso a LANG, así que se fuerza con una precarga.
-        env_en = dict(os.environ, TZ='UTC', NODE_OPTIONS='--require ' + os.path.join(ROOT, 'scripts', 'hooks', '_idioma-en.cjs'))
+        env_en = _rapida(dict(os.environ, TZ='UTC', NODE_OPTIONS='--require ' + os.path.join(ROOT, 'scripts', 'hooks', '_idioma-en.cjs')))
         r_en = subprocess.run(['node', test_file], capture_output=True,
                               encoding='utf-8', errors='replace', cwd=ROOT, env=env_en)
         out_en = (r_en.stdout or '').strip()
         if r_en.returncode == 0:
-            ok('avi.test.js en inglés + UTC — ' + (out_en.split('\n')[-1].strip() if out_en else 'OK'))
+            _verifica_rapida('avi.test.js en inglés + UTC (rápida)', out_en)
         else:
             fail('Tests fallaron SOLO en inglés (así corre CI):\n' + '\n'.join(out_en.split('\n')[-10:]))
         # 🔴 Y UNA TERCERA VEZ CON FINALES DE LÍNEA LF, que es lo que recibe CI.
@@ -274,12 +298,10 @@ if os.path.exists(test_file):
             else:
                 r_lf = subprocess.run(['node', os.path.join(tmp_lf, 'avi.test.js')],
                                       capture_output=True, encoding='utf-8',
-                                      errors='replace', cwd=tmp_lf)
+                                      errors='replace', cwd=tmp_lf, env=_rapida(dict(os.environ)))
                 out_lf = (r_lf.stdout or '').strip()
                 if r_lf.returncode == 0:
-                    ok('avi.test.js en LF (%d de texto, %d convertidos) — '
-                       % (texto, convertidos) +
-                       (out_lf.split('\n')[-1].strip() if out_lf else 'OK'))
+                    _verifica_rapida('avi.test.js en LF (%d de texto, %d convertidos, rápida)' % (texto, convertidos), out_lf)
                 else:
                     fail('Tests fallaron SOLO con finales de línea LF (así los sirve el '
                          'checkout de CI):\n' + '\n'.join(out_lf.split('\n')[-10:]))
