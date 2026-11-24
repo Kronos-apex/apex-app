@@ -62,7 +62,7 @@ const {
   mergeMsgs,
   mergeAuthRow,
   retentionByDay,
-  weeklyActiveCount,
+  semanaEntreno,
   clientsTrainedToday,
   sessionFinished,
   finishedTrainingToday,
@@ -2523,20 +2523,37 @@ test('retentionByDay: robusto con history null/vacío', () => {
   assert.strictEqual(retentionByDay({}, D(2026, 6, 2)).reduce((a, b) => a + b.count, 0), 0);
 });
 
-test('weeklyActiveCount: cuenta clientes con sesión en los últimos 7 días', () => {
+// v759 · `semanaEntreno` es LA fuente de todas las cifras «de la semana»: las mismas 7 barras (días de calendario, hoy incluido) y la misma gente.
+// Historia armada (martes 2-jun, así la ventana cruza de mayo a junio): 6 días atrás = mié 27-may.
+test('v759 · semanaEntreno: personas = unión de las barras, total = suma de las sesiones de los 7 días (historia armada)', () => {
   const now = D(2026, 6, 2, 10);
   const history = {
-    a: [{ date: D(2026, 6, 1, 9) }],  // dentro
-    b: [{ date: D(2026, 5, 20, 9) }], // fuera (>7d)
-    c: [],
+    a: [{ date: D(2026, 6, 1, 9), routineName: 'Pierna' }, { date: D(2026, 6, 1, 20), routineName: 'Core' }, { date: D(2026, 5, 31, 9) }],  // 2 entrenos el mismo día + otro, cruzando de mes
+    b: [{ date: D(2026, 6, 2, 8), routineName: 'Empuje' }],                                                                              // hoy
+    c: [{ date: D(2026, 5, 27, 7) }],                                                                                                  // hace 6 días: el primer día de la ventana
+    d: [{ date: new Date(2026, 4, 26, 23, 0) }],                                                                                       // hace 7 días a las 11 p. m.: FUERA
+    ghost: [{ date: D(2026, 6, 2, 7) }],                                                                                               // ya no está en DB.clients
   };
-  assert.strictEqual(weeklyActiveCount(history, now, ['a', 'b', 'c']), 1);
-});
-
-test('weeklyActiveCount: un cliente cuenta una sola vez aunque tenga varias sesiones', () => {
-  const now = D(2026, 6, 2, 10);
-  const history = { a: [{ date: D(2026, 6, 1) }, { date: D(2026, 5, 31) }] };
-  assert.strictEqual(weeklyActiveCount(history, now, ['a']), 1);
+  const sem = semanaEntreno(history, now, ['a', 'b', 'c', 'd']);
+  assert.strictEqual(sem.dias.length, 7);
+  assert.deepStrictEqual(sem.personas.map(p => p.id).sort(), ['a', 'b', 'c'], '🔴 las personas de la semana no son la unión de las 7 barras (d cae fuera por una hora; ghost no existe)');
+  const unionBarras = new Set(); sem.dias.forEach(d => d.people.forEach(p => unionBarras.add(p.id)));
+  assert.deepStrictEqual([...unionBarras].sort(), sem.personas.map(p => p.id).sort(), '🔴 personas ≠ unión de las barras');
+  assert.strictEqual(sem.total, 5, '🔴 el total no es la suma de las sesiones de los 7 días (a: 3, b: 1, c: 1)');
+  assert.strictEqual(sem.total, sem.dias.reduce((t, d) => t + d.sesiones, 0));
+  assert.strictEqual(sem.personas.reduce((t, p) => t + p.sesiones, 0), sem.total, '🔴 las sesiones por persona no suman el total');
+  assert.strictEqual(sem.dias[6].sesiones, 1, 'hoy: 1 sesión (b)');
+  assert.strictEqual(sem.dias[5].sesiones, 2, 'ayer: 2 sesiones de UNA persona');
+  assert.strictEqual(sem.dias[5].count, 1, 'ayer: 1 persona');
+  assert.strictEqual(sem.personas[0].id, 'a', 'la de más sesiones primero');
+  assert.deepStrictEqual(sem.personas[0].routines, ['Pierna', 'Core']);
+  assert.strictEqual(sem.personas[0].ultima, D(2026, 6, 1, 20).getTime(), 'la última sesión de a');
+  assert.strictEqual(sem.desde.dia, 27, 'la ventana empieza el 27 (hace 6 días) y cruza el cambio de mes');
+  // CONTROL: la ventana móvil de 7×24 h de antes SÍ habría contado a d (quien entrenó hace 7 días a las 11 p. m.): la historia discrimina
+  const ref = now.getTime() - 7 * 86400000;
+  assert.ok(history.d.some(s => s.date.getTime() >= ref), 'control: con 7×24 h d habría contado, así que esta historia distingue las dos ventanas');
+  // sin historial o sin gente: todo en cero, sin romperse
+  assert.deepStrictEqual([semanaEntreno(null, now, []).total, semanaEntreno({}, now).personas.length], [0, 0]);
 });
 
 test('clientsTrainedToday: solo clientes con sesión de hoy, orden desc por hora', () => {
@@ -28675,6 +28692,9 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
     // v758 · tocar una barra: la lista de quién entrenó cuenta lo que dice la barra, una fila por PERSONA, y se cierra al tocar otra vez
     'retencion-lista-por-sesion': /la lista trae 4 filas|una fila por PERSONA/, 'retencion-lista-otra-fuente': /tienen que ser las mismas/,
     'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /las filas traen su toque/, 'retencion-fila-directa': /CIERRA primero/, 'retencion-sin-filtro': /ya no está en DB\.clients/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
+    // v759 · UNA sola semana: el % en otra ventana, «Sesiones semana» sobre todo el historial, el reporte en otra ventana, la frase vieja y la nota de «Sin entrenar»
+    'semana-pct-movil': /el % de la tarjeta/, 'semana-sesiones-todo-historial': /«Sesiones semana» \(\d+\) tiene que ser la suma/, 'semana-reporte-otra-ventana': /el reporte \(Sesiones/,
+    'semana-texto-viejo': /dice la ventana real/, 'sinentrenar-sin-nota': /lleva su nota «4\+ días»/,
   };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
@@ -28699,7 +28719,8 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
   // El reporte de Sesiones la sigue teniendo y las dos pantallas comparten UNA función de barras (sin lógica duplicada)
   const _login = _supl748.quitar(leer('app-2-login.js'));
   assert.ok(/function _retencionBarras\(now\)/.test(_login) && (_login.match(/_retencionBarras\(now\)/g) || []).length >= 3, '🔴 el Inicio y el reporte tienen que usar _retencionBarras');
-  assert.strictEqual((_login.match(/retentionByDay\(/g) || []).length, 1, '🔴 retentionByDay se llama en UN solo sitio (_retencionBarras): hay lógica duplicada');
+  assert.strictEqual((_login.match(/semanaEntreno\(/g) || []).length, 1, '🔴 semanaEntreno se llama en UN solo sitio (_semanaCoach): hay lógica duplicada');
+  assert.ok(!/retentionByDay\(|weeklyActiveCount|weekAgo/.test(_login), '🔴 el Inicio o el reporte vuelven a contar la semana por su cuenta (retentionByDay / weeklyActiveCount / weekAgo)');
   assert.ok(/html\+=_retencionHTML\(now\);/.test(_login), '🔴 el reporte de Sesiones dejó de traer la Retención semanal');
   // Lo que salió, sigue alcanzable: Comunidad y Mi página en el menú; Mi entrenamiento ya estaba
   assert.ok(/onclick="openGymMgr\(\)" id="sbi-comunidad"/.test(html) && /id="sbi-mipagina"/.test(html) && /id="sbi-mytraining"/.test(html), '🔴 el menú ☰ no trae Comunidad de mi gym, Mi página y Mi entrenamiento');
@@ -28807,6 +28828,15 @@ test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DEN
   assert.ok(/<span style="font-size:9px;color:var\(--t2\)">\$\{o\.count\|\|''\}<\/span><span style="height:\$\{h\}px/.test(f), '🔴 el número no está pegado a su barra (el número y la barra tienen que ser hermanos seguidos)');
   assert.ok(/Math\.round\(o\.count\/maxC\*52\)/.test(f), '🔴 la barra máxima ya no mide 52 px');
   assert.ok(/const barras=`<div style="[^"]*align-items:stretch/.test(f) && /flex-direction:column;justify-content:flex-end/.test(f), '🔴 las columnas no se estiran a la misma altura y pegadas al fondo (el área táctil de una barra baja se encoge)');
+  // v759 · la SEPARACIÓN entre el número y su barra también se fija (antes solo la vigilaba la sonda de Chrome, que no corre en el hook):
+  // la columna lleva `gap:3px` y el número y la barra son hermanos seguidos, así que gap = lo que separa a uno de otra.
+  const colEstilo = (f.match(/class="ret-dia"[^`]*?style="([^"]*)"/) || [])[1] || '';
+  const sepOk = e => /(?:^|;)gap:3px(?:;|$)/.test(e);
+  assert.ok(sepOk(colEstilo), '🔴 la columna de la barra ya no separa el número de su barra por 3 px (estilo: «' + colEstilo + '»)');
+  // CONTROL + SABOTAJE: la sonda deja pasar el estilo sano, y ve un gap de 30 px o un gap ausente
+  assert.ok(sepOk('flex:1 1 0;gap:3px;padding:3px'), 'control: el estilo sano pasa');
+  assert.ok(!sepOk(colEstilo.replace('gap:3px', 'gap:30px')), '🔴 el sabotaje gap:30px no hace fallar el candado: no fija la separación');
+  assert.ok(!sepOk(colEstilo.replace('gap:3px;', '')), '🔴 quitar el gap no hace fallar el candado');
   // CONTROL: la sonda ve el defecto de antes (caja de 60 px) y deja pasar la caja sana
   const vieja = '<div style="display:flex;align-items:flex-end;gap:6px;height:60px">'.match(/style="([^"]*)"/)[1];
   assert.ok(/height\s*:/.test(vieja), 'control: la sonda no ve el alto fijo de 60 px');
@@ -28833,6 +28863,28 @@ test('🔒 v758 · retentionByDay ignora a quien ya no está en DB.clients (el f
   assert.strictEqual(real(hist, ahora)[6].count, 2, 'control: sin clientIds cuenta a todos');
   // SABOTAJE: la copia sin el filtro SÍ cuenta al fantasma (si no lo hiciera, el candado de arriba no probaría nada)
   assert.strictEqual(sinFiltro(hist, ahora, ['a'])[6].count, 2, '🔴 el sabotaje (sin el filtro) no cambia nada: el candado no discrimina');
+});
+
+// 🔒 v759 · `semanaEntreno` se construye SOBRE `retentionByDay` (una sola ventana). Sabotaje EN LA SUITE: se evalúa una copia del código REAL donde la
+// ventana vuelve a ser la móvil de 7×24 h y tiene que dar otra cosa; y `weeklyActiveCount` ya no existe (nadie la puede volver a usar para el %).
+test('🔒 v759 · semanaEntreno usa retentionByDay (misma ventana) y weeklyActiveCount ya no existe, con sabotaje y control', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8'));
+  assert.ok(!/weeklyActiveCount/.test(src), '🔴 weeklyActiveCount sigue en avi-core (código muerto: el % sale de semanaEntreno)');
+  const cortar = nombre => { const i = src.indexOf('function ' + nombre + '('); assert.ok(i > 0, 'no está ' + nombre); return src.slice(i, src.indexOf('\n}\n', i) + 3); };
+  const fn = cortar('semanaEntreno');
+  const LLAMADA = 'const dias = retentionByDay(history, now, clientIds);';
+  assert.strictEqual(fn.split(LLAMADA).length, 2, '🔴 semanaEntreno dejó de construirse sobre retentionByDay');
+  const armar = (codigo, rbd) => new Function('retentionByDay', codigo + '\nreturn semanaEntreno;')(rbd);
+  const rbdReal = new Function('localDayStart', 'MS_DAY', '_DOW', cortar('retentionByDay') + '\nreturn retentionByDay;')(
+    d => { const x = new Date(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); }, 86400000, ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']);
+  const ahora = new Date(2026, 5, 2, 10);
+  const hist = { a: [{ date: new Date(2026, 5, 2, 9) }], d: [{ date: new Date(2026, 4, 26, 23) }] };   // d: hace 7 días a las 11 p. m.
+  const real = armar(fn, rbdReal);
+  assert.deepStrictEqual(real(hist, ahora, ['a', 'd']).personas.map(p => p.id), ['a'], '🔴 la semana cuenta a quien entrenó hace 7 días (ventana móvil)');
+  // SABOTAJE: la misma función con las 7 barras armadas con la ventana móvil de 7×24 h cuenta a d
+  const movil = (h, now, ids) => { const b = rbdReal(h, now, ids); const ref = now.getTime() - 7 * 86400000; Object.keys(h).forEach(id => { if (ids.includes(id) && h[id].some(s => s.date.getTime() >= ref) && !b.some(x => x.people.some(p => p.id === id))) { b[0].people.push({ id, routines: [], sesiones: 1, ultima: 0 }); b[0].sesiones++; } }); return b; };
+  assert.deepStrictEqual(armar(fn, movil)(hist, ahora, ['a', 'd']).personas.map(p => p.id).sort(), ['a', 'd'], '🔴 el sabotaje (ventana móvil) no cambia nada: el candado no discrimina');
 });
 
 // ══════════════════════════════════════════════════════

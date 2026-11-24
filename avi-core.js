@@ -4347,10 +4347,11 @@ function localDayStart(d) {
 
 // Barras de retención: cuenta PERSONAS por DÍA DE CALENDARIO real en los últimos 7 días (v758: antes contaba sesiones, y la
 // lista «quién entrenó» de cada día —una fila por persona— no cuadraba con el número de la barra cuando alguien hacía 2 entrenos).
-// Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, dow, dia, count, people:[{id, routines}]}]. `count` = people.length.
-// `clientIds` (opcional) limita a las personas que existen: así la barra y la lista de cada día hablan de la misma gente. OJO: el % de la
-// tarjeta («N% entrenaron esta semana») NO sale de aquí: lo calcula `weeklyActiveCount` sobre los últimos 7×24 h, mientras estas barras son
-// 7 DÍAS DE CALENDARIO; por eso el % y la suma de las barras pueden no coincidir (las barras además cuentan a una persona una vez por día).
+// Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, dow, dia, count, sesiones, people:[{id, routines, sesiones, ultima}]}].
+// `count` = people.length; `sesiones` = cuántas sesiones hubo ese día (una persona con 2 entrenos suma 1 a `count` y 2 a `sesiones`).
+// `clientIds` (opcional) limita a las personas que existen: así la barra y la lista de cada día hablan de la misma gente.
+// v759 · TODAS las cifras «de la semana» (el %, «Sesiones semana», el reporte) salen de `semanaEntreno`, que se construye SOBRE esta
+// función: una sola ventana (7 días de calendario, hoy incluido) y un solo filtro de personas.
 // CLAVE: agrupa por fecha local, NO por getDay() — si agrupara por día de la
 // semana, las sesiones del mismo día de la semana pasada caerían en la columna
 // de "hoy" y mostrarían entrenos fantasma (bug real, 2026-06-02).
@@ -4359,7 +4360,7 @@ function retentionByDay(history, now, clientIds) {
   const solo = clientIds ? new Set(clientIds) : null;
   const bars = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startToday - (6 - i) * MS_DAY);
-    return { label: _DOW[d.getDay()], dow: d.getDay(), dia: d.getDate(), count: 0, people: [] };
+    return { label: _DOW[d.getDay()], dow: d.getDay(), dia: d.getDate(), count: 0, sesiones: 0, people: [] };
   });
   Object.keys(history || {}).forEach(id => {
     if (solo && !solo.has(id)) return;
@@ -4367,7 +4368,9 @@ function retentionByDay(history, now, clientIds) {
       const idx = 6 - Math.round((startToday - localDayStart(s.date)) / MS_DAY);
       if (!(idx >= 0 && idx <= 6)) return;
       let p = bars[idx].people.find(x => x.id === id);
-      if (!p) { p = { id, routines: [] }; bars[idx].people.push(p); bars[idx].count++; }
+      if (!p) { p = { id, routines: [], sesiones: 0, ultima: 0 }; bars[idx].people.push(p); bars[idx].count++; }
+      p.sesiones++; bars[idx].sesiones++;
+      const t = new Date(s.date).getTime(); if (t > p.ultima) p.ultima = t;
       const rn = s.routineName || s.name;
       if (rn && !p.routines.includes(rn)) p.routines.push(rn);
     });
@@ -4375,14 +4378,24 @@ function retentionByDay(history, now, clientIds) {
   return bars;
 }
 
-// Cuántos de `clientIds` entrenaron en los últimos 7 días (ventana móvil de 7×24h).
-// Si no se pasan clientIds, usa las llaves de history.
-function weeklyActiveCount(history, now, clientIds) {
-  const ref = (now ? new Date(now) : new Date()).getTime() - 7 * MS_DAY;
-  const ids = clientIds || Object.keys(history || {});
-  return ids.filter(id =>
-    ((history && history[id]) || []).some(s => new Date(s.date).getTime() >= ref)
-  ).length;
+// v759 · LA semana de entreno: la única fuente de todas las cifras «de la semana» (el % de «entrenaron esta semana», «Sesiones semana»
+// del Inicio y el reporte de Sesiones). Se construye SOBRE `retentionByDay`: la misma ventana (7 días de calendario, hoy incluido) y el
+// mismo filtro de personas, así que el % y las barras no pueden contar distinto. Antes eran tres ventanas (7×24 h para el %, 7×24 h
+// sobre TODO el historial para «Sesiones semana», 7 días de calendario para las barras) y el Inicio se contradecía.
+// Devuelve {dias (los 7 de retentionByDay), personas (la unión, una vez cada una, con sesiones y última, de más a menos sesiones),
+// total (sesiones de los 7 días), desde (el día más viejo de la ventana)}.
+function semanaEntreno(history, now, clientIds) {
+  const dias = retentionByDay(history, now, clientIds);
+  const por = new Map();
+  dias.forEach(d => d.people.forEach(p => {
+    let x = por.get(p.id);
+    if (!x) { x = { id: p.id, sesiones: 0, ultima: 0, routines: [] }; por.set(p.id, x); }
+    x.sesiones += p.sesiones;
+    if (p.ultima > x.ultima) x.ultima = p.ultima;
+    p.routines.forEach(r => { if (!x.routines.includes(r)) x.routines.push(r); });
+  }));
+  const personas = [...por.values()].sort((a, b) => b.sesiones - a.sesiones || b.ultima - a.ultima);
+  return { dias, personas, total: dias.reduce((t, d) => t + d.sesiones, 0), desde: dias[0] };
 }
 
 // Clientes que entrenaron HOY (mismo día de calendario local que `now`).
@@ -15010,7 +15023,7 @@ if (typeof module !== 'undefined' && module.exports) {
     _msgKey,
     localDayStart,
     retentionByDay,
-    weeklyActiveCount,
+    semanaEntreno,
     clientsTrainedToday,
     sessionFinished,
     finishedTrainingToday,

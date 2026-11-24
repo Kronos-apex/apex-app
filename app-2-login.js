@@ -1963,7 +1963,6 @@ function _coachPuedeEscribir(c){
 function renderHome(){
   const now=new Date();
   const y=now.getFullYear(), mo=now.getMonth();
-  const weekAgo=new Date(Date.now()-7*24*60*60*1000);
 
   // ── Ingresos del mes ──
   // El coach entrena en su propio panel (`_self`) pero NO se cobra a sí mismo: las cifras
@@ -2008,11 +2007,8 @@ function renderHome(){
   }
 
   // ── Sesiones esta semana ──
-  let sesiones=0;
-  Object.values(DB.history||{}).forEach(arr=>{
-    (arr||[]).forEach(s=>{ if(new Date(s.date)>=weekAgo) sesiones++; });
-  });
-  const elSess=document.getElementById('h-sess');if(elSess)elSess.textContent=sesiones;
+  // v759 · de LA semana (`semanaEntreno`): la suma de las sesiones de las 7 barras, de las personas que existen; ya no recorre todo DB.history.
+  const elSess=document.getElementById('h-sess');if(elSess)elSess.textContent=_semanaCoach(now).total;
 
   // ── Entrenaron HOY ── v756 (b): ya no es un banner del Inicio; es la nota «N hoy» de la cifra Sesiones, y al tocarla el reporte
   // dice QUIÉN entrenó hoy (tocable, a su ficha) y trae la retención semanal.
@@ -2031,6 +2027,8 @@ function renderHome(){
     vencEl.textContent=inactivos;
     vencEl.style.color=inactivos>0?'var(--rdt)':'var(--gt)';
   }
+  // v759 · la cifra dice lo que mide («4+ días» sin entrenar, con la membresía al día): es la lista para empujar, NO el complemento del %
+  // de «entrenaron esta semana» (alguien que entrenó el lunes cuenta en el % y a los 4 días sale aquí). La nota va fija en index.html.
 
   // ── Retención semanal ── v757: vuelve al Inicio (bajo las 4 cifras) y SIGUE en el reporte «Sesiones semana»; las dos usan _retencionBarras.
   // Sin asesorados la tarjeta se oculta, como antes de v756. Los vencimientos próximos siguen en Pendientes.
@@ -2381,16 +2379,20 @@ function _retEtq(o){
 function _retTexto(o){
   return o.count===0?'nadie entrenó':o.count+(o.count===1?' entrenó':' entrenaron');
 }
-// La ÚNICA llamada a retentionByDay: las barras, la lista de cada día y el toque de una barra salen de aquí.
-function _retencionDias(now){
-  return retentionByDay(DB.history,now,DB.clients.map(c=>c.id));
+// v759 · La ÚNICA llamada a la fuente de la semana (`semanaEntreno`, que se construye sobre `retentionByDay`): el %, las barras, la lista de
+// cada día, «Sesiones semana» del Inicio y todo el reporte de Sesiones salen de aquí. Mismos 7 días de calendario y misma gente (DB.clients).
+function _semanaCoach(now){
+  return semanaEntreno(DB.history,now,DB.clients.map(c=>c.id));
+}
+// La ventana dicha como es («del mié 18 a hoy»): corta para que quepa a 360 px con letra grande.
+function _semanaDesde(sem){
+  return 'del '+sem.desde.label.toLowerCase()+' '+sem.desde.dia+' a hoy';
 }
 function _retencionBarras(now){
   if(!DB.clients.length)return null;
-  const ordered=_retencionDias(now);
+  const sem=_semanaCoach(now), ordered=sem.dias;
   const maxC=Math.max(...ordered.map(o=>o.count),1);
-  const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
-  const pct=Math.round(totalEnt/DB.clients.length*100);
+  const pct=Math.round(sem.personas.length/DB.clients.length*100);
   const marcada=_retDia?ordered.findIndex(o=>o.dow===_retDia.dow&&o.dia===_retDia.dia):-1;
   // v758 · La caja NO lleva alto fijo: antes eran 60 px para una columna de ~82 (número + barra de hasta 52 + etiqueta + sus
   // separaciones), así que el número de la barra más alta se salía por arriba y se montaba sobre el encabezado de la tarjeta
@@ -2422,7 +2424,7 @@ function _retencionBarras(now){
 }
 // Tocar una barra: marca ese día; tocar el mismo día otra vez, lo desmarca. Repinta las dos pantallas que usan la tarjeta.
 function retencionDia(i){
-  const o=_retencionDias(new Date())[i];
+  const o=_semanaCoach(new Date()).dias[i];
   if(!o)return;
   _retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};
   const r=_retencionBarras(new Date()); if(!r)return;
@@ -2443,7 +2445,6 @@ function openCoachStat(kind){
   const room=document.getElementById('coach-stat-room'), body=document.getElementById('coach-stat-body'), titleEl=document.getElementById('coach-stat-title');
   if(!room||!body)return;
   const now=new Date(), y=now.getFullYear(), mo=now.getMonth();
-  const weekAgo=new Date(Date.now()-7*24*60*60*1000);
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const empty=(ic,txt)=>`<div class="crep-empty"><div class="crep-empty-ic">${ic}</div>${txt}</div>`;
   let title='Reporte', html='';
@@ -2495,24 +2496,19 @@ function openCoachStat(kind){
 
   else if(kind==='sesiones'){
     title='Sesiones de la semana';
-    const byClient=[];
-    DB.clients.forEach(c=>{
-      const sess=((DB.history&&DB.history[c.id])||[]).filter(s=>new Date(s.date)>=weekAgo);
-      if(sess.length)byClient.push({c,sess});
-    });
-    const totalSess=byClient.reduce((t,x)=>t+x.sess.length,0);
-    byClient.sort((a,b)=>b.sess.length-a.sess.length);
-    html=_crepHero('🏋️','#e0772e',String(totalSess),`en los últimos 7 días · ${byClient.length} ${byClient.length===1?'asesorado':'asesorados'}`);
-    if(byClient.length){
-      const prom=(totalSess/byClient.length).toFixed(1).replace('.0','');
-      html+=`<div class="sroom-stats">${stat('🔥','Sesiones',totalSess,'#e0772e')}${stat('👥','Entrenaron',byClient.length,'#3a86c8')}${stat('📊','Promedio',prom,'#9b6dd6')}</div>`;
+    // v759 · todo sale de LA semana (`_semanaCoach`): los mismos 7 días de calendario y la misma gente que el % y las barras del Inicio.
+    const sem=_semanaCoach(now), totalSess=sem.total, nEnt=sem.personas.length;
+    html=_crepHero('🏋️','#e0772e',String(totalSess),`${_semanaDesde(sem)} · ${nEnt} ${nEnt===1?'asesorado':'asesorados'}`);
+    if(nEnt){
+      const prom=(totalSess/nEnt).toFixed(1).replace('.0','');
+      html+=`<div class="sroom-stats">${stat('🔥','Sesiones',totalSess,'#e0772e')}${stat('👥','Entrenaron',nEnt,'#3a86c8')}${stat('📊','Promedio',prom,'#9b6dd6')}</div>`;
       html+=_entrenaronHoyHTML(now);
       html+=`<div class="sroom-sec">Quién entrenó</div>`;
-      html+=byClient.map(({c,sess})=>{
-        const rutinas=[...new Set(sess.map(s=>s.routineName).filter(Boolean))].join(', ')||'Entrenó';
-        const last=sess.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
-        const lastStr=new Date(last.date).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'long'});
-        return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--ort)">${sess.length}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
+      html+=sem.personas.map(p=>{
+        const c=DB.clients.find(x=>x.id===p.id)||{};
+        const rutinas=p.routines.join(', ')||'Entrenó';
+        const lastStr=new Date(p.ultima).toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'long'});
+        return _crepRow(c.id,c.name,`${esc(rutinas)} · última: ${lastStr}`,`<span class="crep-amt" style="color:var(--ort)">${p.sesiones}</span><span style="font-size:10px;color:var(--t3)">ses.</span>`);
       }).join('');
     } else html+=empty('🏋️','Nadie ha entrenado esta semana todavía.');
     html+=_retencionHTML(now);
