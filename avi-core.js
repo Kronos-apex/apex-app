@@ -4348,7 +4348,9 @@ function localDayStart(d) {
 // Barras de retención: cuenta PERSONAS por DÍA DE CALENDARIO real en los últimos 7 días (v758: antes contaba sesiones, y la
 // lista «quién entrenó» de cada día —una fila por persona— no cuadraba con el número de la barra cuando alguien hacía 2 entrenos).
 // Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, dow, dia, count, people:[{id, routines}]}]. `count` = people.length.
-// `clientIds` (opcional) limita a las personas que existen: así la barra, la lista y el % de la tarjeta hablan de la misma gente.
+// `clientIds` (opcional) limita a las personas que existen: así la barra y la lista de cada día hablan de la misma gente. OJO: el % de la
+// tarjeta («N% entrenaron esta semana») NO sale de aquí: lo calcula `weeklyActiveCount` sobre los últimos 7×24 h, mientras estas barras son
+// 7 DÍAS DE CALENDARIO; por eso el % y la suma de las barras pueden no coincidir (las barras además cuentan a una persona una vez por día).
 // CLAVE: agrupa por fecha local, NO por getDay() — si agrupara por día de la
 // semana, las sesiones del mismo día de la semana pasada caerían en la columna
 // de "hoy" y mostrarían entrenos fantasma (bug real, 2026-06-02).
