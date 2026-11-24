@@ -45,7 +45,7 @@ const SABOTAJES = {
   // v758 · la lista sale de OTRA fuente: siempre la gente de hoy, no la del día marcado
   'retencion-lista-otra-fuente': { 'app-2-login.js': [["const filas=o.people.map(p=>{", "const filas=ordered[6].people.map(p=>{"]] },
   // v758 · tocar el mismo día otra vez NO lo cierra
-  'retencion-no-cierra': { 'app-2-login.js': [["_retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};", "_retDia={dow:o.dow,dia:o.dia};"]] },
+  'retencion-no-cierra': { 'app-2-login.js': [["_retDia=(_retDia===ms)?null:ms;", "_retDia=ms;"]] },
   // v758 · la fila no abre la ficha
   'retencion-fila-muerta': { 'app-2-login.js': [["onclick=\"_crepGoDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
   // v758 · la fila llama openDetail directo: en el reporte de Sesiones la ficha se abre DEBAJO del reporte (dos atrás para volver)
@@ -60,6 +60,12 @@ const SABOTAJES = {
   'semana-reporte-otra-ventana': { 'app-2-login.js': [["const sem=_semanaCoach(now), totalSess=sem.total, nEnt=sem.personas.length;", "const sem=_semanaCoach(now), _v=DB.clients.map(c=>({c,n:((DB.history||{})[c.id]||[]).filter(s=>new Date(s.date)>=Date.now()-7*864e5).length})).filter(x=>x.n), totalSess=_v.reduce((t,x)=>t+x.n,0), nEnt=_v.length;"]] },
   // v759 · la ventana se dice como «en los últimos 7 días» (la frase vieja, que ya no es la ventana real)
   'semana-texto-viejo': { 'app-2-login.js': [["`${_semanaDesde(sem)} · ${nEnt}", "`en los últimos 7 días · ${nEnt}"]] },
+  // v759 · medianoche: tocar una barra con el día cambiado solo repinta las barras (el % y «Sesiones» quedan con la semana vieja)
+  'medianoche-solo-barras': { 'app-2-login.js': [["  if(_retPintado!==null&&localDayStart(now)!==_retPintado){ _semanaRepintar(); return; }\n", ""]] },
+  // v759 · medianoche: un día tocado que ya salió de la ventana se marca igual (cae en la posición 0, que ahora es OTRO día)
+  'medianoche-por-indice': { 'app-2-login.js': [["const marcada=_retDia===null?-1:ordered.findIndex(o=>o.ms===_retDia);", "const marcada=_retDia===null?-1:Math.max(0,ordered.findIndex(o=>o.ms===_retDia));"]] },
+  // v759 · medianoche: al volver a la app con el día cambiado NO se repinta
+  'medianoche-sin-volver': { 'app-2-login.js': [["  if(localDayStart(new Date())!==_retPintado)_semanaRepintar();\n}", "}"]] },
   // v759 · la cifra «Sin entrenar» pierde su nota «4+ días»
   'sinentrenar-sin-nota': { 'index.html': [["<div class=\"smn\" id=\"h-venc-nota\">4+ días</div>", ""]] },
   // v758 · el nombre del coach sale como un asesorado más
@@ -88,11 +94,13 @@ function montar(clients, extra) {
     _coachClears: () => ({}), _newSeen: () => ({}), gp: (id) => { ctx.__gp = id; }, whatsappReminder() {}, openCoachChat: id => { ctx.__chat = id; }, openMyTraining() {}, newAccountOpen() {}, _pulseGo() {},
     openCoachNote() {}, tiendaRenderHome: () => { ctx.__tiendaHome = true; }, painCareActive: a => a, COACH_OWN_ROW: null,
   }, extra || {}));
-  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepGoDetail(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _semanaCoach(', 'function _semanaDesde(', 'function _retEtq(', 'function _retTexto(', 'function _retencionBarras(', 'function retencionDia(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
-  vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\nlet _retDia=null; const _RET_DIAS=[\'Domingo\',\'Lunes\',\'Martes\',\'Miércoles\',\'Jueves\',\'Viernes\',\'Sábado\'];\n', ctx);
+  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepGoDetail(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _semanaCoach(', 'function _semanaDesde(', 'function _retEtq(', 'function _retTexto(', 'function _retencionBarras(', 'function retencionDia(', 'function _semanaRepintar(', 'function _semanaAlVolver(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
+  vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\nlet _retDia=null, _retPintado=null, _statKind=null; const _RET_DIAS=[\'Domingo\',\'Lunes\',\'Martes\',\'Miércoles\',\'Jueves\',\'Viernes\',\'Sábado\'];\n', ctx);
   return { ctx, els, el: id => ctx.document.getElementById(id) };
 }
 const iso = d => new Date(d).toISOString();
+// v759: el toque lleva la FECHA de la barra (ms), no su posición; este ayudante toca «la barra i» tal como la ve la persona
+const tocarDia = (M, i) => M.ctx.retencionDia(M.ctx._semanaCoach(new Date()).dias[i].ms);
 const ahora = Date.now(), dia = 864e5;
 
 (async () => {
@@ -274,19 +282,19 @@ const ahora = Date.now(), dia = 864e5;
     // 🔒 para CADA día: las filas son tantas como dice la barra (misma fuente), y tocar el mismo día lo cierra
     let hayDia = 0;
     for (let i = 0; i < 7; i++) {
-      R.ctx.retencionDia(i);
+      tocarDia(R,i);
       const h1 = R.el('h-ret-bars').innerHTML, n = num(h1, i), filas = (h1.match(/class="ret-fila"/g) || []).length;
       ok(n === filas, '🔴 R: el día ' + i + ' dice ' + n + ' en la barra y la lista trae ' + filas + ' filas (tienen que ser las mismas)');
       ok((h1.match(/aria-pressed="true"/g) || []).length === 1 && new RegExp('data-ret="' + i + '" aria-pressed="true"').test(h1), '🔴 R: solo la barra tocada (' + i + ') queda marcada');
       if (n === 0) ok(/Nadie entrenó este día/.test(h1), '🔴 R: un día sin nadie dice «Nadie entrenó este día»'); else { hayDia++; ok(new RegExp(_etq() + '[^<]*· ' + n + (n === 1 ? ' entrenó' : ' entrenaron')).test(h1) || /· \d+ entren/.test(h1), 'R: el encabezado dice «Día N · n entrenaron»'); }
-      R.ctx.retencionDia(i);
+      tocarDia(R,i);
       const h2 = R.el('h-ret-bars').innerHTML;
       ok(!/class="ret-fila"/.test(h2) && !/aria-pressed="true"/.test(h2) && /Toca un día/.test(h2), '🔴 R: tocar el MISMO día otra vez lo cierra (día ' + i + ')');
     }
     function _etq() { return '[A-Za-zÁÉÍÓÚáéíóúñ]+ \\d+'; }
     ok(hayDia >= 3, 'R: CONTROL, la prueba recorrió al menos 3 días con gente (' + hayDia + ')');
     // hoy: 3 PERSONAS (4 sesiones): la barra dice 3 y la lista trae 3 filas, una por persona
-    R.ctx.retencionDia(6);
+    tocarDia(R,6);
     const hoyH = R.el('h-ret-bars').innerHTML;
     ok(num(hoyH, 6) === 3 && (hoyH.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: hoy hay 4 sesiones de 3 personas: la barra dice 3 y la lista trae 3 filas (una por PERSONA): barra ' + num(hoyH, 6) + ', filas ' + (hoyH.match(/class="ret-fila"/g) || []).length);
     ok(/Pierna A · Core/.test(hoyH) && /Yo \(tu entreno\)/.test(hoyH) && /Ana Prueba/.test(hoyH) && /Carla Prueba/.test(hoyH), '🔴 R: cada fila lleva el nombre y la(s) rutina(s) del día; el coach sale como «Yo (tu entreno)»');
@@ -307,20 +315,20 @@ const ahora = Date.now(), dia = 864e5;
     R.el('coach-stat-room').classList.remove('on');
     ok(/aria-label="[^"]+ \d+: 3 entrenaron"/.test(hoyH) && /aria-label="[^"]+ \d+: nadie entrenó"/.test(hoyH), '🔴 R: cada barra es un botón con aria-label «Viernes 21: 3 entrenaron» / «…: nadie entrenó»');
     ok(!/<b>Prueba<\/b>/.test(hoyH), 'R: CONTROL, el nombre con HTML se escapa (esc)');
-    R.ctx.retencionDia(5);
+    tocarDia(R,5);
     const ayerH = R.el('h-ret-bars').innerHTML;
     ok(/Beto &lt;b&gt;Prueba&lt;\/b&gt;/.test(ayerH) && /Tirón &lt;i&gt;x&lt;\/i&gt;/.test(ayerH) && !/<i>x<\/i>/.test(ayerH), '🔴 R: nombre y rutina se escapan con esc() (ayer: Beto y su rutina con HTML)');
     ok((ayerH.match(/aria-pressed="true"/g) || []).length === 1 && new RegExp('data-ret="5" aria-pressed="true"').test(ayerH) && (ayerH.match(/class="ret-fila"/g) || []).length === 2, '🔴 R: tocar OTRO día cambia la lista (ayer: 2 personas) y deja marcado solo ese');
     // el reporte de Sesiones usa la MISMA función y se repinta también
-    R.ctx.retencionDia(5);
+    tocarDia(R,5);
     R.ctx.openCoachStat('sesiones');
     const rep = R.el('coach-stat-body').innerHTML;
     ok(/id="ret-rep"/.test(rep) && (rep.match(/class="ret-dia"/g) || []).length === 7 && /Toca un día para ver quién entrenó/.test(rep), '🔴 R: el reporte de Sesiones trae las mismas barras-botón y la pista');
-    R.ctx.retencionDia(6);
+    tocarDia(R,6);
     ok((R.el('ret-rep').innerHTML.match(/class="ret-fila"/g) || []).length === 3 && (R.el('h-ret-bars').innerHTML.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: al tocar un día se repintan LAS DOS pantallas (el Inicio y el reporte)');
     // 🔒 una sesión de alguien que ya NO está en DB.clients no infla la barra ni mete una fila fantasma
     const RF = montar(clientesR, { __history: Object.assign({}, hist, { fantasma: [ses(base + 6000, 'Fantasma')] }) });
-    RF.ctx.renderHome(); RF.ctx.retencionDia(6);
+    RF.ctx.renderHome(); tocarDia(RF,6);
     const hf = RF.el('h-ret-bars').innerHTML;
     ok(num(hf, 6) === 3 && (hf.match(/class="ret-fila"/g) || []).length === 3 && !/Fantasma/.test(hf), '🔴 R: un id que ya no está en DB.clients NO cuenta en la barra ni sale en la lista (hoy: 3 personas): barra ' + num(hf, 6));
     // el día marcado no es de los datos: un montaje nuevo arranca sin ninguno
@@ -329,7 +337,7 @@ const ahora = Date.now(), dia = 864e5;
     ok(!/aria-pressed="true"/.test(R2.el('h-ret-bars').innerHTML), 'R: CONTROL, un Inicio recién abierto no trae ningún día marcado');
     // sin nadie que entrenara (con asesorados): cada día dice «Nadie entrenó este día»
     const R3 = montar([{ id: 'c1', name: 'Ana Prueba', age: 30, payments: [] }], { __history: {} });
-    R3.ctx.renderHome(); R3.ctx.retencionDia(3);
+    R3.ctx.renderHome(); tocarDia(R3,3);
     ok(/Nadie entrenó este día/.test(R3.el('h-ret-bars').innerHTML) && !/class="ret-fila"/.test(R3.el('h-ret-bars').innerHTML), 'R: sin historial, un día marcado dice «Nadie entrenó este día»');
   }
 
@@ -355,10 +363,10 @@ const ahora = Date.now(), dia = 864e5;
     // unión de las personas de las 7 barras (tocando cada día) ÷ DB.clients
     const unionIds = new Set(); let sumaBarras = 0;
     for (let i = 0; i < 7; i++) {
-      S.ctx.retencionDia(i);
+      tocarDia(S,i);
       const h1 = S.el('h-ret-bars').innerHTML;
       (h1.match(/_crepGoDetail\('([^']+)'\)/g) || []).forEach(x => unionIds.add(x.match(/'([^']+)'/)[1]));
-      S.ctx.retencionDia(i);
+      tocarDia(S,i);
     }
     sem.dias.forEach(d => { sumaBarras += d.sesiones; });
     const pctBarras = Math.round(unionIds.size / clientesS.length * 100);
@@ -376,6 +384,51 @@ const ahora = Date.now(), dia = 864e5;
     ok(/Retención semanal · 50% entrenaron esta semana/.test(rep), '🔴 S: el encabezado de Retención del reporte dice 50 %');
     ok(new RegExp('del ' + sem.desde.label.toLowerCase() + ' ' + sem.desde.dia + ' a hoy · 2 asesorados').test(rep) && !/últimos 7 días/.test(rep), '🔴 S: el reporte dice la ventana real («del ' + sem.desde.label.toLowerCase() + ' ' + sem.desde.dia + ' a hoy · 2 asesorados»), no «en los últimos 7 días»');
     ok(/id="h-venc-nota"[^>]*>4\+ días</.test(leer('index.html')), '🔴 S: «Sin entrenar» lleva su nota «4+ días» bajo el número');
+  }
+
+  // ═════ M · v759 · LA MEDIANOCHE: el Inicio abierto al cambiar el día habla de UNA sola semana, y el día tocado se identifica por su FECHA ═════
+  {
+    const RealDate = Date;
+    const fijo = ms => { class F extends RealDate { constructor(...a) { if (a.length === 0) super(ms); else super(...a); } static now() { return ms; } } return F; };
+    const T1 = new RealDate(2026, 10, 24, 23, 59, 58).getTime(), T2 = new RealDate(2026, 10, 25, 0, 0, 2).getTime();
+    const hs = (d, h) => new RealDate(2026, 10, d, h).toISOString();
+    const histM = { a: [{ date: hs(18, 9), routineName: 'Pierna' }], b: [{ date: hs(24, 9), routineName: 'Empuje' }] };
+    try {
+      global.Date = fijo(T1);
+      const Mn = montar([{ id: 'a', name: 'Ana Prueba', payments: [] }, { id: 'b', name: 'Beto Prueba', payments: [] }], { __history: histM, CUR: { loggedAs: 'coach' } });
+      Mn.ctx.Date = global.Date; Mn.ctx.document.visibilityState = 'visible';
+      Mn.ctx.renderHome();
+      const ms18 = Mn.ctx._semanaCoach(new RealDate(T1)).dias[0].ms;   // la barra «Miércoles 18», tal como estaba pintada a las 23:59:58
+      ok(Mn.el('h-ret-label').textContent === '100% entrenaron esta semana' && String(Mn.el('h-sess').textContent) === '2' && /data-ret="0"[^>]*aria-label="Miércoles 18/.test(Mn.el('h-ret-bars').innerHTML), '🔴 M: CONTROL, a las 23:59:58 el Inicio dice 100 %, 2 sesiones y la 1ª barra es el Miércoles 18');
+      // el reloj cruza la medianoche y la persona toca la barra que VE (Miércoles 18)
+      global.Date = fijo(T2); Mn.ctx.Date = global.Date;
+      Mn.ctx.retencionDia(ms18);
+      const h2 = Mn.el('h-ret-bars').innerHTML;
+      ok(Mn.el('h-ret-label').textContent === '50% entrenaron esta semana' && String(Mn.el('h-sess').textContent) === '1', '🔴 M: con el día cambiado, tocar una barra repinta TODAS las cifras con la semana nueva (el % y «Sesiones» seguían con la de ayer): «' + Mn.el('h-ret-label').textContent + '» · ' + Mn.el('h-sess').textContent);
+      ok(!/aria-pressed="true"/.test(h2) && !/ret-fila/.test(h2) && /Toca un día/.test(h2), '🔴 M: el Miércoles 18 ya salió de la ventana: NO se marca ningún día (se marcaba el Jueves 19, que ocupa su lugar)');
+      ok(/data-ret="0"[^>]*aria-label="Jueves 19/.test(h2) && /data-ret="6"[^>]*aria-label="Miércoles 25/.test(h2), 'M: CONTROL, las barras son las de la semana nueva (Jueves 19 a Miércoles 25)');
+      // CONTROL: tocar un día que SÍ sigue en la ventana lo marca por su fecha (Jueves 19 = posición 0 ahora)
+      const ms19 = Mn.ctx._semanaCoach(new RealDate(T2)).dias[0].ms;
+      Mn.ctx.retencionDia(ms19);
+      ok(/data-ret="0" aria-pressed="true"/.test(Mn.el('h-ret-bars').innerHTML) && /Jueves 19 · nadie|Nadie entrenó este día/.test(Mn.el('h-ret-bars').innerHTML), '🔴 M: tocar el Jueves 19 (sigue en la ventana) lo marca por su fecha');
+      Mn.ctx.retencionDia(ms19);
+      ok(!/aria-pressed="true"/.test(Mn.el('h-ret-bars').innerHTML), 'M: CONTROL, tocar la misma fecha otra vez la desmarca');
+      // el reporte de Sesiones ABIERTO al cruzar la medianoche, y la persona vuelve a la app (visibilitychange)
+      global.Date = fijo(T1); Mn.ctx.Date = global.Date;
+      Mn.ctx.renderHome(); Mn.ctx.openCoachStat('sesiones'); Mn.el('coach-stat-room').classList.add('on');
+      ok(/class="sroom-title"[^>]*>2</.test(Mn.el('coach-stat-body').innerHTML), 'M: CONTROL, el reporte de las 23:59:58 dice 2 sesiones');
+      Mn.el('h-sess').textContent = 'VIEJO';   // marca para ver si algo repinta
+      Mn.ctx._semanaAlVolver();
+      ok(Mn.el('h-sess').textContent === 'VIEJO', '🔴 M: al volver a la app con el MISMO día no se repinta nada (no hay por qué)');
+      global.Date = fijo(T2); Mn.ctx.Date = global.Date;
+      Mn.ctx._semanaAlVolver();
+      const rep2 = Mn.el('coach-stat-body').innerHTML;
+      ok(String(Mn.el('h-sess').textContent) === '1' && Mn.el('h-ret-label').textContent === '50% entrenaron esta semana', '🔴 M: al volver a la app con el día cambiado se repintan las cifras del Inicio («' + Mn.el('h-sess').textContent + '», «' + Mn.el('h-ret-label').textContent + '»)');
+      ok(/class="sroom-title"[^>]*>1</.test(rep2) && /del jue 19 a hoy/.test(rep2) && /Retención semanal · 50%/.test(rep2), '🔴 M: y también el reporte de Sesiones abierto (1 sesión, «del jue 19 a hoy», 50 %)');
+      // sin sesión de coach (otra pantalla) no se toca nada
+      Mn.ctx.CUR.loggedAs = 'cliente'; Mn.el('h-sess').textContent = 'VIEJO'; Mn.ctx._semanaAlVolver();
+      ok(Mn.el('h-sess').textContent === 'VIEJO', 'M: CONTROL, fuera del panel del coach no se repinta');
+    } finally { global.Date = RealDate; }
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

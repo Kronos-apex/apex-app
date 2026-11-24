@@ -11,7 +11,7 @@ import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { FIXTURE } from './_fixture-12.mjs';
-import { afirmador, salir, liberarPuerto, cuidarProcesos } from './_afirma.mjs';
+import { afirmador, salir, liberarPuerto, cuidarProcesos, capturaConContenido } from './_afirma.mjs';
 const A = afirmador('retención · caja de barras');
 const PORT = 8893, DBG = 9447;
 const OUT = process.argv[2] || '';
@@ -62,8 +62,7 @@ for (const w of [360, 390]) for (const tema of ['light', 'dark']) for (const fs 
     const dim = await ev(`(()=>{const e=document.scrollingElement; const p=document.getElementById('p-home'); return {h:Math.max(e.scrollHeight, document.body.scrollHeight, (p&&p.scrollHeight)||0)};})()`);
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: Math.min(4000, Math.max(800, Math.ceil(dim.h) + 40)), deviceScaleFactor: 2, mobile: true });
     await sleep(400);
-    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    if (shot.data) writeFileSync(`${OUT}/inicio-${w}-${tema === 'light' ? 'claro' : 'oscuro'}-${fs === 'xl' ? 'letra-grande' : 'normal'}.png`, Buffer.from(shot.data, 'base64'));
+    await capturaConContenido(send, ev, A, `${OUT}/inicio-${w}-${tema === 'light' ? 'claro' : 'oscuro'}-${fs === 'xl' ? 'letra-grande' : 'normal'}.png`, { rearmar: () => send('Emulation.setDeviceMetricsOverride', { width: w, height: Math.min(4000, Math.max(800, Math.ceil(dim.h) + 40)), deviceScaleFactor: 2, mobile: true }) });
   }
 }
 // CONTROL de discriminación: la caja vieja (alto fijo de 60 px) TIENE que verse desbordada

@@ -28694,6 +28694,8 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
     'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /las filas traen su toque/, 'retencion-fila-directa': /CIERRA primero/, 'retencion-sin-filtro': /ya no está en DB\.clients/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
     // v759 · UNA sola semana: el % en otra ventana, «Sesiones semana» sobre todo el historial, el reporte en otra ventana, la frase vieja y la nota de «Sin entrenar»
     'semana-pct-movil': /el % de la tarjeta/, 'semana-sesiones-todo-historial': /«Sesiones semana» \(\d+\) tiene que ser la suma/, 'semana-reporte-otra-ventana': /el reporte \(Sesiones/,
+    // v759 · la medianoche: el reloj cruza el día con el Inicio abierto (tocar una barra, el día tocado por fecha, volver a la app)
+    'medianoche-solo-barras': /repinta TODAS las cifras/, 'medianoche-por-indice': /NO se marca ningún día/, 'medianoche-sin-volver': /al volver a la app con el día cambiado/,
     'semana-texto-viejo': /dice la ventana real/, 'sinentrenar-sin-nota': /lleva su nota «4\+ días»/,
   };
   Object.keys(sab).forEach(k => {
@@ -28885,6 +28887,24 @@ test('🔒 v759 · semanaEntreno usa retentionByDay (misma ventana) y weeklyActi
   // SABOTAJE: la misma función con las 7 barras armadas con la ventana móvil de 7×24 h cuenta a d
   const movil = (h, now, ids) => { const b = rbdReal(h, now, ids); const ref = now.getTime() - 7 * 86400000; Object.keys(h).forEach(id => { if (ids.includes(id) && h[id].some(s => s.date.getTime() >= ref) && !b.some(x => x.people.some(p => p.id === id))) { b[0].people.push({ id, routines: [], sesiones: 1, ultima: 0 }); b[0].sesiones++; } }); return b; };
   assert.deepStrictEqual(armar(fn, movil)(hist, ahora, ['a', 'd']).personas.map(p => p.id).sort(), ['a', 'd'], '🔴 el sabotaje (ventana móvil) no cambia nada: el candado no discrimina');
+});
+
+// 🔒 v759 · la tile de la ficha cuenta desde el LUNES (avance contra el plan, `weekStreak`) y se abre desde el reporte de Sesiones, que cuenta 7 días de
+// calendario: dos cifras con el mismo nombre y distinta ventana se leían como contradicción. La etiqueta dice lo que mide. Con sabotaje y control.
+test('🔒 v759 · la tile de la ficha se llama «Desde el lunes» (no «Esta semana»), con sabotaje y control', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-3-coach.js'), 'utf8'));
+  const i = src.indexOf('const semana=`<div class="dt-tile">'); assert.ok(i > 0, 'no está la tile de la semana en la ficha');
+  const linea = src.slice(i, src.indexOf('\n', i));
+  const etiqueta = l => (l.match(/<span class="dt-k">([^<]*)<\/span>/) || [])[1];
+  assert.strictEqual(etiqueta(linea), 'Desde el lunes', '🔴 la tile que cuenta desde el lunes dejó de decirlo: «' + etiqueta(linea) + '»');
+  // la cuenta de verdad arranca el lunes: la semana de calendario de weekStreak (control de que la etiqueta no miente)
+  const ses = d => ({ date: d, doneSets: 1, totalSets: 1, finishedAt: d });
+  const mar = new Date(2026, 10, 24, 12), lun = new Date(2026, 10, 23, 9), dom = new Date(2026, 10, 22, 9);
+  const r = require('./avi-core.js').detailSummary({ id: 'x', name: 'Ana Prueba', days: 3, routines: [] }, [ses(lun.toISOString()), ses(dom.toISOString())], mar.getTime(), {});
+  assert.strictEqual(r.semana.hechos, 1, 'control: el lunes cuenta y el domingo anterior no (la ventana es desde el lunes, no 7 días)');
+  // SABOTAJE: con la etiqueta vieja la comprobación cae
+  assert.notStrictEqual(etiqueta(linea.replace('Desde el lunes', 'Esta semana')), 'Desde el lunes', '🔴 el sabotaje no cambia nada: el candado no discrimina');
 });
 
 // ══════════════════════════════════════════════════════

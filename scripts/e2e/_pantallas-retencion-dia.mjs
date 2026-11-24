@@ -12,7 +12,7 @@ import WebSocket from 'ws';
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { FIXTURE } from './_fixture-12.mjs';
-import { afirmador, salir, liberarPuerto, cuidarProcesos } from './_afirma.mjs';
+import { afirmador, salir, liberarPuerto, cuidarProcesos, capturaConContenido, pngVacio } from './_afirma.mjs';
 const A = afirmador('retención · tocar un día');
 const PORT = 8894, DBG = 9448;
 const OUT = process.argv[2] || '';
@@ -47,8 +47,13 @@ const SIEMBRA = `(()=>{
     cB:[s(base+3000,'Empuje'),s(base-dia*3.5+5000,'Pierna B')],
     cC:[s(base+4000,'Full body A'),s(base-dia*3.5+7000,'Core')],
     _self:[s(base+5000,'Mi pierna'),s(base-dia*3.5+9000,'Mi espalda')],
-    cD:[s(base-dia*5.5,'Tirón')]
+    cD:[s(base-dia*5.5,'Tirón')],
+    // v759 · datos que DISTINGUEN las dos ventanas: Elena entrenó hace 7 días a las 11 p. m. (dentro de 7×24 h, FUERA de los 7 días de calendario) y
+    // «fantasma» es una llave del historial que ya no está en DB.clients (con 2 sesiones de hoy). Con la lógica de v758 salen 100 % y 13 sesiones.
+    cE:[(()=>{ const d=new Date(); d.setHours(23,0,0,0); d.setDate(d.getDate()-7); return s(+d,'Tirón'); })()],
+    fantasma:[s(base+6000,'Fantasma'),s(base+7000,'Fantasma')]
   };
+  DB.clients.push({id:'cE',name:'Elena Prueba',email:'',goal:'',level:'Intermedio',days:3,payments:[],routines:[]});
   CUR.loggedAs='coach'; showScreen('s-coach'); gp('p-home',document.getElementById('sbi-home'),'Inicio'); renderHome();
   document.querySelectorAll('#install-banner').forEach(b=>{b.style.display='none';b.classList.add('hide');});
   return DB.clients.map(c=>c.name).join('|');
@@ -65,8 +70,15 @@ const SEMANA = `(()=>{ const ids=new Set(); for(let i=0;i<7;i++){ const b=docume
   Object.keys(DB.history).forEach(id=>{ if(!quienes.has(id))return; (DB.history[id]||[]).forEach(x=>{ const t=new Date(x.date); const d0=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime(); if(d0>=ini&&d0<=+hoy0) ses++; }); });
   return { union:ids.size, personas:DB.clients.length, pctEsperado:Math.round(ids.size/DB.clients.length*100), etq:document.getElementById('h-ret-label').textContent, sesEsperado:ses, sess:document.getElementById('h-sess').textContent, marcados:document.querySelectorAll('#h-ret-bars [aria-pressed="true"]').length }; })()`;
 const sem = await ev(SEMANA);
-A.ok(sem.union >= 3 && sem.etq === sem.pctEsperado + '% entrenaron esta semana', 'el % de la tarjeta («' + sem.etq + '») = personas de la unión de las 7 barras ÷ personas (' + sem.union + ' de ' + sem.personas + ')', sem);
-A.ok(sem.sesEsperado >= 5 && String(sem.sess) === String(sem.sesEsperado) && sem.marcados === 0, '«Sesiones semana» (' + sem.sess + ') = la suma de las sesiones de los 7 días', sem);
+// con la siembra de arriba: 5 de 6 personas (83 %) y 11 sesiones; la lógica de v758 daría 100 % y 13
+const juzgaSemana = r => Boolean(r) && r.union === 5 && r.personas === 6 && r.etq === r.pctEsperado + '% entrenaron esta semana' && r.pctEsperado === 83 && r.sesEsperado === 11 && String(r.sess) === String(r.sesEsperado) && r.marcados === 0;
+A.ok(juzgaSemana(sem), 'el % de la tarjeta («' + sem.etq + '») = personas de la unión de las 7 barras ÷ personas (' + sem.union + ' de ' + sem.personas + ') y «Sesiones semana» (' + sem.sess + ') = la suma de las sesiones de los 7 días (' + sem.sesEsperado + ')', sem);
+// CONTROL (v759): con la lógica de v758 metida en vivo (el % en 7×24 h y «Sesiones semana» sobre TODO DB.history) esta misma comprobación TIENE que caer
+await ev(`(()=>{ window.__rhOrig=renderHome; renderHome=function(){ window.__rhOrig(); const ref=Date.now()-7*864e5; const n=DB.clients.filter(c=>(DB.history[c.id]||[]).some(s=>new Date(s.date).getTime()>=ref)).length; document.getElementById('h-ret-label').textContent=Math.round(n/DB.clients.length*100)+'% entrenaron esta semana'; let k=0; Object.values(DB.history).forEach(a=>(a||[]).forEach(s=>{ if(new Date(s.date).getTime()>=ref)k++; })); document.getElementById('h-sess').textContent=k; }; renderHome(); return 'ok'; })()`);
+await sleep(300);
+const semV758 = await ev(SEMANA);
+A.ok(!juzgaSemana(semV758), 'CONTROL: con la lógica de v758 (% en 7×24 h y Sesiones sobre todo el historial) la comprobación cae (' + semV758.etq + ' · ' + semV758.sess + ' sesiones)', semV758);
+await ev(`(()=>{ renderHome=window.__rhOrig; renderHome(); return 'ok'; })()`); await sleep(300);
 const MIDE = `(()=>{ const card=document.getElementById('h-retention-card'), cont=document.getElementById('h-ret-bars'); if(!card||card.style.display==='none')return {err:'sin tarjeta'};
   const ch=card.querySelector('.ch').getBoundingClientRect(), cajaEl=cont.firstElementChild, caja=cajaEl.getBoundingClientRect();
   const bts=[...cajaEl.querySelectorAll('button.ret-dia')];
@@ -100,8 +112,7 @@ for (const w of [360, 390]) for (const tema of ['light', 'dark']) for (const fs 
   A.ok(ver(r1) && r1.marcados === 1 && r1.filas === Number(r1.n6) && r1.filas === 4 && r1.filasH.every(h => h >= 36), `${w}px · ${tema} · ${fs}: con hoy marcado hay ${r1.filas} filas (= el número de la barra, 4 personas, cada una de 36 px o más) y nada se sale del ancho`, r1);
   if (OUT && !(fs === 'xl' && w !== 360)) {
     await altoCompleto(w, '#h-retention-card');
-    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-    if (shot.data) writeFileSync(`${OUT}/inicio-${w}-${tema === 'light' ? 'claro' : 'oscuro'}-${fs === 'xl' ? 'letra-grande' : 'normal'}-dia-marcado.png`, Buffer.from(shot.data, 'base64'));
+    await capturaConContenido(send, ev, A, `${OUT}/inicio-${w}-${tema === 'light' ? 'claro' : 'oscuro'}-${fs === 'xl' ? 'letra-grande' : 'normal'}-dia-marcado.png`, { rearmar: () => altoCompleto(w, '#h-retention-card') });
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: 800, deviceScaleFactor: 2, mobile: true });
   }
   await tocar(6); await sleep(150);   // vuelve a cerrar
@@ -151,9 +162,18 @@ if (!OUT) {
 }
 if (OUT) {
   await altoCompleto(360, '#coach-stat-body');
-  const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
-  if (shot.data) writeFileSync(`${OUT}/reporte-sesiones-360-claro-dia-marcado.png`, Buffer.from(shot.data, 'base64'));
+  await capturaConContenido(send, ev, A, `${OUT}/reporte-sesiones-360-claro-dia-marcado.png`, { rearmar: () => altoCompleto(360, '#coach-stat-body') });
 }
+// CONTROL de las capturas (v759): una captura forzada con la página OCULTA (nada pintado) la sonda TIENE que verla vacía, y una con la página pintada, con contenido
+await ev(`gp('p-home',document.getElementById('sbi-home'),'Inicio'); renderHome(); 'ok'`); await sleep(500);
+const _pintada = await send('Page.captureScreenshot', { format: 'png' });
+A.ok(_pintada.data && !pngVacio(Buffer.from(_pintada.data, 'base64')), 'CONTROL: una captura con la página pintada NO se ve vacía');
+// La captura «sin pintar» se fabrica escondiendo el BODY (queda solo el fondo del documento, como las capturas vacías reales de 16 KB):
+// con `visibility:hidden` en <html> la captura NO salía de un solo color y el control no probaba nada.
+await ev(`document.body.style.display='none'; 'ok'`); await sleep(300);
+const _oculta = await send('Page.captureScreenshot', { format: 'png' });
+A.ok(_oculta.data && pngVacio(Buffer.from(_oculta.data, 'base64')), 'CONTROL: una captura forzada antes de pintar (página oculta) la sonda la ve VACÍA');
+await ev(`document.body.style.display=''; 'ok'`); await sleep(300);
 // CONTROL de discriminación: una barra sin aria-label y una de 20 px TIENEN que verse mal
 await ev(`closeCoachStat(); gp('p-home',document.getElementById('sbi-home'),'Inicio'); renderHome(); (()=>{const b=document.querySelector('#h-ret-bars button.ret-dia'); b.removeAttribute('aria-label'); b.style.minWidth='0'; b.style.width='20px'; b.style.flex='none';})(); 'ok'`); await sleep(300);
 const mala = await ev(MIDE);

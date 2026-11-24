@@ -2371,7 +2371,9 @@ function _entrenaronHoyHTML(now){
 // que abre su ficha por `_crepGoDetail`: con el reporte de Sesiones abierto lo cierra primero (si no, la ficha se abría DEBAJO del reporte y
 // el primer atrás la mostraba y el segundo volvía al Inicio); en el Inicio no hay reporte abierto y es `openDetail`, como Prioritarios). Barra y lista salen de UNA fuente (`retentionByDay`): la fila cuenta
 // lo que dice el número. El día marcado vive aquí (`_retDia`), no en los datos: al cargar no hay ninguno.
-let _retDia=null;
+let _retDia=null;   // v759: la FECHA (medianoche local, en ms) del día marcado, no su posición: la posición cambia al cruzar la medianoche
+let _retPintado=null;   // v759: el día de calendario (medianoche local, ms) de la semana que está PINTADA; si el día cambia, la pantalla habla de otra semana
+let _statKind=null;   // el reporte abierto (para repintarlo si el día cambia con él abierto)
 const _RET_DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 function _retEtq(o){
   return _RET_DIAS[o.dow]+' '+o.dia;
@@ -2393,7 +2395,9 @@ function _retencionBarras(now){
   const sem=_semanaCoach(now), ordered=sem.dias;
   const maxC=Math.max(...ordered.map(o=>o.count),1);
   const pct=Math.round(sem.personas.length/DB.clients.length*100);
-  const marcada=_retDia?ordered.findIndex(o=>o.dow===_retDia.dow&&o.dia===_retDia.dia):-1;
+  _retPintado=localDayStart(now);
+  const marcada=_retDia===null?-1:ordered.findIndex(o=>o.ms===_retDia);
+  if(marcada<0)_retDia=null;   // el día marcado ya salió de la ventana: no se marca ninguno (ni el que ahora ocupa su lugar)
   // v758 · La caja NO lleva alto fijo: antes eran 60 px para una columna de ~82 (número + barra de hasta 52 + etiqueta + sus
   // separaciones), así que el número de la barra más alta se salía por arriba y se montaba sobre el encabezado de la tarjeta
   // (más aún con letra grande). Ahora cada columna es número + SU barra (hasta 52 px) + etiqueta, pegada al fondo, y la caja crece con la
@@ -2404,7 +2408,7 @@ function _retencionBarras(now){
       const h=Math.max(4,Math.round(o.count/maxC*52));
       const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
       const sel=i===marcada;
-      return `<button type="button" class="ret-dia" data-ret="${i}" aria-pressed="${sel}" aria-label="${esc(_retEtq(o)+': '+_retTexto(o))}" onclick="retencionDia(${i})" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;padding:3px;border:0;border-radius:8px;font:inherit;cursor:pointer;color:inherit;background:${sel?'var(--gl)':'transparent'}"><span style="font-size:9px;color:var(--t2)">${o.count||''}</span><span style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></span><span style="font-size:9px;color:${sel?'var(--gt)':'var(--t3)'};font-weight:${sel?700:400}">${o.label}</span></button>`;
+      return `<button type="button" class="ret-dia" data-ret="${i}" aria-pressed="${sel}" aria-label="${esc(_retEtq(o)+': '+_retTexto(o))}" onclick="retencionDia(${o.ms})" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;padding:3px;border:0;border-radius:8px;font:inherit;cursor:pointer;color:inherit;background:${sel?'var(--gl)':'transparent'}"><span style="font-size:9px;color:var(--t2)">${o.count||''}</span><span style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></span><span style="font-size:9px;color:${sel?'var(--gt)':'var(--t3)'};font-weight:${sel?700:400}">${o.label}</span></button>`;
     }).join('')
   }</div>`;
   let lista='';
@@ -2420,30 +2424,50 @@ function _retencionBarras(now){
     }).join('');
     lista=`<div aria-live="polite" style="margin-top:8px"><div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">${o.count===0?'Nadie entrenó este día':esc(_retEtq(o))+' · '+o.count+(o.count===1?' entrenó':' entrenaron')}</div>${filas}</div>`;
   }
-  return {pct,html:barras+lista};
+  return {pct,html:barras+lista,dias:ordered};
 }
 // Tocar una barra: marca ese día; tocar el mismo día otra vez, lo desmarca. Repinta las dos pantallas que usan la tarjeta.
-function retencionDia(i){
-  const o=_semanaCoach(new Date()).dias[i];
-  if(!o)return;
-  _retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};
-  const r=_retencionBarras(new Date()); if(!r)return;
+// v759 · El día tocado se identifica por su FECHA (`ms`, la medianoche local que pintó la barra), no por su posición: si el día de calendario
+// cambió desde que se pintó la pantalla (el Inicio quedó abierto al pasar la medianoche), la posición 0 ya es OTRO día y el toque marcaba
+// el equivocado mientras las cifras de arriba seguían con la semana vieja. Una pantalla habla de UNA sola semana: si el día cambió, se repintan
+// TODAS las cifras (Inicio y reporte abierto) con la fecha nueva y el día tocado solo se marca si todavía está dentro de la ventana.
+function retencionDia(ms){
+  const now=new Date();
+  _retDia=(_retDia===ms)?null:ms;
+  if(_retPintado!==null&&localDayStart(now)!==_retPintado){ _semanaRepintar(); return; }
+  const r=_retencionBarras(now); if(!r)return;
   const b=document.getElementById('h-ret-bars'), rep=document.getElementById('ret-rep');
   if(b)b.innerHTML=r.html;
   if(rep)rep.innerHTML=r.html;
   // el foco vuelve a la barra tocada (el repintado la reemplazó): quien navega con teclado no se pierde
+  const i=r.dias.findIndex(o=>o.ms===ms);
   const donde=(rep&&rep.querySelector&&rep.contains&&rep.contains(document.activeElement))?rep:b;
-  const f=donde&&donde.querySelector&&donde.querySelector('[data-ret="'+i+'"]'); if(f&&f.focus)f.focus();
+  const f=i>=0&&donde&&donde.querySelector&&donde.querySelector('[data-ret="'+i+'"]'); if(f&&f.focus)f.focus();
 }
+// v759 · Repinta TODAS las cifras de la semana (Inicio y, si está abierto, el reporte de Sesiones) con la fecha de ahora, sin perder el scroll del reporte.
+function _semanaRepintar(){
+  renderHome();
+  const room=document.getElementById('coach-stat-room'), body=document.getElementById('coach-stat-body');
+  if(_statKind==='sesiones'&&room&&room.classList.contains('on')&&body){ const y=body.scrollTop; openCoachStat('sesiones'); body.scrollTop=y; }
+}
+// v759 · Quien deja el Inicio abierto toda la noche y vuelve a la app en la mañana: «hoy», las barras y las cifras estaban pintadas con el día de ayer.
+// Al volver a primer plano, si el día de calendario cambió desde el último pintado, se repinta (solo el coach, solo si ya había pintado la semana).
+function _semanaAlVolver(){
+  if(document.visibilityState!=='visible'||_retPintado===null)return;
+  if(typeof CUR==='undefined'||CUR.loggedAs!=='coach')return;
+  if(localDayStart(new Date())!==_retPintado)_semanaRepintar();
+}
+document.addEventListener('visibilitychange',_semanaAlVolver);
 function _retencionHTML(now){
   const r=_retencionBarras(now);
   if(!r)return '';
   return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${r.pct}% entrenaron esta semana</div><div id="ret-rep" style="padding:4px 2px 12px">${r.html}</div>`;
 }
-function closeCoachStat(){ const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
+function closeCoachStat(){ _statKind=null; const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
 function openCoachStat(kind){
   const room=document.getElementById('coach-stat-room'), body=document.getElementById('coach-stat-body'), titleEl=document.getElementById('coach-stat-title');
   if(!room||!body)return;
+  _statKind=kind;
   const now=new Date(), y=now.getFullYear(), mo=now.getMonth();
   const stat=(ic,l,v,c)=>`<div class="sroom-stat" style="--sc:${c}"><div class="sroom-stat-ic">${ic}</div><div class="sroom-stat-v">${esc(String(v))}</div><div class="sroom-stat-l">${esc(l)}</div></div>`;
   const empty=(ic,txt)=>`<div class="crep-empty"><div class="crep-empty-ic">${ic}</div>${txt}</div>`;

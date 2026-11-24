@@ -16,7 +16,8 @@
 //   ...tras el setup:      await afirmaPantalla(ev, A, { nombre:'claro', sel:'#cn-routines' });
 //   al final:              salir(A, { chrome, srv, out: OUT });   // exit 1 si algo falló
 
-import { statSync } from 'node:fs';
+import { statSync, writeFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { execSync } from 'node:child_process';
 
 // 🔴 En Windows `proc.kill()` mata solo el proceso que se lanzó: `python -m http.server` es un lanzador que
@@ -106,6 +107,39 @@ export function afirmaCaptura(A, ruta, minKB = 8) {
   try { kb = Math.round(statSync(ruta).size / 1024); } catch { kb = 0; }
   A.ok(kb >= minKB, `captura ${ruta.split(/[\\/]/).pop()} tiene contenido (${kb} KB ≥ ${minKB})`, kb);
   return kb;
+}
+
+
+// v759 · ¿El PNG está VACÍO? (la captura de página completa sin GPU a veces sale como un solo color y pesa 15 KB: `afirmaCaptura` la deja pasar con su
+// piso de 8 KB). Se mira el CONTENIDO: se descomprimen los datos de imagen y se cuentan los valores distintos; un solo color casi no tiene ninguno.
+export function pngVacio(buf) {
+  try {
+    const partes = []; let o = 8;
+    while (o + 8 <= buf.length) { const n = buf.readUInt32BE(o), t = buf.toString('latin1', o + 4, o + 8); if (t === 'IDAT') partes.push(buf.subarray(o + 8, o + 8 + n)); o += 12 + n; }
+    if (!partes.length) return true;
+    const crudo = inflateSync(Buffer.concat(partes)); const vistos = new Set();
+    for (let i = 0; i < crudo.length && vistos.size < 64; i += 7) vistos.add(crudo[i]);
+    return vistos.size < 32;
+  } catch { return true; }
+}
+
+// v759 · Captura de página completa que ESPERA a que se pinte y COMPRUEBA que la imagen trae contenido. Reintenta (esperando más, y alternando
+// `captureBeyondViewport`); si sigue vacía, FALLA con mensaje en vez de guardar una foto en blanco. `rearmar` vuelve a poner el tamaño de ventana.
+export async function capturaConContenido(send, ev, A, ruta, { intentos = 5, rearmar } = {}) {
+  const dorm = ms => new Promise(r => setTimeout(r, ms));
+  const nombre = ruta.split(/[\/]/).pop();
+  for (let i = 0; i < intentos; i++) {
+    await ev(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(r,150))))`);
+    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: i % 2 === 0 });
+    if (shot && shot.data) {
+      const buf = Buffer.from(shot.data, 'base64');
+      if (!pngVacio(buf)) { writeFileSync(ruta, buf); A.ok(true, `captura ${nombre} con contenido (${Math.round(buf.length / 1024)} KB, intento ${i + 1})`); return true; }
+    }
+    if (rearmar) await rearmar(i);
+    await dorm(500 * (i + 1));
+  }
+  A.ok(false, `la captura ${nombre} salió VACÍA tras ${intentos} intentos (no se guardó)`);
+  return false;
 }
 
 // Veredicto + salida. SIN esto los harnesses terminaban siempre en 0.

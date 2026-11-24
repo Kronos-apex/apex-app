@@ -4347,7 +4347,7 @@ function localDayStart(d) {
 
 // Barras de retención: cuenta PERSONAS por DÍA DE CALENDARIO real en los últimos 7 días (v758: antes contaba sesiones, y la
 // lista «quién entrenó» de cada día —una fila por persona— no cuadraba con el número de la barra cuando alguien hacía 2 entrenos).
-// Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, dow, dia, count, sesiones, people:[{id, routines, sesiones, ultima}]}].
+// Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{ms, label, dow, dia, count, sesiones, people:[{id, routines, sesiones, ultima}]}]; `ms` = la medianoche local de ese día (la FECHA que lo identifica).
 // `count` = people.length; `sesiones` = cuántas sesiones hubo ese día (una persona con 2 entrenos suma 1 a `count` y 2 a `sesiones`).
 // `clientIds` (opcional) limita a las personas que existen: así la barra y la lista de cada día hablan de la misma gente.
 // v759 · TODAS las cifras «de la semana» (el %, «Sesiones semana», el reporte) salen de `semanaEntreno`, que se construye SOBRE esta
@@ -4360,7 +4360,7 @@ function retentionByDay(history, now, clientIds) {
   const solo = clientIds ? new Set(clientIds) : null;
   const bars = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startToday - (6 - i) * MS_DAY);
-    return { label: _DOW[d.getDay()], dow: d.getDay(), dia: d.getDate(), count: 0, sesiones: 0, people: [] };
+    return { ms: localDayStart(d), label: _DOW[d.getDay()], dow: d.getDay(), dia: d.getDate(), count: 0, sesiones: 0, people: [] };
   });
   Object.keys(history || {}).forEach(id => {
     if (solo && !solo.has(id)) return;

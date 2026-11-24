@@ -2329,7 +2329,9 @@ function renderDetailSummary(c){
   const _pesados=!(typeof AUTH_MODE!=='undefined'&&AUTH_MODE)||!!_heavyLoaded[c.id];
   const s=detailSummary(c,DB.history[c.id]||[],Date.now(),{choque:_detailVisible('d-shock'),comida:(_pesados&&_detailVisible('d-nutreview'))?((_nr&&_nr.dataset.rev)||'revisar'):null,
     lead:clientPlan(c)!=='coach'&&_leadPending(c)});
-  const semana=`<div class="dt-tile"><span class="dt-k">Esta semana</span><span class="dt-v">${esc(s.semana.titulo)}</span><span class="dt-s">Último: ${esc(s.semana.ultimo)}</span></div>`;
+  // v759 · La tile cuenta desde el LUNES (el avance contra el plan de la semana: `weekStreak`), no los últimos 7 días del reporte de Sesiones, que se abre desde aquí;
+  // por eso dice «Desde el lunes» y no «Esta semana»: dos cifras con el mismo nombre y distinta ventana se leían como una contradicción.
+  const semana=`<div class="dt-tile"><span class="dt-k">Desde el lunes</span><span class="dt-v">${esc(s.semana.titulo)}</span><span class="dt-s">Último: ${esc(s.semana.ultimo)}</span></div>`;
   const plan=s.plan?`<button class="dt-tile" onclick="detailTab('pagos')"><span class="dt-k">Plan</span><span class="dt-v">${esc(s.plan.etiqueta)}</span><span class="dt-s">${esc(s.plan.detalle)}</span></button>`:'';
   const rev=s.revisar.length
     ? s.revisar.map(r=>`<button class="dt-rev-row" onclick="detailTab('${r.tab}')"><span style="flex:1;min-width:0">${esc(r.texto)}</span><span class="dt-go">${_DT_NOMBRE[r.tab]} ›</span></button>`).join('')
