@@ -28780,6 +28780,26 @@ testPesado('🔒 24-nov · el arnés de la tienda no depende de la hora del día
   } finally { try { fs.unlinkSync(tmp); } catch (e) {} }
 });
 
+// 🔴 v758 · el número de la barra más alta de «Retención semanal» se montaba sobre el título: la caja medía 60 px y la columna ~82
+// (número 9 px + 3 + barra hasta 52 + 3 + etiqueta). Candado: la caja NO tiene alto fijo y la barra vive en una ranura de su mismo máximo.
+test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DENTRO de su caja (sin alto fijo, barra en una ranura de su máximo)', () => {
+  const fs = require('fs'), path = require('path');
+  const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
+  const ini = src.indexOf('function _retencionBarras(now){');
+  assert.ok(ini > 0, 'no está _retencionBarras');
+  const f = src.slice(ini, src.indexOf('function _retencionHTML', ini));
+  const caja = f.match(/const html=`<div style="([^"]*)">/);
+  assert.ok(caja, '🔴 no se encontró la caja de las barras');
+  assert.ok(!/height\s*:/.test(caja[1]), '🔴 la caja de la Retención tiene alto fijo («' + caja[1] + '»): la columna (número + barra + etiqueta) es más alta y el número se sale por arriba, sobre el título');
+  const ranura = f.match(/<div style="height:(\d+)px;width:100%;display:flex;align-items:flex-end"><div style="height:\$\{h\}px/);
+  const tope = f.match(/Math\.round\(o\.count\/maxC\*(\d+)\)/);
+  assert.ok(ranura && tope && ranura[1] === tope[1], '🔴 la ranura de la barra no mide lo mismo que su máximo (ranura ' + (ranura && ranura[1]) + ', máximo ' + (tope && tope[1]) + '): la barra más alta se sale de su ranura');
+  // CONTROL: la sonda ve el defecto de antes (caja de 60 px) y deja pasar la caja sana
+  const vieja = '<div style="display:flex;align-items:flex-end;gap:6px;height:60px">'.match(/style="([^"]*)"/)[1];
+  assert.ok(/height\s*:/.test(vieja), 'control: la sonda no ve el alto fijo de 60 px');
+  assert.ok(!/height\s*:/.test('display:flex;align-items:flex-end;gap:6px'), 'control: la caja sana no debería dar alto fijo');
+});
+
 // ══════════════════════════════════════════════════════
 // RESUMEN
 // ══════════════════════════════════════════════════════

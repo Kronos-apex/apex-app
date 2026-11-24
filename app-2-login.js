@@ -2375,11 +2375,14 @@ function _retencionBarras(now){
   const maxC=Math.max(...ordered.map(o=>o.count),1);
   const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
   const pct=Math.round(totalEnt/DB.clients.length*100);
-  const html=`<div style="display:flex;align-items:flex-end;gap:6px;height:60px">${
+  // v758 · La caja NO lleva alto fijo: antes eran 60 px para una columna de ~82 (número + barra de hasta 52 + etiqueta + sus
+  // separaciones), así que el número de la barra más alta se salía por arriba y se montaba sobre el encabezado de la tarjeta
+  // (más aún con letra grande). La barra vive en una ranura de 52 px (su máximo) y la caja crece con lo que lleva dentro.
+  const html=`<div style="display:flex;align-items:flex-end;gap:6px">${
     ordered.map(o=>{
       const h=Math.max(4,Math.round(o.count/maxC*52));
       const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${o.count||''}</div><div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></div><div style="font-size:9px;color:var(--t3)">${o.label}</div></div>`;
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${o.count||''}</div><div style="height:52px;width:100%;display:flex;align-items:flex-end"><div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></div></div><div style="font-size:9px;color:var(--t3)">${o.label}</div></div>`;
     }).join('')
   }</div>`;
   return {pct,html};
