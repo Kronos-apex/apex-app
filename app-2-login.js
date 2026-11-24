@@ -2394,13 +2394,15 @@ function _retencionBarras(now){
   const marcada=_retDia?ordered.findIndex(o=>o.dow===_retDia.dow&&o.dia===_retDia.dia):-1;
   // v758 · La caja NO lleva alto fijo: antes eran 60 px para una columna de ~82 (número + barra de hasta 52 + etiqueta + sus
   // separaciones), así que el número de la barra más alta se salía por arriba y se montaba sobre el encabezado de la tarjeta
-  // (más aún con letra grande). La barra vive en una ranura de 52 px (su máximo) y la caja crece con lo que lleva dentro.
-  const barras=`<div style="display:flex;align-items:flex-end">${
+  // (más aún con letra grande). Ahora cada columna es número + SU barra (hasta 52 px) + etiqueta, pegada al fondo, y la caja crece con la
+  // columna más alta (la barra máxima MÁS su número): el número va siempre a 3 px de su barra, no flotando sobre un hueco fijo; las
+  // columnas se estiran a la misma altura para que el área táctil de cada barra sea la misma (36 px o más).
+  const barras=`<div style="display:flex;align-items:stretch">${
     ordered.map((o,i)=>{
       const h=Math.max(4,Math.round(o.count/maxC*52));
       const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
       const sel=i===marcada;
-      return `<button type="button" class="ret-dia" data-ret="${i}" aria-pressed="${sel}" aria-label="${esc(_retEtq(o)+': '+_retTexto(o))}" onclick="retencionDia(${i})" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px;border:0;border-radius:8px;font:inherit;cursor:pointer;color:inherit;background:${sel?'var(--gl)':'transparent'}"><span style="font-size:9px;color:var(--t2)">${o.count||''}</span><span style="height:52px;width:100%;display:flex;align-items:flex-end"><span style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></span></span><span style="font-size:9px;color:${sel?'var(--gt)':'var(--t3)'};font-weight:${sel?700:400}">${o.label}</span></button>`;
+      return `<button type="button" class="ret-dia" data-ret="${i}" aria-pressed="${sel}" aria-label="${esc(_retEtq(o)+': '+_retTexto(o))}" onclick="retencionDia(${i})" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;padding:3px;border:0;border-radius:8px;font:inherit;cursor:pointer;color:inherit;background:${sel?'var(--gl)':'transparent'}"><span style="font-size:9px;color:var(--t2)">${o.count||''}</span><span style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></span><span style="font-size:9px;color:${sel?'var(--gt)':'var(--t3)'};font-weight:${sel?700:400}">${o.label}</span></button>`;
     }).join('')
   }</div>`;
   let lista='';

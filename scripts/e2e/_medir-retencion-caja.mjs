@@ -41,18 +41,22 @@ await ev(`(()=>{CUR.loggedAs='coach';showScreen('s-coach');gp('p-home',document.
 await sleep(600);
 const MIDE = `(()=>{ const card=document.getElementById('h-retention-card'), cont=document.getElementById('h-ret-bars'); if(!card||card.style.display==='none')return {err:'sin tarjeta'};
   const ch=card.querySelector('.ch').getBoundingClientRect(), caja=cont.firstElementChild.getBoundingClientRect();
-  const nums=[...cont.firstElementChild.children].map(c=>c.children[0]).filter(n=>n.textContent.trim());
+  const cols=[...cont.firstElementChild.children]; const nums=cols.map(c=>c.children[0]).filter(n=>n.textContent.trim());
   const altos=nums.map(n=>({t:n.textContent, top:n.getBoundingClientRect().top, bottom:n.getBoundingClientRect().bottom}));
   const maxN=Math.min(...altos.map(a=>a.top));
-  const barras=[...cont.firstElementChild.children].map(c=>c.children[1]); const fuera=barras.filter(s=>s.firstElementChild.getBoundingClientRect().top < s.getBoundingClientRect().top-0.5).length;
-  return {cajaTop:Math.round(caja.top*10)/10, cajaH:Math.round(caja.height*10)/10, chBottom:Math.round(ch.bottom*10)/10, numTop:Math.round(maxN*10)/10, hay: nums.length, barrasFuera: fuera}; })()`;
-const ver = (r) => !r.err && r.hay >= 1 && r.numTop >= r.cajaTop - 0.5 && r.numTop >= r.chBottom - 0.5 && r.barrasFuera === 0;
+  // el número va JUSTO encima de SU barra: distancia entre la base del número y el tope de su barra (debe ser ~3 px, nunca decenas)
+  const gaps=cols.filter(c=>c.children[0].textContent.trim()).map(c=>Math.round((c.children[1].getBoundingClientRect().top-c.children[0].getBoundingClientRect().bottom)*10)/10);
+  const gapMax=gaps.length?Math.max(...gaps):-1, gapMin=gaps.length?Math.min(...gaps):-1;
+  const barMax=Math.max(...cols.map(c=>c.children[1].getBoundingClientRect().height));   // la barra más alta mide 52 px: una caja de alto fijo la APRIETA
+  const fuera=cols.filter(c=>c.children[1].getBoundingClientRect().top < caja.top-0.5 || c.children[1].getBoundingClientRect().bottom > caja.bottom+0.5).length;
+  return {cajaTop:Math.round(caja.top*10)/10, cajaH:Math.round(caja.height*10)/10, chBottom:Math.round(ch.bottom*10)/10, numTop:Math.round(maxN*10)/10, hay: nums.length, barrasFuera: fuera, gapMin, gapMax, barMax: Math.round(barMax*10)/10}; })()`;
+const ver = (r) => !r.err && r.hay >= 1 && r.numTop >= r.cajaTop - 0.5 && r.numTop >= r.chBottom - 0.5 && r.barrasFuera === 0 && r.gapMax <= 6 && r.gapMin >= 0 && r.barMax >= 51.5;
 for (const w of [360, 390]) for (const tema of ['light', 'dark']) for (const fs of ['normal', 'xl']) {
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: 800, deviceScaleFactor: 2, mobile: true });
   await ev(`setTheme('${tema}'); applyTextSize('${fs}'); renderHome(); document.querySelectorAll('#install-banner').forEach(b=>{b.style.display='none';b.classList.add('hide');}); 'ok'`);
   await sleep(500);
   const r = await ev(MIDE);
-  A.ok(ver(r), `${w}px · ${tema} · letra ${fs}: el número queda dentro de la caja y bajo el encabezado`, r);
+  A.ok(ver(r), `${w}px · ${tema} · letra ${fs}: el número queda dentro de la caja, bajo el encabezado y a ≤6 px de SU barra`, r);
   if (OUT) {
     // PÁGINA COMPLETA: se mide el alto real del documento del panel y se captura más allá del viewport
     const dim = await ev(`(()=>{const e=document.scrollingElement; const p=document.getElementById('p-home'); return {h:Math.max(e.scrollHeight, document.body.scrollHeight, (p&&p.scrollHeight)||0)};})()`);

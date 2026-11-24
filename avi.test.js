@@ -28793,7 +28793,7 @@ testPesado('🔒 24-nov · el arnés de la tienda no depende de la hora del día
 
 // 🔴 v758 · el número de la barra más alta de «Retención semanal» se montaba sobre el título: la caja medía 60 px y la columna ~82
 // (número 9 px + 3 + barra hasta 52 + 3 + etiqueta). Candado: la caja NO tiene alto fijo y la barra vive en una ranura de su mismo máximo.
-test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DENTRO de su caja (sin alto fijo, barra en una ranura de su máximo)', () => {
+test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DENTRO de su caja y va pegado a SU barra (sin alto fijo ni ranura fija)', () => {
   const fs = require('fs'), path = require('path');
   const src = sinComentarios(fs.readFileSync(path.join(__dirname, 'app-2-login.js'), 'utf8'));
   const ini = src.indexOf('function _retencionBarras(now){');
@@ -28802,9 +28802,11 @@ test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DEN
   const caja = f.match(/const barras=`<div style="([^"]*)">/);
   assert.ok(caja, '🔴 no se encontró la caja de las barras');
   assert.ok(!/height\s*:/.test(caja[1]), '🔴 la caja de la Retención tiene alto fijo («' + caja[1] + '»): la columna (número + barra + etiqueta) es más alta y el número se sale por arriba, sobre el título');
-  const ranura = f.match(/<span style="height:(\d+)px;width:100%;display:flex;align-items:flex-end"><span style="height:\$\{h\}px/);
-  const tope = f.match(/Math\.round\(o\.count\/maxC\*(\d+)\)/);
-  assert.ok(ranura && tope && ranura[1] === tope[1], '🔴 la ranura de la barra no mide lo mismo que su máximo (ranura ' + (ranura && ranura[1]) + ', máximo ' + (tope && tope[1]) + '): la barra más alta se sale de su ranura');
+  // el número va JUSTO encima de SU barra (sin una ranura de alto fijo que lo deje flotando lejos de una barra baja), y la columna estira
+  assert.ok(!/height:52px/.test(f), '🔴 hay una ranura de 52 px: el número flota arriba del todo y la barra baja queda lejos de él');
+  assert.ok(/<span style="font-size:9px;color:var\(--t2\)">\$\{o\.count\|\|''\}<\/span><span style="height:\$\{h\}px/.test(f), '🔴 el número no está pegado a su barra (el número y la barra tienen que ser hermanos seguidos)');
+  assert.ok(/Math\.round\(o\.count\/maxC\*52\)/.test(f), '🔴 la barra máxima ya no mide 52 px');
+  assert.ok(/const barras=`<div style="[^"]*align-items:stretch/.test(f) && /flex-direction:column;justify-content:flex-end/.test(f), '🔴 las columnas no se estiran a la misma altura y pegadas al fondo (el área táctil de una barra baja se encoge)');
   // CONTROL: la sonda ve el defecto de antes (caja de 60 px) y deja pasar la caja sana
   const vieja = '<div style="display:flex;align-items:flex-end;gap:6px;height:60px">'.match(/style="([^"]*)"/)[1];
   assert.ok(/height\s*:/.test(vieja), 'control: la sonda no ve el alto fijo de 60 px');
