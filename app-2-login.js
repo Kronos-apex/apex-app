@@ -2369,28 +2369,71 @@ function _entrenaronHoyHTML(now){
 // v757 · UNA sola función arma las barras de la retención: el Inicio (tarjeta bajo las 4 cifras) y el reporte «Sesiones semana»
 // la usan las dos. Cuenta a TODOS los de DB.clients, el coach (`_self`) incluido: es la regla de siempre (lo pidió el PO).
 // Sin asesorados devuelve null (no hay a quién medir) y cada sitio decide: el Inicio oculta la tarjeta, el reporte no pinta nada.
+// v758 · Cada barra es un botón: al tocarla se marca y DEBAJO sale quién entrenó ese día (una fila por PERSONA, con su rutina y un ›
+// que abre su ficha con la misma `openDetail` de Prioritarios). Barra y lista salen de UNA fuente (`retentionByDay`): la fila cuenta
+// lo que dice el número. El día marcado vive aquí (`_retDia`), no en los datos: al cargar no hay ninguno.
+let _retDia=null;
+const _RET_DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+function _retEtq(o){
+  return _RET_DIAS[o.dow]+' '+o.dia;
+}
+function _retTexto(o){
+  return o.count===0?'nadie entrenó':o.count+(o.count===1?' entrenó':' entrenaron');
+}
+// La ÚNICA llamada a retentionByDay: las barras, la lista de cada día y el toque de una barra salen de aquí.
+function _retencionDias(now){
+  return retentionByDay(DB.history,now,DB.clients.map(c=>c.id));
+}
 function _retencionBarras(now){
   if(!DB.clients.length)return null;
-  const ordered=retentionByDay(DB.history,now);
+  const ordered=_retencionDias(now);
   const maxC=Math.max(...ordered.map(o=>o.count),1);
   const totalEnt=weeklyActiveCount(DB.history,now,DB.clients.map(c=>c.id));
   const pct=Math.round(totalEnt/DB.clients.length*100);
+  const marcada=_retDia?ordered.findIndex(o=>o.dow===_retDia.dow&&o.dia===_retDia.dia):-1;
   // v758 · La caja NO lleva alto fijo: antes eran 60 px para una columna de ~82 (número + barra de hasta 52 + etiqueta + sus
   // separaciones), así que el número de la barra más alta se salía por arriba y se montaba sobre el encabezado de la tarjeta
   // (más aún con letra grande). La barra vive en una ranura de 52 px (su máximo) y la caja crece con lo que lleva dentro.
-  const html=`<div style="display:flex;align-items:flex-end;gap:6px">${
-    ordered.map(o=>{
+  const barras=`<div style="display:flex;align-items:flex-end">${
+    ordered.map((o,i)=>{
       const h=Math.max(4,Math.round(o.count/maxC*52));
       const col=o.count===0?'var(--br2)':o.count<2?'var(--bll)':o.count<4?'var(--bl)':'var(--g)';
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:9px;color:var(--t2)">${o.count||''}</div><div style="height:52px;width:100%;display:flex;align-items:flex-end"><div style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></div></div><div style="font-size:9px;color:var(--t3)">${o.label}</div></div>`;
+      const sel=i===marcada;
+      return `<button type="button" class="ret-dia" data-ret="${i}" aria-pressed="${sel}" aria-label="${esc(_retEtq(o)+': '+_retTexto(o))}" onclick="retencionDia(${i})" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px;border:0;border-radius:8px;font:inherit;cursor:pointer;color:inherit;background:${sel?'var(--gl)':'transparent'}"><span style="font-size:9px;color:var(--t2)">${o.count||''}</span><span style="height:52px;width:100%;display:flex;align-items:flex-end"><span style="height:${h}px;width:100%;background:${col};border-radius:4px 4px 0 0"></span></span><span style="font-size:9px;color:${sel?'var(--gt)':'var(--t3)'};font-weight:${sel?700:400}">${o.label}</span></button>`;
     }).join('')
   }</div>`;
-  return {pct,html};
+  let lista='';
+  if(marcada<0){
+    lista=`<div style="font-size:11px;color:var(--t3);text-align:center;margin-top:6px">Toca un día para ver quién entrenó</div>`;
+  }else{
+    const o=ordered[marcada];
+    const filas=o.people.map(p=>{
+      const c=DB.clients.find(x=>x.id===p.id)||{};
+      const nombre=(typeof isSelfClient==='function'&&isSelfClient(c))?'Yo (tu entreno)':(c.name||'Sin nombre');
+      const rut=p.routines.length?p.routines.join(' · '):'Entrenó';
+      return `<button type="button" class="ret-fila" onclick="openDetail('${esc(String(p.id))}')" style="display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:8px 4px;border:0;border-top:1px solid var(--br);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-size:13px;font-weight:600;color:var(--t1)">${esc(nombre)}</span><span style="display:block;font-size:12px;color:var(--t2)">${esc(rut)}</span></span><span aria-hidden="true" style="color:var(--t3);font-size:18px">›</span></button>`;
+    }).join('');
+    lista=`<div aria-live="polite" style="margin-top:8px"><div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">${o.count===0?'Nadie entrenó este día':esc(_retEtq(o))+' · '+o.count+(o.count===1?' entrenó':' entrenaron')}</div>${filas}</div>`;
+  }
+  return {pct,html:barras+lista};
+}
+// Tocar una barra: marca ese día; tocar el mismo día otra vez, lo desmarca. Repinta las dos pantallas que usan la tarjeta.
+function retencionDia(i){
+  const o=_retencionDias(new Date())[i];
+  if(!o)return;
+  _retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};
+  const r=_retencionBarras(new Date()); if(!r)return;
+  const b=document.getElementById('h-ret-bars'), rep=document.getElementById('ret-rep');
+  if(b)b.innerHTML=r.html;
+  if(rep)rep.innerHTML=r.html;
+  // el foco vuelve a la barra tocada (el repintado la reemplazó): quien navega con teclado no se pierde
+  const donde=(rep&&rep.querySelector&&rep.contains&&rep.contains(document.activeElement))?rep:b;
+  const f=donde&&donde.querySelector&&donde.querySelector('[data-ret="'+i+'"]'); if(f&&f.focus)f.focus();
 }
 function _retencionHTML(now){
   const r=_retencionBarras(now);
   if(!r)return '';
-  return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${r.pct}% entrenaron esta semana</div><div style="padding:4px 2px 12px">${r.html}</div>`;
+  return `<div class="sroom-sec" style="margin-top:14px">Retención semanal · ${r.pct}% entrenaron esta semana</div><div id="ret-rep" style="padding:4px 2px 12px">${r.html}</div>`;
 }
 function closeCoachStat(){ const r=document.getElementById('coach-stat-room'); if(r)r.classList.remove('on'); _syncRoomBodyClass(); }
 function openCoachStat(kind){

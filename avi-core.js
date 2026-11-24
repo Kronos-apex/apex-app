@@ -4345,21 +4345,29 @@ function localDayStart(d) {
   return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
 }
 
-// Barras de retención: cuenta sesiones por DÍA DE CALENDARIO real en los últimos
-// 7 días. Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, count}].
+// Barras de retención: cuenta PERSONAS por DÍA DE CALENDARIO real en los últimos 7 días (v758: antes contaba sesiones, y la
+// lista «quién entrenó» de cada día —una fila por persona— no cuadraba con el número de la barra cuando alguien hacía 2 entrenos).
+// Devuelve 7 entradas de hace 6 días (i=0) a hoy (i=6): [{label, dow, dia, count, people:[{id, routines}]}]. `count` = people.length.
+// `clientIds` (opcional) limita a las personas que existen: así la barra, la lista y el % de la tarjeta hablan de la misma gente.
 // CLAVE: agrupa por fecha local, NO por getDay() — si agrupara por día de la
 // semana, las sesiones del mismo día de la semana pasada caerían en la columna
 // de "hoy" y mostrarían entrenos fantasma (bug real, 2026-06-02).
-function retentionByDay(history, now) {
+function retentionByDay(history, now, clientIds) {
   const startToday = localDayStart(now || new Date());
+  const solo = clientIds ? new Set(clientIds) : null;
   const bars = Array.from({ length: 7 }, (_, i) => {
-    const di = new Date(startToday - (6 - i) * MS_DAY).getDay();
-    return { label: _DOW[di], count: 0 };
+    const d = new Date(startToday - (6 - i) * MS_DAY);
+    return { label: _DOW[d.getDay()], dow: d.getDay(), dia: d.getDate(), count: 0, people: [] };
   });
-  Object.values(history || {}).forEach(arr => {
-    (arr || []).forEach(s => {
+  Object.keys(history || {}).forEach(id => {
+    if (solo && !solo.has(id)) return;
+    ((history || {})[id] || []).forEach(s => {
       const idx = 6 - Math.round((startToday - localDayStart(s.date)) / MS_DAY);
-      if (idx >= 0 && idx <= 6) bars[idx].count++;
+      if (!(idx >= 0 && idx <= 6)) return;
+      let p = bars[idx].people.find(x => x.id === id);
+      if (!p) { p = { id, routines: [] }; bars[idx].people.push(p); bars[idx].count++; }
+      const rn = s.routineName || s.name;
+      if (rn && !p.routines.includes(rn)) p.routines.push(rn);
     });
   });
   return bars;

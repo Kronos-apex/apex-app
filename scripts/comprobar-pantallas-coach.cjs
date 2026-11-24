@@ -40,6 +40,16 @@ const SABOTAJES = {
   // v757 · la tarjeta de retención queda DEBAJO de Pendientes (fuera de su lugar)
   'retencion-fuera-de-lugar': { 'index.html': [[TARJ_RET, ""], [PEND_DIV, PEND_DIV + TARJ_RET]] },
   // v757 · el Inicio arma las barras por su cuenta (no usa la función compartida con el reporte)
+  // v758 · la lista de quién entrenó cuenta SESIONES (una fila por sesión) en vez de personas
+  'retencion-lista-por-sesion': { 'app-2-login.js': [["const filas=o.people.map(p=>{", "const filas=Object.keys(DB.history).reduce((a,id)=>a.concat((DB.history[id]||[]).filter(s=>retentionByDay({[id]:[s]},now,null)[marcada].count>0).map(s=>({id,routines:[s.routineName]}))),[]).map(p=>{"]] },
+  // v758 · la lista sale de OTRA fuente: siempre la gente de hoy, no la del día marcado
+  'retencion-lista-otra-fuente': { 'app-2-login.js': [["const filas=o.people.map(p=>{", "const filas=ordered[6].people.map(p=>{"]] },
+  // v758 · tocar el mismo día otra vez NO lo cierra
+  'retencion-no-cierra': { 'app-2-login.js': [["_retDia=(_retDia&&_retDia.dow===o.dow&&_retDia.dia===o.dia)?null:{dow:o.dow,dia:o.dia};", "_retDia={dow:o.dow,dia:o.dia};"]] },
+  // v758 · la fila no abre la ficha
+  'retencion-fila-muerta': { 'app-2-login.js': [["onclick=\"openDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
+  // v758 · el nombre del coach sale como un asesorado más
+  'retencion-yo-sin-etiqueta': { 'app-2-login.js': [["?'Yo (tu entreno)':(c.name||'Sin nombre')", "?(c.name||'Sin nombre'):(c.name||'Sin nombre')"]] },
   'inicio-barras-propias': { 'app-2-login.js': [["    const _ret=_retencionBarras(now);\n", "    const _ret={pct:0,html:'<i></i>'};\n"]] },
 };
 const sab = SAB ? (SABOTAJES[SAB] || (() => { throw new Error('sabotaje desconocido: ' + SAB); })()) : {};
@@ -64,8 +74,8 @@ function montar(clients, extra) {
     _coachClears: () => ({}), _newSeen: () => ({}), gp: (id) => { ctx.__gp = id; }, whatsappReminder() {}, openCoachChat: id => { ctx.__chat = id; }, openMyTraining() {}, newAccountOpen() {}, _pulseGo() {},
     openCoachNote() {}, tiendaRenderHome: () => { ctx.__tiendaHome = true; }, painCareActive: a => a, COACH_OWN_ROW: null,
   }, extra || {}));
-  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionBarras(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
-  vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\n', ctx);
+  const nombres = ['function esc(s){', 'function _crepAv(', 'function _crepRow(', 'function _crepHero(', 'function _dueMs(', 'function openCoachStat(', 'function _entrenaronHoyHTML(', 'function _retencionDias(', 'function _retEtq(', 'function _retTexto(', 'function _retencionBarras(', 'function retencionDia(', 'function _retencionHTML(', 'function _pendDolorPropio(', 'function _pendDatos(', 'function renderPendientes(', 'function pendMasToggle(', 'function pendIr(', 'function pendDescartar(', 'function dismissPulse(', 'function renderHome('];
+  vm.runInContext(nombres.map(n => sacar(login, n)).join('\n') + '\nlet _pendAbierto=false, _pendItems=[];\nlet _retDia=null; const _RET_DIAS=[\'Domingo\',\'Lunes\',\'Martes\',\'Miércoles\',\'Jueves\',\'Viernes\',\'Sábado\'];\n', ctx);
   return { ctx, els, el: id => ctx.document.getElementById(id) };
 }
 const iso = d => new Date(d).toISOString();
@@ -219,6 +229,71 @@ const ahora = Date.now(), dia = 864e5;
     ok(llamadas.includes('alerta:c1'), '🔴 E: al guardar el plan de comida se repinta la alerta de revisión DE ESA PERSONA (sin salir de la ficha)');
     ok(llamadas.includes('resumen'), '🔴 E: al guardar el plan de comida se repinta el Resumen (la marca de la pestaña Comida se apaga)');
     ok(ctxE.DB.nutrition.c1 && ctxE.DB.nutrition.c1.kcal === 2200 && ctxE.DB.nutrition.c1.plan === 'Plan de prueba', 'E: CONTROL, el plan se guardó');
+  }
+
+  // ═════ R · v758 · tocar una barra de la Retención: quién entrenó ese día (una fila por PERSONA, de la MISMA fuente que la barra) ═════
+  {
+    const d0 = new Date(); d0.setHours(0, 0, 0, 1); const base = +d0;
+    const clientesR = [
+      { id: 'c1', name: 'Ana Prueba', age: 30, payments: [] },
+      { id: 'c2', name: 'Beto <b>Prueba</b>', age: 41, payments: [] },
+      { id: 'c3', name: 'Carla Prueba', age: 28, payments: [] },
+      { id: '_self', name: 'Yo', age: 35, payments: [] },
+    ];
+    const ses = (ms, rutina) => ({ date: iso(ms), routineName: rutina });
+    const hist = {
+      c1: [ses(base + 1000, 'Pierna A'), ses(base + 2000, 'Core'), ses(base - 2.5 * dia, 'Tirón')],   // hoy: 2 sesiones de UNA persona
+      c3: [ses(base + 3000, 'Empuje'), ses(base - 12 * 36e5, 'Empuje')],
+      _self: [ses(base + 4000, 'Mi pierna')],
+      c2: [ses(base - 12 * 36e5, 'Tirón <i>x</i>')],
+    };
+    const R = montar(clientesR, { __history: hist });
+    R.ctx.renderHome();
+    const bars0 = R.el('h-ret-bars').innerHTML;
+    ok((bars0.match(/class="ret-dia"/g) || []).length === 7 && !/class="ret-fila"/.test(bars0), '🔴 R: al cargar hay 7 barras-botón y NINGÚN día marcado ni lista');
+    ok(/Toca un día para ver quién entrenó/.test(bars0) && !/aria-pressed="true"/.test(bars0), '🔴 R: al cargar sale la pista «Toca un día para ver quién entrenó»');
+    const num = (html, i) => { const bt = html.split('class="ret-dia"').slice(1)[i] || ''; const m = bt.match(/<span style="font-size:9px;color:var\(--t2\)">(\d*)<\/span>/); return m ? Number(m[1] || 0) : -1; };
+    // 🔒 para CADA día: las filas son tantas como dice la barra (misma fuente), y tocar el mismo día lo cierra
+    let hayDia = 0;
+    for (let i = 0; i < 7; i++) {
+      R.ctx.retencionDia(i);
+      const h1 = R.el('h-ret-bars').innerHTML, n = num(h1, i), filas = (h1.match(/class="ret-fila"/g) || []).length;
+      ok(n === filas, '🔴 R: el día ' + i + ' dice ' + n + ' en la barra y la lista trae ' + filas + ' filas (tienen que ser las mismas)');
+      ok((h1.match(/aria-pressed="true"/g) || []).length === 1 && new RegExp('data-ret="' + i + '" aria-pressed="true"').test(h1), '🔴 R: solo la barra tocada (' + i + ') queda marcada');
+      if (n === 0) ok(/Nadie entrenó este día/.test(h1), '🔴 R: un día sin nadie dice «Nadie entrenó este día»'); else { hayDia++; ok(new RegExp(_etq() + '[^<]*· ' + n + (n === 1 ? ' entrenó' : ' entrenaron')).test(h1) || /· \d+ entren/.test(h1), 'R: el encabezado dice «Día N · n entrenaron»'); }
+      R.ctx.retencionDia(i);
+      const h2 = R.el('h-ret-bars').innerHTML;
+      ok(!/class="ret-fila"/.test(h2) && !/aria-pressed="true"/.test(h2) && /Toca un día/.test(h2), '🔴 R: tocar el MISMO día otra vez lo cierra (día ' + i + ')');
+    }
+    function _etq() { return '[A-Za-zÁÉÍÓÚáéíóúñ]+ \\d+'; }
+    ok(hayDia >= 3, 'R: CONTROL, la prueba recorrió al menos 3 días con gente (' + hayDia + ')');
+    // hoy: 3 PERSONAS (4 sesiones): la barra dice 3 y la lista trae 3 filas, una por persona
+    R.ctx.retencionDia(6);
+    const hoyH = R.el('h-ret-bars').innerHTML;
+    ok(num(hoyH, 6) === 3 && (hoyH.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: hoy hay 4 sesiones de 3 personas: la barra dice 3 y la lista trae 3 filas (una por PERSONA): barra ' + num(hoyH, 6) + ', filas ' + (hoyH.match(/class="ret-fila"/g) || []).length);
+    ok(/Pierna A · Core/.test(hoyH) && /Yo \(tu entreno\)/.test(hoyH) && /Ana Prueba/.test(hoyH) && /Carla Prueba/.test(hoyH), '🔴 R: cada fila lleva el nombre y la(s) rutina(s) del día; el coach sale como «Yo (tu entreno)»');
+    ok(/onclick="openDetail\('c1'\)"/.test(hoyH) && /onclick="openDetail\('_self'\)"/.test(hoyH), '🔴 R: tocar la fila abre la ficha con openDetail (la misma de Prioritarios)');
+    ok(/aria-label="[^"]+ \d+: 3 entrenaron"/.test(hoyH) && /aria-label="[^"]+ \d+: nadie entrenó"/.test(hoyH), '🔴 R: cada barra es un botón con aria-label «Viernes 21: 3 entrenaron» / «…: nadie entrenó»');
+    ok(!/<b>Prueba<\/b>/.test(hoyH), 'R: CONTROL, el nombre con HTML se escapa (esc)');
+    R.ctx.retencionDia(5);
+    const ayerH = R.el('h-ret-bars').innerHTML;
+    ok(/Beto &lt;b&gt;Prueba&lt;\/b&gt;/.test(ayerH) && /Tirón &lt;i&gt;x&lt;\/i&gt;/.test(ayerH) && !/<i>x<\/i>/.test(ayerH), '🔴 R: nombre y rutina se escapan con esc() (ayer: Beto y su rutina con HTML)');
+    ok((ayerH.match(/aria-pressed="true"/g) || []).length === 1 && new RegExp('data-ret="5" aria-pressed="true"').test(ayerH) && (ayerH.match(/class="ret-fila"/g) || []).length === 2, '🔴 R: tocar OTRO día cambia la lista (ayer: 2 personas) y deja marcado solo ese');
+    // el reporte de Sesiones usa la MISMA función y se repinta también
+    R.ctx.retencionDia(5);
+    R.ctx.openCoachStat('sesiones');
+    const rep = R.el('coach-stat-body').innerHTML;
+    ok(/id="ret-rep"/.test(rep) && (rep.match(/class="ret-dia"/g) || []).length === 7 && /Toca un día para ver quién entrenó/.test(rep), '🔴 R: el reporte de Sesiones trae las mismas barras-botón y la pista');
+    R.ctx.retencionDia(6);
+    ok((R.el('ret-rep').innerHTML.match(/class="ret-fila"/g) || []).length === 3 && (R.el('h-ret-bars').innerHTML.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: al tocar un día se repintan LAS DOS pantallas (el Inicio y el reporte)');
+    // el día marcado no es de los datos: un montaje nuevo arranca sin ninguno
+    const R2 = montar(clientesR, { __history: hist });
+    R2.ctx.renderHome();
+    ok(!/aria-pressed="true"/.test(R2.el('h-ret-bars').innerHTML), 'R: CONTROL, un Inicio recién abierto no trae ningún día marcado');
+    // sin nadie que entrenara (con asesorados): cada día dice «Nadie entrenó este día»
+    const R3 = montar([{ id: 'c1', name: 'Ana Prueba', age: 30, payments: [] }], { __history: {} });
+    R3.ctx.renderHome(); R3.ctx.retencionDia(3);
+    ok(/Nadie entrenó este día/.test(R3.el('h-ret-bars').innerHTML) && !/class="ret-fila"/.test(R3.el('h-ret-bars').innerHTML), 'R: sin historial, un día marcado dice «Nadie entrenó este día»');
   }
 
   if (fallas.length) { console.error('FALLA (' + fallas.length + ')' + (SAB ? ' [sabotaje ' + SAB + ']' : '') + ':\n - ' + fallas.join('\n - ')); process.exit(1); }

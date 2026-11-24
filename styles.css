@@ -287,6 +287,7 @@ html[data-theme="light"] .mta {
    Los divisores INTERNOS (.ch) siguen en --br a propósito: exterior fuerte, interior suave.
    Las tarjetas de componente (.qw-card/.sescard/.nutri-card…) suben en su fase de superficie. */
 .card{background:var(--w);border:1px solid var(--br2);border-radius:var(--rlg);box-shadow:var(--sh)}
+.ret-dia:focus-visible,.ret-fila:focus-visible{outline:2px solid var(--g);outline-offset:2px}
 .ch{padding:13px 18px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between}
 .ctitle{font-size:var(--fs-base);font-weight:700}
 .cb{padding:15px 18px}

@@ -2501,11 +2501,13 @@ test('retentionByDay: ubica cada sesión en su día de calendario real', () => {
   const now = D(2026, 6, 2, 10);
   const history = {
     a: [{ date: D(2026, 6, 2, 9) }, { date: D(2026, 6, 1, 9) }, { date: D(2026, 6, 1, 20) }],
-    b: [{ date: D(2026, 5, 30, 9) }],
+    b: [{ date: D(2026, 5, 30, 9) }, { date: D(2026, 6, 1, 7) }],
   };
   const bars = retentionByDay(history, now);
   assert.strictEqual(bars[6].count, 1, 'hoy (jun 2): 1');
-  assert.strictEqual(bars[5].count, 2, 'ayer (jun 1): 2');
+  // v758: la barra cuenta PERSONAS (la lista «quién entrenó» trae una fila por persona): a hizo 2 entrenos ayer y cuenta 1; b hizo otro
+  assert.strictEqual(bars[5].count, 2, 'ayer (jun 1): 2 personas (a con dos sesiones cuenta una vez, y b)');
+  assert.deepStrictEqual(bars[5].people.map(p => p.id).sort(), ['a', 'b']);
   assert.strictEqual(bars[3].count, 1, 'hace 3 días (may 30): 1');
 });
 
@@ -28670,6 +28672,9 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
     // v757 · la retención vuelve al Inicio: sin pintar, sin tarjeta, fuera de lugar o con barras propias (no la función compartida) → cae
     'inicio-sin-retencion': /el Inicio pinta la tarjeta «Retención semanal»/, 'inicio-sin-tarjeta-retencion': /el orden del Inicio es 4 cifras · Retención semanal/,
     'retencion-fuera-de-lugar': /el orden del Inicio es 4 cifras · Retención semanal/, 'inicio-barras-propias': /usan LA MISMA función de barras/,
+    // v758 · tocar una barra: la lista de quién entrenó cuenta lo que dice la barra, una fila por PERSONA, y se cierra al tocar otra vez
+    'retencion-lista-por-sesion': /la lista trae 4 filas|una fila por PERSONA/, 'retencion-lista-otra-fuente': /tienen que ser las mismas/,
+    'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /tocar la fila abre la ficha/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
   };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
@@ -28788,10 +28793,10 @@ test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DEN
   const ini = src.indexOf('function _retencionBarras(now){');
   assert.ok(ini > 0, 'no está _retencionBarras');
   const f = src.slice(ini, src.indexOf('function _retencionHTML', ini));
-  const caja = f.match(/const html=`<div style="([^"]*)">/);
+  const caja = f.match(/const barras=`<div style="([^"]*)">/);
   assert.ok(caja, '🔴 no se encontró la caja de las barras');
   assert.ok(!/height\s*:/.test(caja[1]), '🔴 la caja de la Retención tiene alto fijo («' + caja[1] + '»): la columna (número + barra + etiqueta) es más alta y el número se sale por arriba, sobre el título');
-  const ranura = f.match(/<div style="height:(\d+)px;width:100%;display:flex;align-items:flex-end"><div style="height:\$\{h\}px/);
+  const ranura = f.match(/<span style="height:(\d+)px;width:100%;display:flex;align-items:flex-end"><span style="height:\$\{h\}px/);
   const tope = f.match(/Math\.round\(o\.count\/maxC\*(\d+)\)/);
   assert.ok(ranura && tope && ranura[1] === tope[1], '🔴 la ranura de la barra no mide lo mismo que su máximo (ranura ' + (ranura && ranura[1]) + ', máximo ' + (tope && tope[1]) + '): la barra más alta se sale de su ranura');
   // CONTROL: la sonda ve el defecto de antes (caja de 60 px) y deja pasar la caja sana
