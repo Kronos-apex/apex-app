@@ -28674,7 +28674,7 @@ testPesado('v756b · D · el Inicio quedó en saludo, avisos condicionales, 4 ci
     'retencion-fuera-de-lugar': /el orden del Inicio es 4 cifras · Retención semanal/, 'inicio-barras-propias': /usan LA MISMA función de barras/,
     // v758 · tocar una barra: la lista de quién entrenó cuenta lo que dice la barra, una fila por PERSONA, y se cierra al tocar otra vez
     'retencion-lista-por-sesion': /la lista trae 4 filas|una fila por PERSONA/, 'retencion-lista-otra-fuente': /tienen que ser las mismas/,
-    'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /las filas traen su toque/, 'retencion-fila-directa': /CIERRA primero/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
+    'retencion-no-cierra': /MISMO día otra vez lo cierra/, 'retencion-fila-muerta': /las filas traen su toque/, 'retencion-fila-directa': /CIERRA primero/, 'retencion-sin-filtro': /ya no está en DB\.clients/, 'retencion-yo-sin-etiqueta': /Yo \(tu entreno\)/,
   };
   Object.keys(sab).forEach(k => {
     const x = _t756Corre('comprobar-pantallas-coach.cjs', { SAB: k });
@@ -28811,6 +28811,28 @@ test('🔒 v758 · Retención semanal: el número de la barra más alta cabe DEN
   const vieja = '<div style="display:flex;align-items:flex-end;gap:6px;height:60px">'.match(/style="([^"]*)"/)[1];
   assert.ok(/height\s*:/.test(vieja), 'control: la sonda no ve el alto fijo de 60 px');
   assert.ok(!/height\s*:/.test('display:flex;align-items:flex-end;gap:6px'), 'control: la caja sana no debería dar alto fijo');
+});
+
+// 🔒 v758 · `retentionByDay` cuenta SOLO a las personas que existen (`clientIds`): una sesión de un id que ya no está en DB.clients no infla la barra
+// ni mete una fila fantasma en la lista de quién entrenó. Sabotaje EN LA SUITE: se evalúa una copia del código REAL sin el filtro y tiene que fallar.
+test('🔒 v758 · retentionByDay ignora a quien ya no está en DB.clients (el filtro de clientIds), con sabotaje y control', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, 'avi-core.js'), 'utf8').replace(/\r\n/g, '\n');
+  const i = src.indexOf('function retentionByDay('); assert.ok(i > 0, 'no está retentionByDay');
+  const fn = src.slice(i, src.indexOf('\n}\n', i) + 3);
+  const FILTRO = 'if (solo && !solo.has(id)) return;';
+  assert.strictEqual(fn.split(FILTRO).length, 2, '🔴 el filtro de clientIds cambió o se fue de retentionByDay');
+  const armar = codigo => new Function('localDayStart', 'MS_DAY', '_DOW', codigo + '\nreturn retentionByDay;')(
+    d => { const x = new Date(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); }, 86400000, ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']);
+  const ahora = new Date(2026, 5, 2, 10);
+  const hist = { a: [{ date: new Date(2026, 5, 2, 9), routineName: 'X' }], huerfano: [{ date: new Date(2026, 5, 2, 8), routineName: 'Y' }] };
+  const real = armar(fn), sinFiltro = armar(fn.replace(FILTRO, ''));
+  assert.strictEqual(real(hist, ahora, ['a'])[6].count, 1, '🔴 retentionByDay cuenta a una persona que ya no está en DB.clients');
+  assert.deepStrictEqual(real(hist, ahora, ['a'])[6].people.map(p => p.id), ['a'], '🔴 la lista trae una fila fantasma');
+  // CONTROL: sin pasar clientIds cuenta a todos (el filtro es opcional), así que la prueba de arriba discrimina por el filtro y no por casualidad
+  assert.strictEqual(real(hist, ahora)[6].count, 2, 'control: sin clientIds cuenta a todos');
+  // SABOTAJE: la copia sin el filtro SÍ cuenta al fantasma (si no lo hiciera, el candado de arriba no probaría nada)
+  assert.strictEqual(sinFiltro(hist, ahora, ['a'])[6].count, 2, '🔴 el sabotaje (sin el filtro) no cambia nada: el candado no discrimina');
 });
 
 // ══════════════════════════════════════════════════════

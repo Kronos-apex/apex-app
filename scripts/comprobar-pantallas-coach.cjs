@@ -50,6 +50,8 @@ const SABOTAJES = {
   'retencion-fila-muerta': { 'app-2-login.js': [["onclick=\"_crepGoDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
   // v758 · la fila llama openDetail directo: en el reporte de Sesiones la ficha se abre DEBAJO del reporte (dos atrás para volver)
   'retencion-fila-directa': { 'app-2-login.js': [["onclick=\"_crepGoDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%", "onclick=\"openDetail('${esc(String(p.id))}')\" style=\"display:flex;align-items:center;gap:8px;width:100%"]] },
+  // v758 · la barra cuenta a quien ya no está en DB.clients (se deja de pasar la lista de personas)
+  'retencion-sin-filtro': { 'app-2-login.js': [["return retentionByDay(DB.history,now,DB.clients.map(c=>c.id));", "return retentionByDay(DB.history,now);"]] },
   // v758 · el nombre del coach sale como un asesorado más
   'retencion-yo-sin-etiqueta': { 'app-2-login.js': [["?'Yo (tu entreno)':(c.name||'Sin nombre')", "?(c.name||'Sin nombre'):(c.name||'Sin nombre')"]] },
   'inicio-barras-propias': { 'app-2-login.js': [["    const _ret=_retencionBarras(now);\n", "    const _ret={pct:0,html:'<i></i>'};\n"]] },
@@ -306,6 +308,11 @@ const ahora = Date.now(), dia = 864e5;
     ok(/id="ret-rep"/.test(rep) && (rep.match(/class="ret-dia"/g) || []).length === 7 && /Toca un día para ver quién entrenó/.test(rep), '🔴 R: el reporte de Sesiones trae las mismas barras-botón y la pista');
     R.ctx.retencionDia(6);
     ok((R.el('ret-rep').innerHTML.match(/class="ret-fila"/g) || []).length === 3 && (R.el('h-ret-bars').innerHTML.match(/class="ret-fila"/g) || []).length === 3, '🔴 R: al tocar un día se repintan LAS DOS pantallas (el Inicio y el reporte)');
+    // 🔒 una sesión de alguien que ya NO está en DB.clients no infla la barra ni mete una fila fantasma
+    const RF = montar(clientesR, { __history: Object.assign({}, hist, { fantasma: [ses(base + 6000, 'Fantasma')] }) });
+    RF.ctx.renderHome(); RF.ctx.retencionDia(6);
+    const hf = RF.el('h-ret-bars').innerHTML;
+    ok(num(hf, 6) === 3 && (hf.match(/class="ret-fila"/g) || []).length === 3 && !/Fantasma/.test(hf), '🔴 R: un id que ya no está en DB.clients NO cuenta en la barra ni sale en la lista (hoy: 3 personas): barra ' + num(hf, 6));
     // el día marcado no es de los datos: un montaje nuevo arranca sin ninguno
     const R2 = montar(clientesR, { __history: hist });
     R2.ctx.renderHome();
